@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Layers, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NearbyLocation {
   id: string;
@@ -21,8 +22,15 @@ interface UserLocation {
   country: string;
 }
 
+interface AirQualityData {
+  aqi: number;
+  location: string;
+  timestamp: string;
+}
+
 export default function MapView(): JSX.Element {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [airQualityData, setAirQualityData] = useState<AirQualityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -92,6 +100,9 @@ export default function MapView(): JSX.Element {
         country: cityName.country || ''
       });
 
+      // Fetch real air quality data
+      await fetchAirQualityData(latitude, longitude);
+
       // Update nearby locations with real coordinates
       updateNearbyLocations(latitude, longitude);
       
@@ -105,6 +116,30 @@ export default function MapView(): JSX.Element {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAirQualityData = async (lat: number, lon: number): Promise<void> => {
+    try {
+      const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
+        body: { lat, lon }
+      });
+
+      if (error) {
+        console.error('Error fetching air quality data:', error);
+        return;
+      }
+
+      if (response) {
+        console.log('MapView air quality data:', response);
+        setAirQualityData({
+          aqi: response.aqi,
+          location: response.location,
+          timestamp: response.timestamp
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching air quality data:', err);
     }
   };
 
@@ -269,9 +304,9 @@ export default function MapView(): JSX.Element {
               </div>
               <Badge 
                 variant="secondary"
-                className="bg-green-500 text-white border-0"
+                className={`${getAQIColor(airQualityData?.aqi || 0)} text-white border-0`}
               >
-                AQI 42
+                AQI {airQualityData?.aqi || 'Loading...'}
               </Badge>
             </div>
           </CardContent>
