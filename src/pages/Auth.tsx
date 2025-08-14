@@ -105,6 +105,16 @@ export default function Auth(): JSX.Element {
         return;
       }
 
+      // Log detailed error information
+      if (signInError) {
+        console.error('Sign in error details:', {
+          message: signInError.message,
+          status: signInError.status,
+          name: signInError.name,
+          details: signInError
+        });
+      }
+
       // If sign in failed due to unverified email, we need to handle this differently
       if (signInError?.message?.includes('Email not confirmed')) {
         // Try to resend confirmation email
@@ -140,7 +150,12 @@ export default function Auth(): JSX.Element {
         });
 
         if (signUpError) {
-          console.error('Signup error:', signUpError);
+          console.error('Signup error details:', {
+            message: signUpError.message,
+            status: signUpError.status,
+            name: signUpError.name,
+            details: signUpError
+          });
           throw signUpError;
         }
 
