@@ -110,18 +110,9 @@ export default function MapView(): JSX.Element {
 
   const getCityFromCoordinates = async (lat: number, lon: number): Promise<{city: string, state: string, country: string}> => {
     try {
-      const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
+      // Use the actual API key
+      const apiKey = '56ab74b487631610f9b44a6e51fe72f0';
       
-      // If no API key is available, skip the API call and use coordinates
-      if (!apiKey || apiKey === 'YOUR_API_KEY') {
-        console.log('OpenWeatherMap API key not available, using coordinates only');
-        return {
-          city: `Your Location`,
-          state: `(${lat.toFixed(4)}, ${lon.toFixed(4)})`,
-          country: ''
-        };
-      }
-
       const response = await fetch(
         `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`
       );

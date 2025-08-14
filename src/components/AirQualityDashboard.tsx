@@ -74,24 +74,51 @@ export default function AirQualityDashboard(): JSX.Element {
       throw new Error('No response data received');
     }
 
-    return {
-      aqi: response.aqi,
-      pm25: response.pollutants.pm25,
-      pm10: response.pollutants.pm10,
-      no2: response.pollutants.no2,
-      so2: response.pollutants.so2,
-      co: response.pollutants.co,
-      o3: response.pollutants.o3,
-      location: response.location,
-      timestamp: new Date(response.timestamp).toLocaleString(),
-    };
+    // Debug: Log the actual response structure
+    console.log('Supabase function response:', response);
+
+    // Check if the response has the expected structure
+    if (response && typeof response === 'object' && 'pollutants' in response) {
+      // New format with pollutants object
+      const typedResponse = response as any;
+      return {
+        aqi: typedResponse.aqi,
+        pm25: typedResponse.pollutants.pm25,
+        pm10: typedResponse.pollutants.pm10,
+        no2: typedResponse.pollutants.no2,
+        so2: typedResponse.pollutants.so2,
+        co: typedResponse.pollutants.co,
+        o3: typedResponse.pollutants.o3,
+        location: typedResponse.location,
+        timestamp: new Date(typedResponse.timestamp).toLocaleString(),
+      };
+    } else if (response && typeof response === 'object' && 'list' in response && Array.isArray((response as any).list)) {
+      // Raw OpenWeatherMap format
+      const typedResponse = response as any;
+      const currentData = typedResponse.list[0];
+      return {
+        aqi: currentData.main.aqi,
+        pm25: currentData.components.pm2_5,
+        pm10: currentData.components.pm10,
+        no2: currentData.components.no2,
+        so2: currentData.components.so2,
+        co: currentData.components.co,
+        o3: currentData.components.o3,
+        location: typedResponse.location || 'Unknown Location',
+        timestamp: new Date().toLocaleString(),
+      };
+    } else {
+      // Fallback for unexpected format
+      console.error('Unexpected response format:', response);
+      throw new Error('Unexpected data format received from API');
+    }
   };
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['airQuality'],
     queryFn: fetchAirQualityData,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     retry: 2,
     retryDelay: 1000,
   });
