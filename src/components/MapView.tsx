@@ -110,12 +110,24 @@ export default function MapView(): JSX.Element {
 
   const getCityFromCoordinates = async (lat: number, lon: number): Promise<{city: string, state: string, country: string}> => {
     try {
+      const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
+      
+      // If no API key is available, skip the API call and use coordinates
+      if (!apiKey || apiKey === 'YOUR_API_KEY') {
+        console.log('OpenWeatherMap API key not available, using coordinates only');
+        return {
+          city: `Your Location`,
+          state: `(${lat.toFixed(4)}, ${lon.toFixed(4)})`,
+          country: ''
+        };
+      }
+
       const response = await fetch(
-        `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${import.meta.env.VITE_OPENWEATHERMAP_API_KEY || 'YOUR_API_KEY'}`
+        `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`
       );
       
       if (!response.ok) {
-        throw new Error('Failed to get city name');
+        throw new Error(`API request failed: ${response.status}`);
       }
       
       const data = await response.json();
@@ -128,9 +140,10 @@ export default function MapView(): JSX.Element {
       };
     } catch (err) {
       console.error('Error getting city name:', err);
+      // Fallback to coordinates if API fails
       return {
-        city: 'Your Location',
-        state: '',
+        city: `Your Location`,
+        state: `(${lat.toFixed(4)}, ${lon.toFixed(4)})`,
         country: ''
       };
     }

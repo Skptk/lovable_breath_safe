@@ -55,13 +55,29 @@ export default function Products() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
+            const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
+            
+            // If no API key is available, skip the API call and use coordinates
+            if (!apiKey || apiKey === 'YOUR_API_KEY') {
+              console.log('OpenWeatherMap API key not available, using coordinates only');
+              setUserLocation(`Your Location (${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)})`);
+              return;
+            }
+
             const response = await fetch(
-              `https://api.openweathermap.org/geo/1.0/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&limit=1&appid=YOUR_API_KEY`
+              `https://api.openweathermap.org/geo/1.0/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&limit=1&appid=${apiKey}`
             );
+            
+            if (!response.ok) {
+              throw new Error(`API request failed: ${response.status}`);
+            }
+            
             const data = await response.json();
             setUserLocation(data[0]?.name || 'Your Location');
           } catch (error) {
-            setUserLocation('Your Location');
+            console.error('Error getting city name:', error);
+            // Fallback to coordinates if API fails
+            setUserLocation(`Your Location (${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)})`);
           }
         },
         () => setUserLocation('Your Location')
