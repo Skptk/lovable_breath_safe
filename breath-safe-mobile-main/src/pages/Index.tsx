@@ -1,14 +1,16 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AirQualityDashboard from "@/components/AirQualityDashboard";
 import HistoryView from "@/components/HistoryView";
 import MapView from "@/components/MapView";
 import ProfileView from "@/components/ProfileView";
 import Navigation from "@/components/Navigation";
 
-const Index = () => {
+const Index = (): JSX.Element => {
   const [currentView, setCurrentView] = useState("dashboard");
+  const navigate = useNavigate();
 
-  const renderView = () => {
+  const renderView = (): JSX.Element => {
     switch (currentView) {
       case "dashboard":
         return <AirQualityDashboard />;
@@ -23,13 +25,15 @@ const Index = () => {
     }
   };
 
+  // Handle products navigation properly
+  if (currentView === "products") {
+    navigate("/products");
+    return null;
+  }
+
   return (
     <div className="relative">
-      {currentView === "products" ? (
-        window.location.href = "/products"
-      ) : (
-        renderView()
-      )}
+      {renderView()}
       <Navigation currentView={currentView} onViewChange={setCurrentView} />
     </div>
   );

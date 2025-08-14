@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, History, Map, Download, MapPin, Loader2 } from "lucide-react";
+import { RefreshCw, History, Map, Download, MapPin, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import PollutantModal from "./PollutantModal";
-import { useAuth } from "@/hooks/useAuth";
 
 interface AirQualityData {
   aqi: number;
@@ -39,87 +39,112 @@ const getAQILabel = (aqi: number): string => {
   return "Hazardous";
 };
 
-export default function AirQualityDashboard() {
-  const [data, setData] = useState<AirQualityData | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+export default function AirQualityDashboard(): JSX.Element {
   const [selectedPollutant, setSelectedPollutant] = useState<{
     name: string;
     value: number;
     unit: string;
   } | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
 
-  useEffect(() => {
-    fetchAirQualityData();
-  }, []);
-
-  const fetchAirQualityData = async () => {
-    setIsRefreshing(true);
-    try {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            
-            const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
-              body: { lat: latitude, lon: longitude }
-            });
-
-            if (error) throw error;
-
-            if (response) {
-              setData({
-                aqi: response.aqi,
-                pm25: response.pollutants.pm25,
-                pm10: response.pollutants.pm10,
-                no2: response.pollutants.no2,
-                so2: response.pollutants.so2,
-                co: response.pollutants.co,
-                o3: response.pollutants.o3,
-                location: response.location,
-                timestamp: new Date(response.timestamp).toLocaleString(),
-              });
-            }
-          },
-          (error) => {
-            console.error('Geolocation error:', error);
-            toast({
-              title: "Location Error",
-              description: "Unable to get your location. Please enable location services.",
-              variant: "destructive",
-            });
-          }
-        );
-      } else {
-        toast({
-          title: "Geolocation Not Supported",
-          description: "Your browser doesn't support geolocation.",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error('Error fetching air quality data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch air quality data",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
+  const fetchAirQualityData = async (): Promise<AirQualityData> => {
+    if (!navigator.geolocation) {
+      throw new Error('Geolocation not supported');
     }
+
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        timeout: 10000,
+        enableHighAccuracy: false,
+        maximumAge: 5 * 60 * 1000 // 5 minutes
+      });
+    });
+
+    const { latitude, longitude } = position.coords;
+    
+    const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
+      body: { lat: latitude, lon: longitude }
+    });
+
+    if (error) {
+      throw new Error(`Supabase function error: ${error.message}`);
+    }
+
+    if (!response) {
+      throw new Error('No response data received');
+    }
+
+    return {
+      aqi: response.aqi,
+      pm25: response.pollutants.pm25,
+      pm10: response.pollutants.pm10,
+      no2: response.pollutants.no2,
+      so2: response.pollutants.so2,
+      co: response.pollutants.co,
+      o3: response.pollutants.o3,
+      location: response.location,
+      timestamp: new Date(response.timestamp).toLocaleString(),
+    };
   };
 
-  const handlePollutantClick = (name: string, value: number, unit: string) => {
+  const { data, isLoading, error, refetch, isRefetching } = useQuery({
+    queryKey: ['airQuality'],
+    queryFn: fetchAirQualityData,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+    retryDelay: 1000,
+  });
+
+  const handleRefresh = (): void => {
+    refetch();
+  };
+
+  const handlePollutantClick = (name: string, value: number, unit: string): void => {
     setSelectedPollutant({ name, value, unit });
   };
 
-  if (!data) {
+  // Handle loading state
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground">Loading air quality data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
+            <AlertTriangle className="w-8 h-8 text-destructive" />
+          </div>
+          <h2 className="text-xl font-semibold">Failed to load data</h2>
+          <p className="text-muted-foreground">
+            {error instanceof Error ? error.message : 'An unexpected error occurred'}
+          </p>
+          <Button onClick={() => refetch()} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle no data state
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">No air quality data available</p>
+          <Button onClick={() => refetch()} variant="outline">
+            Refresh
+          </Button>
         </div>
       </div>
     );
@@ -142,11 +167,11 @@ export default function AirQualityDashboard() {
         <Button
           variant="outline"
           size="sm"
-          onClick={fetchAirQualityData}
-          disabled={isRefreshing}
+          onClick={handleRefresh}
+          disabled={isRefetching}
           className="bg-background/50 border-border hover:bg-card"
         >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 

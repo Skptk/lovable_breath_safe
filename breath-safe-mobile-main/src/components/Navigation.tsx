@@ -6,7 +6,7 @@ interface NavigationProps {
   onViewChange: (view: string) => void;
 }
 
-export default function Navigation({ currentView, onViewChange }: NavigationProps) {
+export default function Navigation({ currentView, onViewChange }: NavigationProps): JSX.Element {
   const navItems = [
     { id: "dashboard", label: "Home", icon: Home },
     { id: "history", label: "History", icon: History },
