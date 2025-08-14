@@ -210,7 +210,7 @@ export default function AirQualityDashboard(): JSX.Element {
           <Card 
             key={item.label} 
             className="bg-gradient-card shadow-card border-0 cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => handlePollutantClick(item.code, item.value, item.unit)}
+            onClick={() => handlePollutantClick(item.label, item.value, item.unit)}
           >
             <CardContent className="p-4">
               <div className="text-sm font-medium text-muted-foreground">
@@ -240,10 +240,7 @@ export default function AirQualityDashboard(): JSX.Element {
       </div>
 
       <PollutantModal
-        pollutant={selectedPollutant?.name || ''}
-        value={selectedPollutant?.value || 0}
-        unit={selectedPollutant?.unit || ''}
-        isOpen={!!selectedPollutant}
+        pollutant={selectedPollutant}
         onClose={() => setSelectedPollutant(null)}
       />
     </div>

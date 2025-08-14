@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 
@@ -21,7 +22,7 @@ interface PollutantModalProps {
     name: string;
     value: number;
     unit: string;
-  };
+  } | null;
   onClose: () => void;
 }
 
@@ -94,10 +95,21 @@ export default function PollutantModal({
     }
   };
 
+  // Don't render if no pollutant is selected
+  if (!pollutant) {
+    return null;
+  }
+
   if (loading) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="bg-gradient-card border-0">
+          <DialogHeader>
+            <DialogTitle>Loading Pollutant Information</DialogTitle>
+            <DialogDescription>
+              Fetching detailed information for {pollutant.name}...
+            </DialogDescription>
+          </DialogHeader>
           <div className="animate-pulse space-y-4">
             <div className="h-6 bg-muted rounded"></div>
             <div className="h-20 bg-muted rounded"></div>
@@ -110,11 +122,12 @@ export default function PollutantModal({
   if (!details) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="bg-gradient-card border-0">
+        <DialogContent className="bg-gradient-card border-0 max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">
-              {pollutant.name} Information
-            </DialogTitle>
+            <DialogTitle>{pollutant.name} Information</DialogTitle>
+            <DialogDescription>
+              Basic pollutant information and current levels
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-center space-y-2">
@@ -136,9 +149,10 @@ export default function PollutantModal({
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="bg-gradient-card border-0 max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
-            {pollutant.name} Information
-          </DialogTitle>
+          <DialogTitle>{pollutant.name} Information</DialogTitle>
+          <DialogDescription>
+            Detailed information about {pollutant.name} and its health effects
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
