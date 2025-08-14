@@ -25,6 +25,14 @@ export default function Auth(): JSX.Element {
   // Check if we're in development mode
   const isDevelopment = import.meta.env.DEV;
 
+  // Debug: Log environment variables and Supabase config
+  console.log('Environment check:', {
+    DEV: import.meta.env.DEV,
+    SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+    SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
+    SUPABASE_URL_FALLBACK: "https://bmqdbetupttlthpadseq.supabase.co"
+  });
+
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setIsLoading(true);
@@ -62,6 +70,7 @@ export default function Auth(): JSX.Element {
         });
       }
     } catch (error: any) {
+      console.error('Authentication error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -78,6 +87,8 @@ export default function Auth(): JSX.Element {
     
     try {
       const { email, password } = devFormData;
+      
+      console.log('Attempting developer login with:', { email, password: '***' });
       
       // First, try to sign in with existing account
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
