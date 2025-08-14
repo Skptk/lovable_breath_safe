@@ -32,7 +32,7 @@ A React TypeScript mobile application that tracks real-time air quality data usi
 
 1. Clone the repository
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Skptk/lovable_breath_safe.git
 cd breath-safe-mobile-main
 ```
 
@@ -45,13 +45,51 @@ npm install
 Create a `.env.local` file in the root directory:
 ```bash
 VITE_SUPABASE_URL=https://bmqdbetupttlthpadseq.supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtcWRiZXR1cHR0bHRocGFkc2VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxNjQzNDcsImV4cCI6MjA3MDc0MDM0N30.wCHsFY73VDM93uJAWRLd4-XA_fTB7efJC7rXzsjhn8c
 ```
 
 4. Start the development server
 ```bash
 npm run dev
 ```
+
+## 🚀 Deployment Options
+
+Since local development has email verification limitations, here are deployment options to test authentication properly:
+
+### Option 1: Deploy to Netlify (Recommended for Quick Testing)
+
+1. **Fork/Clone** this repository to your GitHub account
+2. **Sign up** for [Netlify](https://netlify.com) (free)
+3. **Connect** your GitHub repository
+4. **Deploy** - Netlify will automatically detect the Vite configuration
+5. **Set environment variables** in Netlify dashboard:
+   - `VITE_SUPABASE_URL`: `https://bmqdbetupttlthpadseq.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY`: Your Supabase anon key
+
+### Option 2: Deploy to Vercel
+
+1. **Fork/Clone** this repository to your GitHub account
+2. **Sign up** for [Vercel](https://vercel.com) (free)
+3. **Import** your GitHub repository
+4. **Deploy** - Vercel will automatically detect the Vite configuration
+5. **Set environment variables** in Vercel dashboard
+
+### Option 3: GitHub Pages
+
+1. **Push** your changes to GitHub
+2. **Enable GitHub Pages** in repository settings
+3. **Set source** to GitHub Actions
+4. **Configure secrets** in repository settings:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+
+### Why Deploy?
+
+- **Email Verification**: Supabase email verification requires a proper domain
+- **Authentication Testing**: Test the full authentication flow
+- **Real Environment**: Simulate production conditions
+- **No Local Limitations**: Bypass localhost restrictions
 
 ## 🔧 Environment Variables
 
