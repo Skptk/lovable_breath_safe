@@ -17,35 +17,49 @@ interface PollutantDetail {
 }
 
 interface PollutantModalProps {
-  pollutant: string;
-  value: number;
-  unit: string;
-  isOpen: boolean;
+  pollutant: {
+    name: string;
+    value: number;
+    unit: string;
+  };
   onClose: () => void;
 }
 
 export default function PollutantModal({ 
   pollutant, 
-  value, 
-  unit, 
-  isOpen, 
   onClose 
 }: PollutantModalProps) {
   const [details, setDetails] = useState<PollutantDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isOpen && pollutant) {
+    if (pollutant) {
       fetchPollutantDetails();
     }
-  }, [isOpen, pollutant]);
+  }, [pollutant]);
 
   const fetchPollutantDetails = async () => {
     try {
+      // Map pollutant names to codes
+      const pollutantCodeMap: Record<string, string> = {
+        'PM2.5': 'PM25',
+        'PM10': 'PM10',
+        'NO₂': 'NO2',
+        'SO₂': 'SO2',
+        'CO': 'CO',
+        'O₃': 'O3'
+      };
+
+      const pollutantCode = pollutantCodeMap[pollutant.name];
+      if (!pollutantCode) {
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('pollutant_details')
         .select('*')
-        .eq('pollutant_code', pollutant.toUpperCase())
+        .eq('pollutant_code', pollutantCode)
         .single();
 
       if (error) throw error;
@@ -82,7 +96,7 @@ export default function PollutantModal({
 
   if (loading) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="bg-gradient-card border-0">
           <div className="animate-pulse space-y-4">
             <div className="h-6 bg-muted rounded"></div>
@@ -95,60 +109,64 @@ export default function PollutantModal({
 
   if (!details) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="bg-gradient-card border-0">
           <DialogHeader>
-            <DialogTitle>{pollutant}</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">
+              {pollutant.name} Information
+            </DialogTitle>
           </DialogHeader>
-          <p className="text-muted-foreground">
-            Detailed information not available for this pollutant.
-          </p>
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <div className="text-3xl font-bold">{pollutant.value.toFixed(1)}</div>
+              <div className="text-sm text-muted-foreground">{pollutant.unit}</div>
+            </div>
+            <p className="text-muted-foreground text-center">
+              No detailed information available for this pollutant.
+            </p>
+          </div>
         </DialogContent>
       </Dialog>
     );
   }
 
-  const safety = getSafetyLevel(details.pollutant_code, value);
+  const safetyLevel = getSafetyLevel(details.pollutant_code, pollutant.value);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="bg-gradient-card border-0 max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {details.name}
-            <Badge className={`text-white ${safety.color} border-0`}>
-              {safety.level}
-            </Badge>
+          <DialogTitle className="text-xl font-semibold">
+            {pollutant.name} Information
           </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className="bg-primary/10 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-primary">
-              {value} {unit}
-            </div>
-            <div className="text-sm text-muted-foreground">Current Level</div>
+          {/* Current Value */}
+          <div className="text-center space-y-2">
+            <div className="text-3xl font-bold">{pollutant.value.toFixed(1)}</div>
+            <div className="text-sm text-muted-foreground">{pollutant.unit}</div>
+            <Badge className={`${safetyLevel.color} text-white`}>
+              {safetyLevel.level}
+            </Badge>
           </div>
 
+          {/* Description */}
           <div>
-            <h4 className="font-semibold mb-2">What is {details.name}?</h4>
-            <p className="text-sm text-muted-foreground">
-              {details.description}
-            </p>
+            <h4 className="font-medium mb-2">Description</h4>
+            <p className="text-sm text-muted-foreground">{details.description}</p>
           </div>
 
+          {/* Health Effects */}
           <div>
-            <h4 className="font-semibold mb-2">Health Effects</h4>
-            <p className="text-sm text-muted-foreground">
-              {details.health_effects}
-            </p>
+            <h4 className="font-medium mb-2">Health Effects</h4>
+            <p className="text-sm text-muted-foreground">{details.health_effects}</p>
           </div>
 
+          {/* Safe Levels */}
           <div>
-            <h4 className="font-semibold mb-2">Safe Levels</h4>
-            <p className="text-sm text-muted-foreground">
-              {details.safe_levels}
-            </p>
+            <h4 className="font-medium mb-2">Safe Levels</h4>
+            <p className="text-sm text-muted-foreground">{details.safe_levels}</p>
           </div>
         </div>
       </DialogContent>
