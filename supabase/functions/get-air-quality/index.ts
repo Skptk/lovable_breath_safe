@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
+import { createClient } from '@supabase/supabase-js'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -813,6 +813,20 @@ serve(async (req) => {
               
             } else {
               console.log('User authentication failed:', userError?.message);
+              console.log('Authentication error details:', {
+                hasUser: !!user,
+                userId: user?.id,
+                errorCode: userError?.status,
+                errorMessage: userError?.message,
+                tokenLength: token?.length || 0
+              });
+              
+              // Continue with anonymous user (no points/rewards tracking)
+              console.log('Continuing with anonymous user - no points tracking');
+              userId = null;
+              userPoints = 0;
+              currencyRewards = 0;
+              canWithdraw = false;
             }
           } else {
             console.log('No authorization header found');
