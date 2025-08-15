@@ -44,9 +44,12 @@ npm install
 3. Set up environment variables
 Create a `.env.local` file in the root directory:
 ```bash
-VITE_SUPABASE_URL=https://bmqdbetupttlthpadseq.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtcWRiZXR1cHR0bHRocGFkc2VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxNjQzNDcsImV4cCI6MjA3MDc0MDM0N30.wCHsFY73VDM93uJAWRLd4-XA_fTB7efJC7rXzsjhn8c
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_OPENWEATHERMAP_API_KEY=your_openweathermap_api_key
 ```
+
+⚠️ **Important**: Replace `your_supabase_project_url` and `your_supabase_anon_key` with your actual Supabase credentials from your [Supabase Dashboard](https://supabase.com/dashboard).
 
 4. Start the development server
 ```bash
@@ -64,8 +67,9 @@ Since local development has email verification limitations, here are deployment 
 3. **Connect** your GitHub repository
 4. **Deploy** - Netlify will automatically detect the Vite configuration
 5. **Set environment variables** in Netlify dashboard:
-   - `VITE_SUPABASE_URL`: `https://bmqdbetupttlthpadseq.supabase.co`
+   - `VITE_SUPABASE_URL`: Your Supabase project URL
    - `VITE_SUPABASE_ANON_KEY`: Your Supabase anon key
+   - `VITE_OPENWEATHERMAP_API_KEY`: Your OpenWeatherMap API key
 
 ### Option 2: Deploy to Vercel
 
@@ -83,6 +87,7 @@ Since local development has email verification limitations, here are deployment 
 4. **Configure secrets** in repository settings:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_OPENWEATHERMAP_API_KEY`
 
 ### Why Deploy?
 
@@ -97,6 +102,7 @@ Since local development has email verification limitations, here are deployment 
 |----------|-------------|---------|
 | `VITE_SUPABASE_URL` | Your Supabase project URL | `https://your-project.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | Your Supabase anonymous key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `VITE_OPENWEATHERMAP_API_KEY` | OpenWeatherMap API key for geocoding | `your_openweathermap_api_key` |
 
 ## 📁 Project Structure
 

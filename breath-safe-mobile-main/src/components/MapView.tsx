@@ -111,7 +111,7 @@ export default function MapView(): JSX.Element {
   const getCityFromCoordinates = async (lat: number, lon: number): Promise<{city: string, state: string, country: string}> => {
     try {
       const response = await fetch(
-        `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${import.meta.env.VITE_OPENWEATHERMAP_API_KEY || 'YOUR_API_KEY'}`
+        `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${import.meta.env.VITE_OPENWEATHERMAP_API_KEY || ''}`
       );
       
       if (!response.ok) {

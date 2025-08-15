@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (SECURITY: Prevent secrets from being committed)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +30,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Security: Additional files that might contain secrets
+*.key
+*.pem
+*.p12
+*.p8
+secrets.json
+config/secrets.*

@@ -16,8 +16,9 @@
    - Publish directory: `dist`
 5. **Click "Deploy site"**
 6. **Set environment variables** in Site settings > Environment variables:
-   - `VITE_SUPABASE_URL`: `https://bmqdbetupttlthpadseq.supabase.co`
+   - `VITE_SUPABASE_URL`: Your Supabase project URL
    - `VITE_SUPABASE_ANON_KEY`: Your Supabase anon key
+   - `VITE_OPENWEATHERMAP_API_KEY`: Your OpenWeatherMap API key
 
 ## Option 2: Vercel (Also Fast - 5 minutes)
 
@@ -40,8 +41,9 @@
 ## Environment Variables Required
 
 ```
-VITE_SUPABASE_URL=https://bmqdbetupttlthpadseq.supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_OPENWEATHERMAP_API_KEY=your_openweathermap_api_key
 ```
 
 ## After Deployment
