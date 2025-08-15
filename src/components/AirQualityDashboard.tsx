@@ -176,64 +176,14 @@ export default function AirQualityDashboard(): JSX.Element {
       throw new Error('Geolocation not supported by your browser');
     }
 
-    // Check if location permission is granted
-    if (navigator.permissions) {
-      const permission = await navigator.permissions.query({ name: 'geolocation' });
-      if (permission.state === 'denied') {
-        throw new Error('Location access denied. Please enable location permissions in your browser settings.');
-      }
-    }
-
-    // Try multiple location strategies with different settings
-    let position: GeolocationPosition;
-    
-    try {
-      // Strategy 1: High accuracy with longer timeout
-      position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 20000, // 20 seconds
-          enableHighAccuracy: true,
-          maximumAge: 0 // Force fresh location data
-        });
+    // Simple, reliable location detection that works on mobile
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        timeout: 30000, // 30 seconds - mobile devices need more time
+        enableHighAccuracy: false, // Disable high accuracy for mobile compatibility
+        maximumAge: 10 * 60 * 1000 // Allow 10-minute old data for mobile
       });
-    } catch (error: any) {
-      console.log('High accuracy failed, trying low accuracy...', error.message);
-      
-      try {
-        // Strategy 2: Low accuracy with shorter timeout
-        position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 10000, // 10 seconds
-            enableHighAccuracy: false,
-            maximumAge: 0 // Force fresh location data
-          });
-        });
-      } catch (error2: any) {
-        console.log('Low accuracy failed, trying with cached data...', error2.message);
-        
-        try {
-          // Strategy 3: Allow cached data with very short timeout
-          position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              timeout: 5000, // 5 seconds
-              enableHighAccuracy: false,
-              maximumAge: 5 * 60 * 1000 // Allow 5-minute old data
-            });
-          });
-        } catch (error3: any) {
-          // All strategies failed - provide helpful error message
-          if (error3.code === 3) { // TIMEOUT
-            throw new Error('Location timeout. This often happens after using a VPN. Please refresh the page or wait a few minutes for location services to reset.');
-          } else if (error3.code === 2) { // POSITION_UNAVAILABLE
-            throw new Error('Location unavailable. Please check your internet connection and try again.');
-          } else if (error3.code === 1) { // PERMISSION_DENIED
-            throw new Error('Location access denied. Please enable location permissions in your browser settings.');
-          } else {
-            throw new Error(`Location error: ${error3.message}. Try refreshing the page.`);
-          }
-        }
-      }
-    }
+    });
 
     const { latitude, longitude } = position.coords;
     
@@ -324,9 +274,14 @@ export default function AirQualityDashboard(): JSX.Element {
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+          </div>
           <p className="text-muted-foreground">Getting your location...</p>
           <p className="text-xs text-muted-foreground">Please allow location access when prompted</p>
+          <div className="text-sm text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-lg max-w-sm">
+            <p><strong>Mobile users:</strong> Make sure location services are enabled in your device settings</p>
+          </div>
         </div>
       </div>
     );
@@ -337,8 +292,8 @@ export default function AirQualityDashboard(): JSX.Element {
     const isLocationError = error instanceof Error && (
       error.message.includes('Location') || 
       error.message.includes('location') ||
-      error.message.includes('VPN') ||
-      error.message.includes('timeout')
+      error.message.includes('timeout') ||
+      error.message.includes('permission')
     );
 
     return (
@@ -349,7 +304,7 @@ export default function AirQualityDashboard(): JSX.Element {
           </div>
           
           <h2 className="text-xl font-semibold">
-            {isLocationError ? 'Location Error' : 'Failed to load data'}
+            {isLocationError ? 'Location Access Required' : 'Failed to load data'}
           </h2>
           
           <p className="text-muted-foreground">
@@ -358,13 +313,13 @@ export default function AirQualityDashboard(): JSX.Element {
 
           {isLocationError && (
             <div className="text-sm text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-lg">
-              <p><strong>VPN Location Issues?</strong></p>
-              <p>If you recently used a VPN, try these steps:</p>
+              <p><strong>Location Access Required</strong></p>
+              <p>This app needs your location to show air quality data:</p>
               <ol className="text-left list-decimal list-inside space-y-1">
-                <li>Disable VPN completely</li>
-                <li>Clear browser cache and cookies</li>
-                <li>Wait 2-3 minutes for location services to reset</li>
-                <li>Refresh the page</li>
+                <li>Allow location access when prompted</li>
+                <li>Check browser settings if no prompt appears</li>
+                <li>On mobile: Settings → Privacy → Location Services</li>
+                <li>Refresh the page after enabling location</li>
               </ol>
             </div>
           )}
@@ -383,7 +338,7 @@ export default function AirQualityDashboard(): JSX.Element {
                 variant="secondary"
                 className="w-full"
               >
-                Force Refresh Page
+                Refresh Page
               </Button>
             )}
           </div>

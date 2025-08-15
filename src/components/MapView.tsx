@@ -81,9 +81,9 @@ export default function MapView(): JSX.Element {
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 10000,
-          enableHighAccuracy: false,
-          maximumAge: 5 * 60 * 1000 // 5 minutes
+          timeout: 30000, // 30 seconds - mobile devices need more time
+          enableHighAccuracy: false, // Disable high accuracy for mobile compatibility
+          maximumAge: 10 * 60 * 1000 // Allow 10-minute old data for mobile
         });
       });
 
@@ -106,12 +106,23 @@ export default function MapView(): JSX.Element {
       // Update nearby locations with real coordinates
       updateNearbyLocations(latitude, longitude);
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error getting location:', err);
-      setError('Failed to get your location. Please check your browser permissions.');
+      
+      let errorMessage = 'Failed to get your location.';
+      
+      if (err.code === 1) {
+        errorMessage = 'Location access denied. Please enable location permissions in your browser settings.';
+      } else if (err.code === 2) {
+        errorMessage = 'Location unavailable. Please check your internet connection and try again.';
+      } else if (err.code === 3) {
+        errorMessage = 'Location timeout. Please wait a moment and try again.';
+      }
+      
+      setError(errorMessage);
       toast({
-        title: "Location Error",
-        description: "Unable to get your current location. Please check browser permissions.",
+        title: "Location Access Required",
+        description: "This app needs your location to show air quality data. Please allow location access when prompted.",
         variant: "destructive",
       });
     } finally {
@@ -218,7 +229,8 @@ export default function MapView(): JSX.Element {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-muted-foreground">Loading map and location data...</p>
+            <p className="text-muted-foreground">Getting your location...</p>
+            <p className="text-xs text-muted-foreground">Please allow location access when prompted</p>
           </div>
         </div>
       </div>
@@ -229,13 +241,33 @@ export default function MapView(): JSX.Element {
     return (
       <div className="min-h-screen bg-background p-4 space-y-6">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-4 max-w-md">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
-            <h3 className="text-lg font-semibold">Location Error</h3>
+            <h3 className="text-lg font-semibold">Location Access Required</h3>
             <p className="text-muted-foreground max-w-sm">{error}</p>
-            <Button onClick={getUserLocation} variant="outline">
-              Try Again
-            </Button>
+            
+            <div className="text-sm text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-lg">
+              <p><strong>How to enable location access:</strong></p>
+              <ol className="text-left list-decimal list-inside space-y-1">
+                <li>Allow location access when prompted</li>
+                <li>Check browser settings if no prompt appears</li>
+                <li>On mobile: Settings → Privacy → Location Services</li>
+                <li>Refresh the page after enabling location</li>
+              </ol>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <Button onClick={getUserLocation} variant="outline" className="w-full">
+                Try Again
+              </Button>
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="secondary"
+                className="w-full"
+              >
+                Refresh Page
+              </Button>
+            </div>
           </div>
         </div>
       </div>
