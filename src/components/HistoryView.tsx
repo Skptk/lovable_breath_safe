@@ -2,38 +2,64 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, TrendingUp, Download, Loader2, AlertTriangle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar, MapPin, TrendingUp, Download, Loader2, AlertTriangle, Thermometer, Droplets, Clock, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface HistoryEntry {
   id: string;
   created_at: string;
+  timestamp: string;
   location_name: string;
   aqi: number;
   pm25: number | null;
   pm10: number | null;
+  pm1: number | null;
   no2: number | null;
   so2: number | null;
   co: number | null;
   o3: number | null;
+  temperature: number | null;
+  humidity: number | null;
+  pm003: number | null;
+  data_source: string | null;
   latitude: number;
   longitude: number;
 }
 
-// Remove mock data - we'll fetch real data from Supabase
-
-const getAQIColor = (aqi: number) => {
-  if (aqi <= 50) return "aqi-good";
-  if (aqi <= 100) return "aqi-moderate";
-  if (aqi <= 150) return "aqi-unhealthy-sensitive";
-  if (aqi <= 200) return "aqi-unhealthy";
-  if (aqi <= 300) return "aqi-very-unhealthy";
-  return "aqi-hazardous";
+// Helper functions for AQI display
+const getAQIColor = (aqi: number): string => {
+  if (aqi <= 50) return "text-green-500";
+  if (aqi <= 100) return "text-yellow-500";
+  if (aqi <= 150) return "text-orange-500";
+  if (aqi <= 200) return "text-red-500";
+  if (aqi <= 300) return "text-purple-500";
+  return "text-red-800";
 };
 
-const getAQILabel = (aqi: number) => {
+const getAQIBadgeColor = (aqi: number): string => {
+  if (aqi <= 50) return "bg-green-500 text-white";
+  if (aqi <= 100) return "bg-yellow-500 text-white";
+  if (aqi <= 150) return "bg-orange-500 text-white";
+  if (aqi <= 200) return "bg-red-500 text-white";
+  if (aqi <= 300) return "bg-purple-500 text-white";
+  return "bg-red-800 text-white";
+};
+
+const getAQILabel = (aqi: number): string => {
   if (aqi <= 50) return "Good";
   if (aqi <= 100) return "Moderate";
   if (aqi <= 150) return "Unhealthy for Sensitive";
@@ -46,6 +72,9 @@ export default function HistoryView(): JSX.Element {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
+  const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -66,14 +95,36 @@ export default function HistoryView(): JSX.Element {
         .from('air_quality_readings')
         .select('*')
         .eq('user_id', user?.id)
-        .order('created_at', { ascending: false })
+        .order('timestamp', { ascending: false })
         .limit(50);
 
       if (fetchError) {
         throw fetchError;
       }
 
-      setHistory(data || []);
+      // Transform the data to match our interface, handling missing fields
+      const transformedData: HistoryEntry[] = (data || []).map(entry => ({
+        id: entry.id,
+        created_at: entry.created_at,
+        timestamp: (entry as any).timestamp || entry.created_at, // Fallback to created_at if timestamp is missing
+        location_name: entry.location_name,
+        aqi: entry.aqi,
+        pm25: entry.pm25,
+        pm10: entry.pm10,
+        pm1: (entry as any).pm1 || null,
+        no2: entry.no2,
+        so2: entry.so2,
+        co: entry.co,
+        o3: entry.o3,
+        temperature: (entry as any).temperature || null,
+        humidity: (entry as any).humidity || null,
+        pm003: (entry as any).pm003 || null,
+        data_source: (entry as any).data_source || null,
+        latitude: entry.latitude,
+        longitude: entry.longitude,
+      }));
+
+      setHistory(transformedData);
     } catch (error: any) {
       console.error('Error fetching history:', error);
       setError(error.message || 'Failed to fetch history');
@@ -87,15 +138,192 @@ export default function HistoryView(): JSX.Element {
     }
   };
 
+  const clearHistory = async (): Promise<void> => {
+    if (!user) return;
+    
+    try {
+      setClearing(true);
+      
+      const { error: deleteError } = await supabase
+        .from('air_quality_readings')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // Clear local state
+      setHistory([]);
+      
+      toast({
+        title: "History Cleared",
+        description: "All air quality readings have been deleted successfully.",
+        variant: "default",
+      });
+      
+    } catch (error: any) {
+      console.error('Error clearing history:', error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to clear history',
+        variant: "destructive",
+      });
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const deleteEntry = async (entryId: string): Promise<void> => {
+    if (!user) return;
+    
+    try {
+      const { error: deleteError } = await supabase
+        .from('air_quality_readings')
+        .delete()
+        .eq('id', entryId)
+        .eq('user_id', user.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // Remove from local state
+      setHistory(prev => prev.filter(entry => entry.id !== entryId));
+      
+      toast({
+        title: "Entry Deleted",
+        description: "Air quality reading has been deleted successfully.",
+        variant: "default",
+      });
+      
+    } catch (error: any) {
+      console.error('Error deleting entry:', error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to delete entry',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleEntrySelection = (entryId: string) => {
+    setSelectedEntries(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(entryId)) {
+        newSet.delete(entryId);
+      } else {
+        newSet.add(entryId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllEntries = () => {
+    if (selectedEntries.size === history.length) {
+      setSelectedEntries(new Set());
+    } else {
+      setSelectedEntries(new Set(history.map(entry => entry.id)));
+    }
+  };
+
+  const bulkDeleteSelected = async (): Promise<void> => {
+    if (!user || selectedEntries.size === 0) return;
+    
+    try {
+      setBulkDeleting(true);
+      
+      const { error: deleteError } = await supabase
+        .from('air_quality_readings')
+        .delete()
+        .in('id', Array.from(selectedEntries))
+        .eq('user_id', user.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // Remove from local state
+      setHistory(prev => prev.filter(entry => !selectedEntries.has(entry.id)));
+      setSelectedEntries(new Set());
+      
+      toast({
+        title: "Entries Deleted",
+        description: `${selectedEntries.size} air quality readings have been deleted successfully.`,
+        variant: "default",
+      });
+      
+    } catch (error: any) {
+      console.error('Error bulk deleting entries:', error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to delete selected entries',
+        variant: "destructive",
+      });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
     return date.toLocaleDateString();
   };
 
   const formatTime = (dateString: string): string => {
     const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+    
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours} hours ago`;
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  const formatRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffMinutes = Math.ceil(diffTime / (1000 * 60));
+    
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+    if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)} hours ago`;
+    return formatDate(dateString);
+  };
+
+  // Calculate statistics
+  const calculateStats = () => {
+    if (history.length === 0) return { avgAQI: 0, totalReadings: 0, recentReadings: 0 };
+    
+    const recentReadings = history.filter(entry => {
+      const entryDate = new Date(entry.timestamp);
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return entryDate >= weekAgo;
+    });
+    
+    const avgAQI = Math.round(
+      history.slice(0, 7).reduce((sum, entry) => sum + entry.aqi, 0) / Math.min(history.length, 7)
+    );
+    
+    return {
+      avgAQI,
+      totalReadings: history.length,
+      recentReadings: recentReadings.length
+    };
+  };
+
+  const stats = calculateStats();
 
   // Show loading state
   if (loading) {
@@ -140,7 +368,7 @@ export default function HistoryView(): JSX.Element {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 space-y-6">
+    <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -151,14 +379,109 @@ export default function HistoryView(): JSX.Element {
             Track your air quality exposure over time
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-2" onClick={fetchHistory}>
-          <Download className="h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {history.length > 0 && (
+            <>
+              {selectedEntries.size > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      className="gap-2"
+                      disabled={bulkDeleting}
+                    >
+                      {bulkDeleting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4" />
+                          Delete Selected ({selectedEntries.size})
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Selected Readings</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete {selectedEntries.size} selected air quality readings. 
+                        This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={bulkDeleteSelected}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete Selected
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={selectAllEntries}
+                className="gap-2"
+              >
+                {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
+              </Button>
+            </>
+          )}
+          
+          <Button variant="outline" size="sm" className="gap-2" onClick={fetchHistory}>
+            <Download className="h-4 w-4" />
+            Refresh
+          </Button>
+          
+          {history.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Clear All
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear Air Quality History</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action will permanently delete all your air quality readings. 
+                    This cannot be undone. Are you sure you want to continue?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={clearHistory}
+                    disabled={clearing}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {clearing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Clearing...
+                      </>
+                    ) : (
+                      'Clear All History'
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-gradient-card shadow-card border-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -167,14 +490,11 @@ export default function HistoryView(): JSX.Element {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="text-2xl font-bold">
-              {history.length > 0 
-                ? Math.round(history.slice(0, 7).reduce((sum, entry) => sum + entry.aqi, 0) / Math.min(history.length, 7))
-                : '0'
-              }
+            <div className={`text-2xl font-bold ${getAQIColor(stats.avgAQI)}`}>
+              {stats.avgAQI}
             </div>
             <p className="text-xs text-muted-foreground">
-              {history.length > 0 ? 'Good air quality' : 'No data available'}
+              {stats.avgAQI <= 50 ? 'Good air quality' : 'Moderate to poor air quality'}
             </p>
           </CardContent>
         </Card>
@@ -187,9 +507,24 @@ export default function HistoryView(): JSX.Element {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="text-2xl font-bold">{history.length}</div>
+            <div className="text-2xl font-bold text-primary">{stats.totalReadings}</div>
             <p className="text-xs text-muted-foreground">
-              {history.length === 1 ? 'record' : 'records'} total
+              {stats.totalReadings === 1 ? 'record' : 'records'} total
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-card shadow-card border-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              This Week
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-2xl font-bold text-primary">{stats.recentReadings}</div>
+            <p className="text-xs text-muted-foreground">
+              readings this week
             </p>
           </CardContent>
         </Card>
@@ -197,9 +532,16 @@ export default function HistoryView(): JSX.Element {
 
       {/* History List */}
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold">
-          Recent Readings {history.length > 0 && `(${history.length})`}
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">
+            Recent Readings {history.length > 0 && `(${history.length})`}
+          </h2>
+          {selectedEntries.size > 0 && (
+            <div className="text-sm text-muted-foreground">
+              {selectedEntries.size} of {history.length} selected
+            </div>
+          )}
+        </div>
         
         {history.length === 0 ? (
           <Card className="bg-gradient-card shadow-card border-0">
@@ -217,44 +559,130 @@ export default function HistoryView(): JSX.Element {
           history.map((entry) => (
             <Card key={entry.id} className="bg-gradient-card shadow-card border-0">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge 
-                        variant="secondary"
-                        className={`bg-${getAQIColor(entry.aqi)} text-white border-0 text-xs`}
-                      >
-                        AQI {entry.aqi}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {getAQILabel(entry.aqi)}
-                      </span>
+                <div className="space-y-3">
+                  {/* Header with AQI and Location */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={selectedEntries.has(entry.id)}
+                        onCheckedChange={() => toggleEntrySelection(entry.id)}
+                        className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                      />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant="secondary"
+                            className={`${getAQIBadgeColor(entry.aqi)} border-0 text-xs`}
+                          >
+                            AQI {entry.aqi}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {getAQILabel(entry.aqi)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3" />
+                          <span>{entry.location_name || 'Unknown Location'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3" />
-                      <span>{entry.location_name || 'Unknown Location'}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDate(entry.created_at)} at {formatTime(entry.created_at)}
+                    <div className="text-right flex items-center gap-2">
+                      <div className="text-xs text-muted-foreground">
+                        {formatRelativeTime(entry.timestamp)}
+                      </div>
+                      {entry.data_source && (
+                        <Badge variant="outline" className="text-xs">
+                          {entry.data_source}
+                        </Badge>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Reading</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete this air quality reading. 
+                              This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteEntry(entry.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete Reading
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
-                  <div className="text-right space-y-1">
-                    {entry.pm25 && (
-                      <div className="text-sm">
-                        <span className="font-medium">PM2.5:</span> {entry.pm25.toFixed(1)}
+
+                  {/* Pollutants Grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {entry.pm25 && entry.pm25 > 0 && (
+                      <div className="text-xs bg-muted/50 p-2 rounded">
+                        <span className="font-medium">PM2.5:</span> {entry.pm25.toFixed(1)} µg/m³
                       </div>
                     )}
-                    {entry.pm10 && (
-                      <div className="text-sm">
-                        <span className="font-medium">PM10:</span> {entry.pm10.toFixed(1)}
+                    {entry.pm10 && entry.pm10 > 0 && (
+                      <div className="text-xs bg-muted/50 p-2 rounded">
+                        <span className="font-medium">PM10:</span> {entry.pm10.toFixed(1)} µg/m³
                       </div>
                     )}
-                    {entry.no2 && (
-                      <div className="text-sm">
-                        <span className="font-medium">NO₂:</span> {entry.no2.toFixed(1)}
+                    {entry.pm1 && entry.pm1 > 0 && (
+                      <div className="text-xs bg-muted/50 p-2 rounded">
+                        <span className="font-medium">PM1:</span> {entry.pm1.toFixed(1)} µg/m³
+                      </div>
+                    )}
+                    {entry.no2 && entry.no2 > 0 && (
+                      <div className="text-xs bg-muted/50 p-2 rounded">
+                        <span className="font-medium">NO₂:</span> {entry.no2.toFixed(1)} µg/m³
+                      </div>
+                    )}
+                    {entry.so2 && entry.so2 > 0 && (
+                      <div className="text-xs bg-muted/50 p-2 rounded">
+                        <span className="font-medium">SO₂:</span> {entry.so2.toFixed(1)} µg/m³
+                      </div>
+                    )}
+                    {entry.co && entry.co > 0 && (
+                      <div className="text-xs bg-muted/50 p-2 rounded">
+                        <span className="font-medium">CO:</span> {entry.co.toFixed(1)} mg/m³
+                      </div>
+                    )}
+                    {entry.o3 && entry.o3 > 0 && (
+                      <div className="text-xs bg-muted/50 p-2 rounded">
+                        <span className="font-medium">O₃:</span> {entry.o3.toFixed(1)} µg/m³
                       </div>
                     )}
                   </div>
+
+                  {/* Environmental Data */}
+                  {(entry.temperature || entry.humidity) && (
+                    <div className="flex items-center gap-4 pt-2 border-t border-border/50">
+                      {entry.temperature && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Thermometer className="h-3 w-3" />
+                          <span>{entry.temperature}°C</span>
+                        </div>
+                      )}
+                      {entry.humidity && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Droplets className="h-3 w-3" />
+                          <span>{entry.humidity}%</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, History, Map, Download, MapPin, Loader2, AlertTriangle, Trophy, DollarSign, Gift, ShoppingBag } from "lucide-react";
+import { RefreshCw, MapPin, Loader2, AlertTriangle, Trophy } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import PollutantModal from "./PollutantModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +26,10 @@ interface AirQualityData {
   userPoints?: number;
   currencyRewards?: number;
   canWithdraw?: boolean;
+  environmental?: {
+    temperature: number;
+    humidity: number;
+  };
 }
 
 // Helper functions for AQI display
@@ -45,6 +49,24 @@ const getAQILabel = (aqi: number): string => {
   if (aqi <= 200) return "Unhealthy";
   if (aqi <= 300) return "Very Unhealthy";
   return "Hazardous";
+};
+
+// Helper function to get pollutant display info
+const getPollutantInfo = (code: string, value: number) => {
+  const pollutantMap: Record<string, { label: string; unit: string; icon?: string }> = {
+    'PM25': { label: "PM2.5", unit: "µg/m³" },
+    'PM10': { label: "PM10", unit: "µg/m³" },
+    'PM1': { label: "PM1", unit: "µg/m³" },
+    'NO2': { label: "NO₂", unit: "µg/m³" },
+    'SO2': { label: "SO₂", unit: "µg/m³" },
+    'CO': { label: "CO", unit: "mg/m³" },
+    'O3': { label: "O₃", unit: "µg/m³" },
+    'TEMPERATURE': { label: "Temperature", unit: "°C" },
+    'HUMIDITY': { label: "Humidity", unit: "%" },
+    'PM003': { label: "PM0.3", unit: "particles/cm³" }
+  };
+  
+  return pollutantMap[code] || { label: code, unit: "N/A" };
 };
 
 export default function AirQualityDashboard(): JSX.Element {
@@ -215,6 +237,34 @@ export default function AirQualityDashboard(): JSX.Element {
     setSelectedPollutant({ name, value, unit });
   };
 
+  // Create dynamic pollutant cards based on available data
+  const createPollutantCards = () => {
+    if (!data) return [];
+    
+    const pollutants = [
+      { code: 'PM25', value: data.pm25, threshold: 12, showIfZero: false },
+      { code: 'PM10', value: data.pm10, threshold: 54, showIfZero: false },
+      { code: 'PM1', value: data.pm25 * 0.7, threshold: 8, showIfZero: false }, // Estimate PM1 from PM2.5
+      { code: 'NO2', value: data.no2, threshold: 53, showIfZero: false },
+      { code: 'SO2', value: data.so2, threshold: 35, showIfZero: false },
+      { code: 'CO', value: data.co, threshold: 4.4, showIfZero: false },
+      { code: 'O3', value: data.o3, threshold: 54, showIfZero: false },
+      { code: 'TEMPERATURE', value: data.environmental?.temperature || 25, threshold: null, showIfZero: true },
+      { code: 'HUMIDITY', value: data.environmental?.humidity || 60, threshold: null, showIfZero: true },
+      { code: 'PM003', value: data.pm25 * 2, threshold: null, showIfZero: false } // Estimate PM0.3 from PM2.5
+    ];
+    
+    // Filter pollutants based on data availability
+    return pollutants.filter(pollutant => {
+      if (pollutant.showIfZero) {
+        // Always show environmental sensors (temperature, humidity)
+        return true;
+      }
+      // Only show pollutant sensors if they have meaningful data
+      return pollutant.value > 0;
+    });
+  };
+
   // Handle loading state
   if (isLoading) {
     return (
@@ -307,6 +357,8 @@ export default function AirQualityDashboard(): JSX.Element {
     );
   }
 
+  const pollutantCards = createPollutantCards();
+
   return (
     <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
       {/* Header */}
@@ -382,8 +434,6 @@ export default function AirQualityDashboard(): JSX.Element {
         </Card>
       </div>
 
-
-
       {/* Location Information */}
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader className="pb-3">
@@ -421,84 +471,63 @@ export default function AirQualityDashboard(): JSX.Element {
         </CardContent>
       </Card>
 
-      {/* Pollutants Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { label: "PM2.5", value: data.pm25, unit: "µg/m³", code: "PM25" },
-          { label: "PM10", value: data.pm10, unit: "µg/m³", code: "PM10" },
-          { label: "NO₂", value: data.no2, unit: "µg/m³", code: "NO2" },
-          { label: "SO₂", value: data.so2, unit: "µg/m³", code: "SO2" },
-          { label: "CO", value: data.co, unit: "mg/m³", code: "CO" },
-          { label: "O₃", value: data.o3, unit: "µg/m³", code: "O3" },
-        ].map((item) => (
-          <Card 
-            key={item.label} 
-            className="bg-gradient-card shadow-card border-0 cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => handlePollutantClick(item.label, item.value, item.unit)}
-          >
-            <CardContent className="p-4">
-              <div className="text-sm font-medium text-muted-foreground">
-                {item.label}
-              </div>
-              <div className="text-xl font-bold">{item.value}</div>
-              <div className="text-xs text-muted-foreground">{item.unit}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Location Status & Quick Actions */}
+      {/* Dynamic Pollutants Grid */}
       <div className="space-y-4">
-        {/* Location Status */}
-        <Card className="bg-gradient-card shadow-card border-0">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Location Status</span>
-              </div>
-              <Badge variant="outline" className="text-xs">
-                {data.userLocation}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Last updated: {data.timestamp}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-4 gap-4">
-          <Button 
-            onClick={handleRefresh} 
-            disabled={isRefetching}
-            variant="outline" 
-            className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card"
-          >
-            {isRefetching ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
-            <span className="text-xs">Refresh</span>
-          </Button>
-          
-          <Button variant="outline" className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card">
-            <History className="h-5 w-5" />
-            <span className="text-xs">History</span>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card"
-            onClick={() => window.location.href = '/store'}
-          >
-            <ShoppingBag className="h-5 w-5" />
-            <span className="text-xs">Store</span>
-          </Button>
-          
-          <Button variant="outline" className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card">
-            <Download className="h-5 w-5" />
-            <span className="text-xs">Export Data</span>
-          </Button>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Available Sensors</h2>
+          <Badge variant="outline" className="text-xs">
+            {pollutantCards.length} sensors
+          </Badge>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+          {pollutantCards.map((pollutant) => {
+            const info = getPollutantInfo(pollutant.code, pollutant.value);
+            const isEnvironmental = pollutant.code === 'TEMPERATURE' || pollutant.code === 'HUMIDITY';
+            
+            return (
+              <Card 
+                key={pollutant.code} 
+                className="bg-gradient-card shadow-card border-0 cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => handlePollutantClick(info.label, pollutant.value, info.unit)}
+              >
+                <CardContent className="p-4">
+                  <div className="text-sm font-medium text-muted-foreground">
+                    {info.label}
+                  </div>
+                  <div className="text-xl font-bold">
+                    {isEnvironmental ? pollutant.value : pollutant.value.toFixed(1)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{info.unit}</div>
+                  {pollutant.threshold && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      WHO limit: {pollutant.threshold}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
+
+      {/* Location Status */}
+      <Card className="bg-gradient-card shadow-card border-0">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Location Status</span>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              {data.userLocation}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Last updated: {data.timestamp}
+          </p>
+        </CardContent>
+      </Card>
 
       <PollutantModal
         pollutant={selectedPollutant}
