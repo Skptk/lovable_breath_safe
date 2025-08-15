@@ -382,35 +382,7 @@ export default function AirQualityDashboard(): JSX.Element {
         </Card>
       </div>
 
-      {/* Currency Rewards Card */}
-      <Card className="bg-gradient-card shadow-card border-0">
-        <CardContent className="p-6">
-          <div className="text-center space-y-4">
-            <div className="space-y-2">
-              <div className="text-6xl font-bold text-green-500">
-                <DollarSign className="w-16 h-16 mx-auto" />
-              </div>
-              <Badge 
-                variant="secondary" 
-                className="bg-green-500/10 text-green-500 border-0 px-4 py-1"
-              >
-                Currency Rewards
-              </Badge>
-            </div>
-            <div className="text-3xl font-bold text-green-500">
-              ${currencyRewards.toFixed(2)}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              $0.1 per 1000 points • Withdrawable at 500,000 points
-            </p>
-            {canWithdraw && (
-              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
-                🎉 Ready to withdraw!
-              </Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* Location Information */}
       <Card className="bg-gradient-card shadow-card border-0">
