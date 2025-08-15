@@ -21,9 +21,13 @@ import {
   Medal,
   GiftIcon,
   CreditCard,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from '@/components/ui/use-toast';
+import { useAchievements, UserAchievement, UserStreak } from '@/hooks/useAchievements';
+import { useUserPoints } from '@/hooks/useUserPoints';
 
 interface Profile {
   id: string;
@@ -35,34 +39,14 @@ interface Profile {
   updated_at: string;
 }
 
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  points_reward: number;
-  unlocked: boolean;
-  unlocked_at?: string;
-  progress: number;
-  max_progress: number;
-}
 
-interface Streak {
-  id: string;
-  name: string;
-  description: string;
-  current_streak: number;
-  max_streak: number;
-  last_activity: string;
-  icon: string;
-}
 
 interface WithdrawalRequest {
   id: string;
   user_id: string;
   amount: number;
-  method: 'paypal' | 'mpesa';
-  status: 'pending' | 'approved' | 'rejected';
+  method: string;
+  status: string;
   paypal_email?: string;
   mpesa_phone?: string;
   created_at: string;
@@ -86,116 +70,103 @@ export default function Rewards() {
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [withdrawalForm, setWithdrawalForm] = useState({
     amount: 0,
-    method: 'paypal' as 'paypal' | 'mpesa',
+    method: 'paypal' as string,
     paypal_email: '',
     mpesa_phone: ''
   });
   const [loading, setLoading] = useState(true);
 
-  // Mock achievements data - in production, this would come from a database
-  const [achievements] = useState<Achievement[]>([
-    {
-      id: '1',
-      name: 'First Steps',
-      description: 'Complete your first air quality reading',
-      icon: '🎯',
-      points_reward: 50,
-      unlocked: true,
-      unlocked_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      progress: 1,
-      max_progress: 1
-    },
-    {
-      id: '2',
-      name: 'Air Quality Enthusiast',
-      description: 'Complete 10 air quality readings',
-      icon: '⭐',
-      points_reward: 100,
-      unlocked: true,
-      unlocked_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      progress: 15,
-      max_progress: 10
-    },
-    {
-      id: '3',
-      name: 'Weekly Warrior',
-      description: 'Check air quality for 7 consecutive days',
-      icon: '🔥',
-      points_reward: 200,
-      unlocked: false,
-      progress: 5,
-      max_progress: 7
-    },
-    {
-      id: '4',
-      name: 'Monthly Master',
-      description: 'Check air quality for 30 consecutive days',
-      icon: '👑',
-      points_reward: 500,
-      unlocked: false,
-      progress: 5,
-      max_progress: 30
-    },
-    {
-      id: '5',
-      name: 'Good Air Guardian',
-      description: 'Record 50 days with good air quality (AQI ≤ 50)',
-      icon: '🌱',
-      points_reward: 300,
-      unlocked: false,
-      progress: 12,
-      max_progress: 50
-    },
-    {
-      id: '6',
-      name: 'Point Collector',
-      description: 'Earn 10,000 total points',
-      icon: '💎',
-      points_reward: 1000,
-      unlocked: false,
-      progress: 2150,
-      max_progress: 10000
-    }
-  ]);
+  // Use real achievements and streaks from the database
+  const { achievements, streaks, isLoading: achievementsLoading, error: achievementsError, refreshAchievements } = useAchievements();
+  const { totalPoints, currencyRewards, canWithdraw } = useUserPoints();
 
-  // Mock streaks data
-  const [streaks] = useState<Streak[]>([
-    {
-      id: '1',
-      name: 'Daily Check-in',
-      description: 'Consecutive days checking air quality',
-      current_streak: 5,
-      max_streak: 12,
-      last_activity: new Date().toISOString(),
-      icon: '🔥'
-    },
-    {
-      id: '2',
-      name: 'Good Air Days',
-      description: 'Consecutive days with good air quality',
-      current_streak: 3,
-      max_streak: 8,
-      last_activity: new Date().toISOString(),
-      icon: '🌱'
-    },
-    {
-      id: '3',
-      name: 'Weekly Reports',
-      description: 'Consecutive weeks generating reports',
-      current_streak: 2,
-      max_streak: 4,
-      last_activity: new Date().toISOString(),
-      icon: '📊'
+  // Helper functions to get display information for streaks and achievements
+  const getStreakDisplayInfo = (streakType: string) => {
+    const streakInfo = {
+      'daily_reading': { icon: '🔥', name: 'Daily Check-in', description: 'Consecutive days checking air quality' },
+      'good_air_quality': { icon: '🌱', name: 'Good Air Days', description: 'Consecutive days with good air quality' },
+      'weekly_activity': { icon: '📊', name: 'Weekly Reports', description: 'Consecutive weeks generating reports' }
+    };
+    return streakInfo[streakType as keyof typeof streakInfo] || { icon: '📈', name: 'Activity', description: 'User activity streak' };
+  };
+
+  const getAchievementDisplayInfo = (achievement: any) => {
+    if (achievement.achievement) {
+      return {
+        icon: achievement.achievement.icon,
+        name: achievement.achievement.name,
+        description: achievement.achievement.description,
+        points_reward: achievement.achievement.points_reward
+      };
     }
-  ]);
+    return { icon: '🏆', name: 'Achievement', description: 'Complete tasks to unlock', points_reward: 0 };
+  };
 
   useEffect(() => {
     if (user) {
       fetchProfile();
       fetchWithdrawalRequests();
       fetchGiftCards();
+      // Initialize user achievements if they don't exist yet
+      initializeUserAchievements();
     }
   }, [user]);
+
+  const initializeUserAchievements = async () => {
+    if (!user) return;
+    
+    try {
+      // Check if user already has achievements
+      const { data: existingAchievements } = await supabase
+        .from('user_achievements')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      // If no achievements exist, initialize them
+      if (!existingAchievements || existingAchievements.length === 0) {
+        // Initialize achievements manually since RPC function might not be available yet
+        try {
+          // Get all active achievements
+          const { data: allAchievements } = await supabase
+            .from('achievements')
+            .select('id, criteria_value')
+            .eq('is_active', true);
+
+          if (allAchievements) {
+            // Create user achievement records
+            const achievementInserts = allAchievements.map(achievement => ({
+              user_id: user.id,
+              achievement_id: achievement.id,
+              progress: 0,
+              max_progress: achievement.criteria_value,
+              unlocked: false
+            }));
+
+            await supabase
+              .from('user_achievements')
+              .insert(achievementInserts);
+
+            // Initialize user streaks
+            await supabase
+              .from('user_streaks')
+              .insert([
+                { user_id: user.id, streak_type: 'daily_reading', current_streak: 0, max_streak: 0, last_activity_date: new Date().toISOString().split('T')[0] },
+                { user_id: user.id, streak_type: 'good_air_quality', current_streak: 0, max_streak: 0, last_activity_date: new Date().toISOString().split('T')[0] },
+                { user_id: user.id, streak_type: 'weekly_activity', current_streak: 0, max_streak: 0, last_activity_date: new Date().toISOString().split('T')[0] }
+              ]);
+
+            // Refresh achievements after initialization
+            refreshAchievements();
+          }
+        } catch (initError) {
+          console.error('Error initializing achievements manually:', initError);
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing user achievements:', error);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -266,7 +237,7 @@ export default function Rewards() {
 
     const requiredPoints = withdrawalForm.amount * 10000; // $0.1 per 1000 points = 10000 points per $1
     
-    if (profile.total_points < requiredPoints) {
+    if (totalPoints < requiredPoints) {
       toast({
         title: "Insufficient Points",
         description: `You need ${requiredPoints.toLocaleString()} points to withdraw $${withdrawalForm.amount}`,
@@ -275,7 +246,7 @@ export default function Rewards() {
       return;
     }
 
-    if (profile.total_points < 500000) {
+    if (totalPoints < 500000) {
       toast({
         title: "Minimum Points Required",
         description: "You need at least 500,000 points to withdraw funds",
@@ -299,10 +270,10 @@ export default function Rewards() {
       if (error) throw error;
 
       // Deduct points from user profile
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ total_points: profile.total_points - requiredPoints })
-        .eq('user_id', user.id);
+              const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ total_points: totalPoints - requiredPoints })
+          .eq('user_id', user.id);
 
       if (updateError) throw updateError;
 
@@ -339,10 +310,10 @@ export default function Rewards() {
 
     try {
       // Deduct points from user profile
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ total_points: profile.total_points - giftCard.points_required })
-        .eq('user_id', user.id);
+              const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ total_points: totalPoints - giftCard.points_required })
+          .eq('user_id', user.id);
 
       if (updateError) throw updateError;
 
@@ -385,8 +356,7 @@ export default function Rewards() {
     );
   }
 
-  const currencyRewards = (profile.total_points / 1000) * 0.1;
-  const canWithdraw = profile.total_points >= 500000;
+  
 
   return (
     <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
@@ -464,23 +434,26 @@ export default function Rewards() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {streaks.map((streak) => (
-                  <Card key={streak.id} className="border-2 border-orange-200 bg-orange-50/50">
-                    <CardContent className="p-4 text-center">
-                      <div className="text-4xl mb-2">{streak.icon}</div>
-                      <div className="text-2xl font-bold text-orange-600">
-                        {streak.current_streak}
-                      </div>
-                      <div className="text-sm font-medium mb-1">{streak.name}</div>
-                      <div className="text-xs text-muted-foreground mb-2">
-                        {streak.description}
-                      </div>
-                      <div className="text-xs text-orange-600">
-                        Best: {streak.max_streak}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                {streaks.map((streak) => {
+                  const displayInfo = getStreakDisplayInfo(streak.streak_type);
+                  return (
+                    <Card key={streak.id} className="border-2 border-orange-200 bg-orange-50/50">
+                      <CardContent className="p-4 text-center">
+                        <div className="text-4xl mb-2">{displayInfo.icon}</div>
+                        <div className="text-2xl font-bold text-orange-600">
+                          {streak.current_streak}
+                        </div>
+                        <div className="text-sm font-medium mb-1">{displayInfo.name}</div>
+                        <div className="text-xs text-muted-foreground mb-2">
+                          {displayInfo.description}
+                        </div>
+                        <div className="text-xs text-orange-600">
+                          Best: {streak.max_streak}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -488,9 +461,23 @@ export default function Rewards() {
           {/* Recent Achievements */}
           <Card className="bg-gradient-card shadow-card border-0">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-yellow-500" />
-                Recent Achievements
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-yellow-500" />
+                  Recent Achievements
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refreshAchievements}
+                  disabled={achievementsLoading}
+                >
+                  {achievementsLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -498,24 +485,27 @@ export default function Rewards() {
                 {achievements
                   .filter(a => a.unlocked)
                   .slice(0, 4)
-                  .map((achievement) => (
-                    <Card key={achievement.id} className="border-2 border-yellow-200 bg-yellow-50/50">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="text-3xl">{achievement.icon}</div>
-                          <div className="flex-1">
-                            <div className="font-semibold">{achievement.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {achievement.description}
-                            </div>
-                            <div className="text-xs text-yellow-600 mt-1">
-                              +{achievement.points_reward} points
+                  .map((achievement) => {
+                    const displayInfo = getAchievementDisplayInfo(achievement);
+                    return (
+                      <Card key={achievement.id} className="border-2 border-yellow-200 bg-yellow-50/50">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="text-3xl">{displayInfo.icon}</div>
+                            <div className="flex-1">
+                              <div className="font-semibold">{displayInfo.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {displayInfo.description}
+                              </div>
+                              <div className="text-xs text-yellow-600 mt-1">
+                                +{displayInfo.points_reward} points
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
               </div>
             </CardContent>
           </Card>
@@ -531,48 +521,51 @@ export default function Rewards() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {achievements.map((achievement) => (
-                <Card key={achievement.id} className={`border-2 ${
-                  achievement.unlocked 
-                    ? 'border-green-200 bg-green-50/50' 
-                    : 'border-gray-200 bg-gray-50/50'
-                }`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="text-4xl">{achievement.icon}</div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="font-semibold">{achievement.name}</div>
-                          <Badge variant={achievement.unlocked ? "default" : "secondary"}>
-                            {achievement.unlocked ? "Unlocked" : "Locked"}
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-muted-foreground mb-3">
-                          {achievement.description}
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span>Progress</span>
-                            <span>{achievement.progress}/{achievement.max_progress}</span>
+              {achievements.map((achievement) => {
+                const displayInfo = getAchievementDisplayInfo(achievement);
+                return (
+                  <Card key={achievement.id} className={`border-2 ${
+                    achievement.unlocked 
+                      ? 'border-green-200 bg-green-50/50' 
+                      : 'border-gray-200 bg-gray-50/50'
+                  }`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="text-4xl">{displayInfo.icon}</div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="font-semibold">{displayInfo.name}</div>
+                            <Badge variant={achievement.unlocked ? "default" : "secondary"}>
+                              {achievement.unlocked ? "Unlocked" : "Locked"}
+                            </Badge>
                           </div>
-                          <Progress 
-                            value={(achievement.progress / achievement.max_progress) * 100} 
-                            className="h-2"
-                          />
-                        </div>
-                        {achievement.unlocked && (
-                          <div className="text-xs text-green-600 mt-2">
-                            Unlocked on {new Date(achievement.unlocked_at!).toLocaleDateString()}
+                          <div className="text-sm text-muted-foreground mb-3">
+                            {displayInfo.description}
                           </div>
-                        )}
-                        <div className="text-sm text-blue-600 mt-2">
-                          Reward: +{achievement.points_reward} points
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span>Progress</span>
+                              <span>{achievement.progress}/{achievement.max_progress}</span>
+                            </div>
+                            <Progress 
+                              value={(achievement.progress / achievement.max_progress) * 100} 
+                              className="h-2"
+                            />
+                          </div>
+                          {achievement.unlocked && (
+                            <div className="text-xs text-green-600 mt-2">
+                              Unlocked on {new Date(achievement.unlocked_at!).toLocaleDateString()}
+                            </div>
+                          )}
+                          <div className="text-sm text-blue-600 mt-2">
+                            Reward: +{displayInfo.points_reward} points
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </CardContent>
           </Card>
         </TabsContent>
@@ -601,7 +594,7 @@ export default function Rewards() {
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300">
-                    {500000 - profile.total_points} points needed to withdraw
+                    {500000 - totalPoints} points needed to withdraw
                   </Badge>
                 )}
               </div>
@@ -632,11 +625,11 @@ export default function Rewards() {
                       </div>
                       <Button
                         onClick={() => redeemGiftCard(giftCard)}
-                        disabled={!giftCard.available || profile.total_points < giftCard.points_required}
+                        disabled={!giftCard.available || totalPoints < giftCard.points_required}
                         className="w-full"
-                        variant={giftCard.available && profile.total_points >= giftCard.points_required ? "default" : "outline"}
+                        variant={giftCard.available && totalPoints >= giftCard.points_required ? "default" : "outline"}
                       >
-                        {giftCard.available && profile.total_points >= giftCard.points_required ? "Redeem" : "Insufficient Points"}
+                        {giftCard.available && totalPoints >= giftCard.points_required ? "Redeem" : "Insufficient Points"}
                       </Button>
                     </CardContent>
                   </Card>

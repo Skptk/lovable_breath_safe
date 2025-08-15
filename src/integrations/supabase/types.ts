@@ -200,6 +200,162 @@ export type Database = {
         }
         Relationships: []
       }
+      achievements: {
+        Row: {
+          id: string
+          name: string
+          description: string
+          icon: string
+          category: string
+          points_reward: number
+          criteria_type: string
+          criteria_value: number
+          criteria_unit: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description: string
+          icon: string
+          category: string
+          points_reward: number
+          criteria_type: string
+          criteria_value: number
+          criteria_unit?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string
+          icon?: string
+          category?: string
+          points_reward?: number
+          criteria_type?: string
+          criteria_value?: number
+          criteria_unit?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          id: string
+          user_id: string
+          achievement_id: string
+          progress: number
+          max_progress: number
+          unlocked: boolean
+          unlocked_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          achievement_id: string
+          progress?: number
+          max_progress: number
+          unlocked?: boolean
+          unlocked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          achievement_id?: string
+          progress?: number
+          max_progress?: number
+          unlocked?: boolean
+          unlocked_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_streaks: {
+        Row: {
+          id: string
+          user_id: string
+          streak_type: string
+          current_streak: number
+          max_streak: number
+          last_activity_date: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          streak_type: string
+          current_streak?: number
+          max_streak?: number
+          last_activity_date: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          streak_type?: string
+          current_streak?: number
+          max_streak?: number
+          last_activity_date?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      withdrawal_requests: {
+        Row: {
+          id: string
+          user_id: string
+          amount: number
+          method: string
+          status: string
+          paypal_email: string | null
+          mpesa_phone: string | null
+          notes: string | null
+          processed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          amount: number
+          method: string
+          status?: string
+          paypal_email?: string | null
+          mpesa_phone?: string | null
+          notes?: string | null
+          processed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          amount?: number
+          method?: string
+          status?: string
+          paypal_email?: string | null
+          mpesa_phone?: string | null
+          notes?: string | null
+          processed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
