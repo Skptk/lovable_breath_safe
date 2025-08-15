@@ -1,13 +1,21 @@
 import { Button } from "@/components/ui/button";
-import { RefreshCw, MapPin } from "lucide-react";
+import { RefreshCw, MapPin, Shield, Settings } from "lucide-react";
 
 interface DashboardHeaderProps {
   location: string;
   isRefetching: boolean;
   onRefresh: () => void;
+  hasLocationPermission?: boolean;
+  onResetPermission?: () => void;
 }
 
-export const DashboardHeader = ({ location, isRefetching, onRefresh }: DashboardHeaderProps): JSX.Element => (
+export const DashboardHeader = ({ 
+  location, 
+  isRefetching, 
+  onRefresh, 
+  hasLocationPermission = true,
+  onResetPermission 
+}: DashboardHeaderProps): JSX.Element => (
   <div className="flex justify-between items-center">
     <div>
       <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
@@ -16,6 +24,12 @@ export const DashboardHeader = ({ location, isRefetching, onRefresh }: Dashboard
       <p className="text-sm text-muted-foreground flex items-center gap-1">
         <MapPin className="h-4 w-4" />
         {location}
+        {hasLocationPermission && (
+          <span className="flex items-center gap-1 ml-2 text-green-600">
+            <Shield className="h-3 w-3" />
+            Location enabled
+          </span>
+        )}
       </p>
     </div>
     
@@ -30,6 +44,19 @@ export const DashboardHeader = ({ location, isRefetching, onRefresh }: Dashboard
         <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
         {isRefetching ? 'Refreshing...' : 'Refresh'}
       </Button>
+      
+      {onResetPermission && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onResetPermission}
+          className="text-muted-foreground hover:text-foreground"
+          title="Reset location permission"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
+      )}
+      
       <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
         Auto-refresh: 2min
       </div>

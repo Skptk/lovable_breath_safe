@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store";
@@ -40,6 +40,40 @@ export const useAirQuality = () => {
   const throttledLocationUpdate = useThrottle((location: string) => {
     setCurrentLocation(location);
   }, 5000);
+
+  // Check and restore location permission on mount
+  useEffect(() => {
+    const checkLocationPermission = async () => {
+      // Check if we have stored permission
+      const storedPermission = localStorage.getItem('breath-safe-location-permission');
+      
+      if (storedPermission === 'granted') {
+        // Check if browser still has permission
+        if (navigator.permissions && navigator.permissions.query) {
+          try {
+            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+            if (permissionStatus.state === 'granted') {
+              setHasUserConsent(true);
+              return;
+            } else if (permissionStatus.state === 'denied') {
+              setHasUserConsent(false);
+              localStorage.removeItem('breath-safe-location-permission');
+              return;
+            }
+          } catch (error) {
+            console.log('Permission API not supported, using stored permission');
+          }
+        }
+        
+        // If permission API not supported, trust stored permission
+        setHasUserConsent(true);
+      } else if (storedPermission === 'denied') {
+        setHasUserConsent(false);
+      }
+    };
+
+    checkLocationPermission();
+  }, []);
 
   const fetchAirQualityData = useCallback(async (): Promise<AirQualityData> => {
     if (!navigator.geolocation) {
@@ -167,11 +201,15 @@ export const useAirQuality = () => {
 
       if (position) {
         setHasUserConsent(true);
+        // Store permission in localStorage
+        localStorage.setItem('breath-safe-location-permission', 'granted');
         return true;
       }
       return false;
     } catch (error) {
       console.error('Location permission denied:', error);
+      // Store denied permission to avoid repeated prompts
+      localStorage.setItem('breath-safe-location-permission', 'denied');
       return false;
     }
   }, []);

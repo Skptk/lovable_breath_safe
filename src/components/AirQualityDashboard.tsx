@@ -52,6 +52,11 @@ export default function AirQualityDashboard(): JSX.Element {
     }
   };
 
+  const resetLocationPermission = () => {
+    localStorage.removeItem('breath-safe-location-permission');
+    window.location.reload(); // Reload to reset the permission state
+  };
+
   // Handle loading state
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -116,6 +121,8 @@ export default function AirQualityDashboard(): JSX.Element {
         location={data.location}
         isRefetching={isRefetching}
         onRefresh={handleRefresh}
+        hasLocationPermission={hasUserConsent}
+        onResetPermission={resetLocationPermission}
       />
 
       {/* Main AQI Display */}
