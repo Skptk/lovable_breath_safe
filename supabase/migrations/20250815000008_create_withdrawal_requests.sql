@@ -21,18 +21,38 @@ CREATE INDEX IF NOT EXISTS idx_withdrawal_requests_created_at ON public.withdraw
 -- Enable RLS
 ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
-CREATE POLICY "Users can view their own withdrawal requests" ON public.withdrawal_requests
-  FOR SELECT USING (auth.uid() = user_id);
+-- RLS Policies - Check if they exist before creating
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'withdrawal_requests' AND policyname = 'Users can view their own withdrawal requests') THEN
+    CREATE POLICY "Users can view their own withdrawal requests" ON public.withdrawal_requests
+      FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
-CREATE POLICY "Users can create their own withdrawal requests" ON public.withdrawal_requests
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'withdrawal_requests' AND policyname = 'Users can create their own withdrawal requests') THEN
+    CREATE POLICY "Users can create their own withdrawal requests" ON public.withdrawal_requests
+      FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
-CREATE POLICY "Users can update their own withdrawal requests" ON public.withdrawal_requests
-  FOR UPDATE USING (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'withdrawal_requests' AND policyname = 'Users can update their own withdrawal requests') THEN
+    CREATE POLICY "Users can update their own withdrawal requests" ON public.withdrawal_requests
+      FOR UPDATE USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
-CREATE POLICY "Service role can manage all withdrawal requests" ON public.withdrawal_requests
-  FOR ALL USING (auth.role() = 'service_role');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'withdrawal_requests' AND policyname = 'Service role can manage all withdrawal requests') THEN
+    CREATE POLICY "Service role can manage all withdrawal requests" ON public.withdrawal_requests
+      FOR ALL USING (auth.role() = 'service_role');
+  END IF;
+END $$;
 
 -- Grant permissions
 GRANT ALL ON public.withdrawal_requests TO authenticated;
