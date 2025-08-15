@@ -60,6 +60,8 @@ export const useAchievements = (): AchievementsData => {
       setIsLoading(true);
       setError(null);
 
+      console.log('Fetching achievements for user:', user.id);
+
       // Fetch user achievements with achievement details
       const { data: userAchievements, error: achievementsError } = await supabase
         .from('user_achievements')
@@ -70,7 +72,12 @@ export const useAchievements = (): AchievementsData => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
-      if (achievementsError) throw achievementsError;
+      if (achievementsError) {
+        console.error('Error fetching user achievements:', achievementsError);
+        throw achievementsError;
+      }
+
+      console.log('User achievements fetched:', userAchievements);
 
       // Fetch user streaks
       const { data: userStreaks, error: streaksError } = await supabase
@@ -79,7 +86,12 @@ export const useAchievements = (): AchievementsData => {
         .eq('user_id', user.id)
         .order('streak_type', { ascending: true });
 
-      if (streaksError) throw streaksError;
+      if (streaksError) {
+        console.error('Error fetching user streaks:', streaksError);
+        throw streaksError;
+      }
+
+      console.log('User streaks fetched:', userStreaks);
 
       setAchievements(userAchievements || []);
       setStreaks(userStreaks || []);

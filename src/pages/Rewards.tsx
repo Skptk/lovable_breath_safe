@@ -80,6 +80,14 @@ export default function Rewards() {
   const { achievements, streaks, isLoading: achievementsLoading, error: achievementsError, refreshAchievements } = useAchievements();
   const { totalPoints, currencyRewards, canWithdraw } = useUserPoints();
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Rewards page - Achievements:', achievements);
+    console.log('Rewards page - Streaks:', streaks);
+    console.log('Rewards page - Loading:', achievementsLoading);
+    console.log('Rewards page - Error:', achievementsError);
+  }, [achievements, streaks, achievementsLoading, achievementsError]);
+
   // Helper functions to get display information for streaks and achievements
   const getStreakDisplayInfo = (streakType: string) => {
     const streakInfo = {
@@ -125,15 +133,18 @@ export default function Rewards() {
 
       // If no achievements exist, initialize them
       if (!existingAchievements || existingAchievements.length === 0) {
-        // Initialize achievements manually since RPC function might not be available yet
+        console.log('Initializing achievements for user:', user.id);
+        
         try {
-          // Get all active achievements
+          // Initialize achievements manually
           const { data: allAchievements } = await supabase
             .from('achievements')
             .select('id, criteria_value')
             .eq('is_active', true);
 
-          if (allAchievements) {
+          if (allAchievements && allAchievements.length > 0) {
+            console.log('Found', allAchievements.length, 'achievements to initialize');
+            
             // Create user achievement records
             const achievementInserts = allAchievements.map(achievement => ({
               user_id: user.id,
@@ -143,12 +154,18 @@ export default function Rewards() {
               unlocked: false
             }));
 
-            await supabase
+            const { error: insertError } = await supabase
               .from('user_achievements')
               .insert(achievementInserts);
 
+            if (insertError) {
+              console.error('Error inserting achievements:', insertError);
+            } else {
+              console.log('Successfully inserted', achievementInserts.length, 'achievements');
+            }
+
             // Initialize user streaks
-            await supabase
+            const { error: streakError } = await supabase
               .from('user_streaks')
               .insert([
                 { user_id: user.id, streak_type: 'daily_reading', current_streak: 0, max_streak: 0, last_activity_date: new Date().toISOString().split('T')[0] },
@@ -156,12 +173,24 @@ export default function Rewards() {
                 { user_id: user.id, streak_type: 'weekly_activity', current_streak: 0, max_streak: 0, last_activity_date: new Date().toISOString().split('T')[0] }
               ]);
 
-            // Refresh achievements after initialization
-            refreshAchievements();
+            if (streakError) {
+              console.error('Error inserting streaks:', streakError);
+            } else {
+              console.log('Successfully initialized user streaks');
+            }
+          } else {
+            console.log('No active achievements found in database');
           }
+
+          // Refresh achievements after initialization
+          setTimeout(() => {
+            refreshAchievements();
+          }, 1000); // Small delay to ensure database operations complete
         } catch (initError) {
           console.error('Error initializing achievements manually:', initError);
         }
+      } else {
+        console.log('User already has achievements, skipping initialization');
       }
     } catch (error) {
       console.error('Error initializing user achievements:', error);
@@ -368,6 +397,43 @@ export default function Rewards() {
         <p className="text-muted-foreground">
           Track your progress, unlock achievements, and redeem rewards
         </p>
+        <div className="flex justify-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={initializeUserAchievements}
+            disabled={achievementsLoading}
+          >
+            {achievementsLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Initialize Achievements
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshAchievements}
+            disabled={achievementsLoading}
+          >
+            {achievementsLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Refresh Data
+          </Button>
+        </div>
+        
+        {/* Error Display */}
+        {achievementsError && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700">
+              <strong>Error loading achievements:</strong> {achievementsError}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Stats Overview */}
@@ -406,7 +472,7 @@ export default function Rewards() {
           <CardContent className="p-4 text-center">
             <div className="text-3xl font-bold text-orange-500 mb-2">
               <Flame className="w-8 h-8 mx-auto mb-2" />
-              {Math.max(...streaks.map(s => s.current_streak))}
+              {streaks.length > 0 ? Math.max(...streaks.map(s => s.current_streak)) : 0}
             </div>
             <p className="text-sm text-muted-foreground">Best Streak</p>
           </CardContent>
@@ -433,28 +499,48 @@ export default function Rewards() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {streaks.map((streak) => {
-                  const displayInfo = getStreakDisplayInfo(streak.streak_type);
-                  return (
-                    <Card key={streak.id} className="border-2 border-orange-200 bg-orange-50/50">
-                      <CardContent className="p-4 text-center">
-                        <div className="text-4xl mb-2">{displayInfo.icon}</div>
-                        <div className="text-2xl font-bold text-orange-600">
-                          {streak.current_streak}
-                        </div>
-                        <div className="text-sm font-medium mb-1">{displayInfo.name}</div>
-                        <div className="text-xs text-muted-foreground mb-2">
-                          {displayInfo.description}
-                        </div>
-                        <div className="text-xs text-orange-600">
-                          Best: {streak.max_streak}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+              {streaks.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">🔥</div>
+                  <p className="text-muted-foreground">No streaks found. They will be created when you first check air quality.</p>
+                  <Button 
+                    onClick={refreshAchievements} 
+                    variant="outline" 
+                    className="mt-4"
+                    disabled={achievementsLoading}
+                  >
+                    {achievementsLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Refresh Streaks
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {streaks.map((streak) => {
+                    const displayInfo = getStreakDisplayInfo(streak.streak_type);
+                    return (
+                      <Card key={streak.id} className="border-2 border-orange-200 bg-orange-50/50">
+                        <CardContent className="p-4 text-center">
+                          <div className="text-4xl mb-2">{displayInfo.icon}</div>
+                          <div className="text-2xl font-bold text-orange-600">
+                            {streak.current_streak}
+                          </div>
+                          <div className="text-sm font-medium mb-1">{displayInfo.name}</div>
+                          <div className="text-xs text-muted-foreground mb-2">
+                            {displayInfo.description}
+                          </div>
+                          <div className="text-xs text-orange-600">
+                            Best: {streak.max_streak}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -481,32 +567,47 @@ export default function Rewards() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {achievements
-                  .filter(a => a.unlocked)
-                  .slice(0, 4)
-                  .map((achievement) => {
-                    const displayInfo = getAchievementDisplayInfo(achievement);
-                    return (
-                      <Card key={achievement.id} className="border-2 border-yellow-200 bg-yellow-50/50">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="text-3xl">{displayInfo.icon}</div>
-                            <div className="flex-1">
-                              <div className="font-semibold">{displayInfo.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {displayInfo.description}
-                              </div>
-                              <div className="text-xs text-yellow-600 mt-1">
-                                +{displayInfo.points_reward} points
+              {achievements.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">🏆</div>
+                  <p className="text-muted-foreground">No achievements found yet. Start checking air quality to unlock achievements!</p>
+                </div>
+              ) : achievements.filter(a => a.unlocked).length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">🎯</div>
+                  <p className="text-muted-foreground">No achievements unlocked yet. Keep checking air quality to make progress!</p>
+                  <div className="mt-4 text-sm text-muted-foreground">
+                    <p>You have {achievements.length} achievements available to unlock.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {achievements
+                    .filter(a => a.unlocked)
+                    .slice(0, 4)
+                    .map((achievement) => {
+                      const displayInfo = getAchievementDisplayInfo(achievement);
+                      return (
+                        <Card key={achievement.id} className="border-2 border-yellow-200 bg-yellow-50/50">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="text-3xl">{displayInfo.icon}</div>
+                              <div className="flex-1">
+                                <div className="font-semibold">{displayInfo.name}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {displayInfo.description}
+                                </div>
+                                <div className="text-xs text-yellow-600 mt-1">
+                                  +{displayInfo.points_reward} points
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-              </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -521,51 +622,82 @@ export default function Rewards() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {achievements.map((achievement) => {
-                const displayInfo = getAchievementDisplayInfo(achievement);
-                return (
-                  <Card key={achievement.id} className={`border-2 ${
-                    achievement.unlocked 
-                      ? 'border-green-200 bg-green-50/50' 
-                      : 'border-gray-200 bg-gray-50/50'
-                  }`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-4">
-                        <div className="text-4xl">{displayInfo.icon}</div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-semibold">{displayInfo.name}</div>
-                            <Badge variant={achievement.unlocked ? "default" : "secondary"}>
-                              {achievement.unlocked ? "Unlocked" : "Locked"}
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground mb-3">
-                            {displayInfo.description}
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                              <span>Progress</span>
-                              <span>{achievement.progress}/{achievement.max_progress}</span>
+              {achievements.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">🎯</div>
+                  <p className="text-muted-foreground">No achievements found. They will be created when you first check air quality.</p>
+                  <Button 
+                    onClick={refreshAchievements} 
+                    variant="outline" 
+                    className="mt-4"
+                    disabled={achievementsLoading}
+                  >
+                    {achievementsLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Refresh Achievements
+                  </Button>
+                </div>
+              ) : (
+                achievements.map((achievement) => {
+                  const displayInfo = getAchievementDisplayInfo(achievement);
+                  const progressPercentage = achievement.max_progress > 0 ? (achievement.progress / achievement.max_progress) * 100 : 0;
+                  const remainingProgress = Math.max(0, achievement.max_progress - achievement.progress);
+                  const isCompleted = achievement.unlocked;
+                  
+                  return (
+                    <Card key={achievement.id} className={`border-2 ${
+                      isCompleted 
+                        ? 'border-green-200 bg-green-50/50' 
+                        : 'border-gray-200 bg-gray-50/50'
+                    }`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-4">
+                          <div className="text-4xl">{displayInfo.icon}</div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="font-semibold">{displayInfo.name}</div>
+                              <Badge variant={isCompleted ? "default" : "secondary"}>
+                                {isCompleted ? "Unlocked" : "Locked"}
+                              </Badge>
                             </div>
-                            <Progress 
-                              value={(achievement.progress / achievement.max_progress) * 100} 
-                              className="h-2"
-                            />
-                          </div>
-                          {achievement.unlocked && (
-                            <div className="text-xs text-green-600 mt-2">
-                              Unlocked on {new Date(achievement.unlocked_at!).toLocaleDateString()}
+                            <div className="text-sm text-muted-foreground mb-3">
+                              {displayInfo.description}
                             </div>
-                          )}
-                          <div className="text-sm text-blue-600 mt-2">
-                            Reward: +{displayInfo.points_reward} points
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span>Progress</span>
+                                <span className="font-medium">
+                                  {achievement.progress}/{achievement.max_progress}
+                                </span>
+                              </div>
+                              <Progress 
+                                value={progressPercentage} 
+                                className="h-2"
+                              />
+                              {!isCompleted && remainingProgress > 0 && (
+                                <div className="text-xs text-muted-foreground text-center">
+                                  {remainingProgress} more {achievement.achievement?.criteria_unit || 'units'} needed
+                                </div>
+                              )}
+                            </div>
+                            {isCompleted && achievement.unlocked_at && (
+                              <div className="text-xs text-green-600 mt-2">
+                                Unlocked on {new Date(achievement.unlocked_at).toLocaleDateString()}
+                              </div>
+                            )}
+                            <div className="text-sm text-blue-600 mt-2">
+                              Reward: +{displayInfo.points_reward} points
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
         </TabsContent>
