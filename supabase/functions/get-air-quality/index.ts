@@ -632,36 +632,33 @@ serve(async (req) => {
                 canWithdraw = false;
               }
               
-              // Save air quality reading to database
+              // Save air quality reading to database using the secure function
               try {
-                const readingData = {
-                  user_id: user.id,
-                  latitude: lat,
-                  longitude: lon,
-                  location_name: nearestCity.name,
-                  aqi: aqi,
-                  pm25: pm25 > 0 ? pm25 : null,
-                  pm10: pm10 > 0 ? pm10 : null,
-                  pm1: pm25 > 0 ? pm25 * 0.7 : null, // Estimate PM1 from PM2.5
-                  no2: no2 > 0 ? no2 : null,
-                  so2: so2 > 0 ? so2 : null,
-                  co: co > 0 ? co : null,
-                  o3: o3 > 0 ? o3 : null,
-                  temperature: 25, // Default fallback - would be updated with actual sensor data
-                  humidity: 60,    // Default fallback - would be updated with actual sensor data
-                  pm003: pm25 > 0 ? pm25 * 2 : null, // Estimate PM0.3 from PM2.5
-                  data_source: 'OpenAQ API',
-                  timestamp: new Date().toISOString()
-                };
-                
-                const { error: insertError } = await supabase
-                  .from('air_quality_readings')
-                  .insert(readingData);
+                // Use the secure database function to insert the reading
+                const { data: insertResult, error: insertError } = await supabase
+                  .rpc('insert_air_quality_reading', {
+                    p_user_id: user.id,
+                    p_latitude: lat,
+                    p_longitude: lon,
+                    p_location_name: nearestCity.name,
+                    p_aqi: aqi,
+                    p_pm25: pm25 > 0 ? pm25 : null,
+                    p_pm10: pm10 > 0 ? pm10 : null,
+                    p_pm1: pm25 > 0 ? pm25 * 0.7 : null, // Estimate PM1 from PM2.5
+                    p_no2: no2 > 0 ? no2 : null,
+                    p_so2: so2 > 0 ? so2 : null,
+                    p_co: co > 0 ? co : null,
+                    p_o3: o3 > 0 ? o3 : null,
+                    p_temperature: 25, // Default fallback - would be updated with actual sensor data
+                    p_humidity: 60,    // Default fallback - would be updated with actual sensor data
+                    p_pm003: pm25 > 0 ? pm25 * 2 : null, // Estimate PM0.3 from PM2.5
+                    p_data_source: 'OpenAQ API'
+                  });
                 
                 if (insertError) {
                   console.log('Error saving reading to database:', insertError.message);
                 } else {
-                  console.log('Air quality reading saved to database successfully');
+                  console.log('Air quality reading saved to database successfully, ID:', insertResult);
                   
                   // Award points if air quality is good (AQI 0-50 = Good)
                   if (aqi <= 50) {
