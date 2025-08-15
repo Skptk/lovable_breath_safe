@@ -77,7 +77,7 @@ export default function Rewards() {
   const [loading, setLoading] = useState(true);
 
   // Use real achievements and streaks from the database
-  const { achievements, streaks, isLoading: achievementsLoading, error: achievementsError, refreshAchievements } = useAchievements();
+  const { achievements, streaks, isLoading: achievementsLoading, error: achievementsError, refreshAchievements, initializeUserAchievements } = useAchievements();
   const { totalPoints, currencyRewards, canWithdraw } = useUserPoints();
 
   // Debug logging
@@ -115,87 +115,11 @@ export default function Rewards() {
       fetchProfile();
       fetchWithdrawalRequests();
       fetchGiftCards();
-      // Initialize user achievements if they don't exist yet
-      initializeUserAchievements();
+      // Achievement initialization now happens automatically in the useAchievements hook
     }
   }, [user]);
 
-  const initializeUserAchievements = async () => {
-    if (!user) return;
-    
-    try {
-      // Check if user already has achievements
-      const { data: existingAchievements } = await supabase
-        .from('user_achievements')
-        .select('id')
-        .eq('user_id', user.id)
-        .limit(1);
-
-      // If no achievements exist, initialize them
-      if (!existingAchievements || existingAchievements.length === 0) {
-        console.log('Initializing achievements for user:', user.id);
-        
-        try {
-          // Initialize achievements manually
-          const { data: allAchievements } = await supabase
-            .from('achievements')
-            .select('id, criteria_value')
-            .eq('is_active', true);
-
-          if (allAchievements && allAchievements.length > 0) {
-            console.log('Found', allAchievements.length, 'achievements to initialize');
-            
-            // Create user achievement records
-            const achievementInserts = allAchievements.map(achievement => ({
-              user_id: user.id,
-              achievement_id: achievement.id,
-              progress: 0,
-              max_progress: achievement.criteria_value,
-              unlocked: false
-            }));
-
-            const { error: insertError } = await supabase
-              .from('user_achievements')
-              .insert(achievementInserts);
-
-            if (insertError) {
-              console.error('Error inserting achievements:', insertError);
-            } else {
-              console.log('Successfully inserted', achievementInserts.length, 'achievements');
-            }
-
-            // Initialize user streaks
-            const { error: streakError } = await supabase
-              .from('user_streaks')
-              .insert([
-                { user_id: user.id, streak_type: 'daily_reading', current_streak: 0, max_streak: 0, last_activity_date: new Date().toISOString().split('T')[0] },
-                { user_id: user.id, streak_type: 'good_air_quality', current_streak: 0, max_streak: 0, last_activity_date: new Date().toISOString().split('T')[0] },
-                { user_id: user.id, streak_type: 'weekly_activity', current_streak: 0, max_streak: 0, last_activity_date: new Date().toISOString().split('T')[0] }
-              ]);
-
-            if (streakError) {
-              console.error('Error inserting streaks:', streakError);
-            } else {
-              console.log('Successfully initialized user streaks');
-            }
-          } else {
-            console.log('No active achievements found in database');
-          }
-
-          // Refresh achievements after initialization
-          setTimeout(() => {
-            refreshAchievements();
-          }, 1000); // Small delay to ensure database operations complete
-        } catch (initError) {
-          console.error('Error initializing achievements manually:', initError);
-        }
-      } else {
-        console.log('User already has achievements, skipping initialization');
-      }
-    } catch (error) {
-      console.error('Error initializing user achievements:', error);
-    }
-  };
+  // Achievement initialization is now handled centrally in the useAchievements hook
 
   const fetchProfile = async () => {
     try {
