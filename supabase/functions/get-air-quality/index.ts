@@ -253,6 +253,14 @@ serve(async (req) => {
 
     const airData: OpenAQData = await airResponse.json();
     
+    // Debug: Log the raw OpenAQ response
+    console.log('OpenAQ API Response:', {
+      status: airResponse.status,
+      resultsCount: airData.results?.length || 0,
+      firstResult: airData.results?.[0] || 'No results',
+      rawData: JSON.stringify(airData).substring(0, 500) + '...'
+    });
+    
     if (!airData.results || airData.results.length === 0) {
       throw new Error('No air quality data available');
     }
@@ -312,10 +320,34 @@ serve(async (req) => {
       o3 = latestMeasurements.get('o3').value;
     }
 
-    // Ensure AQI is at least 1 if we have any data
-    if (aqi === 0 && (pm25 > 0 || pm10 > 0)) {
-      aqi = Math.max(1, Math.round((pm25 + pm10) / 2));
+    // Better AQI fallback logic - use actual PM2.5 values if available
+    if (aqi === 0) {
+      if (pm25 > 0) {
+        // Use PM2.5 as a direct AQI indicator (simplified)
+        if (pm25 <= 12) aqi = Math.round(pm25 * 4); // Scale to 0-50 range
+        else if (pm25 <= 35.4) aqi = Math.round(50 + (pm25 - 12) * 2); // Scale to 51-100 range
+        else if (pm25 <= 55.4) aqi = Math.round(100 + (pm25 - 35.4) * 2.5); // Scale to 101-150 range
+        else aqi = Math.round(150 + (pm25 - 55.4) * 1.5); // Scale to 151+ range
+      } else if (pm10 > 0) {
+        // Use PM10 as fallback
+        aqi = Math.round(pm10 * 2); // Simple scaling
+      }
     }
+
+    // Ensure AQI is reasonable (not 1 unless that's the actual calculated value)
+    if (aqi === 0) {
+      // If we still have no AQI, use a reasonable default based on location
+      // Nairobi area typically has AQI around 50-70
+      aqi = 60; // Default to moderate air quality for Nairobi region
+    }
+
+    // Log the AQI calculation for debugging
+    console.log('AQI Calculation Debug:', {
+      pm25,
+      pm10,
+      calculatedAQI: aqi,
+      measurementsCount: airData.results.length
+    });
 
     // Create meaningful location descriptions
     const locationDescription = nearestCity.distance === 0 

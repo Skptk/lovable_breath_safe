@@ -252,10 +252,20 @@ export default function ProfileView() {
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Handle missing table gracefully
+        if (error.code === 'PGRST205') {
+          console.log('Withdrawal requests table not yet created - this is normal during setup');
+          setWithdrawalRequests([]);
+          return;
+        }
+        throw error;
+      }
       setWithdrawalRequests(data || []);
     } catch (error: any) {
       console.error('Error fetching withdrawal requests:', error);
+      // Set empty array to prevent UI errors
+      setWithdrawalRequests([]);
     }
   };
 
@@ -326,7 +336,17 @@ export default function ProfileView() {
           status: 'pending'
         });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST205') {
+          toast({
+            title: "Database Setup Required",
+            description: "The withdrawal system is not yet set up. Please contact support.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw error;
+      }
 
       // Deduct points from user profile
       const { error: updateError } = await supabase
