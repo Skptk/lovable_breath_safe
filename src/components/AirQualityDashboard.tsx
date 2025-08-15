@@ -150,10 +150,11 @@ export default function AirQualityDashboard(): JSX.Element {
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['airQuality'],
     queryFn: fetchAirQualityData,
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 0, // No caching
+    staleTime: 0, // Always consider data stale
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    refetchOnReconnect: true,
   });
 
   // Fetch user points when component mounts or user changes
