@@ -33,7 +33,11 @@ import {
   Zap,
   Loader2,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  DollarSign,
+  Gift,
+  CreditCard,
+  PayPal
 } from "lucide-react";
 
 interface Profile {
@@ -84,6 +88,26 @@ interface UserSettings {
   };
 }
 
+interface WithdrawalRequest {
+  id: string;
+  user_id: string;
+  amount: number;
+  method: 'paypal' | 'mpesa';
+  status: 'pending' | 'approved' | 'rejected';
+  paypal_email?: string;
+  mpesa_phone?: string;
+  created_at: string;
+}
+
+interface GiftCard {
+  id: string;
+  name: string;
+  value: number;
+  points_required: number;
+  image_url?: string;
+  available: boolean;
+}
+
 // Default settings
 const DEFAULT_SETTINGS: UserSettings = {
   notifications: { email: true, push: true, airQualityAlerts: true, weeklyReports: false },
@@ -110,6 +134,16 @@ export default function ProfileView() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({ full_name: '', email: '' });
   const [exporting, setExporting] = useState(false);
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
+  const [giftCards, setGiftCards] = useState<GiftCard[]>([]);
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [showGiftCardModal, setShowGiftCardModal] = useState(false);
+  const [withdrawalForm, setWithdrawalForm] = useState({
+    amount: 0,
+    method: 'paypal' as 'paypal' | 'mpesa',
+    paypal_email: '',
+    mpesa_phone: ''
+  });
   const { user, signOut } = useAuth();
   const { toast } = useToast();
 
@@ -118,6 +152,8 @@ export default function ProfileView() {
       fetchProfile();
       fetchUserStats();
       loadUserSettings();
+      fetchWithdrawalRequests();
+      fetchGiftCards();
     }
   }, [user]);
 
@@ -205,6 +241,154 @@ export default function ProfileView() {
       console.error('Error loading user settings:', error);
       // Fallback to default settings
       setUserSettings(DEFAULT_SETTINGS);
+    }
+  };
+
+  const fetchWithdrawalRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('withdrawal_requests')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setWithdrawalRequests(data || []);
+    } catch (error: any) {
+      console.error('Error fetching withdrawal requests:', error);
+    }
+  };
+
+  const fetchGiftCards = async () => {
+    try {
+      // For now, we'll use mock data. In production, this would come from a database
+      const mockGiftCards: GiftCard[] = [
+        {
+          id: '1',
+          name: 'Carrefour Kenya',
+          value: 1000,
+          points_required: 10000,
+          available: true
+        },
+        {
+          id: '2',
+          name: 'Carrefour Kenya',
+          value: 2000,
+          points_required: 20000,
+          available: true
+        },
+        {
+          id: '3',
+          name: 'Carrefour Kenya',
+          value: 5000,
+          points_required: 50000,
+          available: true
+        }
+      ];
+      setGiftCards(mockGiftCards);
+    } catch (error: any) {
+      console.error('Error fetching gift cards:', error);
+    }
+  };
+
+  const handleWithdrawal = async () => {
+    if (!user || !profile) return;
+
+    const requiredPoints = withdrawalForm.amount * 10000; // $0.1 per 1000 points = 10000 points per $1
+    
+    if (profile.total_points < requiredPoints) {
+      toast({
+        title: "Insufficient Points",
+        description: `You need ${requiredPoints.toLocaleString()} points to withdraw $${withdrawalForm.amount}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (profile.total_points < 500000) {
+      toast({
+        title: "Minimum Points Required",
+        description: "You need at least 500,000 points to withdraw funds",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('withdrawal_requests')
+        .insert({
+          user_id: user.id,
+          amount: withdrawalForm.amount,
+          method: withdrawalForm.method,
+          paypal_email: withdrawalForm.method === 'paypal' ? withdrawalForm.paypal_email : null,
+          mpesa_phone: withdrawalForm.method === 'mpesa' ? withdrawalForm.mpesa_phone : null,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      // Deduct points from user profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ total_points: profile.total_points - requiredPoints })
+        .eq('user_id', user.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Withdrawal Request Submitted",
+        description: "Your withdrawal request has been submitted and is pending approval",
+      });
+
+      setShowWithdrawalModal(false);
+      setWithdrawalForm({ amount: 0, method: 'paypal', paypal_email: '', mpesa_phone: '' });
+      fetchProfile(); // Refresh profile to show updated points
+      fetchWithdrawalRequests();
+    } catch (error: any) {
+      console.error('Error submitting withdrawal request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit withdrawal request",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const redeemGiftCard = async (giftCard: GiftCard) => {
+    if (!user || !profile) return;
+
+    if (profile.total_points < giftCard.points_required) {
+      toast({
+        title: "Insufficient Points",
+        description: `You need ${giftCard.points_required.toLocaleString()} points to redeem this gift card`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Deduct points from user profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ total_points: profile.total_points - giftCard.points_required })
+        .eq('user_id', user.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Gift Card Redeemed!",
+        description: `You've successfully redeemed a ${giftCard.name} gift card worth ${giftCard.value} KES`,
+      });
+
+      fetchProfile(); // Refresh profile to show updated points
+    } catch (error: any) {
+      console.error('Error redeeming gift card:', error);
+      toast({
+        title: "Error",
+        description: "Failed to redeem gift card",
+        variant: "destructive",
+      });
     }
   };
 
@@ -497,11 +681,13 @@ export default function ProfileView() {
 
       {/* Settings Tabs */}
       <Tabs defaultValue="notifications" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="privacy">Privacy</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="location">Location</TabsTrigger>
+          <TabsTrigger value="rewards">Rewards</TabsTrigger>
+          <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
         </TabsList>
 
         {/* Notifications Tab */}
@@ -940,6 +1126,137 @@ export default function ProfileView() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Rewards Tab */}
+        <TabsContent value="rewards" className="space-y-4">
+          <Card className="bg-gradient-card shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-green-500" />
+                Currency Rewards
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center space-y-4">
+                <div className="text-4xl font-bold text-green-500">
+                  ${((profile?.total_points || 0) / 1000 * 0.1).toFixed(2)}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  $0.1 per 1000 points • Withdrawable at 500,000 points
+                </p>
+                {profile && profile.total_points >= 500000 ? (
+                  <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                    🎉 Ready to withdraw!
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300">
+                    {500000 - (profile?.total_points || 0)} points needed to withdraw
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-card shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-purple-500" />
+                Gift Cards
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {giftCards.map((giftCard) => (
+                  <Card key={giftCard.id} className="border-2 hover:border-primary transition-colors">
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold text-purple-500 mb-2">
+                        {giftCard.name}
+                      </div>
+                      <div className="text-lg font-semibold mb-2">
+                        {giftCard.value} KES
+                      </div>
+                      <div className="text-sm text-muted-foreground mb-3">
+                        {giftCard.points_required.toLocaleString()} points
+                      </div>
+                      <Button
+                        onClick={() => redeemGiftCard(giftCard)}
+                        disabled={!giftCard.available || (profile?.total_points || 0) < giftCard.points_required}
+                        className="w-full"
+                        variant={giftCard.available && (profile?.total_points || 0) >= giftCard.points_required ? "default" : "outline"}
+                      >
+                        {giftCard.available && (profile?.total_points || 0) >= giftCard.points_required ? "Redeem" : "Insufficient Points"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Withdrawals Tab */}
+        <TabsContent value="withdrawals" className="space-y-4">
+          <Card className="bg-gradient-card shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-blue-500" />
+                Withdrawal Requests
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {profile && profile.total_points >= 500000 ? (
+                <div className="space-y-4">
+                  <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                    <p className="text-sm text-green-700">
+                      You have enough points to withdraw! Click the button below to request a withdrawal.
+                    </p>
+                  </div>
+                  
+                  <Button 
+                    onClick={() => setShowWithdrawalModal(true)}
+                    className="w-full"
+                    size="lg"
+                  >
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Request Withdrawal
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-yellow-700">
+                    You need at least 500,000 points to withdraw funds. 
+                    Current points: {profile?.total_points?.toLocaleString() || 0}
+                  </p>
+                </div>
+              )}
+
+              {withdrawalRequests.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold">Recent Withdrawal Requests</h4>
+                  {withdrawalRequests.map((request) => (
+                    <Card key={request.id} className="border">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">${request.amount}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {request.method === 'paypal' ? 'PayPal' : 'M-Pesa'} • {new Date(request.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <Badge 
+                            variant={request.status === 'approved' ? 'default' : request.status === 'pending' ? 'secondary' : 'destructive'}
+                          >
+                            {request.status}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Action Buttons */}
@@ -958,6 +1275,106 @@ export default function ProfileView() {
           Sign Out
         </Button>
       </div>
+
+      {/* Withdrawal Modal */}
+      {showWithdrawalModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background p-6 rounded-lg max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Request Withdrawal</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowWithdrawalModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="withdrawal-amount">Amount (USD)</Label>
+                <Input
+                  id="withdrawal-amount"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={withdrawalForm.amount}
+                  onChange={(e) => setWithdrawalForm({ ...withdrawalForm, amount: parseFloat(e.target.value) || 0 })}
+                  placeholder="Enter amount"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Points required: {(withdrawalForm.amount * 10000).toLocaleString()}
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="withdrawal-method">Payment Method</Label>
+                <Select
+                  value={withdrawalForm.method}
+                  onValueChange={(value: 'paypal' | 'mpesa') => 
+                    setWithdrawalForm({ ...withdrawalForm, method: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="paypal">PayPal</SelectItem>
+                    <SelectItem value="mpesa">M-Pesa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {withdrawalForm.method === 'paypal' && (
+                <div>
+                  <Label htmlFor="paypal-email">PayPal Email</Label>
+                  <Input
+                    id="paypal-email"
+                    type="email"
+                    value={withdrawalForm.paypal_email}
+                    onChange={(e) => setWithdrawalForm({ ...withdrawalForm, paypal_email: e.target.value })}
+                    placeholder="your@email.com"
+                  />
+                </div>
+              )}
+
+              {withdrawalForm.method === 'mpesa' && (
+                <div>
+                  <Label htmlFor="mpesa-phone">M-Pesa Phone Number</Label>
+                  <Input
+                    id="mpesa-phone"
+                    type="tel"
+                    value={withdrawalForm.mpesa_phone}
+                    onChange={(e) => setWithdrawalForm({ ...withdrawalForm, mpesa_phone: e.target.value })}
+                    placeholder="+254700000000"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleWithdrawal}
+                  className="flex-1"
+                  disabled={!withdrawalForm.amount || 
+                    (withdrawalForm.method === 'paypal' && !withdrawalForm.paypal_email) ||
+                    (withdrawalForm.method === 'mpesa' && !withdrawalForm.mpesa_phone)
+                  }
+                >
+                  Submit Request
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowWithdrawalModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,26 +7,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface AirQualityData {
-  coord: {
-    lon: number;
-    lat: number;
-  };
-  list: Array<{
-    main: {
-      aqi: number;
+interface OpenAQData {
+  results: Array<{
+    location: string;
+    city: string;
+    country: string;
+    coordinates: {
+      latitude: number;
+      longitude: number;
     };
-    components: {
-      co: number;
-      no: number;
-      no2: number;
-      o3: number;
-      so2: number;
-      pm2_5: number;
-      pm10: number;
-      nh3: number;
-    };
-    dt: number;
+    measurements: Array<{
+      parameter: string;
+      value: number;
+      unit: string;
+      lastUpdated: string;
+    }>;
   }>;
 }
 
@@ -47,27 +42,6 @@ interface CityData {
   distance: number;
 }
 
-// Convert OpenWeatherMap AQI (1-5) to standard AQI scale (0-500+)
-function convertOpenWeatherMapAQIToStandard(owmAqi: number): number {
-  // OpenWeatherMap AQI scale: 1=Good, 2=Fair, 3=Moderate, 4=Poor, 5=Very Poor
-  // Standard AQI scale: 0-50=Good, 51-100=Moderate, 101-150=Unhealthy for Sensitive Groups, etc.
-  
-  switch (owmAqi) {
-    case 1: // Good
-      return Math.floor(Math.random() * 30) + 20; // 20-50 range for Good
-    case 2: // Fair
-      return Math.floor(Math.random() * 20) + 51; // 51-70 range for Fair
-    case 3: // Moderate
-      return Math.floor(Math.random() * 30) + 71; // 71-100 range for Moderate
-    case 4: // Poor
-      return Math.floor(Math.random() * 50) + 101; // 101-150 range for Poor
-    case 5: // Very Poor
-      return Math.floor(Math.random() * 100) + 151; // 151-250 range for Very Poor
-    default:
-      return 50; // Default to moderate
-  }
-}
-
 // Calculate distance between two points using Haversine formula
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth's radius in kilometers
@@ -81,7 +55,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-// Find the nearest major city with AQI data using OpenWeatherMap API
+// Find the nearest major city with AQI data using OpenAQ API
 async function findNearestMajorCity(userLat: number, userLon: number, apiKey: string): Promise<CityData> {
   try {
     // Search for cities within a reasonable radius (100km) to find major cities
@@ -106,30 +80,32 @@ async function findNearestMajorCity(userLat: number, userLon: number, apiKey: st
 
     for (const point of searchPoints) {
       try {
-        // Search for cities at this point
-        const geoResponse = await fetch(
-          `http://api.openweathermap.org/geo/1.0/reverse?lat=${point.lat}&lon=${point.lon}&limit=5&appid=${apiKey}`
+        // Use OpenAQ API to find cities with air quality data
+        const response = await fetch(
+          `https://api.openaq.org/v2/cities?coordinates=${point.lat},${point.lon}&radius=50000&limit=10`,
+          {
+            headers: {
+              'X-API-Key': apiKey,
+              'Accept': 'application/json'
+            }
+          }
         );
-        
-        if (geoResponse.ok) {
-          const cities: GeoLocation[] = await geoResponse.json();
+
+        if (response.ok) {
+          const cities = await response.json();
           
-          for (const city of cities) {
-            // Check if this city has a substantial population (major city)
-            if (city.name && city.country && city.name.length > 2) {
-              const distance = calculateDistance(userLat, userLon, city.lat, city.lon);
-              
-              // Prefer cities within reasonable distance and with recognizable names
-              if (distance < shortestDistance && distance < 200) { // Max 200km
-                shortestDistance = distance;
-                nearestCity = {
-                  name: city.name,
-                  lat: city.lat,
-                  lon: city.lon,
-                  country: city.country,
-                  distance: distance
-                };
-              }
+          for (const city of cities.results || []) {
+            const distance = calculateDistance(userLat, userLon, city.coordinates.latitude, city.coordinates.longitude);
+            
+            if (distance < shortestDistance && city.name) {
+              shortestDistance = distance;
+              nearestCity = {
+                name: city.name,
+                lat: city.coordinates.latitude,
+                lon: city.coordinates.longitude,
+                country: city.country,
+                distance: distance
+              };
             }
           }
         }
@@ -139,41 +115,22 @@ async function findNearestMajorCity(userLat: number, userLon: number, apiKey: st
       }
     }
 
-    // If no major city found, use user's location as fallback
-    if (!nearestCity) {
-      const userLocationResponse = await fetch(
-        `http://api.openweathermap.org/geo/1.0/reverse?lat=${userLat}&lon=${userLon}&limit=1&appid=${apiKey}`
-      );
-      
-      if (userLocationResponse.ok) {
-        const userLocation: GeoLocation[] = await userLocationResponse.json();
-        if (userLocation[0]) {
-          nearestCity = {
-            name: userLocation[0].name || 'Your Location',
-            lat: userLat,
-            lon: userLon,
-            country: userLocation[0].country || 'Unknown',
-            distance: 0
-          };
-        }
-      }
+    if (nearestCity) {
+      return nearestCity;
     }
 
-    // Final fallback if everything fails
-    if (!nearestCity) {
-      nearestCity = {
-        name: 'Your Location',
-        lat: userLat,
-        lon: userLon,
-        country: 'Unknown',
-        distance: 0
-      };
-    }
+    // Fallback to user's location if no cities found
+    return {
+      name: 'Your Location',
+      lat: userLat,
+      lon: userLon,
+      country: 'Unknown',
+      distance: 0
+    };
 
-    return nearestCity;
   } catch (error) {
     console.error('Error finding nearest major city:', error);
-    // Return user's location as fallback
+    // Fallback to user's location
     return {
       name: 'Your Location',
       lat: userLat,
@@ -184,7 +141,7 @@ async function findNearestMajorCity(userLat: number, userLon: number, apiKey: st
   }
 }
 
-// Get user's location details from coordinates
+// Get user location details using reverse geocoding
 async function getUserLocationDetails(lat: number, lon: number, apiKey: string): Promise<{
   country: string;
   state?: string;
@@ -192,20 +149,28 @@ async function getUserLocationDetails(lat: number, lon: number, apiKey: string):
   area?: string;
 }> {
   try {
-    const geoResponse = await fetch(
-      `http://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`
+    const response = await fetch(
+      `https://api.openaq.org/v2/cities?coordinates=${lat},${lon}&radius=1000&limit=1`,
+      {
+        headers: {
+          'X-API-Key': apiKey,
+          'Accept': 'application/json'
+        }
+      }
     );
     
-    if (geoResponse.ok) {
-      const geoData: GeoLocation[] = await geoResponse.json();
-      const location = geoData[0];
+    if (response.ok) {
+      const geoData = await response.json();
+      const location = geoData.results?.[0];
       
-      return {
-        country: location?.country || 'Unknown',
-        state: location?.state,
-        city: location?.name,
-        area: location?.local_names?.en || location?.name
-      };
+      if (location) {
+        return {
+          country: location.country || 'Unknown',
+          state: location.state,
+          city: location.name,
+          area: location.name
+        };
+      }
     }
   } catch (error) {
     console.error('Error getting user location details:', error);
@@ -217,6 +182,17 @@ async function getUserLocationDetails(lat: number, lon: number, apiKey: string):
     city: undefined,
     area: undefined
   };
+}
+
+// Calculate currency rewards based on points
+function calculateCurrencyRewards(points: number): number {
+  // $0.1 per 1000 points
+  return (points / 1000) * 0.1;
+}
+
+// Check if user can withdraw (minimum 500,000 points)
+function canWithdraw(points: number): boolean {
+  return points >= 500000;
 }
 
 serve(async (req) => {
@@ -231,34 +207,116 @@ serve(async (req) => {
       throw new Error('Latitude and longitude are required');
     }
 
-    const OPENWEATHERMAP_API_KEY = Deno.env.get('OPENWEATHERMAP_API_KEY');
-    if (!OPENWEATHERMAP_API_KEY) {
-      throw new Error('OpenWeatherMap API key not configured');
+    const OPENAQ_API_KEY = Deno.env.get('OPENAQ_API_KEY');
+    if (!OPENAQ_API_KEY) {
+      throw new Error('OpenAQ API key not configured');
+    }
+
+    // Check cache first (implement simple in-memory cache for demo)
+    // In production, use Redis or database for caching
+    const cacheKey = `aqi_${lat.toFixed(4)}_${lon.toFixed(4)}`;
+    const cache = new Map();
+    
+    if (cache.has(cacheKey)) {
+      const cached = cache.get(cacheKey);
+      const now = Date.now();
+      
+      // Cache expires after 5 minutes
+      if (now - cached.timestamp < 5 * 60 * 1000) {
+        console.log('Returning cached AQI data');
+        return new Response(JSON.stringify(cached.data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Get user's location details
-    const userLocationDetails = await getUserLocationDetails(lat, lon, OPENWEATHERMAP_API_KEY);
+    const userLocationDetails = await getUserLocationDetails(lat, lon, OPENAQ_API_KEY);
     
     // Find nearest major city dynamically
-    const nearestCity = await findNearestMajorCity(lat, lon, OPENWEATHERMAP_API_KEY);
+    const nearestCity = await findNearestMajorCity(lat, lon, OPENAQ_API_KEY);
     
-    // Get air quality data from the nearest major city
+    // Get air quality data from OpenAQ API
     const airResponse = await fetch(
-      `http://api.openweathermap.org/data/2.5/air_pollution?lat=${nearestCity.lat}&lon=${nearestCity.lon}&appid=${OPENWEATHERMAP_API_KEY}`
+      `https://api.openaq.org/v2/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=10000&limit=100`,
+      {
+        headers: {
+          'X-API-Key': OPENAQ_API_KEY,
+          'Accept': 'application/json'
+        }
+      }
     );
     
     if (!airResponse.ok) {
-      throw new Error(`OpenWeatherMap API error: ${airResponse.status}`);
+      throw new Error(`OpenAQ API error: ${airResponse.status}`);
     }
 
-    const airData: AirQualityData = await airResponse.json();
+    const airData: OpenAQData = await airResponse.json();
     
-    if (!airData.list || airData.list.length === 0) {
+    if (!airData.results || airData.results.length === 0) {
       throw new Error('No air quality data available');
     }
 
-    const currentData = airData.list[0];
+    // Process OpenAQ data to extract AQI and pollutants
+    let aqi = 0;
+    let pm25 = 0;
+    let pm10 = 0;
+    let no2 = 0;
+    let so2 = 0;
+    let co = 0;
+    let o3 = 0;
+
+    // Find the most recent measurements for each parameter
+    const latestMeasurements = new Map();
     
+    for (const result of airData.results) {
+      for (const measurement of result.measurements) {
+        const key = measurement.parameter;
+        const existing = latestMeasurements.get(key);
+        
+        if (!existing || new Date(measurement.lastUpdated) > new Date(existing.lastUpdated)) {
+          latestMeasurements.set(key, measurement);
+        }
+      }
+    }
+
+    // Extract values and calculate AQI
+    if (latestMeasurements.has('pm25')) {
+      pm25 = latestMeasurements.get('pm25').value;
+      // Convert PM2.5 to AQI (simplified calculation)
+      if (pm25 <= 12) aqi = Math.max(aqi, Math.round((pm25 / 12) * 50));
+      else if (pm25 <= 35.4) aqi = Math.max(aqi, Math.round(51 + (pm25 - 12) / (35.4 - 12) * 49));
+      else if (pm25 <= 55.4) aqi = Math.max(aqi, Math.round(101 + (pm25 - 35.4) / (55.4 - 35.4) * 49));
+      else if (pm25 <= 150.4) aqi = Math.max(aqi, Math.round(151 + (pm25 - 55.4) / (150.4 - 55.4) * 99));
+      else if (pm25 <= 250.4) aqi = Math.max(aqi, Math.round(201 + (pm25 - 150.4) / (250.4 - 150.4) * 99));
+      else aqi = Math.max(aqi, Math.round(301 + (pm25 - 250.4) / (500 - 250.4) * 199));
+    }
+
+    if (latestMeasurements.has('pm10')) {
+      pm10 = latestMeasurements.get('pm10').value;
+    }
+
+    if (latestMeasurements.has('no2')) {
+      no2 = latestMeasurements.get('no2').value;
+    }
+
+    if (latestMeasurements.has('so2')) {
+      so2 = latestMeasurements.get('so2').value;
+    }
+
+    if (latestMeasurements.has('co')) {
+      co = latestMeasurements.get('co').value;
+    }
+
+    if (latestMeasurements.has('o3')) {
+      o3 = latestMeasurements.get('o3').value;
+    }
+
+    // Ensure AQI is at least 1 if we have any data
+    if (aqi === 0 && (pm25 > 0 || pm10 > 0)) {
+      aqi = Math.max(1, Math.round((pm25 + pm10) / 2));
+    }
+
     // Create meaningful location descriptions
     const locationDescription = nearestCity.distance === 0 
       ? `${nearestCity.name}, ${nearestCity.country}`
@@ -268,11 +326,12 @@ serve(async (req) => {
       ? `${userLocationDetails.country}${userLocationDetails.state ? `, ${userLocationDetails.state}` : ''}`
       : `${userLocationDetails.country}${userLocationDetails.state ? `, ${userLocationDetails.state}` : ''} (${Math.round(nearestCity.distance)}km from ${nearestCity.name})`;
     
-    // Convert OpenWeatherMap AQI to standard scale FIRST
-    const standardAQI = convertOpenWeatherMapAQIToStandard(currentData.main.aqi);
-    
     // Save to database if user is authenticated
     const authHeader = req.headers.get('authorization');
+    let userPoints = 0;
+    let currencyRewards = 0;
+    let canWithdrawRewards = false;
+    
     if (authHeader) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -283,71 +342,91 @@ serve(async (req) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
+        // Get current user profile to check points
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('total_points')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profile) {
+          userPoints = profile.total_points || 0;
+          currencyRewards = calculateCurrencyRewards(userPoints);
+          canWithdrawRewards = canWithdraw(userPoints);
+        }
+
         // Save air quality reading with enhanced location data
         await supabase.from('air_quality_readings').insert({
           user_id: user.id,
           latitude: lat,
           longitude: lon,
           location_name: locationDescription,
-          aqi: standardAQI,
-          pm25: currentData.components.pm2_5,
-          pm10: currentData.components.pm10,
-          no2: currentData.components.no2,
-          so2: currentData.components.so2,
-          co: currentData.components.co,
-          o3: currentData.components.o3,
+          aqi: aqi,
+          pm25: pm25,
+          pm10: pm10,
+          no2: no2,
+          so2: so2,
+          co: co,
+          o3: o3,
           timestamp: new Date().toISOString()
         });
 
         // Award points if air quality is good (AQI 0-50 = Good)
-        if (standardAQI <= 50) {
+        if (aqi <= 50) {
           const pointsToAward = 50;
           
           await supabase.from('user_points').insert({
             user_id: user.id,
             points_earned: pointsToAward,
-            aqi_value: standardAQI,
+            aqi_value: aqi,
             location_name: locationDescription,
             timestamp: new Date().toISOString()
           });
 
           // Update total points in profile
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('total_points')
-            .eq('user_id', user.id)
-            .single();
-
           if (profile) {
+            const newTotalPoints = (profile.total_points || 0) + pointsToAward;
             await supabase
               .from('profiles')
-              .update({ total_points: (profile.total_points || 0) + pointsToAward })
+              .update({ total_points: newTotalPoints })
               .eq('user_id', user.id);
+            
+            // Update currency rewards
+            currencyRewards = calculateCurrencyRewards(newTotalPoints);
+            canWithdrawRewards = canWithdraw(newTotalPoints);
           }
         }
       }
     }
-    
+
     const response = {
       location: locationDescription,
       userLocation: userLocationDescription,
       coordinates: { lat: nearestCity.lat, lon: nearestCity.lon },
       userCoordinates: { lat, lon },
-      aqi: standardAQI,
-      originalOwmAqi: currentData.main.aqi, // Keep original for reference
+      aqi: aqi,
       pollutants: {
-        pm25: currentData.components.pm2_5,
-        pm10: currentData.components.pm10,
-        no2: currentData.components.no2,
-        so2: currentData.components.so2,
-        co: currentData.components.co,
-        o3: currentData.components.o3
+        pm25: pm25,
+        pm10: pm10,
+        no2: no2,
+        so2: so2,
+        co: co,
+        o3: o3
       },
-      timestamp: new Date(currentData.dt * 1000).toISOString(),
+      timestamp: new Date().toISOString(),
       dataSource: nearestCity.distance === 0 
         ? `AQI data from your location`
-        : `AQI data from ${nearestCity.name} (${Math.round(nearestCity.distance)}km away)`
+        : `AQI data from ${nearestCity.name} (${Math.round(nearestCity.distance)}km away)`,
+      userPoints: userPoints,
+      currencyRewards: currencyRewards,
+      canWithdraw: canWithdrawRewards
     };
+
+    // Cache the response for 5 minutes
+    cache.set(cacheKey, {
+      data: response,
+      timestamp: Date.now()
+    });
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

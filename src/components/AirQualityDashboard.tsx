@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, History, Map, Download, MapPin, Loader2, AlertTriangle, Trophy } from "lucide-react";
+import { RefreshCw, History, Map, Download, MapPin, Loader2, AlertTriangle, Trophy, DollarSign, Gift } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import PollutantModal from "./PollutantModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,9 +23,10 @@ interface AirQualityData {
   userCoordinates: { lat: number; lon: number };
   timestamp: string;
   dataSource: string;
+  userPoints?: number;
+  currencyRewards?: number;
+  canWithdraw?: boolean;
 }
-
-
 
 // Helper functions for AQI display
 const getAQIColor = (aqi: number): string => {
@@ -46,12 +47,6 @@ const getAQILabel = (aqi: number): string => {
   return "Hazardous";
 };
 
-
-
-
-
-
-
 export default function AirQualityDashboard(): JSX.Element {
   const [selectedPollutant, setSelectedPollutant] = useState<{
     name: string;
@@ -59,6 +54,8 @@ export default function AirQualityDashboard(): JSX.Element {
     unit: string;
   } | null>(null);
   const [userPoints, setUserPoints] = useState<number>(0);
+  const [currencyRewards, setCurrencyRewards] = useState<number>(0);
+  const [canWithdraw, setCanWithdraw] = useState<boolean>(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -99,13 +96,23 @@ export default function AirQualityDashboard(): JSX.Element {
     console.log('Response type:', typeof response);
     console.log('Response keys:', Object.keys(response));
 
-
-
     // Check if the response has the expected structure
     if (response && typeof response === 'object' && 'pollutants' in response) {
       // New enhanced format with capital city data
       const typedResponse = response as any;
       console.log('Using enhanced format, AQI:', typedResponse.aqi);
+      
+      // Update local state with user data from response
+      if (typedResponse.userPoints !== undefined) {
+        setUserPoints(typedResponse.userPoints);
+      }
+      if (typedResponse.currencyRewards !== undefined) {
+        setCurrencyRewards(typedResponse.currencyRewards);
+      }
+      if (typedResponse.canWithdraw !== undefined) {
+        setCanWithdraw(typedResponse.canWithdraw);
+      }
+      
       return {
         aqi: typedResponse.aqi,
         pm25: typedResponse.pollutants.pm25,
@@ -119,7 +126,10 @@ export default function AirQualityDashboard(): JSX.Element {
         coordinates: typedResponse.coordinates || { lat: 0, lon: 0 },
         userCoordinates: typedResponse.userCoordinates || { lat: 0, lon: 0 },
         timestamp: new Date(typedResponse.timestamp).toLocaleString(),
-        dataSource: typedResponse.dataSource || 'Unknown Source'
+        dataSource: typedResponse.dataSource || 'Unknown Source',
+        userPoints: typedResponse.userPoints,
+        currencyRewards: typedResponse.currencyRewards,
+        canWithdraw: typedResponse.canWithdraw
       };
     } else if (response && typeof response === 'object' && 'list' in response && Array.isArray((response as any).list)) {
       // Raw OpenWeatherMap format (fallback)
@@ -181,6 +191,9 @@ export default function AirQualityDashboard(): JSX.Element {
       
       if (profile) {
         setUserPoints(profile.total_points || 0);
+        // Calculate currency rewards
+        setCurrencyRewards((profile.total_points || 0) / 1000 * 0.1);
+        setCanWithdraw((profile.total_points || 0) >= 500000);
       }
     } catch (err) {
       console.error('Error fetching user points:', err);
@@ -294,8 +307,6 @@ export default function AirQualityDashboard(): JSX.Element {
     );
   }
 
-
-
   return (
     <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
       {/* Header */}
@@ -371,6 +382,36 @@ export default function AirQualityDashboard(): JSX.Element {
         </Card>
       </div>
 
+      {/* Currency Rewards Card */}
+      <Card className="bg-gradient-card shadow-card border-0">
+        <CardContent className="p-6">
+          <div className="text-center space-y-4">
+            <div className="space-y-2">
+              <div className="text-6xl font-bold text-green-500">
+                <DollarSign className="w-16 h-16 mx-auto" />
+              </div>
+              <Badge 
+                variant="secondary" 
+                className="bg-green-500/10 text-green-500 border-0 px-4 py-1"
+              >
+                Currency Rewards
+              </Badge>
+            </div>
+            <div className="text-3xl font-bold text-green-500">
+              ${currencyRewards.toFixed(2)}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              $0.1 per 1000 points • Withdrawable at 500,000 points
+            </p>
+            {canWithdraw && (
+              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                🎉 Ready to withdraw!
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Location Information */}
       <Card className="bg-gradient-card shadow-card border-0">
         <CardHeader className="pb-3">
@@ -407,10 +448,6 @@ export default function AirQualityDashboard(): JSX.Element {
           </div>
         </CardContent>
       </Card>
-
-
-
-
 
       {/* Pollutants Grid */}
       <div className="grid grid-cols-2 gap-3">
