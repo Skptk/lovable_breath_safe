@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Layers, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import GoogleMap from "./GoogleMap";
 
 interface NearbyLocation {
   id: string;
@@ -292,26 +293,12 @@ export default function MapView(): JSX.Element {
         </Button>
       </div>
 
-      {/* Map Placeholder */}
-      <Card className="bg-gradient-card shadow-card border-0">
-        <CardContent className="p-0">
-          <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg flex items-center justify-center relative overflow-hidden">
-            <div className="text-center space-y-2">
-              <MapPin className="h-12 w-12 text-primary mx-auto" />
-              <div className="text-lg font-semibold">Interactive Map</div>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Real-time air quality data from monitoring stations in your area
-              </p>
-            </div>
-            
-            {/* Mock Map Pins */}
-            <div className="absolute top-1/4 left-1/3 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-            <div className="absolute top-1/2 right-1/3 w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
-            <div className="absolute bottom-1/3 left-1/2 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-            <div className="absolute top-2/3 left-1/4 w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Google Maps Integration */}
+      <GoogleMap 
+        userLocation={userLocation}
+        airQualityData={airQualityData}
+        nearbyLocations={nearbyLocations}
+      />
 
       {/* Current Location */}
       {userLocation && (
