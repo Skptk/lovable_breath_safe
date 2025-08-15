@@ -22,7 +22,7 @@ export default function AirQualityDashboard(): JSX.Element {
   const { toast } = useToast();
   const { user } = useAuth();
   const { totalPoints: userPoints, currencyRewards, canWithdraw, refreshPoints } = useUserPoints();
-  const { data, isLoading, error, refetch, isRefetching } = useAirQuality();
+  const { data, isLoading, error, refetch, isRefetching, hasUserConsent, requestLocationPermission } = useAirQuality();
   
   // Performance monitoring
   usePerformanceMonitor("AirQualityDashboard");
@@ -30,24 +30,58 @@ export default function AirQualityDashboard(): JSX.Element {
   // Debounced refresh function
   const debouncedRefresh = useDebounce(refreshPoints, 1000);
 
-  const handleRefresh = useCallback(() => {
-    refetch();
-    if (user) {
-      debouncedRefresh();
-    }
-    toast({
-      title: "Refreshing data",
-      description: "Fetching latest air quality information...",
-    });
-  }, [refetch, user, debouncedRefresh, toast]);
-
-  const handlePollutantClick = useCallback((name: string, value: number, unit: string) => {
+  const handlePollutantClick = (name: string, value: number, unit: string) => {
     setSelectedPollutant({ name, value, unit });
-  }, []);
+  };
+
+  const handleRefresh = async () => {
+    if (!hasUserConsent) {
+      // Request location permission first
+      const granted = await requestLocationPermission();
+      if (granted) {
+        refetch();
+      } else {
+        toast({
+          title: "Location Required",
+          description: "Please allow location access to get air quality data for your area.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      refetch();
+    }
+  };
 
   // Handle loading state
   if (isLoading) {
     return <LoadingSkeleton />;
+  }
+
+  // Handle no location consent state
+  if (!hasUserConsent) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <div className="text-center space-y-6 max-w-md">
+          <div className="space-y-4">
+            <h1 className="text-2xl font-bold text-foreground">Enable Location Access</h1>
+            <p className="text-muted-foreground">
+              To provide you with accurate air quality data for your area, we need access to your location.
+            </p>
+            <div className="space-y-2">
+              <button 
+                onClick={handleRefresh}
+                className="w-full px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Enable Location & Get Air Quality
+              </button>
+              <p className="text-sm text-muted-foreground">
+                Your location is only used to fetch relevant air quality data and is never stored permanently.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Handle error state
@@ -67,7 +101,7 @@ export default function AirQualityDashboard(): JSX.Element {
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">No air quality data available</p>
-          <button onClick={() => refetch()} className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90">
+          <button onClick={handleRefresh} className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90">
             Refresh
           </button>
         </div>

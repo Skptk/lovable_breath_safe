@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store";
@@ -31,6 +31,7 @@ export interface AirQualityData {
 export const useAirQuality = () => {
   const { setCurrentAQI, setCurrentLocation, setLoading, setError } = useAppStore();
   const { handleError } = useErrorHandler();
+  const [hasUserConsent, setHasUserConsent] = useState(false);
   
   // Performance monitoring
   usePerformanceMonitor("useAirQuality");
@@ -43,6 +44,11 @@ export const useAirQuality = () => {
   const fetchAirQualityData = useCallback(async (): Promise<AirQualityData> => {
     if (!navigator.geolocation) {
       throw new Error('Geolocation not supported by your browser');
+    }
+
+    // Only proceed if user has given consent or if we're using cached coordinates
+    if (!hasUserConsent) {
+      throw new Error('Location access not yet granted. Please click the location button to enable.');
     }
 
     try {
@@ -141,20 +147,48 @@ export const useAirQuality = () => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, handleError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate]);
+  }, [setLoading, setError, handleError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent]);
+
+  // Function to request location permission (should be called on user gesture)
+  const requestLocationPermission = useCallback(async (): Promise<boolean> => {
+    if (!navigator.geolocation) {
+      return false;
+    }
+
+    try {
+      // Request location permission
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 30000,
+          enableHighAccuracy: false,
+          maximumAge: 10 * 60 * 1000
+        });
+      });
+
+      if (position) {
+        setHasUserConsent(true);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Location permission denied:', error);
+      return false;
+    }
+  }, []);
 
   const query = useQuery({
-    queryKey: ['airQuality'],
+    queryKey: ['airQuality', hasUserConsent],
     queryFn: fetchAirQualityData,
     gcTime: 0, // No caching
     staleTime: 0, // Always consider data stale
     refetchOnWindowFocus: false, // Disable to reduce unnecessary calls
-    refetchOnMount: true,
-    refetchOnReconnect: true,
-    refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes for more frequent data collection
-    refetchIntervalInBackground: true,
+    refetchOnMount: false, // Don't auto-fetch on mount
+    refetchOnReconnect: false, // Don't auto-fetch on reconnect
+    refetchInterval: hasUserConsent ? (2 * 60 * 1000) : false, // Only refresh if user consented
+    refetchIntervalInBackground: hasUserConsent,
     retry: 2, // Reduce retries for faster failure detection
     retryDelay: 500, // Faster retry delay
+    enabled: hasUserConsent, // Only run query if user has consented
   });
 
   return {
@@ -163,6 +197,8 @@ export const useAirQuality = () => {
     isRefetching: query.isRefetching,
     isLoading: query.isLoading,
     error: query.error,
-    data: query.data
+    data: query.data,
+    hasUserConsent,
+    requestLocationPermission
   };
 };
