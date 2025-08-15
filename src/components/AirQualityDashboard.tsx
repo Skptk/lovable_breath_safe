@@ -8,6 +8,7 @@ import { RefreshCw, MapPin, Loader2, AlertTriangle, Trophy } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast";
 import PollutantModal from "./PollutantModal";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserPoints } from "@/hooks/useUserPoints";
 
 interface AirQualityData {
   aqi: number;
@@ -75,11 +76,9 @@ export default function AirQualityDashboard(): JSX.Element {
     value: number;
     unit: string;
   } | null>(null);
-  const [userPoints, setUserPoints] = useState<number>(0);
-  const [currencyRewards, setCurrencyRewards] = useState<number>(0);
-  const [canWithdraw, setCanWithdraw] = useState<boolean>(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { totalPoints: userPoints, currencyRewards, canWithdraw, refreshPoints } = useUserPoints();
 
   const fetchAirQualityData = async (): Promise<AirQualityData> => {
     if (!navigator.geolocation) {
@@ -124,16 +123,7 @@ export default function AirQualityDashboard(): JSX.Element {
       const typedResponse = response as any;
       console.log('Using enhanced format, AQI:', typedResponse.aqi);
       
-      // Update local state with user data from response
-      if (typedResponse.userPoints !== undefined) {
-        setUserPoints(typedResponse.userPoints);
-      }
-      if (typedResponse.currencyRewards !== undefined) {
-        setCurrencyRewards(typedResponse.currencyRewards);
-      }
-      if (typedResponse.canWithdraw !== undefined) {
-        setCanWithdraw(typedResponse.canWithdraw);
-      }
+      // Note: User points are now managed by the centralized useUserPoints hook
       
       return {
         aqi: typedResponse.aqi,
@@ -193,43 +183,14 @@ export default function AirQualityDashboard(): JSX.Element {
     retryDelay: 500, // Faster retry delay
   });
 
-  // Fetch user points when component mounts or user changes
-  useEffect(() => {
-    if (user) {
-      fetchUserPoints();
-    }
-  }, [user]);
 
-  const fetchUserPoints = async () => {
-    if (!user) return;
-    
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('total_points')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (error) {
-        console.error('Error fetching user points:', error);
-        return;
-      }
-      
-      if (profile) {
-        setUserPoints(profile.total_points || 0);
-        // Calculate currency rewards
-        setCurrencyRewards((profile.total_points || 0) / 1000 * 0.1);
-        setCanWithdraw((profile.total_points || 0) >= 500000);
-      }
-    } catch (err) {
-      console.error('Error fetching user points:', err);
-    }
-  };
+
+
 
   const handleRefresh = () => {
     refetch();
     if (user) {
-      fetchUserPoints();
+      refreshPoints();
     }
     toast({
       title: "Refreshing data",

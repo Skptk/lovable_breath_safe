@@ -660,29 +660,8 @@ serve(async (req) => {
                 } else {
                   console.log('Air quality reading saved to database successfully, ID:', insertResult);
                   
-                  // Award points if air quality is good (AQI 0-50 = Good)
-                  if (aqi <= 50) {
-                    const pointsToAward = 50;
-                    
-                    // Update total points in profile
-                    const newTotalPoints = userPoints + pointsToAward;
-                    await supabase
-                      .from('profiles')
-                      .update({ 
-                        total_points: newTotalPoints
-                      })
-                      .eq('user_id', user.id);
-                    
-                    // Update local state
-                    userPoints = newTotalPoints;
-                    currencyRewards = (newTotalPoints / 1000) * 0.1;
-                    canWithdraw = newTotalPoints >= 500000;
-                    
-                    console.log('Points awarded:', pointsToAward, 'New total:', newTotalPoints);
-                  } else {
-                    // Even if AQI is not good, still save the reading for tracking purposes
-                    console.log('AQI not in good range, but reading saved for tracking');
-                  }
+                  // Points are now automatically calculated by database trigger based on reading count
+                  console.log('Air quality reading saved successfully. Points will be automatically updated by database trigger.');
                 }
               } catch (dbSaveError) {
                 console.log('Error saving reading to database:', dbSaveError.message);

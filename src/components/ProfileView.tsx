@@ -150,12 +150,18 @@ export default function ProfileView() {
   useEffect(() => {
     if (user) {
       fetchProfile();
-      fetchUserStats();
       loadUserSettings();
       fetchWithdrawalRequests();
       fetchGiftCards();
     }
   }, [user]);
+
+  // Fetch user stats after profile is loaded
+  useEffect(() => {
+    if (profile) {
+      fetchUserStats();
+    }
+  }, [profile]);
 
   const fetchProfile = async () => {
     try {
@@ -187,12 +193,8 @@ export default function ProfileView() {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user?.id);
 
-      const { data: pointsData } = await supabase
-        .from('user_points')
-        .select('points_earned')
-        .eq('user_id', user?.id);
-
-      const totalPoints = pointsData?.reduce((sum, record) => sum + record.points_earned, 0) || 0;
+      // Use the profile's total_points instead of calculating from non-existent user_points table
+      const totalPoints = profile?.total_points || 0;
 
       const { data: lastReading } = await supabase
         .from('air_quality_readings')
