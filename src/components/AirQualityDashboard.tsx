@@ -184,13 +184,56 @@ export default function AirQualityDashboard(): JSX.Element {
       }
     }
 
-    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        timeout: 15000, // Increased timeout for better reliability
-        enableHighAccuracy: true, // Enable high accuracy for better location precision
-        maximumAge: 2 * 60 * 1000 // 2 minutes - more recent data
+    // Try multiple location strategies with different settings
+    let position: GeolocationPosition;
+    
+    try {
+      // Strategy 1: High accuracy with longer timeout
+      position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 20000, // 20 seconds
+          enableHighAccuracy: true,
+          maximumAge: 0 // Force fresh location data
+        });
       });
-    });
+    } catch (error: any) {
+      console.log('High accuracy failed, trying low accuracy...', error.message);
+      
+      try {
+        // Strategy 2: Low accuracy with shorter timeout
+        position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 10000, // 10 seconds
+            enableHighAccuracy: false,
+            maximumAge: 0 // Force fresh location data
+          });
+        });
+      } catch (error2: any) {
+        console.log('Low accuracy failed, trying with cached data...', error2.message);
+        
+        try {
+          // Strategy 3: Allow cached data with very short timeout
+          position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              timeout: 5000, // 5 seconds
+              enableHighAccuracy: false,
+              maximumAge: 5 * 60 * 1000 // Allow 5-minute old data
+            });
+          });
+        } catch (error3: any) {
+          // All strategies failed - provide helpful error message
+          if (error3.code === 3) { // TIMEOUT
+            throw new Error('Location timeout. This often happens after using a VPN. Please refresh the page or wait a few minutes for location services to reset.');
+          } else if (error3.code === 2) { // POSITION_UNAVAILABLE
+            throw new Error('Location unavailable. Please check your internet connection and try again.');
+          } else if (error3.code === 1) { // PERMISSION_DENIED
+            throw new Error('Location access denied. Please enable location permissions in your browser settings.');
+          } else {
+            throw new Error(`Location error: ${error3.message}. Try refreshing the page.`);
+          }
+        }
+      }
+    }
 
     const { latitude, longitude } = position.coords;
     
@@ -291,19 +334,59 @@ export default function AirQualityDashboard(): JSX.Element {
 
   // Handle error state
   if (error) {
+    const isLocationError = error instanceof Error && (
+      error.message.includes('Location') || 
+      error.message.includes('location') ||
+      error.message.includes('VPN') ||
+      error.message.includes('timeout')
+    );
+
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 max-w-md">
           <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
             <AlertTriangle className="w-8 h-8 text-destructive" />
           </div>
-          <h2 className="text-xl font-semibold">Failed to load data</h2>
+          
+          <h2 className="text-xl font-semibold">
+            {isLocationError ? 'Location Error' : 'Failed to load data'}
+          </h2>
+          
           <p className="text-muted-foreground">
             {error instanceof Error ? error.message : 'An unexpected error occurred'}
           </p>
-          <Button onClick={() => refetch()} variant="outline">
-            Try Again
-          </Button>
+
+          {isLocationError && (
+            <div className="text-sm text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-lg">
+              <p><strong>VPN Location Issues?</strong></p>
+              <p>If you recently used a VPN, try these steps:</p>
+              <ol className="text-left list-decimal list-inside space-y-1">
+                <li>Disable VPN completely</li>
+                <li>Clear browser cache and cookies</li>
+                <li>Wait 2-3 minutes for location services to reset</li>
+                <li>Refresh the page</li>
+              </ol>
+            </div>
+          )}
+          
+          <div className="flex flex-col gap-2">
+            <Button onClick={() => refetch()} variant="outline" className="w-full">
+              Try Again
+            </Button>
+            
+            {isLocationError && (
+              <Button 
+                onClick={() => {
+                  // Force a complete page refresh to clear location cache
+                  window.location.reload();
+                }} 
+                variant="secondary"
+                className="w-full"
+              >
+                Force Refresh Page
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -495,20 +578,53 @@ export default function AirQualityDashboard(): JSX.Element {
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-4">
-        <Button variant="outline" className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card">
-          <History className="h-5 w-5" />
-          <span className="text-xs">History</span>
-        </Button>
-        <Button variant="outline" className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card">
-          <Map className="h-5 w-5" />
-          <span className="text-xs">Map View</span>
-        </Button>
-        <Button variant="outline" className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card">
-          <Download className="h-5 w-5" />
-          <span className="text-xs">Export Data</span>
-        </Button>
+      {/* Location Status & Quick Actions */}
+      <div className="space-y-4">
+        {/* Location Status */}
+        <Card className="bg-gradient-card shadow-card border-0">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Location Status</span>
+              </div>
+              <Badge variant="outline" className="text-xs">
+                {data.userLocation}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Last updated: {data.timestamp}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-4 gap-4">
+          <Button 
+            onClick={handleRefresh} 
+            disabled={isRefetching}
+            variant="outline" 
+            className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card"
+          >
+            {isRefetching ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
+            <span className="text-xs">Refresh</span>
+          </Button>
+          
+          <Button variant="outline" className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card">
+            <History className="h-5 w-5" />
+            <span className="text-xs">History</span>
+          </Button>
+          
+          <Button variant="outline" className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card">
+            <Map className="h-5 w-5" />
+            <span className="text-xs">Map View</span>
+          </Button>
+          
+          <Button variant="outline" className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card">
+            <Download className="h-5 w-5" />
+            <span className="text-xs">Export Data</span>
+          </Button>
+        </div>
       </div>
 
       <PollutantModal
