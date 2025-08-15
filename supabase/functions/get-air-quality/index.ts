@@ -7,6 +7,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Cache configuration
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+const MAX_CACHE_SIZE = 100; // Maximum number of cached entries
+
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+  location: string;
+}
+
+// Simple in-memory cache (in production, consider Redis or similar)
+const responseCache = new Map<string, CacheEntry>();
+
 interface OpenAQData {
   results: Array<{
     location: string;
@@ -42,6 +55,84 @@ interface CityData {
   distance: number;
 }
 
+// Error tracking and alerting
+interface ErrorTracker {
+  apiFailures: Map<string, { count: number; lastOccurrence: number; }>;
+  consecutiveFailures: number;
+  lastAlert: number;
+}
+
+const errorTracker: ErrorTracker = {
+  apiFailures: new Map(),
+  consecutiveFailures: 0,
+  lastAlert: 0
+};
+
+// Track API failures and send alerts
+function trackApiFailure(endpoint: string, error: string) {
+  const now = Date.now();
+  const failure = errorTracker.apiFailures.get(endpoint) || { count: 0, lastOccurrence: 0 };
+  
+  failure.count++;
+  failure.lastOccurrence = now;
+  errorTracker.apiFailures.set(endpoint, failure);
+  
+  errorTracker.consecutiveFailures++;
+  
+  // Send alert if we have multiple consecutive failures or high failure rate
+  if (errorTracker.consecutiveFailures >= 3 || failure.count >= 5) {
+    const timeSinceLastAlert = now - errorTracker.lastAlert;
+    if (timeSinceLastAlert > 15 * 60 * 1000) { // Alert every 15 minutes max
+      console.error(`🚨 ALERT: API failures detected! Endpoint: ${endpoint}, Consecutive failures: ${errorTracker.consecutiveFailures}, Total failures: ${failure.count}`);
+      errorTracker.lastAlert = now;
+      
+      // Reset consecutive failures after alert
+      errorTracker.consecutiveFailures = 0;
+    }
+  }
+}
+
+// Reset failure count on successful API call
+function resetApiFailures() {
+  errorTracker.consecutiveFailures = 0;
+  errorTracker.apiFailures.clear();
+}
+
+// Cache management functions
+function getCacheKey(lat: number, lon: number, radius: number = 10000): string {
+  // Round coordinates to reduce cache fragmentation
+  const roundedLat = Math.round(lat * 1000) / 1000;
+  const roundedLon = Math.round(lon * 1000) / 1000;
+  return `${roundedLat},${roundedLon},${radius}`;
+}
+
+function getCachedResponse(cacheKey: string): any | null {
+  const entry = responseCache.get(cacheKey);
+  if (!entry) return null;
+  
+  const now = Date.now();
+  if (now - entry.timestamp > CACHE_DURATION) {
+    responseCache.delete(cacheKey);
+    return null;
+  }
+  
+  return entry.data;
+}
+
+function setCachedResponse(cacheKey: string, data: any, location: string) {
+  // Clean up old entries if cache is full
+  if (responseCache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = responseCache.keys().next().value;
+    responseCache.delete(oldestKey);
+  }
+  
+  responseCache.set(cacheKey, {
+    data,
+    timestamp: Date.now(),
+    location
+  });
+}
+
 // Calculate distance between two points using Haversine formula
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth's radius in kilometers
@@ -55,7 +146,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-// Find the nearest major city with AQI data using OpenAQ API
+// Enhanced location detection with multiple fallback strategies
 async function findNearestMajorCity(userLat: number, userLon: number, apiKey: string): Promise<CityData> {
   try {
     // Search for cities within a reasonable radius (100km) to find major cities
@@ -103,7 +194,7 @@ async function findNearestMajorCity(userLat: number, userLon: number, apiKey: st
                 name: city.name,
                 lat: city.coordinates.latitude,
                 lon: city.coordinates.longitude,
-                country: city.country,
+                country: city.country?.name || city.country?.code || 'Unknown',
                 distance: distance
               };
             }
@@ -119,7 +210,37 @@ async function findNearestMajorCity(userLat: number, userLon: number, apiKey: st
       return nearestCity;
     }
 
-    // Fallback to user's location if no cities found
+    // Enhanced fallback: Try to get better location info using reverse geocoding
+    try {
+      const reverseGeocodeResponse = await fetch(
+        `https://api.openaq.org/v2/cities?coordinates=${userLat},${userLon}&radius=1000&limit=1`,
+        {
+          headers: {
+            'X-API-Key': apiKey,
+            'Accept': 'application/json'
+          }
+        }
+      );
+      
+      if (reverseGeocodeResponse.ok) {
+        const geoData = await reverseGeocodeResponse.json();
+        const location = geoData.results?.[0];
+        
+        if (location) {
+          return {
+            name: location.name || location.city || 'Your Location',
+            lat: userLat,
+            lon: userLon,
+            country: location.country || 'Unknown',
+            distance: 0
+          };
+        }
+      }
+    } catch (reverseError) {
+      console.error('Reverse geocoding failed:', reverseError);
+    }
+
+    // Final fallback to user's location
     return {
       name: 'Your Location',
       lat: userLat,
@@ -214,6 +335,17 @@ serve(async (req) => {
       throw new Error('Latitude and longitude are required');
     }
 
+    // Check cache first for recent requests
+    const cacheKey = getCacheKey(lat, lon);
+    const cachedResponse = getCachedResponse(cacheKey);
+    
+    if (cachedResponse) {
+      console.log('Returning cached response for location:', cachedResponse.location);
+      return new Response(JSON.stringify(cachedResponse), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const OPENAQ_API_KEY = Deno.env.get('OPENAQ_API_KEY');
     console.log('Environment variable check:', {
       hasApiKey: !!OPENAQ_API_KEY,
@@ -256,6 +388,9 @@ serve(async (req) => {
         canWithdraw: false
       };
       
+      // Cache the fallback response
+      setCachedResponse(cacheKey, fallbackResponse, 'Nairobi Region');
+      
       return new Response(JSON.stringify(fallbackResponse), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -263,9 +398,6 @@ serve(async (req) => {
     
     // Skip API key test to improve performance
     console.log('Proceeding with air quality data collection...');
-
-    // Cache disabled for real-time data collection
-    // Each request will generate fresh data and save to database
 
     // Get user's location details
     let userLocationDetails;
@@ -303,8 +435,10 @@ serve(async (req) => {
         if (airResponse.ok) {
           airData = await airResponse.json();
           console.log('v3 measurements endpoint successful');
+          resetApiFailures(); // Reset failure count on success
         } else {
           console.log('v3 measurements endpoint failed, trying alternative...');
+          trackApiFailure('v3_measurements', `Status: ${airResponse.status}`);
           throw new Error(`v3 measurements failed: ${airResponse.status}`);
         }
       } catch (error) {
@@ -325,8 +459,10 @@ serve(async (req) => {
           if (airResponse.ok) {
             airData = await airResponse.json();
             console.log('v3 locations endpoint successful');
+            resetApiFailures(); // Reset failure count on success
           } else {
             console.log('v3 locations endpoint failed, trying v2 fallback...');
+            trackApiFailure('v3_locations', `Status: ${airResponse.status}`);
             throw new Error(`v3 locations failed: ${airResponse.status}`);
           }
         } catch (v3Error) {
@@ -347,12 +483,18 @@ serve(async (req) => {
             if (airResponse.ok) {
               airData = await airResponse.json();
               console.log('v2 measurements endpoint successful (fallback)');
+              resetApiFailures(); // Reset failure count on success
             } else {
+              trackApiFailure('v2_measurements', `Status: ${airResponse.status}`);
               throw new Error(`v2 measurements failed: ${airResponse.status}`);
             }
           } catch (v2Error) {
             console.log('All API endpoints failed, using fallback data');
-            throw new Error(`All endpoints failed: v3 measurements (${error.message}), v3 locations (${v3Error.message}), v2 measurements (${v2Error.message})`);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            const v3ErrorMsg = v3Error instanceof Error ? v3Error.message : String(v3Error);
+            const v2ErrorMsg = v2Error instanceof Error ? v2Error.message : String(v2Error);
+            trackApiFailure('all_endpoints', `v3 measurements (${errorMsg}), v3 locations (${v3ErrorMsg}), v2 measurements (${v2ErrorMsg})`);
+            throw new Error(`All endpoints failed: v3 measurements (${errorMsg}), v3 locations (${v3ErrorMsg}), v2 measurements (${v2ErrorMsg})`);
           }
         }
       }
@@ -400,9 +542,9 @@ serve(async (req) => {
         
         // Extract sensor information from the location
         const availableSensors: string[] = [];
-        airData.results.forEach(location => {
+        airData.results.forEach((location: any) => {
           if (location.sensors) {
-            location.sensors.forEach(sensor => {
+            location.sensors.forEach((sensor: any) => {
               const param = sensor.parameter?.name?.toLowerCase() || '';
               console.log('Found sensor:', { param, sensor: sensor.name });
               
@@ -513,6 +655,7 @@ serve(async (req) => {
             
           } else {
             console.log('Measurements API call failed, using fallback values');
+            trackApiFailure('measurements_api', `Status: ${measurementsResponse.status}`);
             // Use fallback values if measurements API fails
             aqi = 65;
             pm25 = 25.5;
@@ -523,7 +666,8 @@ serve(async (req) => {
             o3 = 45.6;
           }
         } catch (measurementError) {
-          console.log('Error fetching measurements, using fallback values:', measurementError.message);
+          console.log('Error fetching measurements, using fallback values:', measurementError instanceof Error ? measurementError.message : String(measurementError));
+          trackApiFailure('measurements_fetch', measurementError instanceof Error ? measurementError.message : String(measurementError));
           // Use fallback values if measurements API fails
           aqi = 65;
           pm25 = 25.5;
@@ -664,7 +808,7 @@ serve(async (req) => {
                   console.log('Air quality reading saved successfully. Points will be automatically updated by database trigger.');
                 }
               } catch (dbSaveError) {
-                console.log('Error saving reading to database:', dbSaveError.message);
+                console.log('Error saving reading to database:', dbSaveError instanceof Error ? dbSaveError.message : String(dbSaveError));
               }
               
             } else {
@@ -674,7 +818,7 @@ serve(async (req) => {
             console.log('No authorization header found');
           }
         } catch (dbError) {
-          console.log('Database error:', dbError.message);
+          console.log('Database error:', dbError instanceof Error ? dbError.message : String(dbError));
         }
       }
       
@@ -704,12 +848,15 @@ serve(async (req) => {
         canWithdraw
       };
       
+      // Cache the successful response
+      setCachedResponse(cacheKey, response, nearestCity.name);
+      
       return new Response(JSON.stringify(response), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
       
     } catch (apiError) {
-      console.log('OpenAQ API error, using fallback data:', apiError.message);
+      console.log('OpenAQ API error, using fallback data:', apiError instanceof Error ? apiError.message : String(apiError));
       console.log('Full error details:', apiError);
       // Return fallback data if API fails
       const fallbackResponse = {
@@ -737,13 +884,16 @@ serve(async (req) => {
         canWithdraw: false
       };
       
+      // Cache the fallback response
+      setCachedResponse(cacheKey, fallbackResponse, 'Nairobi Region');
+      
       return new Response(JSON.stringify(fallbackResponse), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
   } catch (error) {
     console.error('Error in get-air-quality function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
