@@ -208,6 +208,12 @@ serve(async (req) => {
     }
 
     const OPENAQ_API_KEY = Deno.env.get('OPENAQ_API_KEY');
+    console.log('Environment variable check:', {
+      hasApiKey: !!OPENAQ_API_KEY,
+      apiKeyLength: OPENAQ_API_KEY?.length || 0,
+      apiKeyStart: OPENAQ_API_KEY?.substring(0, 10) + '...' || 'none'
+    });
+    
     if (!OPENAQ_API_KEY) {
       console.log('OpenAQ API key not configured, using fallback AQI calculation');
       // Return fallback data instead of throwing error
@@ -261,10 +267,16 @@ serve(async (req) => {
     let airData;
     
     try {
+      console.log('Starting OpenAQ API calls with key:', OPENAQ_API_KEY.substring(0, 10) + '...');
+      
       userLocationDetails = await getUserLocationDetails(lat, lon, OPENAQ_API_KEY);
+      console.log('User location details obtained');
+      
       nearestCity = await findNearestMajorCity(lat, lon, OPENAQ_API_KEY);
+      console.log('Nearest city found:', nearestCity);
       
       // Get air quality data from OpenAQ API v3
+      console.log('Making OpenAQ measurements API call...');
       const airResponse = await fetch(
         `https://api.openaq.org/v3/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=10000&limit=100`,
         {
@@ -274,6 +286,8 @@ serve(async (req) => {
           }
         }
       );
+      
+      console.log('OpenAQ API response status:', airResponse.status);
       
       if (!airResponse.ok) {
         throw new Error(`OpenAQ API error: ${airResponse.status}`);
@@ -292,8 +306,11 @@ serve(async (req) => {
       if (!airData.results || airData.results.length === 0) {
         throw new Error('No air quality data available');
       }
+      
+      console.log('OpenAQ API call successful, processing data...');
     } catch (apiError) {
       console.log('OpenAQ API error, using fallback data:', apiError.message);
+      console.log('Full error details:', apiError);
       // Return fallback data if API fails
       const fallbackResponse = {
         location: 'Nairobi Region',
