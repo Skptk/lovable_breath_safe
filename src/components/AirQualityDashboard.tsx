@@ -184,13 +184,13 @@ export default function AirQualityDashboard(): JSX.Element {
     queryFn: fetchAirQualityData,
     gcTime: 0, // No caching
     staleTime: 0, // Always consider data stale
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Disable to reduce unnecessary calls
     refetchOnMount: true,
     refetchOnReconnect: true,
     refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes for more frequent data collection
     refetchIntervalInBackground: true,
-    retry: 3, // Retry failed requests
-    retryDelay: 1000, // Wait 1 second between retries
+    retry: 2, // Reduce retries for faster failure detection
+    retryDelay: 500, // Faster retry delay
   });
 
   // Fetch user points when component mounts or user changes
@@ -269,19 +269,30 @@ export default function AirQualityDashboard(): JSX.Element {
     });
   };
 
-  // Handle loading state
+  // Handle loading state with skeleton loading for better UX
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+      <div className="min-h-screen bg-background p-4 space-y-6">
+        {/* Skeleton Header */}
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <div className="h-8 w-32 bg-muted animate-pulse rounded"></div>
+            <div className="h-4 w-48 bg-muted animate-pulse rounded"></div>
           </div>
-          <p className="text-muted-foreground">Getting your location...</p>
-          <p className="text-xs text-muted-foreground">Please allow location access when prompted</p>
-          <div className="text-sm text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-lg max-w-sm">
-            <p><strong>Mobile users:</strong> Make sure location services are enabled in your device settings</p>
-          </div>
+          <div className="h-9 w-24 bg-muted animate-pulse rounded"></div>
+        </div>
+        
+        {/* Skeleton Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="h-48 bg-muted animate-pulse rounded-lg"></div>
+          <div className="h-48 bg-muted animate-pulse rounded-lg"></div>
+        </div>
+        
+        {/* Skeleton Content */}
+        <div className="space-y-4">
+          <div className="h-32 bg-muted animate-pulse rounded-lg"></div>
+          <div className="h-32 bg-muted animate-pulse rounded-lg"></div>
+          <div className="h-32 bg-muted animate-pulse rounded-lg"></div>
         </div>
       </div>
     );

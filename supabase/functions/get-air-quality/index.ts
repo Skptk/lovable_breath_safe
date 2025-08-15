@@ -261,44 +261,11 @@ serve(async (req) => {
       });
     }
     
-    // Test the API key with a simple call
-    console.log('Testing OpenAQ API key with a simple call...');
-    console.log('Current timestamp:', new Date().toISOString());
-    try {
-      const testResponse = await fetch('https://api.openaq.org/v3/locations?limit=1', {
-        headers: {
-          'X-API-Key': OPENAQ_API_KEY,
-          'Accept': 'application/json'
-        }
-      });
-      console.log('Test API call status:', testResponse.status);
-      if (testResponse.ok) {
-        const testData = await testResponse.json();
-        console.log('Test API call successful, data:', testData);
-      } else {
-        console.log('Test API call failed with status:', testResponse.status);
-      }
-    } catch (testError) {
-      console.log('Test API call error:', testError.message);
-    }
+    // Skip API key test to improve performance
+    console.log('Proceeding with air quality data collection...');
 
-    // Check cache first (implement simple in-memory cache for demo)
-    // In production, use Redis or database for caching
-    const cacheKey = `aqi_${lat.toFixed(4)}_${lon.toFixed(4)}`;
-    const cache = new Map();
-    
-    if (cache.has(cacheKey)) {
-      const cached = cache.get(cacheKey);
-      const now = Date.now();
-      
-      // Cache expires after 5 minutes
-      if (now - cached.timestamp < 5 * 60 * 1000) {
-        console.log('Returning cached AQI data');
-        return new Response(JSON.stringify(cached.data), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    }
+    // Cache disabled for real-time data collection
+    // Each request will generate fresh data and save to database
 
     // Get user's location details
     let userLocationDetails;
@@ -760,12 +727,6 @@ serve(async (req) => {
         currencyRewards,
         canWithdraw
       };
-      
-      // Cache the result
-      cache.set(cacheKey, {
-        data: response,
-        timestamp: Date.now()
-      });
       
       return new Response(JSON.stringify(response), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
