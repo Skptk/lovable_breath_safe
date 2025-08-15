@@ -715,6 +715,9 @@ serve(async (req) => {
                     canWithdraw = newTotalPoints >= 500000;
                     
                     console.log('Points awarded:', pointsToAward, 'New total:', newTotalPoints);
+                  } else {
+                    // Even if AQI is not good, still save the reading for tracking purposes
+                    console.log('AQI not in good range, but reading saved for tracking');
                   }
                 }
               } catch (dbSaveError) {

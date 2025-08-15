@@ -125,6 +125,11 @@ export default function HistoryView(): JSX.Element {
       }));
 
       setHistory(transformedData);
+      
+      // If no history, ensure user points are reset to 0
+      if (transformedData.length === 0) {
+        await resetUserPoints();
+      }
     } catch (error: any) {
       console.error('Error fetching history:', error);
       setError(error.message || 'Failed to fetch history');
@@ -138,12 +143,33 @@ export default function HistoryView(): JSX.Element {
     }
   };
 
+  // Function to reset user points when they have no history
+  const resetUserPoints = async (): Promise<void> => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ total_points: 0 })
+        .eq('user_id', user.id);
+      
+      if (error) {
+        console.error('Error resetting user points:', error);
+      } else {
+        console.log('User points reset to 0 (no history)');
+      }
+    } catch (error) {
+      console.error('Error in resetUserPoints:', error);
+    }
+  };
+
   const clearHistory = async (): Promise<void> => {
     if (!user) return;
     
     try {
       setClearing(true);
       
+      // First, delete all air quality readings
       const { error: deleteError } = await supabase
         .from('air_quality_readings')
         .delete()
@@ -153,13 +179,24 @@ export default function HistoryView(): JSX.Element {
         throw deleteError;
       }
 
+      // Then, reset user points to 0 since they have no history
+      const { error: pointsError } = await supabase
+        .from('profiles')
+        .update({ total_points: 0 })
+        .eq('user_id', user.id);
+
+      if (pointsError) {
+        console.error('Error resetting points:', pointsError);
+        // Don't throw here, as the main deletion was successful
+      }
+
       // Clear local state
       setHistory([]);
       setSelectedEntries(new Set());
       
       toast({
-        title: "History Cleared",
-        description: "All air quality readings have been deleted successfully.",
+        title: "History & Points Cleared",
+        description: "All air quality readings and points have been reset successfully.",
         variant: "default",
       });
       

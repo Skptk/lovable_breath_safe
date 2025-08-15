@@ -187,8 +187,10 @@ export default function AirQualityDashboard(): JSX.Element {
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     refetchOnReconnect: true,
-    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    refetchInterval: 2 * 60 * 1000, // Refresh every 2 minutes for more frequent data collection
     refetchIntervalInBackground: true,
+    retry: 3, // Retry failed requests
+    retryDelay: 1000, // Wait 1 second between retries
   });
 
   // Fetch user points when component mounts or user changes
@@ -387,7 +389,7 @@ export default function AirQualityDashboard(): JSX.Element {
             {isRefetching ? 'Refreshing...' : 'Refresh'}
           </Button>
           <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
-            Auto-refresh: 5min
+            Auto-refresh: 2min
           </div>
         </div>
       </div>
@@ -474,6 +476,9 @@ export default function AirQualityDashboard(): JSX.Element {
             <p className="text-xs text-muted-foreground">
               💡 <strong>Note:</strong> AQI data is collected from the nearest major city with reliable air quality monitoring. 
               This provides more accurate readings than hyper-local estimates.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              🔄 <strong>Data Collection:</strong> New readings are automatically collected every 2 minutes and stored in your history.
             </p>
           </div>
         </CardContent>
