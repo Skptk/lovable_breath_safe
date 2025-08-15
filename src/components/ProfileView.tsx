@@ -80,15 +80,18 @@ interface UserSettings {
   };
 }
 
+// Default settings
+const DEFAULT_SETTINGS: UserSettings = {
+  notifications: { email: true, push: true, airQualityAlerts: true, weeklyReports: false },
+  privacy: { shareData: false, publicProfile: false, locationHistory: true },
+  preferences: { theme: 'system', language: 'en', units: 'metric', dataRetention: '90days' },
+  location: { autoLocation: true, locationAccuracy: 'high', locationHistory: true }
+};
+
 export default function ProfileView() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
-  const [userSettings, setUserSettings] = useState<UserSettings>({
-    notifications: { email: true, push: true, airQualityAlerts: true, weeklyReports: false },
-    privacy: { shareData: false, publicProfile: false, locationHistory: true },
-    preferences: { theme: 'system', language: 'en', units: 'metric', dataRetention: '90days' },
-    location: { autoLocation: true, locationAccuracy: 'high', locationHistory: true }
-  });
+  const [userSettings, setUserSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -178,19 +181,17 @@ export default function ProfileView() {
     }
   };
 
-  const loadUserSettings = async () => {
+  const loadUserSettings = () => {
     try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('user_settings')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (data?.user_settings) {
-        setUserSettings({ ...userSettings, ...data.user_settings });
+      const savedSettings = localStorage.getItem(`breath-safe-settings-${user?.id}`);
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        setUserSettings({ ...userSettings, ...parsedSettings });
       }
     } catch (error) {
       console.error('Error loading user settings:', error);
+      // Fallback to default settings
+      setUserSettings(DEFAULT_SETTINGS);
     }
   };
 
@@ -226,19 +227,12 @@ export default function ProfileView() {
     }
   };
 
-  const saveSettings = async () => {
+  const saveSettings = () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          user_settings: userSettings,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
-
+      // Save to localStorage instead of database
+      localStorage.setItem(`breath-safe-settings-${user?.id}`, JSON.stringify(userSettings));
+      
       toast({
         title: "Success",
         description: "Settings saved successfully",
