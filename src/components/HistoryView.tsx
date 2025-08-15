@@ -75,6 +75,8 @@ export default function HistoryView(): JSX.Element {
   const [clearing, setClearing] = useState(false);
   const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [showFetchButton, setShowFetchButton] = useState(false);
+  const [fetchingData, setFetchingData] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -126,9 +128,13 @@ export default function HistoryView(): JSX.Element {
 
       setHistory(transformedData);
       
-      // If no history, ensure user points are reset to 0
+      // If no history, ensure user points are reset to 0 and show fetch button
       if (transformedData.length === 0) {
         await resetUserPoints();
+        setShowFetchButton(true);
+      } else {
+        // Hide fetch button if there's already data
+        setShowFetchButton(false);
       }
     } catch (error: any) {
       console.error('Error fetching history:', error);
@@ -163,6 +169,72 @@ export default function HistoryView(): JSX.Element {
     }
   };
 
+  // Function to manually fetch AQI data
+  const fetchAQIData = async (): Promise<void> => {
+    if (!user) return;
+    
+    try {
+      setFetchingData(true);
+      
+      // Get user's current location
+      if (!navigator.geolocation) {
+        toast({
+          title: "Location Error",
+          description: "Geolocation not supported by your browser",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 30000,
+          enableHighAccuracy: false,
+          maximumAge: 10 * 60 * 1000
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      
+      // Call the Edge Function to get AQI data
+      const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
+        body: { lat: latitude, lon: longitude }
+      });
+
+      if (error) {
+        throw new Error(`Supabase function error: ${error.message}`);
+      }
+
+      if (!response) {
+        throw new Error('No response data received');
+      }
+
+      toast({
+        title: "AQI Data Fetched",
+        description: "New air quality data has been collected and saved to your history.",
+        variant: "default",
+      });
+
+      // Hide the fetch button after successful use
+      setShowFetchButton(false);
+      
+      // Refresh the history to show the new data
+      setTimeout(() => {
+        fetchHistory();
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('Error fetching AQI data:', error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to fetch AQI data',
+        variant: "destructive",
+      });
+    } finally {
+      setFetchingData(false);
+    }
+  };
+
   const clearHistory = async (): Promise<void> => {
     if (!user) return;
     
@@ -194,9 +266,12 @@ export default function HistoryView(): JSX.Element {
       setHistory([]);
       setSelectedEntries(new Set());
       
+      // Show the fetch button after clearing history
+      setShowFetchButton(true);
+      
       toast({
         title: "History & Points Cleared",
-        description: "All air quality readings and points have been reset successfully.",
+        description: "All air quality readings and points have been reset successfully. Click 'Fetch AQI Data' to start collecting new readings.",
         variant: "default",
       });
       
@@ -539,6 +614,43 @@ export default function HistoryView(): JSX.Element {
           )}
         </div>
       </div>
+
+      {/* Fetch AQI Data Button - Only shown after clearing history */}
+      {showFetchButton && (
+        <Card className="bg-gradient-card shadow-card border-0 border-2 border-primary/20">
+          <CardContent className="p-6 text-center">
+            <div className="space-y-4">
+              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <MapPin className="w-8 h-8 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Start Collecting AQI Data</h3>
+                <p className="text-sm text-muted-foreground">
+                  Click the button below to fetch your first air quality reading and start building your history.
+                </p>
+              </div>
+              <Button
+                onClick={fetchAQIData}
+                disabled={fetchingData}
+                className="w-full max-w-xs"
+                size="lg"
+              >
+                {fetchingData ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Fetching AQI Data...
+                  </>
+                ) : (
+                  <>
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Fetch AQI Data
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
