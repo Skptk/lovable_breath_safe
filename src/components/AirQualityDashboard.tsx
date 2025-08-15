@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { RefreshCw, History, Map, Download, MapPin, Loader2, AlertTriangle, Trophy } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import PollutantModal from "./PollutantModal";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AirQualityData {
   aqi: number;
@@ -57,7 +58,9 @@ export default function AirQualityDashboard(): JSX.Element {
     value: number;
     unit: string;
   } | null>(null);
+  const [userPoints, setUserPoints] = useState<number>(0);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchAirQualityData = async (): Promise<AirQualityData> => {
     if (!navigator.geolocation) {
@@ -87,12 +90,18 @@ export default function AirQualityDashboard(): JSX.Element {
       throw new Error('No response data received');
     }
 
+    // Debug: Log the response structure
+    console.log('Supabase function response:', response);
+    console.log('Response type:', typeof response);
+    console.log('Response keys:', Object.keys(response));
+
 
 
     // Check if the response has the expected structure
     if (response && typeof response === 'object' && 'pollutants' in response) {
       // New enhanced format with capital city data
       const typedResponse = response as any;
+      console.log('Using enhanced format, AQI:', typedResponse.aqi);
       return {
         aqi: typedResponse.aqi,
         pm25: typedResponse.pollutants.pm25,
@@ -139,10 +148,45 @@ export default function AirQualityDashboard(): JSX.Element {
     queryFn: fetchAirQualityData,
     gcTime: 5 * 60 * 1000, // 5 minutes
     staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
+
+  // Fetch user points when component mounts or user changes
+  useEffect(() => {
+    if (user) {
+      fetchUserPoints();
+    }
+  }, [user]);
+
+  const fetchUserPoints = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('total_points')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user points:', error);
+        return;
+      }
+      
+      if (profile) {
+        setUserPoints(profile.total_points || 0);
+      }
+    } catch (err) {
+      console.error('Error fetching user points:', err);
+    }
+  };
 
   const handleRefresh = () => {
     refetch();
+    if (user) {
+      fetchUserPoints();
+    }
     toast({
       title: "Refreshing data",
       description: "Fetching latest air quality information...",
@@ -312,7 +356,7 @@ export default function AirQualityDashboard(): JSX.Element {
                 </Badge>
               </div>
               <div className="text-3xl font-bold text-primary">
-                0
+                {userPoints}
               </div>
               <p className="text-sm text-muted-foreground">
                 Earn points for good air quality days

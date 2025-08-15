@@ -268,6 +268,9 @@ serve(async (req) => {
       ? `${userLocationDetails.country}${userLocationDetails.state ? `, ${userLocationDetails.state}` : ''}`
       : `${userLocationDetails.country}${userLocationDetails.state ? `, ${userLocationDetails.state}` : ''} (${Math.round(nearestCity.distance)}km from ${nearestCity.name})`;
     
+    // Convert OpenWeatherMap AQI to standard scale FIRST
+    const standardAQI = convertOpenWeatherMapAQIToStandard(currentData.main.aqi);
+    
     // Save to database if user is authenticated
     const authHeader = req.headers.get('authorization');
     if (authHeader) {
@@ -324,9 +327,6 @@ serve(async (req) => {
         }
       }
     }
-
-    // Convert OpenWeatherMap AQI to standard scale
-    const standardAQI = convertOpenWeatherMapAQIToStandard(currentData.main.aqi);
     
     const response = {
       location: locationDescription,
