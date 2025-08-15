@@ -307,9 +307,17 @@ serve(async (req) => {
       nearestCity = await findNearestMajorCity(lat, lon, OPENAQ_API_KEY);
       console.log('Nearest city found:', nearestCity);
       
-      // Get air quality data from OpenAQ API v3
-      console.log('Making OpenAQ measurements API call...');
-      const airResponse = await fetch(
+          // Get air quality data from OpenAQ API v3
+    console.log('Making OpenAQ measurements API call...');
+    
+    // Try multiple endpoint formats for v3
+    let airResponse;
+    let airData;
+    
+    // First try: v3 measurements with coordinates
+    try {
+      console.log('Trying v3 measurements endpoint with coordinates...');
+      airResponse = await fetch(
         `https://api.openaq.org/v3/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=10000&limit=100`,
         {
           headers: {
@@ -319,13 +327,64 @@ serve(async (req) => {
         }
       );
       
-      console.log('OpenAQ API response status:', airResponse.status);
-      
-      if (!airResponse.ok) {
-        throw new Error(`OpenAQ API error: ${airResponse.status}`);
+      if (airResponse.ok) {
+        airData = await airResponse.json();
+        console.log('v3 measurements endpoint successful');
+      } else {
+        console.log('v3 measurements endpoint failed, trying alternative...');
+        throw new Error(`v3 measurements failed: ${airResponse.status}`);
       }
-
-      airData = await airResponse.json();
+    } catch (error) {
+      console.log('First attempt failed, trying v3 locations endpoint...');
+      
+      // Second try: v3 locations with coordinates
+      try {
+        airResponse = await fetch(
+          `https://api.openaq.org/v3/locations?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=10000&limit=100`,
+          {
+            headers: {
+              'X-API-Key': OPENAQ_API_KEY,
+              'Accept': 'application/json'
+            }
+          }
+        );
+        
+        if (airResponse.ok) {
+          airData = await airResponse.json();
+          console.log('v3 locations endpoint successful');
+        } else {
+          console.log('v3 locations endpoint failed, trying v2 fallback...');
+          throw new Error(`v3 locations failed: ${airResponse.status}`);
+        }
+      } catch (v3Error) {
+        console.log('v3 endpoints failed, trying v2 measurements as fallback...');
+        
+        // Third try: v2 measurements (fallback)
+        try {
+          airResponse = await fetch(
+            `https://api.openaq.org/v2/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=10000&limit=100`,
+            {
+              headers: {
+                'X-API-Key': OPENAQ_API_KEY,
+                'Accept': 'application/json'
+              }
+            }
+          );
+          
+          if (airResponse.ok) {
+            airData = await airResponse.json();
+            console.log('v2 measurements endpoint successful (fallback)');
+          } else {
+            throw new Error(`v2 measurements failed: ${airResponse.status}`);
+          }
+        } catch (v2Error) {
+          console.log('All API endpoints failed, using fallback data');
+          throw new Error(`All endpoints failed: v3 measurements (${error.message}), v3 locations (${v3Error.message}), v2 measurements (${v2Error.message})`);
+        }
+      }
+    }
+      
+          console.log('OpenAQ API response status:', airResponse.status);
       
       // Debug: Log the raw OpenAQ response
       console.log('OpenAQ API Response:', {
