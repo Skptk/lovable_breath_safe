@@ -18,7 +18,11 @@ interface AirQualityData {
   co: number;
   o3: number;
   location: string;
+  userLocation: string;
+  coordinates: { lat: number; lon: number };
+  userCoordinates: { lat: number; lon: number };
   timestamp: string;
+  dataSource: string;
 }
 
 // AQI Range definitions with colors and descriptions
@@ -199,7 +203,7 @@ export default function AirQualityDashboard(): JSX.Element {
 
     // Check if the response has the expected structure
     if (response && typeof response === 'object' && 'pollutants' in response) {
-      // New format with pollutants object
+      // New enhanced format with capital city data
       const typedResponse = response as any;
       return {
         aqi: typedResponse.aqi,
@@ -210,10 +214,14 @@ export default function AirQualityDashboard(): JSX.Element {
         co: typedResponse.pollutants.co,
         o3: typedResponse.pollutants.o3,
         location: typedResponse.location,
+        userLocation: typedResponse.userLocation || 'Unknown Location',
+        coordinates: typedResponse.coordinates || { lat: 0, lon: 0 },
+        userCoordinates: typedResponse.userCoordinates || { lat: 0, lon: 0 },
         timestamp: new Date(typedResponse.timestamp).toLocaleString(),
+        dataSource: typedResponse.dataSource || 'Unknown Source'
       };
     } else if (response && typeof response === 'object' && 'list' in response && Array.isArray((response as any).list)) {
-      // Raw OpenWeatherMap format
+      // Raw OpenWeatherMap format (fallback)
       const typedResponse = response as any;
       const currentData = typedResponse.list[0];
       return {
@@ -225,7 +233,11 @@ export default function AirQualityDashboard(): JSX.Element {
         co: currentData.components.co,
         o3: currentData.components.o3,
         location: typedResponse.location || 'Unknown Location',
+        userLocation: 'Location data unavailable',
+        coordinates: { lat: 0, lon: 0 },
+        userCoordinates: { lat: 0, lon: 0 },
         timestamp: new Date().toLocaleString(),
+        dataSource: 'Direct API response'
       };
     } else {
       // Fallback for unexpected format
@@ -343,6 +355,43 @@ export default function AirQualityDashboard(): JSX.Element {
             </div>
             <p className="text-sm text-muted-foreground">
               Air Quality Index • Updated {data.timestamp}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Location Information */}
+      <Card className="bg-gradient-card shadow-card border-0">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Location & Data Source
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">AQI Data Source:</span>
+              <Badge variant="outline" className="text-xs">
+                {data.location}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Your Location:</span>
+              <Badge variant="secondary" className="text-xs">
+                {data.userLocation}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Data Source:</span>
+              <span className="text-xs text-muted-foreground">{data.dataSource}</span>
+            </div>
+          </div>
+          
+          <div className="pt-2 border-t border-border/50">
+            <p className="text-xs text-muted-foreground">
+              💡 <strong>Note:</strong> AQI data is collected from the nearest major city with reliable air quality monitoring. 
+              This provides more accurate readings than hyper-local estimates.
             </p>
           </div>
         </CardContent>
