@@ -39,88 +39,13 @@ interface GeoLocation {
   local_names?: Record<string, string>;
 }
 
-interface CapitalCity {
+interface CityData {
   name: string;
   lat: number;
   lon: number;
   country: string;
   distance: number;
 }
-
-// Major capital cities with their coordinates for AQI data
-const CAPITAL_CITIES: CapitalCity[] = [
-  // Africa
-  { name: "Nairobi", lat: -1.2921, lon: 36.8219, country: "Kenya", distance: 0 },
-  { name: "Cairo", lat: 30.0444, lon: 31.2357, country: "Egypt", distance: 0 },
-  { name: "Lagos", lat: 6.5244, lon: 3.3792, country: "Nigeria", distance: 0 },
-  { name: "Johannesburg", lat: -26.2041, lon: 28.0473, country: "South Africa", distance: 0 },
-  { name: "Casablanca", lat: 33.5731, lon: -7.5898, country: "Morocco", distance: 0 },
-  { name: "Addis Ababa", lat: 9.0320, lon: 38.7489, country: "Ethiopia", distance: 0 },
-  { name: "Dar es Salaam", lat: -6.8235, lon: 39.2695, country: "Tanzania", distance: 0 },
-  { name: "Khartoum", lat: 15.5007, lon: 32.5599, country: "Sudan", distance: 0 },
-  { name: "Algiers", lat: 36.7538, lon: 3.0588, country: "Algeria", distance: 0 },
-  { name: "Accra", lat: 5.5600, lon: -0.2057, country: "Ghana", distance: 0 },
-  
-  // Europe
-  { name: "London", lat: 51.5074, lon: -0.1278, country: "United Kingdom", distance: 0 },
-  { name: "Paris", lat: 48.8566, lon: 2.3522, country: "France", distance: 0 },
-  { name: "Berlin", lat: 52.5200, lon: 13.4050, country: "Germany", distance: 0 },
-  { name: "Madrid", lat: 40.4168, lon: -3.7038, country: "Spain", distance: 0 },
-  { name: "Rome", lat: 41.9028, lon: 12.4964, country: "Italy", distance: 0 },
-  { name: "Amsterdam", lat: 52.3676, lon: 4.9041, country: "Netherlands", distance: 0 },
-  { name: "Brussels", lat: 50.8503, lon: 4.3517, country: "Belgium", distance: 0 },
-  { name: "Vienna", lat: 48.2082, lon: 16.3738, country: "Austria", distance: 0 },
-  { name: "Stockholm", lat: 59.3293, lon: 18.0686, country: "Sweden", distance: 0 },
-  { name: "Oslo", lat: 59.9139, lon: 10.7522, country: "Norway", distance: 0 },
-  
-  // Asia
-  { name: "Tokyo", lat: 35.6762, lon: 139.6503, country: "Japan", distance: 0 },
-  { name: "Beijing", lat: 39.9042, lon: 116.4074, country: "China", distance: 0 },
-  { name: "Seoul", lat: 37.5665, lon: 126.9780, country: "South Korea", distance: 0 },
-  { name: "Mumbai", lat: 19.0760, lon: 72.8777, country: "India", distance: 0 },
-  { name: "Delhi", lat: 28.7041, lon: 77.1025, country: "India", distance: 0 },
-  { name: "Bangkok", lat: 13.7563, lon: 100.5018, country: "Thailand", distance: 0 },
-  { name: "Singapore", lat: 1.3521, lon: 103.8198, country: "Singapore", distance: 0 },
-  { name: "Jakarta", lat: -6.2088, lon: 106.8456, country: "Indonesia", distance: 0 },
-  { name: "Manila", lat: 14.5995, lon: 120.9842, country: "Philippines", distance: 0 },
-  { name: "Ho Chi Minh City", lat: 10.8231, lon: 106.6297, country: "Vietnam", distance: 0 },
-  
-  // North America
-  { name: "New York", lat: 40.7128, lon: -74.0060, country: "United States", distance: 0 },
-  { name: "Los Angeles", lat: 34.0522, lon: -118.2437, country: "United States", distance: 0 },
-  { name: "Chicago", lat: 41.8781, lon: -87.6298, country: "United States", distance: 0 },
-  { name: "Toronto", lat: 43.6532, lon: -79.3832, country: "Canada", distance: 0 },
-  { name: "Vancouver", lat: 49.2827, lon: -123.1207, country: "Canada", distance: 0 },
-  { name: "Mexico City", lat: 19.4326, lon: -99.1332, country: "Mexico", distance: 0 },
-  { name: "Montreal", lat: 45.5017, lon: -73.5673, country: "Canada", distance: 0 },
-  { name: "San Francisco", lat: 37.7749, lon: -122.4194, country: "United States", distance: 0 },
-  { name: "Miami", lat: 25.7617, lon: -80.1918, country: "United States", distance: 0 },
-  { name: "Houston", lat: 29.7604, lon: -95.3698, country: "United States", distance: 0 },
-  
-  // South America
-  { name: "São Paulo", lat: -23.5505, lon: -46.6333, country: "Brazil", distance: 0 },
-  { name: "Rio de Janeiro", lat: -22.9068, lon: -43.1729, country: "Brazil", distance: 0 },
-  { name: "Buenos Aires", lat: -34.6118, lon: -58.3960, country: "Argentina", distance: 0 },
-  { name: "Lima", lat: -12.0464, lon: -77.0428, country: "Peru", distance: 0 },
-  { name: "Bogotá", lat: 4.7110, lon: -74.0721, country: "Colombia", distance: 0 },
-  { name: "Santiago", lat: -33.4489, lon: -70.6693, country: "Chile", distance: 0 },
-  { name: "Caracas", lat: 10.4806, lon: -66.9036, country: "Venezuela", distance: 0 },
-  { name: "Quito", lat: -0.1807, lon: -78.4678, country: "Ecuador", distance: 0 },
-  { name: "Montevideo", lat: -34.9011, lon: -56.1645, country: "Uruguay", distance: 0 },
-  { name: "Asunción", lat: -25.2637, lon: -57.5759, country: "Paraguay", distance: 0 },
-  
-  // Oceania
-  { name: "Sydney", lat: -33.8688, lon: 151.2093, country: "Australia", distance: 0 },
-  { name: "Melbourne", lat: -37.8136, lon: 144.9631, country: "Australia", distance: 0 },
-  { name: "Brisbane", lat: -27.4698, lon: 153.0251, country: "Australia", distance: 0 },
-  { name: "Perth", lat: -31.9505, lon: 115.8605, country: "Australia", distance: 0 },
-  { name: "Adelaide", lat: -34.9285, lon: 138.6007, country: "Australia", distance: 0 },
-  { name: "Auckland", lat: -36.8485, lon: 174.7633, country: "New Zealand", distance: 0 },
-  { name: "Wellington", lat: -41.2866, lon: 174.7756, country: "New Zealand", distance: 0 },
-  { name: "Honolulu", lat: 21.3099, lon: -157.8581, country: "United States", distance: 0 },
-  { name: "Port Moresby", lat: -9.4438, lon: 147.1803, country: "Papua New Guinea", distance: 0 },
-  { name: "Suva", lat: -18.1416, lon: 178.4419, country: "Fiji", distance: 0 }
-];
 
 // Calculate distance between two points using Haversine formula
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -135,34 +60,142 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-// Find the nearest capital city to user's location
-function findNearestCapitalCity(userLat: number, userLon: number): CapitalCity {
-  let nearestCity = CAPITAL_CITIES[0];
-  let shortestDistance = Infinity;
+// Find the nearest major city with AQI data using OpenWeatherMap API
+async function findNearestMajorCity(userLat: number, userLon: number, apiKey: string): Promise<CityData> {
+  try {
+    // Search for cities within a reasonable radius (100km) to find major cities
+    const searchRadius = 100; // km
+    const latDelta = searchRadius / 111; // Approximate degrees per km
+    
+    // Search in a grid pattern around the user's location
+    const searchPoints = [
+      { lat: userLat, lon: userLon }, // User's exact location
+      { lat: userLat + latDelta, lon: userLon }, // North
+      { lat: userLat - latDelta, lon: userLon }, // South
+      { lat: userLat, lon: userLon + latDelta }, // East
+      { lat: userLat, lon: userLon - latDelta }, // West
+      { lat: userLat + latDelta, lon: userLon + latDelta }, // Northeast
+      { lat: userLat + latDelta, lon: userLon - latDelta }, // Northwest
+      { lat: userLat - latDelta, lon: userLon + latDelta }, // Southeast
+      { lat: userLat - latDelta, lon: userLon - latDelta }, // Southwest
+    ];
 
-  for (const city of CAPITAL_CITIES) {
-    const distance = calculateDistance(userLat, userLon, city.lat, city.lon);
-    if (distance < shortestDistance) {
-      shortestDistance = distance;
-      nearestCity = { ...city, distance };
+    let nearestCity: CityData | null = null;
+    let shortestDistance = Infinity;
+
+    for (const point of searchPoints) {
+      try {
+        // Search for cities at this point
+        const geoResponse = await fetch(
+          `http://api.openweathermap.org/geo/1.0/reverse?lat=${point.lat}&lon=${point.lon}&limit=5&appid=${apiKey}`
+        );
+        
+        if (geoResponse.ok) {
+          const cities: GeoLocation[] = await geoResponse.json();
+          
+          for (const city of cities) {
+            // Check if this city has a substantial population (major city)
+            if (city.name && city.country && city.name.length > 2) {
+              const distance = calculateDistance(userLat, userLon, city.lat, city.lon);
+              
+              // Prefer cities within reasonable distance and with recognizable names
+              if (distance < shortestDistance && distance < 200) { // Max 200km
+                shortestDistance = distance;
+                nearestCity = {
+                  name: city.name,
+                  lat: city.lat,
+                  lon: city.lon,
+                  country: city.country,
+                  distance: distance
+                };
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error searching at point ${point.lat}, ${point.lon}:`, error);
+        continue;
+      }
     }
-  }
 
-  return nearestCity;
+    // If no major city found, use user's location as fallback
+    if (!nearestCity) {
+      const userLocationResponse = await fetch(
+        `http://api.openweathermap.org/geo/1.0/reverse?lat=${userLat}&lon=${userLon}&limit=1&appid=${apiKey}`
+      );
+      
+      if (userLocationResponse.ok) {
+        const userLocation: GeoLocation[] = await userLocationResponse.json();
+        if (userLocation[0]) {
+          nearestCity = {
+            name: userLocation[0].name || 'Your Location',
+            lat: userLat,
+            lon: userLon,
+            country: userLocation[0].country || 'Unknown',
+            distance: 0
+          };
+        }
+      }
+    }
+
+    // Final fallback if everything fails
+    if (!nearestCity) {
+      nearestCity = {
+        name: 'Your Location',
+        lat: userLat,
+        lon: userLon,
+        country: 'Unknown',
+        distance: 0
+      };
+    }
+
+    return nearestCity;
+  } catch (error) {
+    console.error('Error finding nearest major city:', error);
+    // Return user's location as fallback
+    return {
+      name: 'Your Location',
+      lat: userLat,
+      lon: userLon,
+      country: 'Unknown',
+      distance: 0
+    };
+  }
 }
 
-// Get user's country from coordinates
-async function getUserCountry(lat: number, lon: number, apiKey: string): Promise<string> {
+// Get user's location details from coordinates
+async function getUserLocationDetails(lat: number, lon: number, apiKey: string): Promise<{
+  country: string;
+  state?: string;
+  city?: string;
+  area?: string;
+}> {
   try {
     const geoResponse = await fetch(
       `http://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`
     );
-    const geoData: GeoLocation[] = await geoResponse.json();
-    return geoData[0]?.country || 'Unknown';
+    
+    if (geoResponse.ok) {
+      const geoData: GeoLocation[] = await geoResponse.json();
+      const location = geoData[0];
+      
+      return {
+        country: location?.country || 'Unknown',
+        state: location?.state,
+        city: location?.name,
+        area: location?.local_names?.en || location?.name
+      };
+    }
   } catch (error) {
-    console.error('Error getting user country:', error);
-    return 'Unknown';
+    console.error('Error getting user location details:', error);
   }
+  
+  return {
+    country: 'Unknown',
+    state: undefined,
+    city: undefined,
+    area: undefined
+  };
 }
 
 serve(async (req) => {
@@ -182,15 +215,15 @@ serve(async (req) => {
       throw new Error('OpenWeatherMap API key not configured');
     }
 
-    // Get user's country
-    const userCountry = await getUserCountry(lat, lon, OPENWEATHERMAP_API_KEY);
+    // Get user's location details
+    const userLocationDetails = await getUserLocationDetails(lat, lon, OPENWEATHERMAP_API_KEY);
     
-    // Find nearest capital city
-    const nearestCapital = findNearestCapitalCity(lat, lon);
+    // Find nearest major city dynamically
+    const nearestCity = await findNearestMajorCity(lat, lon, OPENWEATHERMAP_API_KEY);
     
-    // Get air quality data from the nearest capital city (more reliable than user's exact location)
+    // Get air quality data from the nearest major city
     const airResponse = await fetch(
-      `http://api.openweathermap.org/data/2.5/air_pollution?lat=${nearestCapital.lat}&lon=${nearestCapital.lon}&appid=${OPENWEATHERMAP_API_KEY}`
+      `http://api.openweathermap.org/data/2.5/air_pollution?lat=${nearestCity.lat}&lon=${nearestCity.lon}&appid=${OPENWEATHERMAP_API_KEY}`
     );
     
     if (!airResponse.ok) {
@@ -205,9 +238,14 @@ serve(async (req) => {
 
     const currentData = airData.list[0];
     
-    // Create meaningful location description
-    const locationDescription = `${nearestCapital.name}, ${nearestCapital.country}`;
-    const userLocationDescription = `${userCountry} (${Math.round(nearestCapital.distance)}km from ${nearestCapital.name})`;
+    // Create meaningful location descriptions
+    const locationDescription = nearestCity.distance === 0 
+      ? `${nearestCity.name}, ${nearestCity.country}`
+      : `${nearestCity.name}, ${nearestCity.country}`;
+      
+    const userLocationDescription = nearestCity.distance === 0
+      ? `${userLocationDetails.country}${userLocationDetails.state ? `, ${userLocationDetails.state}` : ''}`
+      : `${userLocationDetails.country}${userLocationDetails.state ? `, ${userLocationDetails.state}` : ''} (${Math.round(nearestCity.distance)}km from ${nearestCity.name})`;
     
     // Save to database if user is authenticated
     const authHeader = req.headers.get('authorization');
@@ -269,7 +307,7 @@ serve(async (req) => {
     const response = {
       location: locationDescription,
       userLocation: userLocationDescription,
-      coordinates: { lat: nearestCapital.lat, lon: nearestCapital.lon },
+      coordinates: { lat: nearestCity.lat, lon: nearestCity.lon },
       userCoordinates: { lat, lon },
       aqi: currentData.main.aqi,
       pollutants: {
@@ -281,7 +319,9 @@ serve(async (req) => {
         o3: currentData.components.o3
       },
       timestamp: new Date(currentData.dt * 1000).toISOString(),
-      dataSource: `AQI data from ${nearestCapital.name} (${Math.round(nearestCapital.distance)}km away)`
+      dataSource: nearestCity.distance === 0 
+        ? `AQI data from your location`
+        : `AQI data from ${nearestCity.name} (${Math.round(nearestCity.distance)}km away)`
     };
 
     return new Response(JSON.stringify(response), {

@@ -173,18 +173,29 @@ export default function AirQualityDashboard(): JSX.Element {
 
   const fetchAirQualityData = async (): Promise<AirQualityData> => {
     if (!navigator.geolocation) {
-      throw new Error('Geolocation not supported');
+      throw new Error('Geolocation not supported by your browser');
+    }
+
+    // Check if location permission is granted
+    if (navigator.permissions) {
+      const permission = await navigator.permissions.query({ name: 'geolocation' });
+      if (permission.state === 'denied') {
+        throw new Error('Location access denied. Please enable location permissions in your browser settings.');
+      }
     }
 
     const position = await new Promise<GeolocationPosition>((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, {
-        timeout: 10000,
-        enableHighAccuracy: false,
-        maximumAge: 5 * 60 * 1000 // 5 minutes
+        timeout: 15000, // Increased timeout for better reliability
+        enableHighAccuracy: true, // Enable high accuracy for better location precision
+        maximumAge: 2 * 60 * 1000 // 2 minutes - more recent data
       });
     });
 
     const { latitude, longitude } = position.coords;
+    
+    // Log user's actual coordinates for debugging
+    console.log('User coordinates:', { latitude, longitude });
     
     const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
       body: { lat: latitude, lon: longitude }
@@ -271,7 +282,8 @@ export default function AirQualityDashboard(): JSX.Element {
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Loading air quality data...</p>
+          <p className="text-muted-foreground">Getting your location...</p>
+          <p className="text-xs text-muted-foreground">Please allow location access when prompted</p>
         </div>
       </div>
     );
