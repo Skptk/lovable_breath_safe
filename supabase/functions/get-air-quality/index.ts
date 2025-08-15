@@ -214,6 +214,13 @@ serve(async (req) => {
       apiKeyStart: OPENAQ_API_KEY?.substring(0, 10) + '...' || 'none'
     });
     
+    // Test all environment variables to see what's available
+    console.log('All available environment variables:', {
+      supabaseUrl: Deno.env.get('SUPABASE_URL') ? 'SET' : 'NOT SET',
+      supabaseKey: Deno.env.get('SUPABASE_ANON_KEY') ? 'SET' : 'NOT SET',
+      openaqKey: Deno.env.get('OPENAQ_API_KEY') ? 'SET' : 'NOT SET'
+    });
+    
     if (!OPENAQ_API_KEY) {
       console.log('OpenAQ API key not configured, using fallback AQI calculation');
       // Return fallback data instead of throwing error
@@ -241,6 +248,26 @@ serve(async (req) => {
       return new Response(JSON.stringify(fallbackResponse), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+    
+    // Test the API key with a simple call
+    console.log('Testing OpenAQ API key with a simple call...');
+    try {
+      const testResponse = await fetch('https://api.openaq.org/v3/locations?limit=1', {
+        headers: {
+          'X-API-Key': OPENAQ_API_KEY,
+          'Accept': 'application/json'
+        }
+      });
+      console.log('Test API call status:', testResponse.status);
+      if (testResponse.ok) {
+        const testData = await testResponse.json();
+        console.log('Test API call successful, data:', testData);
+      } else {
+        console.log('Test API call failed with status:', testResponse.status);
+      }
+    } catch (testError) {
+      console.log('Test API call error:', testError.message);
     }
 
     // Check cache first (implement simple in-memory cache for demo)
