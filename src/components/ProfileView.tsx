@@ -72,6 +72,10 @@ interface UserSettings {
     language: 'en' | 'es' | 'fr';
     units: 'metric' | 'imperial';
     dataRetention: '30days' | '90days' | '1year' | 'forever';
+    aqiThreshold?: 'good' | 'moderate' | 'unhealthy-sensitive' | 'unhealthy';
+    alertFrequency?: 'immediate' | 'hourly' | 'daily';
+    reportDay?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+    reportTime?: 'morning' | 'afternoon' | 'evening';
   };
   location: {
     autoLocation: boolean;
@@ -84,7 +88,16 @@ interface UserSettings {
 const DEFAULT_SETTINGS: UserSettings = {
   notifications: { email: true, push: true, airQualityAlerts: true, weeklyReports: false },
   privacy: { shareData: false, publicProfile: false, locationHistory: true },
-  preferences: { theme: 'system', language: 'en', units: 'metric', dataRetention: '90days' },
+  preferences: { 
+    theme: 'system', 
+    language: 'en', 
+    units: 'metric', 
+    dataRetention: '90days',
+    aqiThreshold: 'moderate',
+    alertFrequency: 'immediate',
+    reportDay: 'monday',
+    reportTime: 'morning'
+  },
   location: { autoLocation: true, locationAccuracy: 'high', locationHistory: true }
 };
 
@@ -528,7 +541,7 @@ export default function ProfileView() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="air-quality-alerts">Air Quality Alerts</Label>
-                  <p className="text-sm text-muted-foreground">Get notified of poor air quality</p>
+                  <p className="text-sm text-muted-foreground">Get notified when AQI exceeds safe levels</p>
                 </div>
                 <Switch
                   id="air-quality-alerts"
@@ -550,6 +563,117 @@ export default function ProfileView() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Air Quality Alert Configuration */}
+          {userSettings.notifications.airQualityAlerts && (
+            <Card className="bg-gradient-card shadow-card border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  Air Quality Alert Configuration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="aqi-threshold">AQI Alert Threshold</Label>
+                  <Select
+                    value={userSettings.preferences.aqiThreshold || 'moderate'}
+                    onValueChange={(value: 'good' | 'moderate' | 'unhealthy-sensitive' | 'unhealthy') => 
+                      updateSetting('preferences', 'aqiThreshold', value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="good">Good (0-50)</SelectItem>
+                      <SelectItem value="moderate">Moderate (51-100)</SelectItem>
+                      <SelectItem value="unhealthy-sensitive">Unhealthy for Sensitive Groups (101-150)</SelectItem>
+                      <SelectItem value="unhealthy">Unhealthy (151-200)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Get notified when AQI exceeds this level</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="alert-frequency">Alert Frequency</Label>
+                  <Select
+                    value={userSettings.preferences.alertFrequency || 'immediate'}
+                    onValueChange={(value: 'immediate' | 'hourly' | 'daily') => 
+                      updateSetting('preferences', 'alertFrequency', value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="immediate">Immediate</SelectItem>
+                      <SelectItem value="hourly">Hourly</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">How often to receive alerts</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Weekly Report Configuration */}
+          {userSettings.notifications.weeklyReports && (
+            <Card className="bg-gradient-card shadow-card border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-500" />
+                  Weekly Report Configuration
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="report-day">Report Day</Label>
+                  <Select
+                    value={userSettings.preferences.reportDay || 'monday'}
+                    onValueChange={(value: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday') => 
+                      updateSetting('preferences', 'reportDay', value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monday">Monday</SelectItem>
+                      <SelectItem value="tuesday">Tuesday</SelectItem>
+                      <SelectItem value="wednesday">Wednesday</SelectItem>
+                      <SelectItem value="thursday">Thursday</SelectItem>
+                      <SelectItem value="friday">Friday</SelectItem>
+                      <SelectItem value="saturday">Saturday</SelectItem>
+                      <SelectItem value="sunday">Sunday</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Day of the week to receive your report</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="report-time">Report Time</Label>
+                  <Select
+                    value={userSettings.preferences.reportTime || 'morning'}
+                    onValueChange={(value: 'morning' | 'afternoon' | 'evening') => 
+                      updateSetting('preferences', 'reportTime', value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="morning">Morning (8:00 AM)</SelectItem>
+                      <SelectItem value="afternoon">Afternoon (2:00 PM)</SelectItem>
+                      <SelectItem value="evening">Evening (8:00 PM)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Time of day to receive your report</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Privacy Tab */}
@@ -596,6 +720,77 @@ export default function ProfileView() {
                   checked={userSettings.privacy.locationHistory}
                   onCheckedChange={(checked) => updateSetting('privacy', 'locationHistory', checked)}
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Privacy Policy & Terms */}
+          <Card className="bg-gradient-card shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5" />
+                Legal & Documentation
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Privacy Policy</Label>
+                <p className="text-sm text-muted-foreground">Read our privacy policy to understand how we protect your data</p>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2"
+                  onClick={() => window.open('/privacy', '_blank')}
+                >
+                  <Shield className="h-4 w-4" />
+                  Read Privacy Policy
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Terms of Service</Label>
+                <p className="text-sm text-muted-foreground">Review our terms and conditions for using Breath Safe</p>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start gap-2"
+                  onClick={() => window.open('/terms', '_blank')}
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  Read Terms of Service
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Data Export & Deletion</Label>
+                <p className="text-sm text-muted-foreground">Manage your data and account</p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex-1 gap-2"
+                    onClick={exportUserData}
+                    disabled={exporting}
+                  >
+                    {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    Export Data
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    className="flex-1 gap-2"
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+                        // TODO: Implement account deletion
+                        toast({
+                          title: "Account Deletion",
+                          description: "Account deletion feature coming soon",
+                        });
+                      }
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                    Delete Account
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -749,26 +944,14 @@ export default function ProfileView() {
 
       {/* Action Buttons */}
       <div className="space-y-3">
-        <div className="flex gap-3">
-          <Button 
-            onClick={saveSettings} 
-            disabled={saving}
-            className="flex-1 gap-2"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save All Settings
-          </Button>
-          
-          <Button 
-            onClick={exportUserData} 
-            disabled={exporting}
-            variant="outline"
-            className="gap-2"
-          >
-            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Export Data
-          </Button>
-        </div>
+        <Button 
+          onClick={saveSettings} 
+          disabled={saving}
+          className="w-full gap-2"
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Save All Settings
+        </Button>
         
         <Button variant="destructive" className="w-full gap-3" onClick={handleSignOut}>
           <LogOut className="h-5 w-5" />
