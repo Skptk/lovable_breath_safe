@@ -151,4 +151,8 @@
 [31m-                    <Card key={streak.id} className="border-2 border-orange-200 bg-orange-50/50">[m
 [31m-                      <CardContent className="p-4 text-center">[m
 [31m-                        <div className="text-4xl mb-2">{displayInfo.icon}</div>[m
-[31m-                
+[31m-                [33m0bbce30[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m  FIX: Add fallback Supabase credentials for Netlify deployment
+[33m4e51729[m  SECURITY: Remove exposed API keys and implement secure environment variable handling
+[33m4cd42a1[m Implement persistent location permission storage for better UX
+[33m0b4658f[m Fix achievement system: centralize initialization, prevent duplicates, add progress tracking
+[33mfc580af[m Add automatic profile validation and sign-out for deleted users
