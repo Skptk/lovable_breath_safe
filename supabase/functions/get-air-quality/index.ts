@@ -80,9 +80,9 @@ async function findNearestMajorCity(userLat: number, userLon: number, apiKey: st
 
     for (const point of searchPoints) {
       try {
-        // Use OpenAQ API to find cities with air quality data
+        // Use OpenAQ API v3 to find cities with air quality data
         const response = await fetch(
-          `https://api.openaq.org/v2/cities?coordinates=${point.lat},${point.lon}&radius=50000&limit=10`,
+          `https://api.openaq.org/v3/locations?coordinates=${point.lat},${point.lon}&radius=50000&limit=10`,
           {
             headers: {
               'X-API-Key': apiKey,
@@ -264,9 +264,9 @@ serve(async (req) => {
       userLocationDetails = await getUserLocationDetails(lat, lon, OPENAQ_API_KEY);
       nearestCity = await findNearestMajorCity(lat, lon, OPENAQ_API_KEY);
       
-      // Get air quality data from OpenAQ API
+      // Get air quality data from OpenAQ API v3
       const airResponse = await fetch(
-        `https://api.openaq.org/v2/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=10000&limit=100`,
+        `https://api.openaq.org/v3/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=10000&limit=100`,
         {
           headers: {
             'X-API-Key': OPENAQ_API_KEY,
