@@ -25,13 +25,7 @@ export default function Auth(): JSX.Element {
   // Check if we're in development mode
   const isDevelopment = import.meta.env.DEV;
 
-  // Debug: Log environment variables and Supabase config
-  console.log('Environment check:', {
-    DEV: import.meta.env.DEV,
-    SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-    SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
-    SUPABASE_URL_FALLBACK: "https://bmqdbetupttlthpadseq.supabase.co"
-  });
+
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -88,7 +82,7 @@ export default function Auth(): JSX.Element {
     try {
       const { email, password } = devFormData;
       
-      console.log('Attempting developer login with:', { email, password: '***' });
+
       
       // First, try to sign in with existing account
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -137,7 +131,6 @@ export default function Auth(): JSX.Element {
 
       // If sign in failed for other reasons, try to create a new account
       if (signInError) {
-        console.log('Creating new developer account...');
         
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -175,7 +168,7 @@ export default function Auth(): JSX.Element {
             });
 
             if (retrySignInError) {
-              console.log('Retry signin still requires verification:', retrySignInError.message);
+              // Retry signin still requires verification
             }
           }, 2000);
         }
@@ -216,7 +209,6 @@ export default function Auth(): JSX.Element {
 
       // If sign in failed, create a new account
       if (signInError) {
-        console.log('Creating new developer account...');
         
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,

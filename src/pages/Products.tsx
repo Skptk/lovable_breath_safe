@@ -55,12 +55,11 @@ export default function Products() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
-            // Use the actual API key
-            const apiKey = '56ab74b487631610f9b44a6e51fe72f0';
+            // Use environment variable for API key
+            const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
             
             // If no API key is available, skip the API call and use coordinates
-            if (!apiKey || apiKey === 'YOUR_API_KEY') {
-              console.log('OpenWeatherMap API key not available, using coordinates only');
+            if (!apiKey || apiKey.trim() === '') {
               setUserLocation(`Your Location (${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)})`);
               return;
             }

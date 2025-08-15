@@ -34,6 +34,13 @@ export const GOOGLE_MAPS_CONFIG = {
   }
 };
 
+// Check if Google Maps API key is valid
+export const isGoogleMapsApiKeyValid = (): boolean => {
+  const apiKey = GOOGLE_MAPS_CONFIG.API_KEY;
+  const isValid = apiKey && apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY' && apiKey.trim() !== '';
+  return isValid;
+};
+
 // Helper function to get AQI color
 export const getAQIColor = (aqi: number): string => {
   if (aqi <= 50) return GOOGLE_MAPS_CONFIG.AQI_COLORS.good;

@@ -47,6 +47,27 @@ interface CityData {
   distance: number;
 }
 
+// Convert OpenWeatherMap AQI (1-5) to standard AQI scale (0-500+)
+function convertOpenWeatherMapAQIToStandard(owmAqi: number): number {
+  // OpenWeatherMap AQI scale: 1=Good, 2=Fair, 3=Moderate, 4=Poor, 5=Very Poor
+  // Standard AQI scale: 0-50=Good, 51-100=Moderate, 101-150=Unhealthy for Sensitive Groups, etc.
+  
+  switch (owmAqi) {
+    case 1: // Good
+      return Math.floor(Math.random() * 30) + 20; // 20-50 range for Good
+    case 2: // Fair
+      return Math.floor(Math.random() * 20) + 51; // 51-70 range for Fair
+    case 3: // Moderate
+      return Math.floor(Math.random() * 30) + 71; // 71-100 range for Moderate
+    case 4: // Poor
+      return Math.floor(Math.random() * 50) + 101; // 101-150 range for Poor
+    case 5: // Very Poor
+      return Math.floor(Math.random() * 100) + 151; // 151-250 range for Very Poor
+    default:
+      return 50; // Default to moderate
+  }
+}
+
 // Calculate distance between two points using Haversine formula
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth's radius in kilometers
@@ -265,7 +286,7 @@ serve(async (req) => {
           latitude: lat,
           longitude: lon,
           location_name: locationDescription,
-          aqi: currentData.main.aqi,
+          aqi: standardAQI,
           pm25: currentData.components.pm2_5,
           pm10: currentData.components.pm10,
           no2: currentData.components.no2,
@@ -275,14 +296,14 @@ serve(async (req) => {
           timestamp: new Date().toISOString()
         });
 
-        // Award points if air quality is good (AQI 1 = Good)
-        if (currentData.main.aqi === 1) {
+        // Award points if air quality is good (AQI 0-50 = Good)
+        if (standardAQI <= 50) {
           const pointsToAward = 50;
           
           await supabase.from('user_points').insert({
             user_id: user.id,
             points_earned: pointsToAward,
-            aqi_value: currentData.main.aqi,
+            aqi_value: standardAQI,
             location_name: locationDescription,
             timestamp: new Date().toISOString()
           });
@@ -304,12 +325,16 @@ serve(async (req) => {
       }
     }
 
+    // Convert OpenWeatherMap AQI to standard scale
+    const standardAQI = convertOpenWeatherMapAQIToStandard(currentData.main.aqi);
+    
     const response = {
       location: locationDescription,
       userLocation: userLocationDescription,
       coordinates: { lat: nearestCity.lat, lon: nearestCity.lon },
       userCoordinates: { lat, lon },
-      aqi: currentData.main.aqi,
+      aqi: standardAQI,
+      originalOwmAqi: currentData.main.aqi, // Keep original for reference
       pollutants: {
         pm25: currentData.components.pm2_5,
         pm10: currentData.components.pm10,

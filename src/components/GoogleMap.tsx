@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Loader2, AlertTriangle } from 'lucide-react';
-import { GOOGLE_MAPS_CONFIG, getAQIColor, getAQILabel } from '@/config/maps';
+import { MapPin, Loader2, AlertTriangle, Map } from 'lucide-react';
+import { GOOGLE_MAPS_CONFIG, getAQIColor, getAQILabel, isGoogleMapsApiKeyValid } from '@/config/maps';
 
 interface GoogleMapProps {
   userLocation: {
@@ -37,9 +37,154 @@ export default function GoogleMap({ userLocation, airQualityData, nearbyLocation
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapInstance, setMapInstance] = useState<any>(null);
+  const [scriptLoading, setScriptLoading] = useState(false);
+
+  // Check if Google Maps API key is valid
+  const hasValidApiKey = isGoogleMapsApiKeyValid();
+
+  // Intercept script loading to prevent Google Maps scripts with invalid keys
+  useEffect(() => {
+    if (!hasValidApiKey) {
+      // Remove any existing Google Maps scripts
+      const existingScripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+      if (existingScripts.length > 0) {
+        existingScripts.forEach(script => {
+          if (script instanceof HTMLScriptElement) {
+            script.remove();
+          }
+        });
+      }
+      
+      // Create a script loading interceptor
+      const originalAppendChild = document.head.appendChild.bind(document.head);
+      const originalInsertBefore = document.head.insertBefore.bind(document.head);
+      const originalCreateElement = document.createElement.bind(document);
+      
+      // Override createElement to catch script creation
+      document.createElement = function(tagName: string, options?: ElementCreationOptions) {
+        const element = originalCreateElement(tagName, options);
+        if (tagName.toLowerCase() === 'script' && element instanceof HTMLScriptElement) {
+          const originalSetAttribute = element.setAttribute.bind(element);
+          element.setAttribute = function(name: string, value: string) {
+            if (name === 'src' && value.includes('maps.googleapis.com')) {
+              return; // Don't set the src
+            }
+            return originalSetAttribute(name, value);
+          };
+        }
+        return element;
+      };
+      
+      document.head.appendChild = function(node) {
+        if (node instanceof HTMLScriptElement && node.src && node.src.includes('maps.googleapis.com')) {
+          return node; // Return the node without actually appending it
+        }
+        return originalAppendChild(node);
+      };
+      
+      document.head.insertBefore = function(node, referenceNode) {
+        if (node instanceof HTMLScriptElement && node.src && node.src.includes('maps.googleapis.com')) {
+          return node; // Return the node without actually inserting it
+        }
+        return originalInsertBefore(node, referenceNode);
+      };
+      
+      // Cleanup function to restore original methods
+      return () => {
+        document.head.appendChild = originalAppendChild;
+        document.head.insertBefore = originalInsertBefore;
+        document.createElement = originalCreateElement;
+      };
+    }
+  }, [hasValidApiKey]);
+
+  // Immediate script removal effect - runs before interceptor setup
+  useEffect(() => {
+    if (!hasValidApiKey) {
+      // Remove any existing Google Maps scripts immediately
+      const existingScripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+      if (existingScripts.length > 0) {
+        existingScripts.forEach(script => {
+          if (script instanceof HTMLScriptElement) {
+            script.remove();
+          }
+        });
+      }
+      
+      // Also check for any scripts that might be in the process of loading
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node instanceof HTMLScriptElement && node.src && node.src.includes('maps.googleapis.com')) {
+              node.remove();
+            }
+          });
+        });
+      });
+      
+      observer.observe(document.head, { childList: true });
+      
+      return () => observer.disconnect();
+    }
+  }, [hasValidApiKey]);
+
+  // Load Google Maps script dynamically
+  const loadGoogleMapsScript = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      // Double-check API key validity before loading script
+      if (!isGoogleMapsApiKeyValid()) {
+        reject(new Error('Invalid Google Maps API key'));
+        return;
+      }
+
+      // Check if there are already any Google Maps scripts loading or loaded
+      const existingScripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+      if (existingScripts.length > 0) {
+        existingScripts.forEach(script => script.remove());
+      }
+
+      if (window.google && window.google.maps) {
+        resolve();
+        return;
+      }
+
+      setScriptLoading(true);
+      
+      // Create script element
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_CONFIG.API_KEY}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      
+      script.onload = () => {
+        setScriptLoading(false);
+        resolve();
+      };
+      
+      script.onerror = () => {
+        setScriptLoading(false);
+        reject(new Error('Failed to load Google Maps script'));
+      };
+      
+      document.head.appendChild(script);
+    });
+  };
 
   // Check if Google Maps is loaded
   useEffect(() => {
+    // Early return if no valid API key - don't even try to load Google Maps
+    if (!hasValidApiKey) {
+      // Remove any existing Google Maps scripts that might have been loaded with invalid keys
+      const existingScripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+      existingScripts.forEach(script => {
+        script.remove();
+      });
+      
+      setMapLoaded(false);
+      setMapError(null);
+      return;
+    }
+
     const checkGoogleMaps = () => {
       if (window.google && window.google.maps) {
         setMapLoaded(true);
@@ -49,12 +194,24 @@ export default function GoogleMap({ userLocation, airQualityData, nearbyLocation
       }
     };
     
-    checkGoogleMaps();
-  }, []);
+    // Load script if not already loaded
+    if (!window.google || !window.google.maps) {
+      loadGoogleMapsScript()
+        .then(() => {
+          checkGoogleMaps();
+        })
+        .catch((error) => {
+          console.error('Error loading Google Maps:', error);
+          setMapError('Failed to load Google Maps');
+        });
+    } else {
+      checkGoogleMaps();
+    }
+  }, [hasValidApiKey]);
 
   // Initialize map when script is loaded and user location is available
   useEffect(() => {
-    if (!mapLoaded || !userLocation || !mapRef.current) return;
+    if (!mapLoaded || !userLocation || !mapRef.current || !hasValidApiKey) return;
 
     try {
       const map = new window.google.maps.Map(mapRef.current, {
@@ -124,9 +281,29 @@ export default function GoogleMap({ userLocation, airQualityData, nearbyLocation
       console.error('Error initializing map:', error);
       setMapError('Failed to initialize map');
     }
-  }, [mapLoaded, userLocation, nearbyLocations]);
+  }, [mapLoaded, userLocation, nearbyLocations, hasValidApiKey]);
 
-
+  // Show message when API key is missing
+  if (!hasValidApiKey) {
+    return (
+      <Card className="bg-gradient-card shadow-card border-0">
+        <CardContent className="p-6">
+          <div className="text-center space-y-3">
+            <Map className="h-12 w-12 text-muted-foreground mx-auto" />
+            <h3 className="text-lg font-semibold">Google Maps Not Available</h3>
+            <p className="text-muted-foreground">
+              To view the interactive map, please add your Google Maps API key to the configuration.
+            </p>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>1. Get a Google Maps API key from Google Cloud Console</p>
+              <p>2. Update the API key in <code className="bg-muted px-1 rounded">src/config/maps.ts</code></p>
+              <p>3. Refresh the page to see the map</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (mapError) {
     return (
@@ -145,13 +322,15 @@ export default function GoogleMap({ userLocation, airQualityData, nearbyLocation
     );
   }
 
-  if (!mapLoaded || !userLocation) {
+  if (scriptLoading || !mapLoaded || !userLocation) {
     return (
       <Card className="bg-gradient-card shadow-card border-0">
         <CardContent className="p-6">
           <div className="text-center space-y-3">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-muted-foreground">Loading interactive map...</p>
+            <p className="text-muted-foreground">
+              {scriptLoading ? 'Loading Google Maps...' : 'Loading interactive map...'}
+            </p>
           </div>
         </CardContent>
       </Card>

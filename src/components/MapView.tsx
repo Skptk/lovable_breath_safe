@@ -143,7 +143,6 @@ export default function MapView(): JSX.Element {
       }
 
       if (response) {
-        console.log('MapView air quality data:', response);
         setAirQualityData({
           aqi: response.aqi,
           location: response.location,

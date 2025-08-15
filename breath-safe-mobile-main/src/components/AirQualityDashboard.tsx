@@ -74,8 +74,7 @@ export default function AirQualityDashboard(): JSX.Element {
       throw new Error('No response data received');
     }
 
-    // Debug: Log the actual response structure
-    console.log('Supabase function response:', response);
+
 
     // The function returns the raw OpenWeatherMap data structure
     // Based on the function code, it returns the raw API response

@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { RefreshCw, History, Map, Download, MapPin, Loader2, AlertTriangle, Info, TrendingUp } from "lucide-react";
+import { RefreshCw, History, Map, Download, MapPin, Loader2, AlertTriangle, Trophy } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import PollutantModal from "./PollutantModal";
 
@@ -25,15 +24,7 @@ interface AirQualityData {
   dataSource: string;
 }
 
-// AQI Range definitions with colors and descriptions
-const AQI_RANGES = [
-  { min: 0, max: 50, label: "Good", color: "bg-green-500", textColor: "text-green-500", description: "Air quality is satisfactory, and air pollution poses little or no risk." },
-  { min: 51, max: 100, label: "Moderate", color: "bg-yellow-500", textColor: "text-yellow-500", description: "Air quality is acceptable; however, some pollutants may be a concern for a small number of people." },
-  { min: 101, max: 150, label: "Unhealthy for Sensitive Groups", color: "bg-orange-500", textColor: "text-orange-500", description: "Members of sensitive groups may experience health effects. The general public is not likely to be affected." },
-  { min: 151, max: 200, label: "Unhealthy", color: "bg-red-500", textColor: "text-red-500", description: "Everyone may begin to experience health effects; members of sensitive groups may experience more serious effects." },
-  { min: 201, max: 300, label: "Very Unhealthy", color: "bg-purple-500", textColor: "text-purple-500", description: "Health alert: everyone may experience more serious health effects." },
-  { min: 301, max: 500, label: "Hazardous", color: "bg-red-800", textColor: "text-red-800", description: "Health warning of emergency conditions: everyone is more likely to be affected." }
-];
+
 
 // Helper functions for AQI display
 const getAQIColor = (aqi: number): string => {
@@ -54,114 +45,11 @@ const getAQILabel = (aqi: number): string => {
   return "Hazardous";
 };
 
-const getAQIRange = (aqi: number) => {
-  return AQI_RANGES.find(range => aqi >= range.min && aqi <= range.max) || AQI_RANGES[0];
-};
 
-// AQI Scale Component
-const AQIScale = ({ currentAQI }: { currentAQI: number }) => {
-  const maxAQI = 500;
-  const currentPosition = (currentAQI / maxAQI) * 100;
-  
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>0</span>
-        <span>500</span>
-      </div>
-      
-      {/* AQI Scale Bar */}
-      <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
-        {/* Color segments */}
-        <div className="absolute inset-0 flex">
-          <div className="h-full w-1/10 bg-green-500"></div>
-          <div className="h-full w-1/10 bg-yellow-500"></div>
-          <div className="h-full w-1/10 bg-orange-500"></div>
-          <div className="h-full w-1/10 bg-red-500"></div>
-          <div className="h-full w-1/10 bg-purple-500"></div>
-          <div className="h-full w-5/10 bg-red-800"></div>
-        </div>
-        
-        {/* Current AQI indicator */}
-        <div 
-          className="absolute top-0 w-1 h-full bg-black rounded-full shadow-lg"
-          style={{ left: `${Math.min(currentPosition, 100)}%` }}
-        ></div>
-      </div>
-      
-      {/* Range labels */}
-      <div className="flex justify-between text-xs">
-        {AQI_RANGES.slice(0, 3).map((range, index) => (
-          <div key={index} className="text-center">
-            <div className={`w-2 h-2 rounded-full ${range.color} mx-auto mb-1`}></div>
-            <span className="text-muted-foreground">{range.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
 
-// AQI Graph Component
-const AQIGraph = ({ aqi }: { aqi: number }) => {
-  const maxAQI = 500;
-  const height = (aqi / maxAQI) * 100;
-  const range = getAQIRange(aqi);
-  
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium">AQI Trend</span>
-      </div>
-      
-      {/* Graph container */}
-      <div className="relative h-24 bg-gray-100 rounded-lg p-3">
-        {/* Y-axis labels */}
-        <div className="absolute left-2 top-0 bottom-0 flex flex-col justify-between text-xs text-muted-foreground">
-          <span>500</span>
-          <span>250</span>
-          <span>0</span>
-        </div>
-        
-        {/* Graph bar */}
-        <div className="absolute bottom-3 left-8 right-3">
-          <div className="relative h-full">
-            {/* Background grid lines */}
-            <div className="absolute top-1/3 w-full h-px bg-gray-300"></div>
-            <div className="absolute top-2/3 w-full h-px bg-gray-300"></div>
-            
-            {/* AQI bar */}
-            <div 
-              className={`absolute bottom-0 w-full ${range.color} rounded-t-lg transition-all duration-500 ease-out`}
-              style={{ height: `${Math.min(height, 100)}%` }}
-            ></div>
-            
-            {/* AQI value on bar */}
-            <div className="absolute bottom-0 left-0 right-0 text-center">
-              <span className="text-white font-bold text-sm drop-shadow-lg">
-                {aqi}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Range indicator */}
-      <div className="text-center">
-        <Badge 
-          variant="secondary" 
-          className={`${range.color} text-white border-0`}
-        >
-          {range.label}
-        </Badge>
-        <p className="text-xs text-muted-foreground mt-1">
-          Range: {range.min}-{range.max}
-        </p>
-      </div>
-    </div>
-  );
-};
+
+
+
 
 export default function AirQualityDashboard(): JSX.Element {
   const [selectedPollutant, setSelectedPollutant] = useState<{
@@ -187,9 +75,6 @@ export default function AirQualityDashboard(): JSX.Element {
 
     const { latitude, longitude } = position.coords;
     
-    // Log user's actual coordinates for debugging
-    console.log('User coordinates:', { latitude, longitude });
-    
     const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
       body: { lat: latitude, lon: longitude }
     });
@@ -202,8 +87,7 @@ export default function AirQualityDashboard(): JSX.Element {
       throw new Error('No response data received');
     }
 
-    // Debug: Log the actual response structure
-    console.log('Supabase function response:', response);
+
 
     // Check if the response has the expected structure
     if (response && typeof response === 'object' && 'pollutants' in response) {
@@ -361,7 +245,7 @@ export default function AirQualityDashboard(): JSX.Element {
     );
   }
 
-  const currentRange = getAQIRange(data.aqi);
+
 
   return (
     <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
@@ -388,27 +272,55 @@ export default function AirQualityDashboard(): JSX.Element {
         </Button>
       </div>
 
-      {/* Main AQI Card */}
-      <Card className="bg-gradient-card shadow-card border-0">
-        <CardContent className="p-6">
-          <div className="text-center space-y-4">
-            <div className="space-y-2">
-              <div className={`text-6xl font-bold ${getAQIColor(data.aqi)}`}>
-                {data.aqi}
+      {/* Main AQI and User Points - Side by Side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Main AQI Card - Left Side */}
+        <Card className="bg-gradient-card shadow-card border-0">
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <div className="space-y-2">
+                <div className={`text-6xl font-bold ${getAQIColor(data.aqi)}`}>
+                  {data.aqi}
+                </div>
+                <Badge 
+                  variant="secondary" 
+                  className={`${getAQIColor(data.aqi).replace('text-', 'bg-')} text-white border-0 px-4 py-1`}
+                >
+                  {getAQILabel(data.aqi)}
+                </Badge>
               </div>
-              <Badge 
-                variant="secondary" 
-                className={`${currentRange.color} text-white border-0 px-4 py-1`}
-              >
-                {currentRange.label}
-              </Badge>
+              <p className="text-sm text-muted-foreground">
+                Air Quality Index • Updated {data.timestamp}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Air Quality Index • Updated {data.timestamp}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* User Points Card - Right Side */}
+        <Card className="bg-gradient-card shadow-card border-0">
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <div className="space-y-2">
+                <div className="text-6xl font-bold text-primary">
+                  <Trophy className="w-16 h-16 mx-auto" />
+                </div>
+                <Badge 
+                  variant="secondary" 
+                  className="bg-primary/10 text-primary border-0 px-4 py-1"
+                >
+                  Your Points
+                </Badge>
+              </div>
+              <div className="text-3xl font-bold text-primary">
+                0
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Earn points for good air quality days
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Location Information */}
       <Card className="bg-gradient-card shadow-card border-0">
@@ -447,65 +359,9 @@ export default function AirQualityDashboard(): JSX.Element {
         </CardContent>
       </Card>
 
-      {/* AQI Information Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* AQI Scale */}
-        <Card className="bg-gradient-card shadow-card border-0">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              AQI Scale
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Air Quality Index ranges and what they mean</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AQIScale currentAQI={data.aqi} />
-          </CardContent>
-        </Card>
 
-        {/* AQI Graph */}
-        <Card className="bg-gradient-card shadow-card border-0">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg font-semibold">Current AQI</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AQIGraph aqi={data.aqi} />
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* AQI Range Explanation */}
-      <Card className="bg-gradient-card shadow-card border-0">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold">What This AQI Means</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3 p-3 bg-background/50 rounded-lg">
-              <div className={`w-4 h-4 rounded-full ${currentRange.color} mt-1 flex-shrink-0`}></div>
-              <div>
-                <div className="font-medium">{currentRange.label}</div>
-                <p className="text-sm text-muted-foreground">{currentRange.description}</p>
-                <div className="text-xs text-muted-foreground mt-1">
-                  AQI Range: {currentRange.min}-{currentRange.max}
-                </div>
-              </div>
-            </div>
-            
-            <div className="text-xs text-muted-foreground text-center">
-              💡 <strong>Tip:</strong> AQI 2 is excellent air quality! Lower numbers mean cleaner air.
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* Pollutants Grid */}
       <div className="grid grid-cols-2 gap-3">
