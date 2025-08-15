@@ -383,22 +383,28 @@ serve(async (req) => {
         }
       }
     }
+    
+    // Check if we have data before proceeding
+    if (!airData || !airData.results) {
+      console.log('No air data available, using fallback');
+      throw new Error('No air quality data available');
+    }
       
-          console.log('OpenAQ API response status:', airResponse.status);
+    console.log('OpenAQ API response status:', airResponse.status);
       
-      // Debug: Log the raw OpenAQ response
-      console.log('OpenAQ API Response:', {
-        status: airResponse.status,
-        resultsCount: airData.results?.length || 0,
-        firstResult: airData.results?.[0] || 'No results',
-        rawData: JSON.stringify(airData).substring(0, 500) + '...'
-      });
+    // Debug: Log the raw OpenAQ response
+    console.log('OpenAQ API Response:', {
+      status: airResponse.status,
+      resultsCount: airData.results?.length || 0,
+      firstResult: airData.results?.[0] || 'No results',
+      rawData: JSON.stringify(airData).substring(0, 500) + '...'
+    });
       
-      if (!airData.results || airData.results.length === 0) {
-        throw new Error('No air quality data available');
-      }
+    if (!airData.results || airData.results.length === 0) {
+      throw new Error('No air quality data available');
+    }
       
-      console.log('OpenAQ API call successful, processing data...');
+    console.log('OpenAQ API call successful, processing data...');
     } catch (apiError) {
       console.log('OpenAQ API error, using fallback data:', apiError.message);
       console.log('Full error details:', apiError);
