@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Home, History, Map, User } from "lucide-react";
+import { Home, History, Map, User, Trophy, ShoppingBag } from "lucide-react";
 
 interface NavigationProps {
   currentView: string;
@@ -11,6 +11,8 @@ export default function Navigation({ currentView, onViewChange }: NavigationProp
     { id: "dashboard", label: "Home", icon: Home },
     { id: "history", label: "History", icon: History },
     { id: "map", label: "Map", icon: Map },
+    { id: "rewards", label: "Rewards", icon: Trophy },
+    { id: "store", label: "Store", icon: ShoppingBag },
     { id: "profile", label: "Profile", icon: User },
   ];
 

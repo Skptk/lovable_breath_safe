@@ -10,6 +10,8 @@ import Products from "./pages/Products";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
+import Rewards from "./pages/Rewards";
+import Store from "./pages/Store";
 
 const App = (): JSX.Element => {
   const { loading, isAuthenticated } = useAuth();
@@ -31,6 +33,8 @@ const App = (): JSX.Element => {
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/products" element={<Products />} />
+            <Route path="/rewards" element={<Rewards />} />
+            <Route path="/store" element={<Store />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route 

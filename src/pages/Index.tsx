@@ -4,6 +4,8 @@ import AirQualityDashboard from "@/components/AirQualityDashboard";
 import HistoryView from "@/components/HistoryView";
 import MapView from "@/components/MapView";
 import ProfileView from "@/components/ProfileView";
+import Rewards from "@/pages/Rewards";
+import Store from "@/pages/Store";
 import Navigation from "@/components/Navigation";
 
 const Index = (): JSX.Element => {
@@ -18,6 +20,10 @@ const Index = (): JSX.Element => {
         return <HistoryView />;
       case "map":
         return <MapView />;
+      case "rewards":
+        return <Rewards />;
+      case "store":
+        return <Store />;
       case "profile":
         return <ProfileView />;
       default:

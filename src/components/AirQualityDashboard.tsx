@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, History, Map, Download, MapPin, Loader2, AlertTriangle, Trophy, DollarSign, Gift } from "lucide-react";
+import { RefreshCw, History, Map, Download, MapPin, Loader2, AlertTriangle, Trophy, DollarSign, Gift, ShoppingBag } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import PollutantModal from "./PollutantModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -484,9 +484,13 @@ export default function AirQualityDashboard(): JSX.Element {
             <span className="text-xs">History</span>
           </Button>
           
-          <Button variant="outline" className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card">
-            <Map className="h-5 w-5" />
-            <span className="text-xs">Map View</span>
+          <Button 
+            variant="outline" 
+            className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card"
+            onClick={() => window.location.href = '/store'}
+          >
+            <ShoppingBag className="h-5 w-5" />
+            <span className="text-xs">Store</span>
           </Button>
           
           <Button variant="outline" className="flex-col gap-2 h-auto py-4 bg-background/50 border-border hover:bg-card">
