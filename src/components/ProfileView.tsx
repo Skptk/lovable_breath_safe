@@ -171,7 +171,16 @@ export default function ProfileView() {
         .eq('user_id', user?.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a "no rows" error (user profile doesn't exist)
+        if (error.code === 'PGRST116') {
+          console.warn('User profile not found in database');
+          // This will trigger the useAuth hook to sign out the user
+          return;
+        }
+        throw error;
+      }
+      
       setProfile(data);
       setEditForm({ full_name: data.full_name || '', email: data.email || '' });
     } catch (error: any) {

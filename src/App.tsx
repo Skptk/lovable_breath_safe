@@ -72,7 +72,7 @@ const LazyErrorFallback = ({ error, retry }: { error: Error; retry: () => void }
 );
 
 const App = (): JSX.Element => {
-  const { loading, isAuthenticated } = useAuth();
+  const { loading, isAuthenticated, user, validateProfile } = useAuth();
   const { setLoading, setError } = useAppStore();
   
   // Performance monitoring
@@ -89,6 +89,13 @@ const App = (): JSX.Element => {
   useEffect(() => {
     setLoading(loading);
   }, [loading, setLoading]);
+
+  // Validate profile when user is authenticated
+  useEffect(() => {
+    if (user && !loading) {
+      validateProfile();
+    }
+  }, [user, loading, validateProfile]);
 
   // Handle authentication errors
   useEffect(() => {

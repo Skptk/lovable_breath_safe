@@ -36,6 +36,12 @@ export const useUserPoints = (): UserPoints => {
         .single();
 
       if (profileError) {
+        // Check if it's a "no rows" error (user profile doesn't exist)
+        if (profileError.code === 'PGRST116') {
+          console.warn('User profile not found in database');
+          // This will trigger the useAuth hook to sign out the user
+          return;
+        }
         throw profileError;
       }
 
