@@ -155,12 +155,18 @@ export default function HistoryView(): JSX.Element {
 
       // Clear local state
       setHistory([]);
+      setSelectedEntries(new Set());
       
       toast({
         title: "History Cleared",
         description: "All air quality readings have been deleted successfully.",
         variant: "default",
       });
+      
+      // Force a complete refresh to ensure database is updated
+      setTimeout(() => {
+        fetchHistory();
+      }, 1000);
       
     } catch (error: any) {
       console.error('Error clearing history:', error);
@@ -191,11 +197,23 @@ export default function HistoryView(): JSX.Element {
       // Remove from local state
       setHistory(prev => prev.filter(entry => entry.id !== entryId));
       
+      // Also remove from selected entries if it was selected
+      setSelectedEntries(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(entryId);
+        return newSet;
+      });
+      
       toast({
         title: "Entry Deleted",
         description: "Air quality reading has been deleted successfully.",
         variant: "default",
       });
+      
+      // Force a refresh to ensure database is updated
+      setTimeout(() => {
+        fetchHistory();
+      }, 500);
       
     } catch (error: any) {
       console.error('Error deleting entry:', error);
@@ -252,6 +270,11 @@ export default function HistoryView(): JSX.Element {
         description: `${selectedEntries.size} air quality readings have been deleted successfully.`,
         variant: "default",
       });
+      
+      // Force a refresh to ensure database is updated
+      setTimeout(() => {
+        fetchHistory();
+      }, 500);
       
     } catch (error: any) {
       console.error('Error bulk deleting entries:', error);

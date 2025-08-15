@@ -648,15 +648,15 @@ serve(async (req) => {
               
               // Get user's points and rewards
               const { data: userData, error: userDataError } = await supabase
-                .from('user_profiles')
-                .select('points, currency_rewards, can_withdraw')
+                .from('profiles')
+                .select('total_points')
                 .eq('user_id', user.id)
                 .single();
               
               if (userData && !userDataError) {
-                userPoints = userData.points || 0;
-                currencyRewards = userData.currency_rewards || 0;
-                canWithdraw = userData.can_withdraw || false;
+                userPoints = userData.total_points || 0;
+                currencyRewards = (userData.total_points || 0) / 1000 * 0.1;
+                canWithdraw = (userData.total_points || 0) >= 500000;
                 console.log('User data retrieved:', { userPoints, currencyRewards, canWithdraw });
               } else {
                 console.log('No user profile found, creating default values');
@@ -703,11 +703,9 @@ serve(async (req) => {
                     // Update total points in profile
                     const newTotalPoints = userPoints + pointsToAward;
                     await supabase
-                      .from('user_profiles')
+                      .from('profiles')
                       .update({ 
-                        points: newTotalPoints,
-                        currency_rewards: (newTotalPoints / 1000) * 0.1,
-                        can_withdraw: newTotalPoints >= 500000
+                        total_points: newTotalPoints
                       })
                       .eq('user_id', user.id);
                     

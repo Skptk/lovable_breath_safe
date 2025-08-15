@@ -187,6 +187,8 @@ export default function AirQualityDashboard(): JSX.Element {
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     refetchOnReconnect: true,
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    refetchIntervalInBackground: true,
   });
 
   // Fetch user points when component mounts or user changes
@@ -373,15 +375,21 @@ export default function AirQualityDashboard(): JSX.Element {
           </p>
         </div>
         
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={isRefetching}
-          className="bg-background/50 border-border hover:bg-card"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefetching}
+            className="bg-background/50 border-border hover:bg-card"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            {isRefetching ? 'Refreshing...' : 'Refresh'}
+          </Button>
+          <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+            Auto-refresh: 5min
+          </div>
+        </div>
       </div>
 
       {/* Main AQI and User Points - Side by Side */}
