@@ -196,6 +196,10 @@ function canWithdraw(points: number): boolean {
 }
 
 serve(async (req) => {
+  console.log('=== FUNCTION STARTED - VERSION WITH DEBUGGING ===');
+  console.log('Request method:', req.method);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -252,6 +256,7 @@ serve(async (req) => {
     
     // Test the API key with a simple call
     console.log('Testing OpenAQ API key with a simple call...');
+    console.log('Current timestamp:', new Date().toISOString());
     try {
       const testResponse = await fetch('https://api.openaq.org/v3/locations?limit=1', {
         headers: {
