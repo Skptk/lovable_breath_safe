@@ -78,6 +78,10 @@ export default function AirQualityDashboard(): JSX.Element {
 
     const { latitude, longitude } = position.coords;
     
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('User session:', session ? 'Authenticated' : 'Not authenticated');
+    
     const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
       body: { lat: latitude, lon: longitude }
     });
