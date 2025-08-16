@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, Bell, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import SearchDialog from "./SearchDialog";
 
 interface HeaderProps {
   title: string;
@@ -11,6 +12,7 @@ interface HeaderProps {
   showRefresh?: boolean;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  onNavigate?: (route: string) => void;
 }
 
 export default function Header({ 
@@ -18,9 +20,10 @@ export default function Header({
   subtitle, 
   showRefresh = false, 
   onRefresh, 
-  isRefreshing = false 
+  isRefreshing = false,
+  onNavigate
 }: HeaderProps): JSX.Element {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user } = useAuth();
 
   return (
@@ -44,10 +47,10 @@ export default function Header({
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 w-64 bg-background border-border rounded-full h-9"
+            placeholder="Search AQI, features, products..."
+            onClick={() => setIsSearchOpen(true)}
+            className="pl-10 w-64 bg-background border-border rounded-full h-9 cursor-pointer"
+            readOnly
           />
         </div>
 
@@ -93,6 +96,13 @@ export default function Header({
           </div>
         </div>
       </div>
+
+      {/* Search Dialog */}
+      <SearchDialog 
+        open={isSearchOpen} 
+        onOpenChange={setIsSearchOpen}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }

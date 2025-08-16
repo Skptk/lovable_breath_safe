@@ -217,13 +217,13 @@ export const useAirQuality = () => {
   const query = useQuery({
     queryKey: ['airQuality', hasUserConsent],
     queryFn: fetchAirQualityData,
-    gcTime: 0, // No caching
-    staleTime: 0, // Always consider data stale
-    refetchOnWindowFocus: false, // Disable to reduce unnecessary calls
+    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    refetchOnWindowFocus: false, // Disable auto-refresh when user returns
     refetchOnMount: false, // Don't auto-fetch on mount
     refetchOnReconnect: false, // Don't auto-fetch on reconnect
-    refetchInterval: hasUserConsent ? (2 * 60 * 1000) : false, // Only refresh if user consented
-    refetchIntervalInBackground: hasUserConsent,
+    refetchInterval: false, // Disable automatic interval refreshing
+    refetchIntervalInBackground: false, // Disable background refresh
     retry: 2, // Reduce retries for faster failure detection
     retryDelay: 500, // Faster retry delay
     enabled: hasUserConsent, // Only run query if user has consented

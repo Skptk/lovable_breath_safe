@@ -12,10 +12,14 @@ const Index = (): JSX.Element => {
   const [currentView, setCurrentView] = useState("dashboard");
   const navigate = useNavigate();
 
+  const handleViewChange = (view: string) => {
+    setCurrentView(view);
+  };
+
   const renderView = (): JSX.Element => {
     switch (currentView) {
       case "dashboard":
-        return <AirQualityDashboard />;
+        return <AirQualityDashboard onNavigate={handleViewChange} />;
       case "history":
         return <HistoryView />;
       case "map":

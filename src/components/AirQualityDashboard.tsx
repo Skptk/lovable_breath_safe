@@ -30,7 +30,11 @@ import {
   RefreshCw
 } from "lucide-react";
 
-export default function AirQualityDashboard(): JSX.Element {
+interface AirQualityDashboardProps {
+  onNavigate?: (route: string) => void;
+}
+
+export default function AirQualityDashboard({ onNavigate }: AirQualityDashboardProps = {}): JSX.Element {
   const [selectedPollutant, setSelectedPollutant] = useState<{
     name: string;
     value: number;
@@ -155,6 +159,7 @@ export default function AirQualityDashboard(): JSX.Element {
         showRefresh={hasUserConsent}
         onRefresh={handleRefresh}
         isRefreshing={isRefetching}
+        onNavigate={onNavigate}
       />
 
       {/* Stats Grid - Top Row with AQI Data */}
@@ -194,7 +199,7 @@ export default function AirQualityDashboard(): JSX.Element {
             type: canWithdraw ? "increase" : "neutral" 
           }}
           chart={<MiniChart />}
-          className="bg-primary text-primary-foreground"
+          className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 text-green-900"
         />
       </div>
 
@@ -509,64 +514,7 @@ export default function AirQualityDashboard(): JSX.Element {
           </CardContent>
         </Card>
 
-        {/* User Profile Card */}
-        <Card className="glass-card border-0">
-          <CardContent className="p-6 text-center">
-            <div className="space-y-4">
-              <Avatar className="h-16 w-16 mx-auto">
-                <AvatarImage src={user?.user_metadata?.avatar_url} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                  {userName.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div>
-                <h3 className="heading-md font-semibold">{userName}</h3>
-                <p className="body-sm text-muted-foreground">{user?.email}</p>
-              </div>
 
-              <div className="grid grid-cols-3 gap-4 pt-4">
-                <div className="text-center">
-                  <div className="font-bold text-lg">{Math.floor(userPoints / 1000) || 0}</div>
-                  <p className="body-sm text-muted-foreground">Check-ins</p>
-                </div>
-                <div className="text-center">
-                  <div className="font-bold text-lg">{Math.floor(userPoints / 100) || 0}</div>
-                  <p className="body-sm text-muted-foreground">Points (k)</p>
-                </div>
-                <div className="text-center">
-                  <div className="font-bold text-lg">{Math.floor(currencyRewards) || 0}</div>
-                  <p className="body-sm text-muted-foreground">Rewards ($)</p>
-                </div>
-              </div>
-
-              <div className="pt-4 space-y-3">
-                <div className="p-4 bg-muted/50 rounded-ds-medium">
-                  <div className="flex items-center justify-center mb-2">
-                    <div className="w-12 h-12 bg-foreground rounded-full flex items-center justify-center">
-                      <Activity className="w-6 h-6 text-background" />
-                    </div>
-                  </div>
-                  <h4 className="font-semibold">Stay informed!</h4>
-                  <p className="body-sm text-muted-foreground">Check air quality regularly for better health</p>
-                </div>
-
-                <Button 
-                  className="w-full"
-                  onClick={handleRefresh}
-                  disabled={isRefetching}
-                >
-                  {isRefetching ? (
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Activity className="w-4 h-4 mr-2" />
-                  )}
-                  Check Air Quality
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Pollutant Modal */}
