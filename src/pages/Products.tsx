@@ -102,17 +102,19 @@ export default function Products() {
   }
 
   return (
-    <div className="min-h-screen bg-background page-padding space-y-card-gap">
-      {/* Header */}
-      <div>
-        <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
-          Air Purifiers
-        </h1>
-        <p className="body-md text-muted-foreground mt-1 flex items-center gap-1">
-          <MapPin className="h-4 w-4" />
-          Recommended for {userLocation}
-        </p>
-      </div>
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar would be here but Products is a separate route */}
+      <div className="flex-1 p-6 max-w-7xl mx-auto space-y-card-gap">
+        {/* Header */}
+        <div>
+          <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
+            Air Purifiers
+          </h1>
+          <p className="body-md text-muted-foreground mt-1 flex items-center gap-1">
+            <MapPin className="h-4 w-4" />
+            Recommended for {userLocation}
+          </p>
+        </div>
 
       {/* Local Retailers Notice */}
       <Card className="bg-gradient-card border-0">
@@ -176,15 +178,16 @@ export default function Products() {
         ))}
       </div>
 
-      {/* Disclaimer */}
-      <Card className="bg-gradient-card shadow-card border-0">
-        <CardContent className="p-4">
-          <p className="text-xs text-muted-foreground">
-            * Prices and availability may vary. We may earn a commission from purchases made through affiliate links. 
-            This helps support the development of this app while providing you with quality product recommendations.
-          </p>
-        </CardContent>
-      </Card>
+        {/* Disclaimer */}
+        <Card className="bg-gradient-card border-0">
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">
+              * Prices and availability may vary. We may earn a commission from purchases made through affiliate links. 
+              This helps support the development of this app while providing you with quality product recommendations.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

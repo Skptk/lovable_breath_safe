@@ -32,8 +32,6 @@ const Products = lazy(() => retry(() => import("./pages/Products")));
 const Privacy = lazy(() => retry(() => import("./pages/Privacy")));
 const Terms = lazy(() => retry(() => import("./pages/Terms")));
 const NotFound = lazy(() => retry(() => import("./pages/NotFound")));
-const Rewards = lazy(() => retry(() => import("./pages/Rewards")));
-const Store = lazy(() => retry(() => import("./pages/Store")));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -148,8 +146,6 @@ const App = (): JSX.Element => {
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/products" element={<Products />} />
-                <Route path="/rewards" element={<Rewards />} />
-                <Route path="/store" element={<Store />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route 

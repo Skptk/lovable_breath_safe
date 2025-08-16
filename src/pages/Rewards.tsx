@@ -321,7 +321,7 @@ export default function Rewards() {
   
 
   return (
-    <div className="min-h-screen bg-background page-padding space-y-card-gap">
+    <div className="space-y-card-gap">
       {/* Header */}
       <div className="text-center space-y-4">
         <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">

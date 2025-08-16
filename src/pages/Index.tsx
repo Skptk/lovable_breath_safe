@@ -6,7 +6,7 @@ import MapView from "@/components/MapView";
 import ProfileView from "@/components/ProfileView";
 import Rewards from "@/pages/Rewards";
 import Store from "@/pages/Store";
-import Navigation from "@/components/Navigation";
+import Sidebar from "@/components/Sidebar";
 
 const Index = (): JSX.Element => {
   const [currentView, setCurrentView] = useState("dashboard");
@@ -38,11 +38,21 @@ const Index = (): JSX.Element => {
   }
 
   return (
-    <div className="relative min-h-screen bg-background">
-      <div className="pb-navbar">
-        {renderView()}
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar Navigation */}
+      <Sidebar currentView={currentView} onViewChange={setCurrentView} />
+      
+      {/* Main Content Area */}
+      <div className="flex-1 md:ml-16 ml-0">
+        <div className="p-6 max-w-7xl mx-auto">
+          {renderView()}
+        </div>
       </div>
-      <Navigation currentView={currentView} onViewChange={setCurrentView} />
+
+      {/* Mobile Navigation */}
+      <div className="md:hidden">
+        {/* You can add a mobile navigation here if needed */}
+      </div>
     </div>
   );
 };
