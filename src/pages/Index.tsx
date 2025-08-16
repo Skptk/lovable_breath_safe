@@ -38,8 +38,10 @@ const Index = (): JSX.Element => {
   }
 
   return (
-    <div className="relative">
-      {renderView()}
+    <div className="relative min-h-screen bg-background">
+      <div className="pb-navbar">
+        {renderView()}
+      </div>
       <Navigation currentView={currentView} onViewChange={setCurrentView} />
     </div>
   );

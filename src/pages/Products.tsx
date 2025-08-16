@@ -102,35 +102,35 @@ export default function Products() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
+    <div className="min-h-screen bg-background page-padding space-y-card-gap">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+        <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
           Air Purifiers
         </h1>
-        <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+        <p className="body-md text-muted-foreground mt-1 flex items-center gap-1">
           <MapPin className="h-4 w-4" />
           Recommended for {userLocation}
         </p>
       </div>
 
       {/* Local Retailers Notice */}
-      <Card className="bg-gradient-card shadow-card border-0">
-        <CardContent className="p-4">
+      <Card className="bg-gradient-card border-0">
+        <CardContent>
           <div className="flex items-center gap-2 mb-2">
             <MapPin className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">Local Retailers</h3>
+            <h3 className="font-heading">Local Retailers</h3>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="body-md text-muted-foreground">
             Check local electronics stores, home improvement centers, and department stores near you for immediate availability and to avoid shipping costs.
           </p>
         </CardContent>
       </Card>
 
       {/* Products Grid */}
-      <div className="space-y-4">
+      <div className="space-y-card-gap">
         {products.map((product) => (
-          <Card key={product.id} className="bg-gradient-card shadow-card border-0">
+          <Card key={product.id} className="bg-gradient-card border-0">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1">

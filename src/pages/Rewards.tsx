@@ -321,13 +321,13 @@ export default function Rewards() {
   
 
   return (
-    <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
+    <div className="min-h-screen bg-background page-padding space-y-card-gap">
       {/* Header */}
       <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+        <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
           Rewards & Achievements
         </h1>
-        <p className="text-muted-foreground">
+        <p className="body-md text-muted-foreground">
           Track your progress, unlock achievements, and redeem rewards
         </p>
         <div className="flex justify-center gap-2">
@@ -370,8 +370,8 @@ export default function Rewards() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-card shadow-card border-0">
+      <div className="grid grid-cols-1 md:grid-cols-4 grid-gutter">
+        <Card className="bg-gradient-card border-0">
           <CardContent className="p-4 text-center">
             <div className="text-3xl font-bold text-primary mb-2">
               <Trophy className="w-8 h-8 mx-auto mb-2" />

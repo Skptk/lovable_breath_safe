@@ -17,8 +17,8 @@ export default function Navigation({ currentView, onViewChange }: NavigationProp
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4">
-      <div className="flex justify-around items-center max-w-md mx-auto">
+    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border card-shadow navbar-height flex items-center px-page">
+      <div className="flex justify-around items-center w-full max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.id;
@@ -29,10 +29,10 @@ export default function Navigation({ currentView, onViewChange }: NavigationProp
               variant="ghost"
               size="sm"
               onClick={() => onViewChange(item.id)}
-              className={`flex-col gap-1 h-auto py-2 px-3 ${
+              className={`flex-col gap-1 h-auto py-2 px-3 rounded-ds-medium transition-smooth ${
                 isActive 
-                  ? 'text-primary bg-primary/10' 
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'text-primary bg-primary/10 shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
               }`}
             >
               <Icon className="h-5 w-5" />

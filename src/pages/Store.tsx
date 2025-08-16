@@ -218,13 +218,13 @@ export default function Store() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
+    <div className="min-h-screen bg-background page-padding space-y-card-gap">
       {/* Header */}
       <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+        <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
           Air Quality Store
         </h1>
-        <p className="text-muted-foreground">
+        <p className="body-md text-muted-foreground">
           Discover premium products to improve your indoor air quality
         </p>
       </div>

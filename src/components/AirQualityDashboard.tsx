@@ -115,7 +115,7 @@ export default function AirQualityDashboard(): JSX.Element {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
+    <div className="min-h-screen bg-background page-padding space-y-card-gap">
       {/* Header */}
       <DashboardHeader 
         location={data.location}

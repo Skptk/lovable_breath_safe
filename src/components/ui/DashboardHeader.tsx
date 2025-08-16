@@ -18,14 +18,14 @@ export const DashboardHeader = ({
 }: DashboardHeaderProps): JSX.Element => (
   <div className="flex justify-between items-center">
     <div>
-      <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+      <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
         Air Quality
       </h1>
-      <p className="text-sm text-muted-foreground flex items-center gap-1">
+      <p className="body-md text-muted-foreground flex items-center gap-1">
         <MapPin className="h-4 w-4" />
         {location}
         {hasLocationPermission && (
-          <span className="flex items-center gap-1 ml-2 text-green-600">
+          <span className="flex items-center gap-1 ml-2 text-success">
             <Shield className="h-3 w-3" />
             Location enabled
           </span>
@@ -57,7 +57,7 @@ export const DashboardHeader = ({
         </Button>
       )}
       
-      <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+      <div className="body-sm text-muted-foreground bg-muted/50 px-2 py-1 rounded-ds-small">
         Auto-refresh: 2min
       </div>
     </div>

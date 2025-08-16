@@ -266,13 +266,13 @@ export default function Auth(): JSX.Element {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-gradient-card shadow-card border-0">
+    <div className="min-h-screen bg-background flex items-center justify-center page-padding">
+      <Card className="w-full max-w-md bg-gradient-card border-0">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl bg-gradient-primary bg-clip-text text-transparent">
+          <CardTitle className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
             {isSignUp ? 'Create Account' : 'Welcome Back'}
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="body-md text-muted-foreground">
             {isSignUp ? 'Join Air Quality Tracker' : 'Sign in to your account'}
           </p>
         </CardHeader>
