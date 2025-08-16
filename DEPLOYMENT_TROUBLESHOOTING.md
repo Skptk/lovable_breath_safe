@@ -13,8 +13,8 @@ You're seeing this error: `Missing Supabase environment variables. Please check 
 4. **Add these variables:**
 
 ```
-VITE_SUPABASE_URL = https://bmqdbetupttlthpadseq.supabase.co
-VITE_SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtcWRiZXR1cHR0bHRocGFkc2VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxNjQzNDcsImV4cCI6MjA3MDc0MDM0N30.wCHsFY73VDM93uJAWRLd4-XA_fTB7efJC7rXzsjhn8c
+VITE_SUPABASE_URL = your_supabase_project_url
+VITE_SUPABASE_ANON_KEY = your_supabase_anon_key
 VITE_OPENWEATHERMAP_API_KEY = your_api_key_here
 ```
 
