@@ -54,7 +54,7 @@ export const ProgressGauge = ({
       
       {/* Center content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-foreground">{value}%</span>
+        <span className="text-2xl font-bold text-foreground">{Math.round(value)}%</span>
         {label && (
           <span className="body-sm text-muted-foreground">{label}</span>
         )}

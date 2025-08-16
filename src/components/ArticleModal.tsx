@@ -1,0 +1,135 @@
+import { useState, useEffect } from "react";
+import { X, Clock, User, Calendar } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Article } from "@/data/articles";
+
+interface ArticleModalProps {
+  article: Article;
+  onClose: () => void;
+}
+
+export default function ArticleModal({ article, onClose }: ArticleModalProps) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  };
+
+  const getCategoryColor = (category: Article['category']) => {
+    switch (category) {
+      case 'health':
+        return 'bg-error/10 text-error border-error/20';
+      case 'environment':
+        return 'bg-success/10 text-success border-success/20';
+      case 'research':
+        return 'bg-primary/10 text-primary border-primary/20';
+      case 'tips':
+        return 'bg-warning/10 text-warning border-warning/20';
+      default:
+        return 'bg-muted/10 text-muted-foreground border-muted/20';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div 
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity duration-300 ${
+          isVisible ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleClose}
+      />
+      
+      {/* Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <Card 
+          className={`w-full max-w-4xl max-h-[90vh] overflow-hidden glass-card transform transition-all duration-300 ${
+            isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+          }`}
+        >
+          <div className="relative">
+            {/* Close button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute top-4 right-4 z-10 bg-white/80 hover:bg-white/90 backdrop-blur-sm"
+              onClick={handleClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            
+            {/* Header with image */}
+            <div className="relative h-48 bg-gradient-to-r from-primary/20 to-accent/20">
+              <img 
+                src={article.imageUrl} 
+                alt={article.title}
+                className="w-full h-full object-cover opacity-60"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <div className="absolute bottom-4 left-6 right-16 text-white">
+                <Badge variant="outline" className={`mb-2 ${getCategoryColor(article.category)}`}>
+                  {article.category.charAt(0).toUpperCase() + article.category.slice(1)}
+                </Badge>
+                <h1 className="text-2xl font-bold">{article.title}</h1>
+              </div>
+            </div>
+            
+            {/* Article meta */}
+            <div className="px-6 py-4 border-b border-border/20">
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  <span>{article.author}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>{formatDate(article.publishDate)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>{article.readTime} min read</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <CardContent className="p-6 max-h-[60vh] overflow-y-auto">
+              <div className="prose prose-sm max-w-none">
+                <p className="text-lg text-muted-foreground mb-6 font-medium">
+                  {article.summary}
+                </p>
+                <div 
+                  className="article-content"
+                  dangerouslySetInnerHTML={{ __html: article.content }}
+                />
+              </div>
+            </CardContent>
+          </div>
+        </Card>
+      </div>
+    </>
+  );
+}

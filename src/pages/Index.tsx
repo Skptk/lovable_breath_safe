@@ -38,13 +38,13 @@ const Index = (): JSX.Element => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex">
       {/* Sidebar Navigation */}
       <Sidebar currentView={currentView} onViewChange={setCurrentView} />
       
       {/* Main Content Area */}
       <div className="flex-1 md:ml-16 ml-0">
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
           {renderView()}
         </div>
       </div>

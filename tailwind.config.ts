@@ -91,7 +91,9 @@ export default {
 			},
 			boxShadow: {
 				card: 'var(--shadow-card)',
-				glow: 'var(--shadow-glow)'
+				glow: 'var(--shadow-glow)',
+				glass: 'var(--shadow-glass)',
+				'glass-hover': 'var(--shadow-glass-hover)'
 			},
 			transitionTimingFunction: {
 				smooth: 'var(--transition-smooth)',

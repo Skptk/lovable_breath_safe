@@ -46,7 +46,7 @@ export const StatCard = ({
   };
 
   return (
-    <Card className={`border-0 ${className}`}>
+    <Card className={`glass-card border-0 ${className}`}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">

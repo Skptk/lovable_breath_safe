@@ -11,6 +11,7 @@ import { ErrorDisplay } from "@/components/ui/ErrorDisplay";
 import { StatCard, MiniChart } from "@/components/ui/StatCard";
 import { BalanceChart } from "@/components/ui/BalanceChart";
 import { ProgressGauge } from "@/components/ui/ProgressGauge";
+import NewsCard from "@/components/NewsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -146,7 +147,7 @@ export default function AirQualityDashboard(): JSX.Element {
   const aqiStatus = getAQIStatus(data.aqi);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:space-y-8">
       {/* Header */}
       <Header 
         title={`Hello, ${userName}!`}
@@ -157,7 +158,7 @@ export default function AirQualityDashboard(): JSX.Element {
       />
 
       {/* Stats Grid - Top Row with AQI Data */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <StatCard
           title="Air Quality Index"
           value={data.aqi}
@@ -198,130 +199,14 @@ export default function AirQualityDashboard(): JSX.Element {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Air Quality Chart - Takes 2 columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        {/* News Articles Card - Takes 2 columns */}
         <div className="lg:col-span-2">
-          <Card className="border-0">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="heading-md font-semibold">Air Quality Overview</h3>
-                  <Badge variant="outline" className={`${
-                    data.aqi <= 50 ? "bg-success/10 text-success border-success/20" :
-                    data.aqi <= 100 ? "bg-warning/10 text-warning border-warning/20" :
-                    "bg-error/10 text-error border-error/20"
-                  }`}>
-                    <div className={`w-1.5 h-1.5 rounded-full mr-1 ${
-                      data.aqi <= 50 ? "bg-success" :
-                      data.aqi <= 100 ? "bg-warning" :
-                      "bg-error"
-                    }`}></div>
-                    {aqiStatus.status}
-                  </Badge>
-                </div>
-                <div className="body-sm text-muted-foreground">
-                  Updated {new Date(data.timestamp).toLocaleTimeString()}
-                </div>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                {/* PM2.5 */}
-                <div>
-                  <p className="body-sm text-muted-foreground mb-1">PM2.5</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold">{data.pm25?.toFixed(1) || 'N/A'}</span>
-                    <span className="body-sm text-muted-foreground">µg/m³</span>
-                    <div className={`flex items-center gap-1 body-sm ${
-                      data.pm25 <= 12 ? 'text-success' : 'text-error'
-                    }`}>
-                      {data.pm25 <= 12 ? 
-                        <TrendingUp className="h-3 w-3" /> : 
-                        <TrendingDown className="h-3 w-3" />
-                      }
-                      <span>{data.pm25 <= 12 ? "Good" : "High"}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* PM10 */}
-                <div>
-                  <p className="body-sm text-muted-foreground mb-1">PM10</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold">{data.pm10?.toFixed(1) || 'N/A'}</span>
-                    <span className="body-sm text-muted-foreground">µg/m³</span>
-                    <div className={`flex items-center gap-1 body-sm ${
-                      data.pm10 <= 54 ? 'text-success' : 'text-error'
-                    }`}>
-                      {data.pm10 <= 54 ? 
-                        <TrendingUp className="h-3 w-3" /> : 
-                        <TrendingDown className="h-3 w-3" />
-                      }
-                      <span>{data.pm10 <= 54 ? "Good" : "High"}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pollutant Chart Visualization */}
-              <div className="h-32 w-full bg-muted/20 rounded-ds-small flex items-end justify-center px-4 pb-4">
-                <div className="w-full h-full flex items-end justify-around">
-                  {/* PM2.5 Bar */}
-                  <div className="flex flex-col items-center">
-                    <div 
-                      className="w-12 bg-primary rounded-t-ds-small mb-2"
-                      style={{ 
-                        height: `${Math.min((data.pm25 / 50) * 80, 80)}px` 
-                      }}
-                    ></div>
-                    <span className="body-sm text-muted-foreground">PM2.5</span>
-                  </div>
-                  
-                  {/* PM10 Bar */}
-                  <div className="flex flex-col items-center">
-                    <div 
-                      className="w-12 bg-secondary rounded-t-ds-small mb-2"
-                      style={{ 
-                        height: `${Math.min((data.pm10 / 100) * 80, 80)}px` 
-                      }}
-                    ></div>
-                    <span className="body-sm text-muted-foreground">PM10</span>
-                  </div>
-
-                  {/* NO2 Bar if available */}
-                  {data.no2 && (
-                    <div className="flex flex-col items-center">
-                      <div 
-                        className="w-12 bg-accent rounded-t-ds-small mb-2"
-                        style={{ 
-                          height: `${Math.min((data.no2 / 200) * 80, 80)}px` 
-                        }}
-                      ></div>
-                      <span className="body-sm text-muted-foreground">NO₂</span>
-                    </div>
-                  )}
-
-                  {/* O3 Bar if available */}
-                  {data.o3 && (
-                    <div className="flex flex-col items-center">
-                      <div 
-                        className="w-12 bg-warning rounded-t-ds-small mb-2"
-                        style={{ 
-                          height: `${Math.min((data.o3 / 180) * 80, 80)}px` 
-                        }}
-                      ></div>
-                      <span className="body-sm text-muted-foreground">O₃</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <NewsCard />
         </div>
 
         {/* AQI Progress Gauge */}
-        <Card className="border-0">
+        <Card className="glass-card border-0">
           <CardContent className="p-6">
             <div className="space-y-4">
               <div>
@@ -354,9 +239,128 @@ export default function AirQualityDashboard(): JSX.Element {
       </div>
 
       {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        {/* Air Quality Chart */}
+        <Card className="glass-card border-0">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="heading-md font-semibold">Pollutant Levels</h3>
+                <Badge variant="outline" className={`${
+                  data.aqi <= 50 ? "bg-success/10 text-success border-success/20" :
+                  data.aqi <= 100 ? "bg-warning/10 text-warning border-warning/20" :
+                  "bg-error/10 text-error border-error/20"
+                }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full mr-1 ${
+                    data.aqi <= 50 ? "bg-success" :
+                    data.aqi <= 100 ? "bg-warning" :
+                    "bg-error"
+                  }`}></div>
+                  {aqiStatus.status}
+                </Badge>
+              </div>
+              <div className="body-sm text-muted-foreground">
+                Updated {new Date(data.timestamp).toLocaleTimeString()}
+              </div>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              {/* PM2.5 */}
+              <div>
+                <p className="body-sm text-muted-foreground mb-1">PM2.5</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold">{data.pm25?.toFixed(1) || 'N/A'}</span>
+                  <span className="body-sm text-muted-foreground">µg/m³</span>
+                  <div className={`flex items-center gap-1 body-sm ${
+                    data.pm25 <= 12 ? 'text-success' : 'text-error'
+                  }`}>
+                    {data.pm25 <= 12 ? 
+                      <TrendingUp className="h-3 w-3" /> : 
+                      <TrendingDown className="h-3 w-3" />
+                    }
+                    <span>{data.pm25 <= 12 ? "Good" : "High"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* PM10 */}
+              <div>
+                <p className="body-sm text-muted-foreground mb-1">PM10</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold">{data.pm10?.toFixed(1) || 'N/A'}</span>
+                  <span className="body-sm text-muted-foreground">µg/m³</span>
+                  <div className={`flex items-center gap-1 body-sm ${
+                    data.pm10 <= 54 ? 'text-success' : 'text-error'
+                  }`}>
+                    {data.pm10 <= 54 ? 
+                      <TrendingUp className="h-3 w-3" /> : 
+                      <TrendingDown className="h-3 w-3" />
+                    }
+                    <span>{data.pm10 <= 54 ? "Good" : "High"}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Pollutant Chart Visualization */}
+            <div className="h-32 w-full glass-surface rounded-ds-small flex items-end justify-center px-4 pb-4">
+              <div className="w-full h-full flex items-end justify-around">
+                {/* PM2.5 Bar */}
+                <div className="flex flex-col items-center">
+                  <div 
+                    className="w-12 bg-primary rounded-t-ds-small mb-2"
+                    style={{ 
+                      height: `${Math.min((data.pm25 / 50) * 80, 80)}px` 
+                    }}
+                  ></div>
+                  <span className="body-sm text-muted-foreground">PM2.5</span>
+                </div>
+                
+                {/* PM10 Bar */}
+                <div className="flex flex-col items-center">
+                  <div 
+                    className="w-12 bg-secondary rounded-t-ds-small mb-2"
+                    style={{ 
+                      height: `${Math.min((data.pm10 / 100) * 80, 80)}px` 
+                    }}
+                  ></div>
+                  <span className="body-sm text-muted-foreground">PM10</span>
+                </div>
+
+                {/* NO2 Bar if available */}
+                {data.no2 && (
+                  <div className="flex flex-col items-center">
+                    <div 
+                      className="w-12 bg-accent rounded-t-ds-small mb-2"
+                      style={{ 
+                        height: `${Math.min((data.no2 / 200) * 80, 80)}px` 
+                      }}
+                    ></div>
+                    <span className="body-sm text-muted-foreground">NO₂</span>
+                  </div>
+                )}
+
+                {/* O3 Bar if available */}
+                {data.o3 && (
+                  <div className="flex flex-col items-center">
+                    <div 
+                      className="w-12 bg-warning rounded-t-ds-small mb-2"
+                      style={{ 
+                        height: `${Math.min((data.o3 / 180) * 80, 80)}px` 
+                      }}
+                    ></div>
+                    <span className="body-sm text-muted-foreground">O₃</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Pollutant Details */}
-        <Card className="border-0">
+        <Card className="glass-card border-0">
           <CardHeader>
             <CardTitle className="heading-md">Pollutant Details</CardTitle>
           </CardHeader>
@@ -448,7 +452,7 @@ export default function AirQualityDashboard(): JSX.Element {
         </Card>
 
         {/* Points & Rewards */}
-        <Card className="border-0">
+        <Card className="glass-card border-0">
           <CardHeader>
             <CardTitle className="heading-md">Points & Rewards</CardTitle>
           </CardHeader>
@@ -506,7 +510,7 @@ export default function AirQualityDashboard(): JSX.Element {
         </Card>
 
         {/* User Profile Card */}
-        <Card className="border-0">
+        <Card className="glass-card border-0">
           <CardContent className="p-6 text-center">
             <div className="space-y-4">
               <Avatar className="h-16 w-16 mx-auto">
