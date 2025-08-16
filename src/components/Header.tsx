@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Bell, RefreshCw } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import SearchDialog from "./SearchDialog";
+import NotificationBell from "./NotificationBell";
 
 interface HeaderProps {
   title: string;
@@ -68,14 +69,7 @@ export default function Header({
         )}
 
         {/* Notifications */}
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-9 w-9 rounded-full border-border relative"
-        >
-          <Bell className="h-4 w-4" />
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-error rounded-full border-2 border-background"></div>
-        </Button>
+        <NotificationBell />
 
         {/* User Profile */}
         <div className="flex items-center gap-3">

@@ -356,6 +356,111 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: Database["public"]["Enums"]["notification_type"]
+          priority: Database["public"]["Enums"]["notification_priority"]
+          title: string
+          message: string
+          data: Json | null
+          read: boolean
+          action_url: string | null
+          expires_at: string | null
+          created_at: string
+          read_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: Database["public"]["Enums"]["notification_type"]
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          title: string
+          message: string
+          data?: Json | null
+          read?: boolean
+          action_url?: string | null
+          expires_at?: string | null
+          created_at?: string
+          read_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          title?: string
+          message?: string
+          data?: Json | null
+          read?: boolean
+          action_url?: string | null
+          expires_at?: string | null
+          created_at?: string
+          read_at?: string | null
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          aqi_alerts: boolean
+          aqi_threshold: number
+          achievement_notifications: boolean
+          points_notifications: boolean
+          withdrawal_notifications: boolean
+          shop_notifications: boolean
+          streak_notifications: boolean
+          daily_reminders: boolean
+          weekly_summaries: boolean
+          system_announcements: boolean
+          maintenance_alerts: boolean
+          email_notifications: boolean
+          push_notifications: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          aqi_alerts?: boolean
+          aqi_threshold?: number
+          achievement_notifications?: boolean
+          points_notifications?: boolean
+          withdrawal_notifications?: boolean
+          shop_notifications?: boolean
+          streak_notifications?: boolean
+          daily_reminders?: boolean
+          weekly_summaries?: boolean
+          system_announcements?: boolean
+          maintenance_alerts?: boolean
+          email_notifications?: boolean
+          push_notifications?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          aqi_alerts?: boolean
+          aqi_threshold?: number
+          achievement_notifications?: boolean
+          points_notifications?: boolean
+          withdrawal_notifications?: boolean
+          shop_notifications?: boolean
+          streak_notifications?: boolean
+          daily_reminders?: boolean
+          weekly_summaries?: boolean
+          system_announcements?: boolean
+          maintenance_alerts?: boolean
+          email_notifications?: boolean
+          push_notifications?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -365,6 +470,8 @@ export type Database = {
     }
     Enums: {
       app_role: "user" | "admin"
+      notification_type: "aqi_alert" | "achievement_unlocked" | "points_earned" | "withdrawal_approved" | "withdrawal_rejected" | "shop_new_item" | "shop_sale" | "streak_milestone" | "daily_reminder" | "weekly_summary" | "system_announcement" | "maintenance" | "welcome"
+      notification_priority: "low" | "medium" | "high" | "urgent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -493,6 +600,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["user", "admin"],
+      notification_type: ["aqi_alert", "achievement_unlocked", "points_earned", "withdrawal_approved", "withdrawal_rejected", "shop_new_item", "shop_sale", "streak_milestone", "daily_reminder", "weekly_summary", "system_announcement", "maintenance", "welcome"],
+      notification_priority: ["low", "medium", "high", "urgent"],
     },
   },
 } as const

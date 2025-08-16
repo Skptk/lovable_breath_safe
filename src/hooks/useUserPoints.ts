@@ -29,6 +29,7 @@ export const useUserPoints = (): UserPoints => {
       setIsLoading(true);
       setError(null);
 
+      // First get the profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('total_points')
@@ -45,10 +46,39 @@ export const useUserPoints = (): UserPoints => {
         throw profileError;
       }
 
-      const points = profile?.total_points || 0;
-      setTotalPoints(points);
-      setCurrencyRewards(points / 1000 * 0.1);
-      setCanWithdraw(points >= 500000);
+      // Also get the sum from user_points table for verification
+      const { data: pointsHistory, error: pointsError } = await supabase
+        .from('user_points')
+        .select('points_earned')
+        .eq('user_id', user.id);
+
+      if (pointsError) {
+        console.warn('Could not fetch points history:', pointsError);
+      }
+
+      // Calculate total from history
+      const calculatedTotal = pointsHistory?.reduce((sum, record) => sum + (record.points_earned || 0), 0) || 0;
+      const profileTotal = profile?.total_points || 0;
+
+      // Use the higher value or sync if there's a mismatch
+      const actualTotal = Math.max(calculatedTotal, profileTotal);
+
+      // If there's a significant mismatch, update the profile
+      if (Math.abs(actualTotal - profileTotal) > 0 && calculatedTotal > profileTotal) {
+        console.log('Syncing profile points with calculated total:', calculatedTotal);
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ total_points: calculatedTotal })
+          .eq('user_id', user.id);
+
+        if (updateError) {
+          console.error('Error syncing points:', updateError);
+        }
+      }
+
+      setTotalPoints(actualTotal);
+      setCurrencyRewards(actualTotal / 1000 * 0.1);
+      setCanWithdraw(actualTotal >= 500000);
     } catch (err: any) {
       console.error('Error fetching user points:', err);
       setError(err.message || 'Failed to fetch user points');
@@ -63,6 +93,51 @@ export const useUserPoints = (): UserPoints => {
 
   useEffect(() => {
     fetchUserPoints();
+  }, [user]);
+
+  // Set up real-time subscription for profile changes
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('user-profile-points')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Profile points updated:', payload);
+          const newProfile = payload.new as { total_points: number };
+          if (newProfile.total_points !== undefined) {
+            setTotalPoints(newProfile.total_points);
+            setCurrencyRewards(newProfile.total_points / 1000 * 0.1);
+            setCanWithdraw(newProfile.total_points >= 500000);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'user_points',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('New points earned:', payload);
+          // Refresh to get updated total
+          fetchUserPoints();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   return {
