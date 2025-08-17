@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import Footer from "@/components/Footer";
+
 
 interface HistoryEntry {
   id: string;
@@ -872,8 +872,7 @@ export default function HistoryView(): JSX.Element {
       )}
       </div>
       
-      {/* Footer */}
-      <Footer />
+
     </div>
   );
 }

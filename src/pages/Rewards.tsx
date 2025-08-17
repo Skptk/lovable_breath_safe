@@ -28,7 +28,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useAchievements, UserAchievement, UserStreak } from '@/hooks/useAchievements';
 import { useUserPoints } from '@/hooks/useUserPoints';
-import Footer from '@/components/Footer';
+
 
 interface Profile {
   id: string;
@@ -866,8 +866,7 @@ export default function Rewards() {
       )}
       </div>
       
-      {/* Footer */}
-      <Footer />
+
     </div>
   );
 }

@@ -40,7 +40,7 @@ import {
   CreditCard
 } from "lucide-react";
 import NotificationSettings from "./NotificationSettings";
-import Footer from "@/components/Footer";
+
 
 interface Profile {
   id: string;
@@ -1328,8 +1328,7 @@ export default function ProfileView() {
       )}
       </div>
       
-      {/* Footer */}
-      <Footer />
+      
     </div>
   );
 }
