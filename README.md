@@ -51,6 +51,8 @@ VITE_OPENWEATHERMAP_API_KEY=your_openweathermap_api_key
 
 ⚠️ **Important**: Replace `your_supabase_project_url` and `your_supabase_anon_key` with your actual Supabase credentials from your [Supabase Dashboard](https://supabase.com/dashboard).
 
+🔒 **Security Note**: Never commit `.env.local` to version control. The `.gitignore` file is configured to exclude environment files, but always verify sensitive information is not exposed publicly.
+
 4. Start the development server
 ```bash
 npm run dev
