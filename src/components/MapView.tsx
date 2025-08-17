@@ -6,6 +6,7 @@ import { MapPin, Navigation, Layers, Loader2, AlertTriangle } from "lucide-react
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import GoogleMap from "./GoogleMap";
+import Footer from "@/components/Footer";
 
 interface NearbyLocation {
   id: string;
@@ -285,7 +286,8 @@ export default function MapView(): JSX.Element {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 space-y-6">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 p-4 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -369,6 +371,10 @@ export default function MapView(): JSX.Element {
           </Card>
         ))}
       </div>
+      </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

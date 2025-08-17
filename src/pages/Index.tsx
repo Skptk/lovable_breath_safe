@@ -7,6 +7,7 @@ import ProfileView from "@/components/ProfileView";
 import Rewards from "@/pages/Rewards";
 import Store from "@/pages/Store";
 import Sidebar from "@/components/Sidebar";
+import Footer from "@/components/Footer";
 
 const Index = (): JSX.Element => {
   const [currentView, setCurrentView] = useState("dashboard");
@@ -42,7 +43,7 @@ const Index = (): JSX.Element => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex">
+    <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex flex-col">
       {/* Sidebar Navigation */}
       <Sidebar currentView={currentView} onViewChange={setCurrentView} />
       
@@ -52,6 +53,9 @@ const Index = (): JSX.Element => {
           {renderView()}
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
 
       {/* Mobile Navigation */}
       <div className="md:hidden">

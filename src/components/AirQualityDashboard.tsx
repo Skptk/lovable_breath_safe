@@ -379,39 +379,7 @@ export default function AirQualityDashboard({ onNavigate }: AirQualityDashboardP
         </Card>
       </div>
 
-      {/* User Profile Card - Clickable */}
-      <div className="flex justify-center">
-        <Card 
-          className="glass-card border-0 cursor-pointer hover:shadow-lg transition-all duration-300 max-w-sm w-full"
-          onClick={() => onNavigate && onNavigate('profile')}
-        >
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={user?.user_metadata?.avatar_url} />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  <User className="h-6 w-6" />
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg">{userName}</h3>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {userPoints.toLocaleString()} points
-                  </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    ${currencyRewards.toFixed(2)}
-                  </Badge>
-                </div>
-              </div>
-              <div className="text-muted-foreground">
-                <ArrowUpRight className="h-4 w-4" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+
 
       {/* Pollutant Modal */}
       {selectedPollutant && (

@@ -17,6 +17,7 @@ import {
   Zap
 } from "lucide-react";
 import React from 'react'; // Added missing import for React
+import Footer from '@/components/Footer';
 
 interface Product {
   id: string;
@@ -218,7 +219,8 @@ export default function Store() {
   };
 
   return (
-    <div className="space-y-card-gap">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 space-y-card-gap p-6">
       {/* Header */}
       <div className="text-center space-y-4">
         <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
@@ -422,6 +424,10 @@ export default function Store() {
           We may earn a commission when you make a purchase through these links at no additional cost to you.
         </p>
       </div>
+      </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

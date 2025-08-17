@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Eye, EyeOff, Code, AlertTriangle } from 'lucide-react';
+import Footer from '@/components/Footer';
 
 export default function Auth(): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
@@ -266,8 +267,9 @@ export default function Auth(): JSX.Element {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center page-padding">
-      <Card className="w-full max-w-md bg-gradient-card border-0">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 flex items-center justify-center page-padding">
+        <Card className="w-full max-w-md bg-gradient-card border-0">
         <CardHeader className="text-center">
           <CardTitle className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
             {isSignUp ? 'Create Account' : 'Welcome Back'}
@@ -439,6 +441,10 @@ export default function Auth(): JSX.Element {
           )}
         </CardContent>
       </Card>
+      </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

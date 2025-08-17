@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import Footer from "@/components/Footer";
 
 interface HistoryEntry {
   id: string;
@@ -503,7 +504,8 @@ export default function HistoryView(): JSX.Element {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 p-4 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -868,6 +870,10 @@ export default function HistoryView(): JSX.Element {
           Refresh Records
         </Button>
       )}
+      </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

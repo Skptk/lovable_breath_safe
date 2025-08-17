@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Star, ExternalLink, MapPin } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import Footer from '@/components/Footer';
 
 interface Product {
   id: string;
@@ -102,7 +103,7 @@ export default function Products() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Sidebar would be here but Products is a separate route */}
       <div className="flex-1 p-6 max-w-7xl mx-auto space-y-card-gap">
         {/* Header */}
@@ -188,6 +189,9 @@ export default function Products() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

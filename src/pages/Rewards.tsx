@@ -28,6 +28,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useAchievements, UserAchievement, UserStreak } from '@/hooks/useAchievements';
 import { useUserPoints } from '@/hooks/useUserPoints';
+import Footer from '@/components/Footer';
 
 interface Profile {
   id: string;
@@ -321,7 +322,8 @@ export default function Rewards() {
   
 
   return (
-    <div className="space-y-card-gap">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 space-y-card-gap p-6">
       {/* Header */}
       <div className="text-center space-y-4">
         <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
@@ -862,6 +864,10 @@ export default function Rewards() {
           </div>
         </div>
       )}
+      </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

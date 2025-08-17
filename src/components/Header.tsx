@@ -30,7 +30,10 @@ export default function Header({
   return (
     <div className="flex items-center justify-between mb-6">
       {/* Left side - Greeting and subtitle */}
-      <div>
+      <div 
+        className={`${onNavigate ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+        onClick={() => onNavigate && onNavigate('profile')}
+      >
         <h1 className="heading-lg text-foreground mb-1">
           {title}
         </h1>
