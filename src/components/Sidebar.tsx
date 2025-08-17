@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Home, History, Map, Trophy, ShoppingBag, User, Settings, LogOut } from "lucide-react";
+import { Home, History, Map, Trophy, ShoppingBag, User, Settings, LogOut, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface SidebarProps {
   currentView: string;
@@ -9,6 +10,7 @@ interface SidebarProps {
 
 export default function Sidebar({ currentView, onViewChange }: SidebarProps): JSX.Element {
   const { signOut } = useAuth();
+  const { theme, setTheme, isDark } = useTheme();
 
   const navItems = [
     { id: "dashboard", icon: Home, label: "Dashboard" },
@@ -24,6 +26,17 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
       await signOut();
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  const toggleTheme = () => {
+    if (theme === 'light') {
+      setTheme('dark');
+    } else if (theme === 'dark') {
+      setTheme('light');
+    } else {
+      // If system, toggle to opposite of current effective theme
+      setTheme(isDark ? 'light' : 'dark');
     }
   };
 
@@ -68,6 +81,22 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
 
       {/* Bottom Actions */}
       <div className="flex flex-col space-y-4">
+        {/* Dark Mode Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          className="w-10 h-10 rounded-ds-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-smooth"
+          title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          
+          {/* Tooltip */}
+          <div className="absolute left-full ml-2 px-2 py-1 bg-foreground text-background text-xs rounded-ds-small opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+            {isDark ? "Light Mode" : "Dark Mode"}
+          </div>
+        </Button>
+
         <Button
           variant="ghost"
           size="icon"

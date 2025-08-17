@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/use-toast';
+import { useTheme } from '@/contexts/ThemeContext';
 import { 
   User, 
   Settings, 
@@ -36,8 +37,7 @@ import {
   CheckCircle,
   DollarSign,
   Gift,
-  CreditCard,
-  PayPal
+  CreditCard
 } from "lucide-react";
 import NotificationSettings from "./NotificationSettings";
 
@@ -147,6 +147,7 @@ export default function ProfileView() {
   });
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     if (user) {
@@ -248,11 +249,18 @@ export default function ProfileView() {
       if (savedSettings) {
         const parsedSettings = JSON.parse(savedSettings);
         setUserSettings({ ...userSettings, ...parsedSettings });
+        // Sync theme with context
+        if (parsedSettings.preferences?.theme) {
+          setTheme(parsedSettings.preferences.theme);
+        }
+      } else {
+        // Sync theme with context for default settings
+        setTheme(DEFAULT_SETTINGS.preferences.theme);
       }
     } catch (error) {
       console.error('Error loading user settings:', error);
       // Fallback to default settings
-      setUserSettings(DEFAULT_SETTINGS);
+      setTheme(DEFAULT_SETTINGS.preferences.theme);
     }
   };
 
@@ -273,7 +281,20 @@ export default function ProfileView() {
         }
         throw error;
       }
-      setWithdrawalRequests(data || []);
+      
+      // Convert the data to match our WithdrawalRequest type
+      const typedData: WithdrawalRequest[] = (data || []).map(item => ({
+        id: item.id,
+        user_id: item.user_id,
+        amount: item.amount,
+        method: item.method as 'paypal' | 'mpesa',
+        status: item.status as 'pending' | 'approved' | 'rejected',
+        paypal_email: item.paypal_email || undefined,
+        mpesa_phone: item.mpesa_phone || undefined,
+        created_at: item.created_at
+      }));
+      
+      setWithdrawalRequests(typedData);
     } catch (error: any) {
       console.error('Error fetching withdrawal requests:', error);
       // Set empty array to prevent UI errors
@@ -456,10 +477,11 @@ export default function ProfileView() {
     }
   };
 
-  const saveSettings = () => {
+  const saveSettings = async () => {
     setSaving(true);
     try {
       // Save to localStorage instead of database
+      // This function is now primarily for saving theme, as other settings are handled by updateSetting
       localStorage.setItem(`breath-safe-settings-${user?.id}`, JSON.stringify(userSettings));
       
       toast({
@@ -541,14 +563,43 @@ export default function ProfileView() {
     }
   };
 
+  // Update the theme setting function to use the context
   const updateSetting = (category: keyof UserSettings, key: string, value: any) => {
-    setUserSettings(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        [key]: value
+    try {
+      // Special handling for theme
+      if (category === 'preferences' && key === 'theme') {
+        setTheme(value);
       }
-    }));
+      
+      setUserSettings(prev => ({
+        ...prev,
+        [category]: {
+          ...prev[category],
+          [key]: value
+        }
+      }));
+
+      // Save to localStorage
+      localStorage.setItem(`breath-safe-settings-${user?.id}`, JSON.stringify({
+        ...userSettings,
+        [category]: {
+          ...userSettings[category],
+          [key]: value
+        }
+      }));
+
+      toast({
+        title: "Setting Updated",
+        description: `${key} has been updated successfully.`,
+      });
+    } catch (error) {
+      console.error('Error updating setting:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update setting. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading) {

@@ -7,6 +7,7 @@ import { ErrorBoundary, withErrorBoundary } from "@/components";
 import { usePerformanceMonitor, usePreload } from "@/hooks/usePerformance";
 import { useAppStore } from "@/store";
 import { Suspense, lazy, useEffect } from "react";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 // Retry mechanism for lazy loading
 const retry = (fn: () => Promise<any>, retriesLeft: number = 3, interval: number = 1000): Promise<any> => {
@@ -109,56 +110,58 @@ const App = (): JSX.Element => {
   }
 
   return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        console.error("App-level error:", error, errorInfo);
-        setError(error.message);
-      }}
-      fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <div className="text-center space-y-4">
-            <h1 className="text-2xl font-bold text-red-600">Application Error</h1>
-            <p className="text-muted-foreground">
-              Something went wrong. Please refresh the page or contact support.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            >
-              Refresh Page
-            </button>
+    <ThemeProvider>
+      <ErrorBoundary
+        onError={(error, errorInfo) => {
+          console.error("App-level error:", error, errorInfo);
+          setError(error.message);
+        }}
+        fallback={
+          <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="text-center space-y-4">
+              <h1 className="text-2xl font-bold text-red-600">Application Error</h1>
+              <p className="text-muted-foreground">
+                Something went wrong. Please refresh the page or contact support.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              >
+                Refresh Page
+              </button>
+            </div>
           </div>
-        </div>
-      }
-    >
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={<LoadingSpinner />}>
-            <ErrorBoundary
-              onError={(error, errorInfo) => {
-                console.error("Route loading error:", error, errorInfo);
-                setError(error.message);
-              }}
-              fallback={<LazyErrorFallback error={new Error("Failed to load route")} retry={() => window.location.reload()} />}
-            >
-              <Routes>
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route 
-                  path="/" 
-                  element={isAuthenticated ? <Index /> : <Auth />} 
-                />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </ErrorBoundary>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ErrorBoundary>
+        }
+      >
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Suspense fallback={<LoadingSpinner />}>
+              <ErrorBoundary
+                onError={(error, errorInfo) => {
+                  console.error("Route loading error:", error, errorInfo);
+                  setError(error.message);
+                }}
+                fallback={<LazyErrorFallback error={new Error("Failed to load route")} retry={() => window.location.reload()} />}
+              >
+                <Routes>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route 
+                    path="/" 
+                    element={isAuthenticated ? <Index /> : <Auth />} 
+                  />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </ErrorBoundary>
+            </Suspense>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 };
 

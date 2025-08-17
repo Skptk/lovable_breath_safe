@@ -27,7 +27,8 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Plus,
-  RefreshCw
+  RefreshCw,
+  User
 } from "lucide-react";
 
 interface AirQualityDashboardProps {
@@ -119,7 +120,7 @@ export default function AirQualityDashboard({ onNavigate }: AirQualityDashboardP
         onRetry={() => refetch()}
         onRefresh={() => window.location.reload()}
       />
-    );
+      );
   }
 
   // Handle no data state
@@ -210,47 +211,12 @@ export default function AirQualityDashboard({ onNavigate }: AirQualityDashboardP
           <NewsCard />
         </div>
 
-        {/* AQI Progress Gauge */}
-        <Card className="glass-card border-0">
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <div>
-                <h3 className="heading-md font-semibold mb-1">Air Quality Index</h3>
-                <p className="body-sm text-muted-foreground">Current reading for {data.location}</p>
-              </div>
-              
-              <div className="text-2xl font-bold">{data.aqi}</div>
-              
-              <p className="body-sm text-muted-foreground">
-                {data.aqi <= 50 ? "Air quality is good! Great for outdoor activities." :
-                 data.aqi <= 100 ? "Air quality is moderate. Sensitive individuals should consider limiting outdoor activities." :
-                 "Air quality is poor. Limit outdoor activities."}
-              </p>
-
-              <div className="flex justify-center py-4">
-                <ProgressGauge 
-                  value={Math.min((data.aqi / 300) * 100, 100)} 
-                  size={120}
-                  color={
-                    data.aqi <= 50 ? "hsl(var(--success))" :
-                    data.aqi <= 100 ? "hsl(var(--warning))" :
-                    "hsl(var(--error))"
-                  }
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        {/* Air Quality Chart */}
+        {/* Enhanced Air Quality Card with Pollutant Details and Points Info */}
         <Card className="glass-card border-0">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h3 className="heading-md font-semibold">Pollutant Levels</h3>
+                <h3 className="heading-md font-semibold">Air Quality Details</h3>
                 <Badge variant="outline" className={`${
                   data.aqi <= 50 ? "bg-success/10 text-success border-success/20" :
                   data.aqi <= 100 ? "bg-warning/10 text-warning border-warning/20" :
@@ -270,220 +236,113 @@ export default function AirQualityDashboard({ onNavigate }: AirQualityDashboardP
             </div>
           </CardHeader>
           
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-2 gap-6 mb-6">
+          <CardContent className="space-y-6">
+            {/* AQI Progress Gauge */}
+            <div className="text-center">
+              <div className="text-3xl font-bold mb-2">{data.aqi}</div>
+              <p className="body-sm text-muted-foreground mb-4">
+                {data.aqi <= 50 ? "Air quality is good! Great for outdoor activities." :
+                 data.aqi <= 100 ? "Air quality is moderate. Sensitive individuals should consider limiting outdoor activities." :
+                 "Air quality is poor. Limit outdoor activities."}
+              </p>
+              <div className="flex justify-center">
+                <ProgressGauge 
+                  value={Math.min((data.aqi / 300) * 100, 100)} 
+                  size={100}
+                  color={
+                    data.aqi <= 50 ? "hsl(var(--success))" :
+                    data.aqi <= 100 ? "hsl(var(--warning))" :
+                    "hsl(var(--error))"
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Pollutant Levels Grid */}
+            <div className="grid grid-cols-2 gap-4">
               {/* PM2.5 */}
-              <div>
+              <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <p className="body-sm text-muted-foreground mb-1">PM2.5</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold">{data.pm25?.toFixed(1) || 'N/A'}</span>
-                  <span className="body-sm text-muted-foreground">µg/m³</span>
-                  <div className={`flex items-center gap-1 body-sm ${
-                    data.pm25 <= 12 ? 'text-success' : 'text-error'
-                  }`}>
-                    {data.pm25 <= 12 ? 
-                      <TrendingUp className="h-3 w-3" /> : 
-                      <TrendingDown className="h-3 w-3" />
-                    }
-                    <span>{data.pm25 <= 12 ? "Good" : "High"}</span>
-                  </div>
+                <div className="text-xl font-bold">{data.pm25?.toFixed(1) || 'N/A'}</div>
+                <span className="body-sm text-muted-foreground">µg/m³</span>
+                <div className={`flex items-center justify-center gap-1 mt-1 ${
+                  data.pm25 <= 12 ? 'text-success' : 'text-error'
+                }`}>
+                  {data.pm25 <= 12 ? 
+                    <TrendingUp className="h-3 w-3" /> : 
+                    <TrendingDown className="h-3 w-3" />
+                  }
+                  <span className="text-xs">{data.pm25 <= 12 ? "Good" : "High"}</span>
                 </div>
               </div>
 
               {/* PM10 */}
-              <div>
+              <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <p className="body-sm text-muted-foreground mb-1">PM10</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold">{data.pm10?.toFixed(1) || 'N/A'}</span>
-                  <span className="body-sm text-muted-foreground">µg/m³</span>
-                  <div className={`flex items-center gap-1 body-sm ${
-                    data.pm10 <= 54 ? 'text-success' : 'text-error'
-                  }`}>
-                    {data.pm10 <= 54 ? 
-                      <TrendingUp className="h-3 w-3" /> : 
-                      <TrendingDown className="h-3 w-3" />
-                    }
-                    <span>{data.pm10 <= 54 ? "Good" : "High"}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Pollutant Chart Visualization */}
-            <div className="h-32 w-full glass-surface rounded-ds-small flex items-end justify-center px-4 pb-4">
-              <div className="w-full h-full flex items-end justify-around">
-                {/* PM2.5 Bar */}
-                <div className="flex flex-col items-center">
-                  <div 
-                    className="w-12 bg-primary rounded-t-ds-small mb-2"
-                    style={{ 
-                      height: `${Math.min((data.pm25 / 50) * 80, 80)}px` 
-                    }}
-                  ></div>
-                  <span className="body-sm text-muted-foreground">PM2.5</span>
-                </div>
-                
-                {/* PM10 Bar */}
-                <div className="flex flex-col items-center">
-                  <div 
-                    className="w-12 bg-secondary rounded-t-ds-small mb-2"
-                    style={{ 
-                      height: `${Math.min((data.pm10 / 100) * 80, 80)}px` 
-                    }}
-                  ></div>
-                  <span className="body-sm text-muted-foreground">PM10</span>
-                </div>
-
-                {/* NO2 Bar if available */}
-                {data.no2 && (
-                  <div className="flex flex-col items-center">
-                    <div 
-                      className="w-12 bg-accent rounded-t-ds-small mb-2"
-                      style={{ 
-                        height: `${Math.min((data.no2 / 200) * 80, 80)}px` 
-                      }}
-                    ></div>
-                    <span className="body-sm text-muted-foreground">NO₂</span>
-                  </div>
-                )}
-
-                {/* O3 Bar if available */}
-                {data.o3 && (
-                  <div className="flex flex-col items-center">
-                    <div 
-                      className="w-12 bg-warning rounded-t-ds-small mb-2"
-                      style={{ 
-                        height: `${Math.min((data.o3 / 180) * 80, 80)}px` 
-                      }}
-                    ></div>
-                    <span className="body-sm text-muted-foreground">O₃</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pollutant Details */}
-        <Card className="glass-card border-0">
-          <CardHeader>
-            <CardTitle className="heading-md">Pollutant Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="body-sm text-muted-foreground mb-6">
-              Detailed breakdown of air pollutants in your area. Click on any pollutant to learn more about its health effects.
-            </p>
-            
-            {/* Pollutant List */}
-            <div className="space-y-4">
-              {[
-                { name: 'PM2.5', value: data.pm25, key: 'pm25' },
-                { name: 'PM10', value: data.pm10, key: 'pm10' },
-                { name: 'NO₂', value: data.no2, key: 'no2' },
-                { name: 'O₃', value: data.o3, key: 'o3' },
-                { name: 'SO₂', value: data.so2, key: 'so2' },
-                { name: 'CO', value: data.co, key: 'co' }
-              ].map(({ name, value, key }) => {
-                if (!value) return null;
-                
-                const getPollutantInfo = (pollutant: string, value: number) => {
-                  switch (pollutant) {
-                    case 'pm25':
-                      return {
-                        status: value <= 12 ? 'Good' : value <= 35 ? 'Moderate' : 'High',
-                        color: value <= 12 ? 'bg-success' : value <= 35 ? 'bg-warning' : 'bg-error'
-                      };
-                    case 'pm10':
-                      return {
-                        status: value <= 54 ? 'Good' : value <= 154 ? 'Moderate' : 'High',
-                        color: value <= 54 ? 'bg-success' : value <= 154 ? 'bg-warning' : 'bg-error'
-                      };
-                    case 'no2':
-                      return {
-                        status: value <= 53 ? 'Good' : value <= 100 ? 'Moderate' : 'High',
-                        color: value <= 53 ? 'bg-success' : value <= 100 ? 'bg-warning' : 'bg-error'
-                      };
-                    case 'o3':
-                      return {
-                        status: value <= 54 ? 'Good' : value <= 70 ? 'Moderate' : 'High',
-                        color: value <= 54 ? 'bg-success' : value <= 70 ? 'bg-warning' : 'bg-error'
-                      };
-                    default:
-                      return { status: 'Unknown', color: 'bg-muted' };
+                <div className="text-xl font-bold">{data.pm10?.toFixed(1) || 'N/A'}</div>
+                <span className="body-sm text-muted-foreground">µg/m³</span>
+                <div className={`flex items-center justify-center gap-1 mt-1 ${
+                  data.pm10 <= 54 ? 'text-success' : 'text-error'
+                }`}>
+                  {data.pm10 <= 54 ? 
+                    <TrendingUp className="h-3 w-3" /> : 
+                    <TrendingDown className="h-3 w-3" />
                   }
-                };
-
-                const info = getPollutantInfo(key, value);
-                
-                return (
-                  <div 
-                    key={key}
-                    className="cursor-pointer hover:bg-muted/50 rounded-ds-small p-2 transition-colors"
-                    onClick={() => handlePollutantClick(name, value, 'µg/m³')}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 ${info.color} rounded-full`}></div>
-                        <div>
-                          <p className="body-sm font-medium">{name}</p>
-                          <p className="body-sm text-muted-foreground">{value.toFixed(1)} µg/m³</p>
-                        </div>
-                      </div>
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${
-                          info.status === 'Good' ? 'text-success border-success/20' :
-                          info.status === 'Moderate' ? 'text-warning border-warning/20' :
-                          'text-error border-error/20'
-                        }`}
-                      >
-                        {info.status}
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
+                  <span className="text-xs">{data.pm10 <= 54 ? "Good" : "High"}</span>
+                </div>
+              </div>
             </div>
 
-            <Button 
-              variant="outline" 
-              className="w-full mt-4"
-              onClick={() => debouncedRefresh()}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh Data
-            </Button>
-          </CardContent>
-        </Card>
+            {/* Additional Pollutants if available */}
+            {(data.no2 || data.o3 || data.so2 || data.co) && (
+              <div className="space-y-2">
+                <p className="body-sm font-medium text-muted-foreground">Other Pollutants</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {data.no2 && (
+                    <div className="text-center p-2 bg-muted/20 rounded text-xs">
+                      <div className="font-medium">NO₂</div>
+                      <div>{data.no2.toFixed(1)} µg/m³</div>
+                    </div>
+                  )}
+                  {data.o3 && (
+                    <div className="text-center p-2 bg-muted/20 rounded text-xs">
+                      <div className="font-medium">O₃</div>
+                      <div>{data.o3.toFixed(1)} µg/m³</div>
+                    </div>
+                  )}
+                  {data.so2 && (
+                    <div className="text-center p-2 bg-muted/20 rounded text-xs">
+                      <div className="font-medium">SO₂</div>
+                      <div>{data.so2.toFixed(1)} µg/m³</div>
+                    </div>
+                  )}
+                  {data.co && (
+                    <div className="text-center p-2 bg-muted/20 rounded text-xs">
+                      <div className="font-medium">CO</div>
+                      <div>{data.co.toFixed(1)} µg/m³</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
-        {/* Points & Rewards */}
-        <Card className="glass-card border-0">
-          <CardHeader>
-            <CardTitle className="heading-md">Points & Rewards</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
+            {/* Points & Rewards Summary */}
+            <div className="space-y-3 pt-4 border-t">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-8 bg-primary rounded-full"></div>
-                  <div>
-                    <p className="body-sm font-medium">Points Earned</p>
-                    <p className="body-sm text-muted-foreground">For checking air quality</p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-6 bg-primary rounded-full"></div>
+                  <span className="body-sm font-medium">Points Earned</span>
                 </div>
                 <div className="flex items-center gap-1 text-success body-sm">
                   <ArrowUpRight className="h-3 w-3" />
-                  <span>+{Math.floor(userPoints / 100)}</span>
+                  <span>{Math.floor(userPoints / 100)}</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-8 bg-success rounded-full"></div>
-                  <div>
-                    <p className="body-sm font-medium">Currency Rewards</p>
-                    <p className="body-sm text-muted-foreground">Ready to withdraw</p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-6 bg-success rounded-full"></div>
+                  <span className="body-sm font-medium">Currency Rewards</span>
                 </div>
                 <div className="flex items-center gap-1 text-success body-sm">
                   <DollarSign className="h-3 w-3" />
@@ -492,14 +351,9 @@ export default function AirQualityDashboard({ onNavigate }: AirQualityDashboardP
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-8 bg-warning rounded-full"></div>
-                  <div>
-                    <p className="body-sm font-medium">Withdrawal Status</p>
-                    <p className="body-sm text-muted-foreground">
-                      {canWithdraw ? "Ready" : `Need ${500000 - userPoints} more points`}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-6 bg-warning rounded-full"></div>
+                  <span className="body-sm font-medium">Withdrawal Status</span>
                 </div>
                 <div className={`flex items-center gap-1 body-sm ${canWithdraw ? 'text-success' : 'text-warning'}`}>
                   {canWithdraw ? (
@@ -511,10 +365,52 @@ export default function AirQualityDashboard({ onNavigate }: AirQualityDashboardP
                 </div>
               </div>
             </div>
+
+            {/* Refresh Button */}
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => debouncedRefresh()}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh Data
+            </Button>
           </CardContent>
         </Card>
+      </div>
 
-
+      {/* User Profile Card - Clickable */}
+      <div className="flex justify-center">
+        <Card 
+          className="glass-card border-0 cursor-pointer hover:shadow-lg transition-all duration-300 max-w-sm w-full"
+          onClick={() => onNavigate && onNavigate('profile')}
+        >
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={user?.user_metadata?.avatar_url} />
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  <User className="h-6 w-6" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg">{userName}</h3>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant="secondary" className="text-xs">
+                    {userPoints.toLocaleString()} points
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    ${currencyRewards.toFixed(2)}
+                  </Badge>
+                </div>
+              </div>
+              <div className="text-muted-foreground">
+                <ArrowUpRight className="h-4 w-4" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Pollutant Modal */}
