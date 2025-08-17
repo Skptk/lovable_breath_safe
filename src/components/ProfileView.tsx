@@ -243,18 +243,34 @@ export default function ProfileView() {
     }
   };
 
-  const loadUserSettings = () => {
+  const loadUserSettings = async () => {
     try {
-      const savedSettings = localStorage.getItem(`breath-safe-settings-${user?.id}`);
-      if (savedSettings) {
-        const parsedSettings = JSON.parse(savedSettings);
-        setUserSettings({ ...userSettings, ...parsedSettings });
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('settings')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') { // No settings found
+          console.log('No user settings found, using default');
+          setUserSettings(DEFAULT_SETTINGS);
+          // Sync theme with context
+          setTheme(DEFAULT_SETTINGS.preferences.theme);
+          return;
+        }
+        throw error;
+      }
+
+      if (data?.settings) {
+        setUserSettings(data.settings);
         // Sync theme with context
-        if (parsedSettings.preferences?.theme) {
-          setTheme(parsedSettings.preferences.theme);
+        if (data.settings.preferences?.theme) {
+          setTheme(data.settings.preferences.theme);
         }
       } else {
-        // Sync theme with context for default settings
+        setUserSettings(DEFAULT_SETTINGS);
+        // Sync theme with context
         setTheme(DEFAULT_SETTINGS.preferences.theme);
       }
     } catch (error) {
@@ -480,9 +496,15 @@ export default function ProfileView() {
   const saveSettings = async () => {
     setSaving(true);
     try {
-      // Save to localStorage instead of database
-      // This function is now primarily for saving theme, as other settings are handled by updateSetting
-      localStorage.setItem(`breath-safe-settings-${user?.id}`, JSON.stringify(userSettings));
+      // Save to database
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user?.id,
+          settings: userSettings
+        });
+
+      if (error) throw error;
       
       toast({
         title: "Success",
@@ -564,8 +586,10 @@ export default function ProfileView() {
   };
 
   // Update the theme setting function to use the context
-  const updateSetting = (category: keyof UserSettings, key: string, value: any) => {
+  const updateSetting = async (category: keyof UserSettings, key: string, value: any) => {
     try {
+      setSaving(true);
+      
       // Special handling for theme
       if (category === 'preferences' && key === 'theme') {
         setTheme(value);
@@ -579,14 +603,21 @@ export default function ProfileView() {
         }
       }));
 
-      // Save to localStorage
-      localStorage.setItem(`breath-safe-settings-${user?.id}`, JSON.stringify({
-        ...userSettings,
-        [category]: {
-          ...userSettings[category],
-          [key]: value
-        }
-      }));
+      // Save to database
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user?.id,
+          settings: {
+            ...userSettings,
+            [category]: {
+              ...userSettings[category],
+              [key]: value
+            }
+          }
+        });
+
+      if (error) throw error;
 
       toast({
         title: "Setting Updated",
@@ -599,6 +630,8 @@ export default function ProfileView() {
         description: "Failed to update setting. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setSaving(false);
     }
   };
 
