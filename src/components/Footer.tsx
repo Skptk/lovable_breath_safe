@@ -1,5 +1,6 @@
 import { Heart, Shield, FileText, ShoppingBag, Map, BarChart3, User, Home } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { Link } from "react-router-dom";
 
 export default function Footer() {
   const { user } = useAuth();
