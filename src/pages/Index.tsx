@@ -31,6 +31,20 @@ const Index = (): JSX.Element => {
     }
   }, []); // Empty dependency array to run only once on mount
 
+  // Listen for view changes from footer navigation
+  useEffect(() => {
+    const handleViewChangeEvent = (event: CustomEvent) => {
+      const { view } = event.detail;
+      handleViewChange(view);
+    };
+
+    window.addEventListener('viewChange', handleViewChangeEvent as EventListener);
+    
+    return () => {
+      window.removeEventListener('viewChange', handleViewChangeEvent as EventListener);
+    };
+  }, []);
+
   // Debug logging
   useEffect(() => {
     console.log('Index component - Current view:', currentView, 'URL:', location.pathname + location.search);

@@ -1,9 +1,17 @@
-import { Link } from "react-router-dom";
 import { Heart, Shield, FileText, ShoppingBag, Map, BarChart3, User, Home } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Footer() {
   const { user } = useAuth();
+
+  // Function to navigate to different views
+  const navigateToView = (view: string) => {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('view', view);
+    window.history.pushState({}, '', currentUrl.toString());
+    // Trigger a custom event to notify the Index component
+    window.dispatchEvent(new CustomEvent('viewChange', { detail: { view } }));
+  };
 
   // If user is not authenticated, show minimal footer
   if (!user) {
@@ -83,34 +91,49 @@ export default function Footer() {
             <h4 className="font-semibold text-foreground mb-4">Navigation</h4>
             <ul className="space-y-2">
               <li>
-                <Link to="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <button 
+                  onClick={() => navigateToView('dashboard')}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                >
                   <Home className="h-4 w-4" />
                   Dashboard
-                </Link>
+                </button>
               </li>
               <li>
-                <Link to="/products" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <button 
+                  onClick={() => navigateToView('products')}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                >
                   <ShoppingBag className="h-4 w-4" />
                   Products
-                </Link>
+                </button>
               </li>
               <li>
-                <Link to="/map" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <button 
+                  onClick={() => navigateToView('map')}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                >
                   <Map className="h-4 w-4" />
                   Map View
-                </Link>
+                </button>
               </li>
               <li>
-                <Link to="/history" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <button 
+                  onClick={() => navigateToView('history')}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                >
                   <BarChart3 className="h-4 w-4" />
                   History
-                </Link>
+                </button>
               </li>
               <li>
-                <Link to="/profile" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <button 
+                  onClick={() => navigateToView('profile')}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                >
                   <User className="h-4 w-4" />
                   Profile
-                </Link>
+                </button>
               </li>
             </ul>
           </div>

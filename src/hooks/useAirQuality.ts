@@ -79,8 +79,16 @@ export const useAirQuality = () => {
 
   // Function to save air quality reading to database
   const saveReadingToDatabase = useCallback(async (data: AirQualityData) => {
+    // Wait a bit for user to be fully loaded
     if (!user) {
       console.log('saveReadingToDatabase: No user, skipping save');
+      return;
+    }
+
+    // Additional check to ensure user is fully authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      console.log('saveReadingToDatabase: No active session, skipping save');
       return;
     }
 
@@ -294,7 +302,7 @@ export const useAirQuality = () => {
     refetchIntervalInBackground: false, // Disable background refresh
     retry: 2, // Reduce retries for faster failure detection
     retryDelay: 500, // Faster retry delay
-    enabled: hasUserConsent, // Only run query if user has consented
+    enabled: false, // Never auto-run - only run when explicitly requested by user
   });
 
   return {
