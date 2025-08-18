@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store";
 import { useErrorHandler } from "@/components/ErrorBoundary/ErrorBoundary";
 import { usePerformanceMonitor, useThrottle } from "@/hooks/usePerformance";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface AirQualityData {
   aqi: number;
@@ -31,6 +32,7 @@ export interface AirQualityData {
 export const useAirQuality = () => {
   const { setCurrentAQI, setCurrentLocation, setLoading, setError } = useAppStore();
   const { handleError } = useErrorHandler();
+  const { user } = useAuth();
   const [hasUserConsent, setHasUserConsent] = useState(false);
   
   // Performance monitoring
@@ -74,6 +76,44 @@ export const useAirQuality = () => {
 
     checkLocationPermission();
   }, []);
+
+  // Function to save air quality reading to database
+  const saveReadingToDatabase = useCallback(async (data: AirQualityData) => {
+    if (!user) return;
+
+    try {
+      const reading = {
+        user_id: user.id,
+        timestamp: new Date().toISOString(),
+        location_name: data.userLocation || data.location,
+        latitude: data.userCoordinates.lat || data.coordinates.lat,
+        longitude: data.userCoordinates.lon || data.coordinates.lon,
+        aqi: data.aqi,
+        pm25: data.pm25,
+        pm10: data.pm10,
+        no2: data.no2,
+        so2: data.so2,
+        co: data.co,
+        o3: data.o3,
+        temperature: data.environmental?.temperature || null,
+        humidity: data.environmental?.humidity || null,
+        data_source: data.dataSource,
+        created_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('air_quality_readings')
+        .insert(reading);
+
+      if (error) {
+        console.error('Error saving reading to database:', error);
+      } else {
+        console.log('Air quality reading saved to database');
+      }
+    } catch (error) {
+      console.error('Error saving reading:', error);
+    }
+  }, [user]);
 
   const fetchAirQualityData = useCallback(async (): Promise<AirQualityData> => {
     if (!navigator.geolocation) {
@@ -132,7 +172,7 @@ export const useAirQuality = () => {
         setCurrentLocation(typedResponse.location);
         throttledLocationUpdate(typedResponse.location);
         
-        return {
+        const airQualityData = {
           aqi: typedResponse.aqi,
           pm25: typedResponse.pollutants.pm25,
           pm10: typedResponse.pollutants.pm10,
@@ -150,11 +190,17 @@ export const useAirQuality = () => {
           currencyRewards: typedResponse.currencyRewards,
           canWithdraw: typedResponse.canWithdraw
         };
+
+        // Save reading to database
+        await saveReadingToDatabase(airQualityData);
+        
+        return airQualityData;
       } else if (response && typeof response === 'object' && 'list' in response && Array.isArray((response as any).list)) {
         // Raw OpenWeatherMap format (fallback)
         const typedResponse = response as any;
         const currentData = typedResponse.list[0];
-        return {
+        
+        const airQualityData = {
           aqi: currentData.main.aqi,
           pm25: currentData.components.pm2_5,
           pm10: currentData.components.pm10,
@@ -169,6 +215,11 @@ export const useAirQuality = () => {
           timestamp: new Date().toLocaleString(),
           dataSource: 'Direct API response'
         };
+
+        // Save reading to database
+        await saveReadingToDatabase(airQualityData);
+        
+        return airQualityData;
       } else {
         // Fallback for unexpected format
         console.error('Unexpected response format:', response);
@@ -181,7 +232,7 @@ export const useAirQuality = () => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, handleError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent]);
+  }, [setLoading, setError, handleError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase]);
 
   // Function to request location permission (should be called on user gesture)
   const requestLocationPermission = useCallback(async (): Promise<boolean> => {

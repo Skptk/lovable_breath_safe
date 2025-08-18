@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, MapPin, TrendingUp, Download, Loader2, AlertTriangle, Thermometer, Droplets, Clock, Trash2 } from "lucide-react";
+import { Calendar, MapPin, TrendingUp, Download, Loader2, AlertTriangle, Thermometer, Droplets, Clock, Trash2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
@@ -98,8 +98,7 @@ export default function HistoryView(): JSX.Element {
         .from('air_quality_readings')
         .select('*')
         .eq('user_id', user?.id)
-        .order('timestamp', { ascending: false })
-        .limit(50);
+        .order('timestamp', { ascending: false });
 
       if (fetchError) {
         throw fetchError;
@@ -197,38 +196,60 @@ export default function HistoryView(): JSX.Element {
 
       const { latitude, longitude } = position.coords;
       
-      // Call the Edge Function to get AQI data
+      // Call the Supabase function to get air quality data
       const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
         body: { lat: latitude, lon: longitude }
       });
 
       if (error) {
-        throw new Error(`Supabase function error: ${error.message}`);
+        throw new Error(`Failed to fetch air quality data: ${error.message}`);
       }
 
       if (!response) {
-        throw new Error('No response data received');
+        throw new Error('No air quality data received');
+      }
+
+      // Save the reading to the database
+      const reading = {
+        user_id: user.id,
+        timestamp: new Date().toISOString(),
+        location_name: response.location || 'Unknown Location',
+        latitude: latitude,
+        longitude: longitude,
+        aqi: response.aqi,
+        pm25: response.pollutants?.pm25 || null,
+        pm10: response.pollutants?.pm10 || null,
+        no2: response.pollutants?.no2 || null,
+        so2: response.pollutants?.so2 || null,
+        co: response.pollutants?.co || null,
+        o3: response.pollutants?.o3 || null,
+        temperature: response.environmental?.temperature || null,
+        humidity: response.environmental?.humidity || null,
+        data_source: response.dataSource || 'Manual Fetch',
+        created_at: new Date().toISOString()
+      };
+
+      const { error: insertError } = await supabase
+        .from('air_quality_readings')
+        .insert(reading);
+
+      if (insertError) {
+        throw new Error(`Failed to save reading: ${insertError.message}`);
       }
 
       toast({
-        title: "AQI Data Fetched",
-        description: "New air quality data has been collected and saved to your history.",
-        variant: "default",
+        title: "Success",
+        description: "New air quality reading added to your history",
       });
 
-      // Hide the fetch button after successful use
-      setShowFetchButton(false);
-      
-      // Refresh the history to show the new data
-      setTimeout(() => {
-        fetchHistory();
-      }, 1000);
+      // Refresh the history to show the new reading
+      await fetchHistory();
       
     } catch (error: any) {
       console.error('Error fetching AQI data:', error);
       toast({
         title: "Error",
-        description: error.message || 'Failed to fetch AQI data',
+        description: error.message || "Failed to fetch air quality data",
         variant: "destructive",
       });
     } finally {
@@ -236,60 +257,47 @@ export default function HistoryView(): JSX.Element {
     }
   };
 
-  const clearHistory = async (): Promise<void> => {
-    if (!user) return;
+  // Function to bulk delete selected entries
+  const bulkDeleteSelected = async (): Promise<void> => {
+    if (selectedEntries.size === 0) return;
     
     try {
-      setClearing(true);
+      setBulkDeleting(true);
       
-      // First, delete all air quality readings
-      const { error: deleteError } = await supabase
+      const { error } = await supabase
         .from('air_quality_readings')
         .delete()
-        .eq('user_id', user.id);
+        .in('id', Array.from(selectedEntries));
 
-      if (deleteError) {
-        throw deleteError;
+      if (error) {
+        throw error;
       }
 
-      // Then, reset user points to 0 since they have no history
-      const { error: pointsError } = await supabase
-        .from('profiles')
-        .update({ total_points: 0 })
-        .eq('user_id', user.id);
-
-      if (pointsError) {
-        console.error('Error resetting points:', pointsError);
-        // Don't throw here, as the main deletion was successful
-      }
-
-      // Clear local state
-      setHistory([]);
-      setSelectedEntries(new Set());
-      
-      // Show the fetch button after clearing history
-      setShowFetchButton(true);
-      
       toast({
-        title: "History & Points Cleared",
-        description: "All air quality readings and points have been reset successfully. Click 'Fetch AQI Data' to start collecting new readings.",
-        variant: "default",
+        title: "Success",
+        description: `${selectedEntries.size} readings deleted successfully`,
       });
-      
-      // Force a complete refresh to ensure database is updated
-      setTimeout(() => {
-        fetchHistory();
-      }, 1000);
-      
+
+      setSelectedEntries(new Set());
+      await fetchHistory();
     } catch (error: any) {
-      console.error('Error clearing history:', error);
+      console.error('Error bulk deleting entries:', error);
       toast({
         title: "Error",
-        description: error.message || 'Failed to clear history',
+        description: "Failed to delete selected readings",
         variant: "destructive",
       });
     } finally {
-      setClearing(false);
+      setBulkDeleting(false);
+    }
+  };
+
+  // Function to select/deselect all entries
+  const selectAllEntries = (): void => {
+    if (selectedEntries.size === history.length) {
+      setSelectedEntries(new Set());
+    } else {
+      setSelectedEntries(new Set(history.map(entry => entry.id)));
     }
   };
 
@@ -348,57 +356,6 @@ export default function HistoryView(): JSX.Element {
       }
       return newSet;
     });
-  };
-
-  const selectAllEntries = () => {
-    if (selectedEntries.size === history.length) {
-      setSelectedEntries(new Set());
-    } else {
-      setSelectedEntries(new Set(history.map(entry => entry.id)));
-    }
-  };
-
-  const bulkDeleteSelected = async (): Promise<void> => {
-    if (!user || selectedEntries.size === 0) return;
-    
-    try {
-      setBulkDeleting(true);
-      
-      const { error: deleteError } = await supabase
-        .from('air_quality_readings')
-        .delete()
-        .in('id', Array.from(selectedEntries))
-        .eq('user_id', user.id);
-
-      if (deleteError) {
-        throw deleteError;
-      }
-
-      // Remove from local state
-      setHistory(prev => prev.filter(entry => !selectedEntries.has(entry.id)));
-      setSelectedEntries(new Set());
-      
-      toast({
-        title: "Entries Deleted",
-        description: `${selectedEntries.size} air quality readings have been deleted successfully.`,
-        variant: "default",
-      });
-      
-      // Force a refresh to ensure database is updated
-      setTimeout(() => {
-        fetchHistory();
-      }, 500);
-      
-    } catch (error: any) {
-      console.error('Error bulk deleting entries:', error);
-      toast({
-        title: "Error",
-        description: error.message || 'Failed to delete selected entries',
-        variant: "destructive",
-      });
-    } finally {
-      setBulkDeleting(false);
-    }
   };
 
   const formatDate = (dateString: string): string => {
@@ -517,103 +474,46 @@ export default function HistoryView(): JSX.Element {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {history.length > 0 && (
-            <>
-              {selectedEntries.size > 0 && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      className="gap-2"
-                      disabled={bulkDeleting}
-                    >
-                      {bulkDeleting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="h-4 w-4" />
-                          Delete Selected ({selectedEntries.size})
-                        </>
-                      )}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Selected Readings</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete {selectedEntries.size} selected air quality readings. 
-                        This cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={bulkDeleteSelected}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Delete Selected
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={selectAllEntries}
-                className="gap-2"
-              >
-                {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
-              </Button>
-            </>
-          )}
-          
-          <Button variant="outline" size="sm" className="gap-2" onClick={fetchHistory}>
-            <Download className="h-4 w-4" />
+          <Button
+            onClick={fetchHistory}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
           
-          {history.length > 0 && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="gap-2">
+          {selectedEntries.size > 0 && (
+            <Button
+              onClick={bulkDeleteSelected}
+              variant="destructive"
+              size="sm"
+              disabled={bulkDeleting}
+              className="gap-2"
+            >
+              {bulkDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
                   <Trash2 className="h-4 w-4" />
-                  Clear All
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Clear Air Quality History</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action will permanently delete all your air quality readings. 
-                    This cannot be undone. Are you sure you want to continue?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={clearHistory}
-                    disabled={clearing}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {clearing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Clearing...
-                      </>
-                    ) : (
-                      'Clear All History'
-                    )}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                  Delete Selected ({selectedEntries.size})
+                </>
+              )}
+            </Button>
           )}
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={selectAllEntries}
+            className="gap-2"
+          >
+            {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
+          </Button>
         </div>
       </div>
 
@@ -863,16 +763,7 @@ export default function HistoryView(): JSX.Element {
           ))
         )}
       </div>
-
-      {/* Load More - Only show if there are records */}
-      {history.length > 0 && (
-        <Button variant="outline" className="w-full" onClick={fetchHistory}>
-          Refresh Records
-        </Button>
-      )}
-      </div>
-      
-
     </div>
+  </div>
   );
 }
