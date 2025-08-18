@@ -236,7 +236,7 @@ export default function MapView(): JSX.Element {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-4 space-y-6">
+      <div className="min-h-screen bg-background p-4 md:p-6 space-y-4 md:space-y-6">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
@@ -250,7 +250,7 @@ export default function MapView(): JSX.Element {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background p-4 space-y-6">
+      <div className="min-h-screen bg-background p-4 md:p-6 space-y-4 md:space-y-6">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4 max-w-md">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
@@ -286,7 +286,7 @@ export default function MapView(): JSX.Element {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

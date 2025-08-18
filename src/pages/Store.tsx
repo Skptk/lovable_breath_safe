@@ -220,7 +220,7 @@ export default function Store() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 space-y-card-gap p-6">
+      <div className="flex-1 space-y-card-gap p-4 md:p-6">
       {/* Header */}
       <div className="text-center space-y-4">
         <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
@@ -245,7 +245,7 @@ export default function Store() {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger>
               <SelectValue placeholder="Category" />
@@ -309,7 +309,7 @@ export default function Store() {
       </div>
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         {sortedProducts.map((product) => (
           <Card key={product.id} className="group hover:shadow-lg transition-all duration-300 cursor-pointer">
             <CardHeader className="pb-2">

@@ -665,7 +665,7 @@ export default function ProfileView() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 p-4 space-y-6">
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">

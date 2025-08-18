@@ -323,7 +323,7 @@ export default function Rewards() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 space-y-card-gap p-6">
+      <div className="flex-1 space-y-card-gap p-4 md:p-6">
       {/* Header */}
       <div className="text-center space-y-4">
         <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
@@ -372,7 +372,7 @@ export default function Rewards() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 grid-gutter">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-card border-0">
           <CardContent className="p-4 text-center">
             <div className="text-3xl font-bold text-primary mb-2">
