@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
 import { ErrorBoundary, withErrorBoundary } from "@/components";
 import { usePerformanceMonitor, usePreload } from "@/hooks/usePerformance";
@@ -70,6 +70,29 @@ const LazyErrorFallback = ({ error, retry }: { error: Error; retry: () => void }
   </div>
 );
 
+// Route guard component to prevent unnecessary redirects
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  // Don't redirect while loading
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  // If user exists, show the protected content
+  if (user) {
+    return <>{children}</>;
+  }
+
+  // Only redirect to auth if we're not already there
+  if (location.pathname !== '/auth') {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const App = (): JSX.Element => {
   const { loading, isAuthenticated, user, validateProfile } = useAuth();
   const { setLoading, setError } = useAppStore();
@@ -96,14 +119,15 @@ const App = (): JSX.Element => {
     }
   }, [user, loading, validateProfile]);
 
-  // Handle authentication errors
+  // Handle authentication errors - only show error, don't force redirect
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!loading && !isAuthenticated && user) {
+      // Only set error if we have a user but authentication failed
       setError("Authentication required");
     } else {
       setError(null);
     }
-  }, [loading, isAuthenticated, setError]);
+  }, [loading, isAuthenticated, user, setError]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -152,7 +176,11 @@ const App = (): JSX.Element => {
                   <Route path="/terms" element={<Terms />} />
                   <Route 
                     path="/" 
-                    element={isAuthenticated ? <Index /> : <Auth />} 
+                    element={
+                      <ProtectedRoute>
+                        <Index />
+                      </ProtectedRoute>
+                    } 
                   />
                   <Route path="*" element={<NotFound />} />
                 </Routes>

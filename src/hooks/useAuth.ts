@@ -7,6 +7,7 @@ export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileValidated, setProfileValidated] = useState(false);
+  const [validationAttempted, setValidationAttempted] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -22,6 +23,7 @@ export function useAuth() {
         setSession(session);
         setUser(session?.user ?? null);
         setProfileValidated(false); // Reset profile validation when auth state changes
+        setValidationAttempted(false); // Reset validation attempt flag
         setLoading(false);
       }
     );
@@ -33,13 +35,16 @@ export function useAuth() {
     setUser(null);
     setSession(null);
     setProfileValidated(false);
+    setValidationAttempted(false);
     await supabase.auth.signOut();
   };
 
   const validateProfile = async () => {
-    if (!user) return false;
+    if (!user || validationAttempted) return profileValidated;
     
     try {
+      setValidationAttempted(true);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('id')
@@ -47,9 +52,10 @@ export function useAuth() {
         .single();
 
       if (error || !data) {
-        // Profile doesn't exist, sign out the user
-        console.warn('User profile not found in database, signing out user');
-        await signOut();
+        // Profile doesn't exist, but don't automatically sign out
+        // Let the user handle this situation
+        console.warn('User profile not found in database');
+        setProfileValidated(false);
         return false;
       } else {
         setProfileValidated(true);
@@ -57,8 +63,8 @@ export function useAuth() {
       }
     } catch (error) {
       console.error('Error validating profile:', error);
-      // If there's an error fetching profile, assume it doesn't exist and sign out
-      await signOut();
+      // Don't automatically sign out on error, just mark as not validated
+      setProfileValidated(false);
       return false;
     }
   };
@@ -70,6 +76,7 @@ export function useAuth() {
     signOut,
     validateProfile,
     profileValidated,
-    isAuthenticated: !!user && profileValidated
+    isAuthenticated: !!user && profileValidated,
+    validationAttempted
   };
 }
