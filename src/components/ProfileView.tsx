@@ -98,9 +98,9 @@ export default function ProfileView() {
     mpesa_phone: ''
   });
   
-  // Local state for settings
+  // Local state for settings - initialize theme from context to prevent switching
   const [localSettings, setLocalSettings] = useState({
-    theme: 'system' as 'light' | 'dark' | 'system',
+    theme: 'system' as 'light' | 'dark' | 'system', // Will be updated by useEffect
     language: 'en' as 'en' | 'es' | 'fr',
     units: 'metric' as 'metric' | 'imperial',
     dataRetention: '90days' as '30days' | '90days' | '1year' | 'forever',
@@ -136,6 +136,14 @@ export default function ProfileView() {
     }
   }, [profile]);
 
+  // Keep localSettings theme in sync with context theme
+  useEffect(() => {
+    setLocalSettings(prev => ({
+      ...prev,
+      theme: theme
+    }));
+  }, [theme]);
+
   const loadLocalSettings = () => {
     // Load settings from localStorage
     const savedSettings = localStorage.getItem('breath-safe-profile-settings');
@@ -143,8 +151,9 @@ export default function ProfileView() {
       try {
         const parsed = JSON.parse(savedSettings);
         setLocalSettings(parsed);
-        // Sync theme with context
-        if (parsed.theme) {
+        // Don't override the current theme - only sync if it's different
+        // This prevents the profile page from changing the user's current theme
+        if (parsed.theme && parsed.theme !== theme) {
           setTheme(parsed.theme);
         }
       } catch (error) {
@@ -156,8 +165,8 @@ export default function ProfileView() {
   const saveLocalSettings = (newSettings: typeof localSettings) => {
     setLocalSettings(newSettings);
     localStorage.setItem('breath-safe-profile-settings', JSON.stringify(newSettings));
-    // Sync theme with context
-    if (newSettings.theme) {
+    // Only update theme if it's actually changing
+    if (newSettings.theme && newSettings.theme !== theme) {
       setTheme(newSettings.theme);
     }
   };
