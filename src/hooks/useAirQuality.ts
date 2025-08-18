@@ -79,9 +79,14 @@ export const useAirQuality = () => {
 
   // Function to save air quality reading to database
   const saveReadingToDatabase = useCallback(async (data: AirQualityData) => {
-    if (!user) return;
+    if (!user) {
+      console.log('saveReadingToDatabase: No user, skipping save');
+      return;
+    }
 
     try {
+      console.log('saveReadingToDatabase: Starting to save reading for user:', user.id);
+      
       const reading = {
         user_id: user.id,
         timestamp: new Date().toISOString(),
@@ -101,14 +106,22 @@ export const useAirQuality = () => {
         created_at: new Date().toISOString()
       };
 
+      console.log('saveReadingToDatabase: Attempting to insert reading:', reading);
+
       const { error } = await supabase
         .from('air_quality_readings')
         .insert(reading);
 
       if (error) {
         console.error('Error saving reading to database:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
       } else {
-        console.log('Air quality reading saved to database');
+        console.log('Air quality reading saved to database successfully');
       }
     } catch (error) {
       console.error('Error saving reading:', error);
@@ -192,7 +205,9 @@ export const useAirQuality = () => {
         };
 
         // Save reading to database
+        console.log('fetchAirQualityData: About to save reading to database (enhanced format)');
         await saveReadingToDatabase(airQualityData);
+        console.log('fetchAirQualityData: Reading saved to database (enhanced format)');
         
         return airQualityData;
       } else if (response && typeof response === 'object' && 'list' in response && Array.isArray((response as any).list)) {
@@ -217,7 +232,9 @@ export const useAirQuality = () => {
         };
 
         // Save reading to database
+        console.log('fetchAirQualityData: About to save reading to database (fallback format)');
         await saveReadingToDatabase(airQualityData);
+        console.log('fetchAirQualityData: Reading saved to database (fallback format)');
         
         return airQualityData;
       } else {
