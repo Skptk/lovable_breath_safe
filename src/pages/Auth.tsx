@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Eye, EyeOff, Code, AlertTriangle } from 'lucide-react';
-import Footer from '@/components/Footer';
 
 export default function Auth(): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
@@ -22,11 +22,21 @@ export default function Auth(): JSX.Element {
     fullName: ''
   });
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Check if we're in development mode
   const isDevelopment = import.meta.env.DEV;
 
-
+  // Check if user is already authenticated and redirect
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        navigate('/');
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -63,6 +73,9 @@ export default function Auth(): JSX.Element {
           title: "Welcome back!",
           description: "You have been signed in successfully.",
         });
+
+        // Redirect to dashboard after successful login
+        navigate('/');
       }
     } catch (error: any) {
       console.error('Authentication error:', error);
@@ -97,6 +110,9 @@ export default function Auth(): JSX.Element {
           title: "Developer Login Successful!",
           description: "Welcome back to development mode!",
         });
+        
+        // Redirect to dashboard after successful login
+        navigate('/');
         return;
       }
 
@@ -205,6 +221,9 @@ export default function Auth(): JSX.Element {
           title: "Developer Login Successful!",
           description: "Welcome back to development mode!",
         });
+        
+        // Redirect to dashboard after successful login
+        navigate('/');
         return;
       }
 
@@ -444,7 +463,7 @@ export default function Auth(): JSX.Element {
       </div>
       
       {/* Footer */}
-      <Footer />
+      
     </div>
   );
 }
