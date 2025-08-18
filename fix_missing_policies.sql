@@ -1,23 +1,10 @@
--- Create user_settings table to store user preferences and settings
--- This table will store theme preferences, language settings, and other user configurations
+-- Fix missing policies and functions for user_settings table
+-- This script only adds what's missing, won't recreate existing items
 
-CREATE TABLE IF NOT EXISTS public.user_settings (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
-  settings JSONB NOT NULL DEFAULT '{}',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  
-  -- Ensure one settings record per user
-  UNIQUE(user_id)
-);
-
--- Add RLS policies for user_settings table
-ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
-
--- Policy: Users can only access their own settings
+-- Check if policies exist and create missing ones
 DO $$
 BEGIN
+    -- Check and create SELECT policy if missing
     IF NOT EXISTS (
         SELECT 1 FROM pg_policies 
         WHERE tablename = 'user_settings' 
@@ -25,12 +12,12 @@ BEGIN
     ) THEN
         CREATE POLICY "Users can view their own settings" ON public.user_settings
         FOR SELECT USING (auth.uid() = user_id);
+        RAISE NOTICE 'Created SELECT policy';
+    ELSE
+        RAISE NOTICE 'SELECT policy already exists';
     END IF;
-END $$;
 
--- Policy: Users can insert their own settings
-DO $$
-BEGIN
+    -- Check and create INSERT policy if missing
     IF NOT EXISTS (
         SELECT 1 FROM pg_policies 
         WHERE tablename = 'user_settings' 
@@ -38,12 +25,12 @@ BEGIN
     ) THEN
         CREATE POLICY "Users can insert their own settings" ON public.user_settings
         FOR INSERT WITH CHECK (auth.uid() = user_id);
+        RAISE NOTICE 'Created INSERT policy';
+    ELSE
+        RAISE NOTICE 'INSERT policy already exists';
     END IF;
-END $$;
 
--- Policy: Users can update their own settings
-DO $$
-BEGIN
+    -- Check and create UPDATE policy if missing
     IF NOT EXISTS (
         SELECT 1 FROM pg_policies 
         WHERE tablename = 'user_settings' 
@@ -51,12 +38,12 @@ BEGIN
     ) THEN
         CREATE POLICY "Users can update their own settings" ON public.user_settings
         FOR UPDATE USING (auth.uid() = user_id);
+        RAISE NOTICE 'Created UPDATE policy';
+    ELSE
+        RAISE NOTICE 'UPDATE policy already exists';
     END IF;
-END $$;
 
--- Policy: Users can delete their own settings
-DO $$
-BEGIN
+    -- Check and create DELETE policy if missing
     IF NOT EXISTS (
         SELECT 1 FROM pg_policies 
         WHERE tablename = 'user_settings' 
@@ -64,36 +51,13 @@ BEGIN
     ) THEN
         CREATE POLICY "Users can delete their own settings" ON public.user_settings
         FOR DELETE USING (auth.uid() = user_id);
+        RAISE NOTICE 'Created DELETE policy';
+    ELSE
+        RAISE NOTICE 'DELETE policy already exists';
     END IF;
 END $$;
 
--- Create index for faster lookups
-CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON public.user_settings(user_id);
-
--- Create function to update the updated_at timestamp
-CREATE OR REPLACE FUNCTION public.update_user_settings_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Create trigger to automatically update updated_at
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_trigger 
-        WHERE tgname = 'update_user_settings_updated_at'
-    ) THEN
-        CREATE TRIGGER update_user_settings_updated_at
-        BEFORE UPDATE ON public.user_settings
-        FOR EACH ROW
-        EXECUTE FUNCTION public.update_user_settings_updated_at();
-    END IF;
-END $$;
-
--- Function to initialize default user settings
+-- Create missing functions if they don't exist
 CREATE OR REPLACE FUNCTION public.initialize_user_settings(p_user_id UUID)
 RETURNS void AS $$
 BEGIN
@@ -135,30 +99,39 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Update the initialize_user_data function to also initialize settings
-CREATE OR REPLACE FUNCTION public.initialize_user_data()
+-- Create trigger function if missing
+CREATE OR REPLACE FUNCTION public.update_user_settings_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Initialize notification preferences
-  PERFORM public.initialize_notification_preferences(NEW.user_id);
-  
-  -- Initialize achievements
-  PERFORM public.initialize_user_achievements(NEW.user_id);
-  
-  -- Initialize user settings
-  PERFORM public.initialize_user_settings(NEW.user_id);
-  
-  -- Create welcome notification
-  PERFORM public.create_welcome_notification(NEW.user_id);
-  
+  NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
--- Grant necessary permissions
+-- Create trigger if missing
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger 
+        WHERE tgname = 'update_user_settings_updated_at'
+    ) THEN
+        CREATE TRIGGER update_user_settings_updated_at
+        BEFORE UPDATE ON public.user_settings
+        FOR EACH ROW
+        EXECUTE FUNCTION public.update_user_settings_updated_at();
+        RAISE NOTICE 'Created trigger';
+    ELSE
+        RAISE NOTICE 'Trigger already exists';
+    END IF;
+END $$;
+
+-- Create index if missing
+CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON public.user_settings(user_id);
+
+-- Grant permissions if not already granted
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_settings TO authenticated;
 
--- Insert default settings for existing users (if any)
+-- Initialize settings for existing users who don't have them
 DO $$
 DECLARE
   user_record RECORD;
@@ -167,4 +140,7 @@ BEGIN
   LOOP
     PERFORM public.initialize_user_settings(user_record.user_id);
   END LOOP;
+  
+  RAISE NOTICE 'Initialized settings for existing users';
 END $$;
+

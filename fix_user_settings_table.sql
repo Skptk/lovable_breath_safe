@@ -1,6 +1,7 @@
--- Create user_settings table to store user preferences and settings
--- This table will store theme preferences, language settings, and other user configurations
+-- Fix for missing user_settings table
+-- Run this in your Supabase SQL Editor to create the missing table
 
+-- Create user_settings table to store user preferences and settings
 CREATE TABLE IF NOT EXISTS public.user_settings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES public.profiles(user_id) ON DELETE CASCADE,
@@ -16,56 +17,20 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
 ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only access their own settings
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_policies 
-        WHERE tablename = 'user_settings' 
-        AND policyname = 'Users can view their own settings'
-    ) THEN
-        CREATE POLICY "Users can view their own settings" ON public.user_settings
-        FOR SELECT USING (auth.uid() = user_id);
-    END IF;
-END $$;
+CREATE POLICY "Users can view their own settings" ON public.user_settings
+  FOR SELECT USING (auth.uid() = user_id);
 
 -- Policy: Users can insert their own settings
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_policies 
-        WHERE tablename = 'user_settings' 
-        AND policyname = 'Users can insert their own settings'
-    ) THEN
-        CREATE POLICY "Users can insert their own settings" ON public.user_settings
-        FOR INSERT WITH CHECK (auth.uid() = user_id);
-    END IF;
-END $$;
+CREATE POLICY "Users can insert their own settings" ON public.user_settings
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Policy: Users can update their own settings
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_policies 
-        WHERE tablename = 'user_settings' 
-        AND policyname = 'Users can update their own settings'
-    ) THEN
-        CREATE POLICY "Users can update their own settings" ON public.user_settings
-        FOR UPDATE USING (auth.uid() = user_id);
-    END IF;
-END $$;
+CREATE POLICY "Users can update their own settings" ON public.user_settings
+  FOR UPDATE USING (auth.uid() = user_id);
 
 -- Policy: Users can delete their own settings
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_policies 
-        WHERE tablename = 'user_settings' 
-        AND policyname = 'Users can delete their own settings'
-    ) THEN
-        CREATE POLICY "Users can delete their own settings" ON public.user_settings
-        FOR DELETE USING (auth.uid() = user_id);
-    END IF;
-END $$;
+CREATE POLICY "Users can delete their own settings" ON public.user_settings
+  FOR DELETE USING (auth.uid() = user_id);
 
 -- Create index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON public.user_settings(user_id);
@@ -80,18 +45,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger to automatically update updated_at
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_trigger 
-        WHERE tgname = 'update_user_settings_updated_at'
-    ) THEN
-        CREATE TRIGGER update_user_settings_updated_at
-        BEFORE UPDATE ON public.user_settings
-        FOR EACH ROW
-        EXECUTE FUNCTION public.update_user_settings_updated_at();
-    END IF;
-END $$;
+CREATE TRIGGER update_user_settings_updated_at
+  BEFORE UPDATE ON public.user_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_user_settings_updated_at();
 
 -- Function to initialize default user settings
 CREATE OR REPLACE FUNCTION public.initialize_user_settings(p_user_id UUID)
@@ -135,26 +92,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Update the initialize_user_data function to also initialize settings
-CREATE OR REPLACE FUNCTION public.initialize_user_data()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Initialize notification preferences
-  PERFORM public.initialize_notification_preferences(NEW.user_id);
-  
-  -- Initialize achievements
-  PERFORM public.initialize_user_achievements(NEW.user_id);
-  
-  -- Initialize user settings
-  PERFORM public.initialize_user_settings(NEW.user_id);
-  
-  -- Create welcome notification
-  PERFORM public.create_welcome_notification(NEW.user_id);
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- Grant necessary permissions
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_settings TO authenticated;
 
@@ -168,3 +105,4 @@ BEGIN
     PERFORM public.initialize_user_settings(user_record.user_id);
   END LOOP;
 END $$;
+
