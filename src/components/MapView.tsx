@@ -286,8 +286,7 @@ export default function MapView(): JSX.Element {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 p-4 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -304,12 +303,14 @@ export default function MapView(): JSX.Element {
         </Button>
       </div>
 
-      {/* Google Maps Integration */}
-      <GoogleMap 
-        userLocation={userLocation}
-        airQualityData={airQualityData}
-        nearbyLocations={nearbyLocations}
-      />
+      {/* Google Maps Integration - Full height container */}
+      <div className="w-full h-[calc(100vh-300px)] min-h-[500px] rounded-lg overflow-hidden border border-border">
+        <GoogleMap 
+          userLocation={userLocation}
+          airQualityData={airQualityData}
+          nearbyLocations={nearbyLocations}
+        />
+      </div>
 
       {/* Current Location */}
       {userLocation && (
@@ -371,9 +372,6 @@ export default function MapView(): JSX.Element {
           </Card>
         ))}
       </div>
-      </div>
-      
-
     </div>
   );
 }
