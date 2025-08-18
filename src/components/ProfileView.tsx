@@ -98,9 +98,9 @@ export default function ProfileView() {
     mpesa_phone: ''
   });
   
-  // Local state for settings - initialize theme from context to prevent switching
+  // Local state for settings - don't initialize theme to prevent conflicts
   const [localSettings, setLocalSettings] = useState({
-    theme: 'system' as 'light' | 'dark' | 'system', // Will be updated by useEffect
+    theme: undefined as 'light' | 'dark' | 'system' | undefined,
     language: 'en' as 'en' | 'es' | 'fr',
     units: 'metric' as 'metric' | 'imperial',
     dataRetention: '90days' as '30days' | '90days' | '1year' | 'forever',
@@ -136,13 +136,7 @@ export default function ProfileView() {
     }
   }, [profile]);
 
-  // Keep localSettings theme in sync with context theme
-  useEffect(() => {
-    setLocalSettings(prev => ({
-      ...prev,
-      theme: theme
-    }));
-  }, [theme]);
+
 
   const loadLocalSettings = () => {
     // Load settings from localStorage
@@ -150,12 +144,12 @@ export default function ProfileView() {
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings);
-        setLocalSettings(parsed);
-        // Don't override the current theme - only sync if it's different
-        // This prevents the profile page from changing the user's current theme
-        if (parsed.theme && parsed.theme !== theme) {
-          setTheme(parsed.theme);
-        }
+        // Only load non-theme settings to prevent theme switching
+        const { theme: _, ...nonThemeSettings } = parsed;
+        setLocalSettings(prev => ({
+          ...prev,
+          ...nonThemeSettings
+        }));
       } catch (error) {
         console.warn('Failed to parse saved settings, using defaults');
       }
@@ -165,10 +159,8 @@ export default function ProfileView() {
   const saveLocalSettings = (newSettings: typeof localSettings) => {
     setLocalSettings(newSettings);
     localStorage.setItem('breath-safe-profile-settings', JSON.stringify(newSettings));
-    // Only update theme if it's actually changing
-    if (newSettings.theme && newSettings.theme !== theme) {
-      setTheme(newSettings.theme);
-    }
+    // Never change the theme from profile settings - only allow theme changes from the sidebar toggle
+    // This prevents the profile page from overriding the user's current theme preference
   };
 
   const fetchProfile = async () => {
@@ -842,7 +834,8 @@ export default function ProfileView() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="theme">Theme</Label>
+                  <Label htmlFor="theme">Theme Preference</Label>
+                  <p className="text-sm text-muted-foreground">Your preferred theme (use sidebar toggle to change current theme)</p>
                   <Select
                     value={localSettings.theme}
                     onValueChange={(value: 'light' | 'dark' | 'system') => 
