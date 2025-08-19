@@ -81,13 +81,30 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
     setLoading(true);
     setLocationRequested(true);
     setError(null);
+    
+    // Check if geolocation is supported
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser');
       setLoading(false);
       return;
     }
 
+    // Check if we have permission to access location
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+        if (permissionStatus.state === 'denied') {
+          setError('Location access denied. Please enable location permissions in your browser settings.');
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.log('Permission API not supported, proceeding with geolocation request');
+      }
+    }
+
     try {
+      console.log('MapView: Starting geolocation request...');
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           timeout: 30000, // 30 seconds - mobile devices need more time
@@ -96,6 +113,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
         });
       });
 
+      console.log('MapView: Geolocation successful, coordinates:', position.coords.latitude, position.coords.longitude);
       const { latitude, longitude } = position.coords;
       
       // Get city name from coordinates using reverse geocoding
@@ -132,18 +150,25 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
       
       // For new users or location unavailable, provide fallback location
       if (err.code === 2) {
-        console.log('Providing fallback location for new user, retry count:', retryCount);
+        console.log('MapView: Providing fallback location for new user, retry count:', retryCount);
         
         if (retryCount < 3) {
           // Increment retry count and show retry message
           setRetryCount(prev => prev + 1);
+          
+          // Show user-friendly retry message
+          const attemptNumber = retryCount + 1;
           toast({
-            title: "Location Setup Required",
-            description: `Setting up location services... (Attempt ${retryCount + 1}/3). Please try again.`,
+            title: "Setting Up Location Services",
+            description: `Attempt ${attemptNumber}/3: Configuring location services for your account. This may take a moment.`,
             variant: "default",
           });
+          
+          // Log retry attempt for debugging
+          console.log(`MapView: Retry attempt ${attemptNumber}/3 for new user geolocation`);
         } else {
           // After 3 retries, provide a demo location for new users
+          console.log('MapView: Providing demo location after 3 failed attempts');
           const demoLocation = {
             latitude: -1.2921, // Nairobi coordinates as demo
             longitude: 36.8219,
@@ -162,9 +187,12 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
           
           toast({
             title: "Demo Mode Activated",
-            description: "Showing demo data while location services are being configured. Refresh to try again.",
+            description: "Showing demo data while location services are being configured. You can try again later.",
             variant: "default",
           });
+          
+          // Clear the error since we're now in demo mode
+          setError(null);
         }
       } else {
         toast({
@@ -280,11 +308,28 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
     return "Hazardous";
   };
 
+  const resetLocationPermission = () => {
+    localStorage.removeItem('breath-safe-location-permission');
+    setRetryCount(0);
+    setError(null);
+    setUserLocation(null);
+    setAirQualityData(null);
+    setLocationRequested(false);
+  };
+
   // Auto-retry geolocation for new users after a delay
   useEffect(() => {
     if (error && retryCount > 0 && retryCount < 3) {
       const timer = setTimeout(() => {
-        console.log('Auto-retrying geolocation for new user...');
+        console.log(`MapView: Auto-retrying geolocation for new user (attempt ${retryCount + 1}/3)...`);
+        
+        // Show user feedback about the auto-retry
+        toast({
+          title: "Retrying Location Services",
+          description: `Automatically retrying to get your location... (${retryCount + 1}/3)`,
+          variant: "default",
+        });
+        
         getUserLocation();
       }, 2000); // Wait 2 seconds before retry
       
@@ -381,14 +426,26 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
             </div>
             
             <div className="flex flex-col gap-2">
-              {retryCount > 0 && (
+              {retryCount > 0 && retryCount < 3 && (
                 <div className="text-xs text-muted-foreground text-center p-2 bg-muted/30 rounded">
                   Attempt {retryCount}/3 - Auto-retrying in a few seconds...
+                </div>
+              )}
+              {retryCount >= 3 && (
+                <div className="text-xs text-muted-foreground text-center p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
+                  Demo mode active - showing sample data
                 </div>
               )}
               <Button onClick={getUserLocation} variant="outline" className="w-full">
                 <MapPin className="h-4 w-4 mr-2" />
                 Try Again Now
+              </Button>
+              <Button 
+                onClick={resetLocationPermission} 
+                variant="secondary"
+                className="w-full"
+              >
+                Start Fresh
               </Button>
               <Button 
                 onClick={() => window.location.reload()} 
@@ -437,6 +494,16 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
                   <p className="text-xs text-muted-foreground">
                     {userLocation ? `${userLocation.city}, ${userLocation.country}` : 'Loading location...'}
                   </p>
+                  {userLocation?.city === 'Demo Location' && (
+                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Demo mode - <button 
+                        onClick={getUserLocation}
+                        className="underline hover:no-underline"
+                      >
+                        Try real location
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <Button variant="outline" size="sm" className="gap-2">
                   <Layers className="h-4 w-4" />

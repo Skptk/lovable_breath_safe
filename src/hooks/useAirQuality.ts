@@ -143,12 +143,15 @@ export const useAirQuality = () => {
 
     // Only proceed if user has given consent or if we're using cached coordinates
     if (!hasUserConsent) {
+      console.log('useAirQuality: Skipping geolocation - user consent not granted yet');
       throw new Error('Location access not yet granted. Please click the location button to enable.');
     }
 
     try {
       setLoading(true);
       setError(null);
+
+      console.log('useAirQuality: Starting geolocation request with user consent');
 
       // Simple, reliable location detection that works on mobile
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -158,6 +161,8 @@ export const useAirQuality = () => {
           maximumAge: 10 * 60 * 1000 // Allow 10-minute old data for mobile
         });
       });
+
+      console.log('useAirQuality: Geolocation successful, coordinates:', position.coords.latitude, position.coords.longitude);
 
       const { latitude, longitude } = position.coords;
       
@@ -252,6 +257,19 @@ export const useAirQuality = () => {
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error occurred');
+      
+      // Only log geolocation errors if user has actually granted consent
+      if (hasUserConsent && err instanceof GeolocationPositionError) {
+        console.error('Geolocation error after user consent:', err);
+        if (err.code === 2) {
+          console.log('Position unavailable - this may be a temporary issue with location services');
+        }
+      } else if (!hasUserConsent && err instanceof GeolocationPositionError) {
+        console.log('Geolocation error ignored - user consent not granted yet');
+      } else {
+        console.error('Error in fetchAirQualityData:', err);
+      }
+      
       handleError(error, 'useAirQuality.fetchAirQualityData');
       throw error; // Re-throw to be caught by useQuery
     } finally {
