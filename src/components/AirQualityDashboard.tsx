@@ -161,7 +161,7 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
         subtitle={`Air quality data for ${data.location}`}
         showRefresh={hasUserConsent}
         onRefresh={handleRefresh}
-        isRefetching={isRefetching}
+        isRefreshing={isRefetching}
         onNavigate={onNavigate}
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
@@ -216,16 +216,22 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
         </div>
 
         {/* Enhanced Air Quality Card with Pollutant Details and Points Info */}
-        <Card className="glass-card border-0">
-          <CardHeader className="pb-4">
+        <Card className="relative overflow-hidden bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+          {/* Glowing border effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+          
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-lg"></div>
+          
+          <CardHeader className="relative pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h3 className="heading-md font-semibold">Air Quality Details</h3>
+                <h3 className="heading-md font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">Air Quality Details</h3>
                 <Badge variant="outline" className={`${
-                  data.aqi <= 50 ? "bg-success/10 text-success border-success/20" :
-                  data.aqi <= 100 ? "bg-warning/10 text-warning border-warning/20" :
-                  "bg-error/10 text-error border-error/20"
-                }`}>
+                  data.aqi <= 50 ? "bg-success/20 text-success border-success/30" :
+                  data.aqi <= 100 ? "bg-warning/20 text-warning border-warning/30" :
+                  "bg-error/20 text-error border-error/30"
+                } backdrop-blur-sm`}>
                   <div className={`w-1.5 h-1.5 rounded-full mr-1 ${
                     data.aqi <= 50 ? "bg-success" :
                     data.aqi <= 100 ? "bg-warning" :
@@ -234,17 +240,17 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
                   {aqiStatus.status}
                 </Badge>
               </div>
-              <div className="body-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground/80">
                 Updated {new Date(data.timestamp).toLocaleTimeString()}
               </div>
             </div>
           </CardHeader>
           
-          <CardContent className="space-y-6">
+          <CardContent className="relative space-y-6">
             {/* AQI Progress Gauge */}
             <div className="text-center">
-              <div className="text-3xl font-bold mb-2">{data.aqi}</div>
-              <p className="body-sm text-muted-foreground mb-4">
+              <div className="text-4xl font-bold mb-3 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{data.aqi}</div>
+              <p className="text-sm text-muted-foreground/80 mb-6 leading-relaxed">
                 {data.aqi <= 50 ? "Air quality is good! Great for outdoor activities." :
                  data.aqi <= 100 ? "Air quality is moderate. Sensitive individuals should consider limiting outdoor activities." :
                  "Air quality is poor. Limit outdoor activities."}
@@ -252,7 +258,7 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
               <div className="flex justify-center">
                 <ProgressGauge 
                   value={Math.min((data.aqi / 300) * 100, 100)} 
-                  size={100}
+                  size={120}
                   color={
                     data.aqi <= 50 ? "hsl(var(--success))" :
                     data.aqi <= 100 ? "hsl(var(--warning))" :
@@ -265,65 +271,65 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
             {/* Pollutant Levels Grid */}
             <div className="grid grid-cols-2 gap-4">
               {/* PM2.5 */}
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <p className="body-sm text-muted-foreground mb-1">PM2.5</p>
-                <div className="text-xl font-bold">{data.pm25?.toFixed(1) || 'N/A'}</div>
-                <span className="body-sm text-muted-foreground">µg/m³</span>
-                <div className={`flex items-center justify-center gap-1 mt-1 ${
+              <div className="text-center p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 backdrop-blur-sm">
+                <p className="text-sm text-muted-foreground/80 mb-2 font-medium">PM2.5</p>
+                <div className="text-2xl font-bold text-primary">{data.pm25?.toFixed(1) || 'N/A'}</div>
+                <span className="text-sm text-muted-foreground/70">µg/m³</span>
+                <div className={`flex items-center justify-center gap-1 mt-2 ${
                   data.pm25 <= 12 ? 'text-success' : 'text-error'
                 }`}>
                   {data.pm25 <= 12 ? 
-                    <TrendingUp className="h-3 w-3" /> : 
-                    <TrendingDown className="h-3 w-3" />
+                    <TrendingUp className="h-4 w-4" /> : 
+                    <TrendingDown className="h-4 w-4" />
                   }
-                  <span className="text-xs">{data.pm25 <= 12 ? "Good" : "High"}</span>
+                  <span className="text-xs font-medium">{data.pm25 <= 12 ? "Good" : "High"}</span>
                 </div>
               </div>
 
               {/* PM10 */}
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <p className="body-sm text-muted-foreground mb-1">PM10</p>
-                <div className="text-xl font-bold">{data.pm10?.toFixed(1) || 'N/A'}</div>
-                <span className="body-sm text-muted-foreground">µg/m³</span>
-                <div className={`flex items-center justify-center gap-1 mt-1 ${
+              <div className="text-center p-4 bg-gradient-to-br from-secondary/10 to-secondary/5 rounded-xl border border-secondary/20 backdrop-blur-sm">
+                <p className="text-sm text-muted-foreground/80 mb-2 font-medium">PM10</p>
+                <div className="text-2xl font-bold text-secondary">{data.pm10?.toFixed(1) || 'N/A'}</div>
+                <span className="text-sm text-muted-foreground/70">µg/m³</span>
+                <div className={`flex items-center justify-center gap-1 mt-2 ${
                   data.pm10 <= 54 ? 'text-success' : 'text-error'
                 }`}>
                   {data.pm10 <= 54 ? 
-                    <TrendingUp className="h-3 w-3" /> : 
-                    <TrendingDown className="h-3 w-3" />
+                    <TrendingUp className="h-4 w-4" /> : 
+                    <TrendingDown className="h-4 w-4" />
                   }
-                  <span className="text-xs">{data.pm10 <= 54 ? "Good" : "High"}</span>
+                  <span className="text-xs font-medium">{data.pm10 <= 54 ? "Good" : "High"}</span>
                 </div>
               </div>
             </div>
 
             {/* Additional Pollutants if available */}
             {(data.no2 || data.o3 || data.so2 || data.co) && (
-              <div className="space-y-2">
-                <p className="body-sm font-medium text-muted-foreground">Other Pollutants</p>
-                <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-muted-foreground/80">Other Pollutants</p>
+                <div className="grid grid-cols-2 gap-3">
                   {data.no2 && (
-                    <div className="text-center p-2 bg-muted/20 rounded text-xs">
-                      <div className="font-medium">NO₂</div>
-                      <div>{data.no2.toFixed(1)} µg/m³</div>
+                    <div className="text-center p-3 bg-gradient-to-br from-blue-500/10 to-blue-500/5 rounded-lg border border-blue-500/20 backdrop-blur-sm">
+                      <div className="font-medium text-blue-600">NO₂</div>
+                      <div className="text-lg font-bold text-blue-700">{data.no2.toFixed(1)} µg/m³</div>
                     </div>
                   )}
                   {data.o3 && (
-                    <div className="text-center p-2 bg-muted/20 rounded text-xs">
-                      <div className="font-medium">O₃</div>
-                      <div>{data.o3.toFixed(1)} µg/m³</div>
+                    <div className="text-center p-3 bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-lg border border-green-500/20 backdrop-blur-sm">
+                      <div className="font-medium text-green-600">O₃</div>
+                      <div className="text-lg font-bold text-green-700">{data.o3.toFixed(1)} µg/m³</div>
                     </div>
                   )}
                   {data.so2 && (
-                    <div className="text-center p-2 bg-muted/20 rounded text-xs">
-                      <div className="font-medium">SO₂</div>
-                      <div>{data.so2.toFixed(1)} µg/m³</div>
+                    <div className="text-center p-3 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 rounded-lg border border-yellow-500/20 backdrop-blur-sm">
+                      <div className="font-medium text-yellow-600">SO₂</div>
+                      <div className="text-lg font-bold text-yellow-700">{data.so2.toFixed(1)} µg/m³</div>
                     </div>
                   )}
                   {data.co && (
-                    <div className="text-center p-2 bg-muted/20 rounded text-xs">
-                      <div className="font-medium">CO</div>
-                      <div>{data.co.toFixed(1)} µg/m³</div>
+                    <div className="text-center p-3 bg-gradient-to-br from-red-500/10 to-red-500/5 rounded-lg border border-red-500/20 backdrop-blur-sm">
+                      <div className="font-medium text-red-600">CO</div>
+                      <div className="text-lg font-bold text-red-700">{data.co.toFixed(1)} µg/m³</div>
                     </div>
                   )}
                 </div>
@@ -331,39 +337,39 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
             )}
 
             {/* Points & Rewards Summary */}
-            <div className="space-y-3 pt-4 border-t">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-6 bg-primary rounded-full"></div>
-                  <span className="body-sm font-medium">Points Earned</span>
+            <div className="space-y-4 pt-6 border-t border-border/30">
+              <div className="flex items-center justify-between p-3 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-8 bg-gradient-to-b from-primary to-primary/60 rounded-full shadow-lg"></div>
+                  <span className="text-sm font-medium text-foreground">Points Earned</span>
                 </div>
-                <div className="flex items-center gap-1 text-success body-sm">
-                  <ArrowUpRight className="h-3 w-3" />
+                <div className="flex items-center gap-2 text-success text-sm font-semibold">
+                  <ArrowUpRight className="h-4 w-4" />
                   <span>{Math.floor(userPoints / 100)}</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-6 bg-success rounded-full"></div>
-                  <span className="body-sm font-medium">Currency Rewards</span>
+              <div className="flex items-center justify-between p-3 bg-gradient-to-br from-success/10 to-success/5 rounded-xl border border-success/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-8 bg-gradient-to-b from-success to-success/60 rounded-full shadow-lg"></div>
+                  <span className="text-sm font-medium text-foreground">Currency Rewards</span>
                 </div>
-                <div className="flex items-center gap-1 text-success body-sm">
-                  <DollarSign className="h-3 w-3" />
+                <div className="flex items-center gap-2 text-success text-sm font-semibold">
+                  <DollarSign className="h-4 w-4" />
                   <span>${currencyRewards.toFixed(2)}</span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-6 bg-warning rounded-full"></div>
-                  <span className="body-sm font-medium">Withdrawal Status</span>
+              <div className="flex items-center justify-between p-3 bg-gradient-to-br from-warning/10 to-warning/5 rounded-xl border border-warning/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-8 bg-gradient-to-b from-warning to-warning/60 rounded-full shadow-lg"></div>
+                  <span className="text-sm font-medium text-foreground">Withdrawal Status</span>
                 </div>
-                <div className={`flex items-center gap-1 body-sm ${canWithdraw ? 'text-success' : 'text-warning'}`}>
+                <div className={`flex items-center gap-2 text-sm font-semibold ${canWithdraw ? 'text-success' : 'text-warning'}`}>
                   {canWithdraw ? (
-                    <ArrowUpRight className="h-3 w-3" />
+                    <ArrowUpRight className="h-4 w-4" />
                   ) : (
-                    <ArrowDownLeft className="h-3 w-3" />
+                    <ArrowDownLeft className="h-4 w-4" />
                   )}
                   <span>{canWithdraw ? "Available" : "Pending"}</span>
                 </div>

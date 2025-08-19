@@ -33,27 +33,35 @@ export default function NewsCard() {
 
   return (
     <>
-      <Card className="glass-card border-0 h-full min-h-[500px]">
-        <CardHeader className="pb-4">
+      <Card className="relative overflow-hidden h-full min-h-[500px] bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+        {/* Glowing border effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+        
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-lg"></div>
+        
+        <CardHeader className="relative pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="heading-md font-semibold">Latest Articles</h3>
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+              <h3 className="heading-md font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">Latest Articles</h3>
+              <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30 backdrop-blur-sm">
                 Health & Environment
               </Badge>
             </div>
-            <div className="body-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground/80">
               Updated daily
             </div>
           </div>
         </CardHeader>
         
-        <CardContent className="pt-0 space-y-4 px-4 lg:px-6">
+        <CardContent className="relative pt-0 space-y-4 px-4 lg:px-6">
           {latestArticles.map((article, index) => (
             <div
               key={article.id}
-              className={`group cursor-pointer rounded-ds-medium p-4 transition-all duration-300 hover:bg-white/30 hover:backdrop-blur-md hover:shadow-lg border border-white/20 ${
-                index === 0 ? 'bg-white/20 backdrop-blur-sm' : 'bg-white/10 backdrop-blur-sm'
+              className={`group cursor-pointer rounded-2xl p-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl border ${
+                index === 0 
+                  ? 'bg-gradient-to-br from-primary/20 to-primary/10 border-primary/30 backdrop-blur-md' 
+                  : 'bg-gradient-to-br from-muted/20 to-muted/10 border-border/30 backdrop-blur-sm'
               }`}
               onClick={() => setSelectedArticle(article)}
             >

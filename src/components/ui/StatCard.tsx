@@ -46,28 +46,34 @@ export const StatCard = ({
   };
 
   return (
-    <Card className={`glass-card border-0 ${className}`}>
-      <CardContent className="p-6">
+    <Card className={`relative overflow-hidden bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] ${className}`}>
+      {/* Glowing border effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+      
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-lg"></div>
+      
+      <CardContent className="relative p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               {icon && (
-                <div className="w-8 h-8 rounded-ds-small bg-primary/10 flex items-center justify-center text-primary">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-primary shadow-lg backdrop-blur-sm border border-primary/20">
                   {icon}
                 </div>
               )}
-              <p className="body-sm text-muted-foreground font-medium">{title}</p>
+              <p className="body-sm text-muted-foreground/80 font-medium">{title}</p>
             </div>
             
-            <div className="mb-2">
-              <h3 className="text-2xl font-bold text-foreground">{value}</h3>
+            <div className="mb-3">
+              <h3 className="text-3xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{value}</h3>
               {subtitle && (
-                <p className="body-sm text-muted-foreground mt-1">{subtitle}</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">{subtitle}</p>
               )}
             </div>
 
             {change && (
-              <div className={`flex items-center gap-1 body-sm ${getChangeColor(change.type)}`}>
+              <div className={`flex items-center gap-2 text-sm font-medium ${getChangeColor(change.type)}`}>
                 {getChangeIcon(change.type)}
                 <span>{change.value}</span>
               </div>
@@ -87,16 +93,38 @@ export const StatCard = ({
 
 // Mini chart component for stat cards
 export const MiniChart = ({ className = "" }: { className?: string }) => (
-  <div className={`w-16 h-8 ${className}`}>
-    <svg width="64" height="32" viewBox="0 0 64 32" className="text-primary">
+  <div className={`w-20 h-12 ${className}`}>
+    <svg width="80" height="48" viewBox="0 0 80 48" className="text-primary">
+      {/* Gradient background area */}
+      <defs>
+        <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.1" />
+        </linearGradient>
+      </defs>
+      
+      {/* Filled area under the line */}
       <path
-        d="M0 20 L8 16 L16 22 L24 12 L32 18 L40 8 L48 14 L56 6 L64 10"
-        stroke="currentColor"
-        strokeWidth="2"
+        d="M0 40 L10 32 L20 36 L30 24 L40 30 L50 20 L60 26 L70 18 L80 22 L80 48 L0 48 Z"
+        fill="url(#chartGradient)"
+      />
+      
+      {/* Main line */}
+      <path
+        d="M0 40 L10 32 L20 36 L30 24 L40 30 L50 20 L60 26 L70 18 L80 22"
+        stroke="hsl(var(--primary))"
+        strokeWidth="3"
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
+        className="drop-shadow-lg"
       />
+      
+      {/* Data points */}
+      <circle cx="10" cy="32" r="3" fill="hsl(var(--primary))" className="drop-shadow-md" />
+      <circle cx="30" cy="24" r="3" fill="hsl(var(--primary))" className="drop-shadow-md" />
+      <circle cx="50" cy="20" r="3" fill="hsl(var(--primary))" className="drop-shadow-md" />
+      <circle cx="70" cy="18" r="3" fill="hsl(var(--primary))" className="drop-shadow-md" />
     </svg>
   </div>
 );

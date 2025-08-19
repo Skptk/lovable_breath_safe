@@ -24,9 +24,24 @@ export const ProgressGauge = ({
       <svg
         width={size}
         height={size}
-        className="transform -rotate-90"
+        className="transform -rotate-90 drop-shadow-lg"
       >
-        {/* Background circle */}
+        {/* Gradient definitions */}
+        <defs>
+          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.8" />
+            <stop offset="100%" stopColor={color} stopOpacity="1" />
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge> 
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        
+        {/* Background circle with subtle gradient */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -34,29 +49,32 @@ export const ProgressGauge = ({
           fill="none"
           stroke="hsl(var(--muted))"
           strokeWidth={strokeWidth}
-          className="opacity-20"
+          className="opacity-10"
         />
         
-        {/* Progress circle */}
+        {/* Progress circle with gradient and glow */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={color}
+          stroke="url(#progressGradient)"
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          className="transition-all duration-500 ease-in-out"
+          className="transition-all duration-700 ease-out"
+          filter="url(#glow)"
         />
       </svg>
       
-      {/* Center content */}
+      {/* Center content with enhanced styling */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-foreground">{Math.round(value)}%</span>
+        <span className="text-2xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent drop-shadow-sm">
+          {Math.round(value)}%
+        </span>
         {label && (
-          <span className="body-sm text-muted-foreground">{label}</span>
+          <span className="text-sm text-muted-foreground/80 font-medium">{label}</span>
         )}
       </div>
     </div>
