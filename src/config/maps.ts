@@ -1,26 +1,35 @@
-// Google Maps configuration
-export const GOOGLE_MAPS_CONFIG = {
-  // Replace with your actual Google Maps API key
-  API_KEY: 'YOUR_GOOGLE_MAPS_API_KEY',
-  
+// Leaflet Map configuration
+export const LEAFLET_MAPS_CONFIG = {
   // Map settings
   DEFAULT_ZOOM: 13,
   DEFAULT_CENTER: { lat: 0, lng: 0 },
   
+  // Tile layer configuration
+  TILE_LAYERS: {
+    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+  },
+  
+  // Attribution for tile layers
+  ATTRIBUTION: {
+    dark: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    light: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    satellite: '&copy; <a href="https://www.esri.com/">Esri</a>'
+  },
+  
   // Marker settings
   USER_MARKER: {
-    scale: 8,
-    fillColor: '#3B82F6', // Blue
-    fillOpacity: 1,
-    strokeColor: '#FFFFFF',
-    strokeWeight: 2
+    size: 16,
+    color: '#3B82F6', // Blue
+    borderColor: '#FFFFFF',
+    borderWidth: 2
   },
   
   STATION_MARKER: {
-    scale: 6,
-    fillOpacity: 0.8,
-    strokeColor: '#FFFFFF',
-    strokeWeight: 1
+    size: 12,
+    borderColor: '#FFFFFF',
+    borderWidth: 2
   },
   
   // AQI color mapping
@@ -32,13 +41,6 @@ export const GOOGLE_MAPS_CONFIG = {
     veryUnhealthy: '#8B5CF6', // Purple (201-300)
     hazardous: '#7F1D1D'    // Dark Red (301+)
   }
-};
-
-// Check if Google Maps API key is valid
-export const isGoogleMapsApiKeyValid = (): boolean => {
-  const apiKey = GOOGLE_MAPS_CONFIG.API_KEY;
-  const isValid = apiKey && apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY' && apiKey.trim() !== '';
-  return isValid;
 };
 
 // Helper function to get AQI color

@@ -3,7 +3,7 @@ export { default as AirQualityDashboard } from './AirQualityDashboard';
 export { default as ProfileView } from './ProfileView';
 export { default as HistoryView } from './HistoryView';
 export { default as Navigation } from './Navigation';
-export { default as GoogleMap } from './GoogleMap';
+export { default as LeafletMap } from './LeafletMap';
 export { default as MapView } from './MapView';
 export { default as PollutantModal } from './PollutantModal';
 

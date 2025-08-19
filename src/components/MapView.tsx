@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Layers, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import GoogleMap from "./GoogleMap";
+import LeafletMap from "./LeafletMap";
 import Header from "@/components/Header";
 
 
@@ -303,9 +303,9 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
 
       {/* Map Container */}
       <div className="relative h-[calc(100vh-300px)] min-h-[500px]">
-        {/* Google Maps Integration - Full width/height */}
+        {/* Leaflet Map Integration - Full width/height */}
         <div className="w-full h-full rounded-lg overflow-hidden border border-border">
-          <GoogleMap 
+          <LeafletMap 
             userLocation={userLocation}
             airQualityData={airQualityData}
             nearbyLocations={nearbyLocations}
