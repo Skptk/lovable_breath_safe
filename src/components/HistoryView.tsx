@@ -482,36 +482,36 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
       {/* Action Buttons */}
       <div className="flex items-center gap-2 justify-end">
-        {selectedEntries.size > 0 && (
-          <Button
-            onClick={bulkDeleteSelected}
-            variant="destructive"
-            size="sm"
-            disabled={bulkDeleting}
+          {selectedEntries.size > 0 && (
+            <Button
+              onClick={bulkDeleteSelected}
+              variant="destructive"
+              size="sm"
+              disabled={bulkDeleting}
+              className="gap-2"
+            >
+              {bulkDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Delete Selected ({selectedEntries.size})
+                </>
+              )}
+            </Button>
+          )}
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={selectAllEntries}
             className="gap-2"
           >
-            {bulkDeleting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="h-4 w-4" />
-                Delete Selected ({selectedEntries.size})
-              </>
-            )}
+            {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
           </Button>
-        )}
-        
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={selectAllEntries}
-          className="gap-2"
-        >
-          {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
-        </Button>
       </div>
 
       {/* Fetch AQI Data Button - Only shown after clearing history */}

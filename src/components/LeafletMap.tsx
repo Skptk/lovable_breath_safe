@@ -256,8 +256,8 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         
         <div 
           ref={mapRef} 
-          className="w-full h-96 rounded-b-lg"
-          style={{ minHeight: '400px' }}
+          className="w-full h-[600px] rounded-b-lg"
+          style={{ minHeight: '500px' }}
         />
         
         <div className="p-4 bg-gradient-to-br from-muted/20 to-muted/10 border-t border-border/30">

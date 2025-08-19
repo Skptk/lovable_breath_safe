@@ -95,6 +95,16 @@ src/
 - **Air Quality Data** - Reliable fallback data when API has no coverage
 - **Footer Navigation** - Proper view-based navigation system
 - **Data Saving** - Air quality readings now properly stored in database
+- **Map Visibility** - Increased map height from 384px to 600px for better user interaction
+- **New User Geolocation** - Added retry mechanism and fallback handling for new accounts
+- **Leaflet Map Errors** - Fixed multiple map initialization conflicts and container issues
+
+### 🆕 Current User Experience Improvements
+- **Map Interaction** - Map now occupies 600px height (was 384px) for better visibility and interaction
+- **New User Support** - Automatic retry mechanism for geolocation services with 3 attempts
+- **Error Handling** - Better error messages and fallback options for location unavailable scenarios
+- **Auto-Retry** - 2-second delay between geolocation attempts for new accounts
+- **Visual Feedback** - Progress indicators showing retry attempts and auto-retry status
 
 ### 📱 Current Navigation System
 - **Single-Page Application** with URL parameters (`?view=dashboard`)

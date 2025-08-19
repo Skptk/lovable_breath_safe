@@ -42,6 +42,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationRequested, setLocationRequested] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const { toast } = useToast();
 
   // Mock nearby locations - in a real app, these would come from an API
@@ -122,17 +123,49 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
       if (err.code === 1) {
         errorMessage = 'Location access denied. Please enable location permissions in your browser settings.';
       } else if (err.code === 2) {
-        errorMessage = 'Location unavailable. Please check your internet connection and try again.';
+        errorMessage = 'Location unavailable. This usually happens on new accounts or when location services are not ready. Please try again in a few moments.';
       } else if (err.code === 3) {
         errorMessage = 'Location timeout. Please wait a moment and try again.';
       }
       
       setError(errorMessage);
-      toast({
-        title: "Location Access Required",
-        description: "This app needs your location to show air quality data. Please allow location access when prompted.",
-        variant: "destructive",
-      });
+      
+      // For new users or location unavailable, provide fallback location
+      if (err.code === 2) {
+        console.log('Providing fallback location for new user, retry count:', retryCount);
+        
+        if (retryCount < 3) {
+          // Increment retry count and show retry message
+          setRetryCount(prev => prev + 1);
+          toast({
+            title: "Location Setup Required",
+            description: `Setting up location services... (Attempt ${retryCount + 1}/3). Please try again.`,
+            variant: "default",
+          });
+        } else {
+          // After 3 retries, show fallback location
+          const fallbackLocation = {
+            latitude: 0,
+            longitude: 0,
+            city: 'Location Unavailable',
+            state: 'Please try again later',
+            country: ''
+          };
+          setUserLocation(fallbackLocation);
+          
+          toast({
+            title: "Location Services Unavailable",
+            description: "We'll retry automatically. You can also manually refresh the page.",
+            variant: "default",
+          });
+        }
+      } else {
+        toast({
+          title: "Location Access Required",
+          description: "This app needs your location to show air quality data. Please allow location access when prompted.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -240,6 +273,18 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
     return "Hazardous";
   };
 
+  // Auto-retry geolocation for new users after a delay
+  useEffect(() => {
+    if (error && retryCount > 0 && retryCount < 3) {
+      const timer = setTimeout(() => {
+        console.log('Auto-retrying geolocation for new user...');
+        getUserLocation();
+      }, 2000); // Wait 2 seconds before retry
+      
+      return () => clearTimeout(timer);
+    }
+  }, [error, retryCount]);
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -329,9 +374,14 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
             </div>
             
             <div className="flex flex-col gap-2">
+              {retryCount > 0 && (
+                <div className="text-xs text-muted-foreground text-center p-2 bg-muted/30 rounded">
+                  Attempt {retryCount}/3 - Auto-retrying in a few seconds...
+                </div>
+              )}
               <Button onClick={getUserLocation} variant="outline" className="w-full">
                 <MapPin className="h-4 w-4 mr-2" />
-                Try Again
+                Try Again Now
               </Button>
               <Button 
                 onClick={() => window.location.reload()} 
@@ -358,7 +408,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
       />
 
       {/* Map Container */}
-      <div className="relative h-[calc(100vh-300px)] min-h-[500px]">
+      <div className="relative h-[calc(100vh-200px)] min-h-[600px]">
         {/* Leaflet Map Integration - Full width/height */}
         <div className="w-full h-full rounded-lg overflow-hidden border border-border">
           <LeafletMap 
