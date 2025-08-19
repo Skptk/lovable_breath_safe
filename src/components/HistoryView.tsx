@@ -182,7 +182,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
     try {
       setFetchingData(true);
       
-      // Get user's current location
+      // Check if geolocation is supported
       if (!navigator.geolocation) {
         toast({
           title: "Location Error",
@@ -192,6 +192,25 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         return;
       }
 
+      // Check if we have permission to access location
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+          if (permissionStatus.state === 'denied') {
+            toast({
+              title: "Location Access Denied",
+              description: "Please enable location permissions in your browser settings to fetch air quality data.",
+              variant: "destructive",
+            });
+            return;
+          }
+        } catch (error) {
+          console.log('Permission API not supported, proceeding with geolocation request');
+        }
+      }
+
+      console.log('HistoryView: Starting geolocation request for AQI data...');
+      
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           timeout: 30000,
@@ -200,6 +219,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         });
       });
 
+      console.log('HistoryView: Geolocation successful, coordinates:', position.coords.latitude, position.coords.longitude);
       const { latitude, longitude } = position.coords;
       
       // Call the Supabase function to get air quality data
@@ -253,9 +273,39 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       
     } catch (error: any) {
       console.error('Error fetching AQI data:', error);
+      
+      // Provide better error messages for geolocation errors
+      let errorMessage = 'Failed to fetch air quality data';
+      
+      if (error instanceof GeolocationPositionError) {
+        switch (error.code) {
+          case 1:
+            errorMessage = 'Location access denied. Please enable location permissions in your browser settings.';
+            break;
+          case 2:
+            errorMessage = 'Location unavailable. This usually happens when location services are not ready. Please try again in a few moments.';
+            break;
+          case 3:
+            errorMessage = 'Location timeout. Please wait a moment and try again.';
+            break;
+          default:
+            errorMessage = 'Location error occurred. Please try again.';
+        }
+        
+        // Log geolocation errors with more context
+        console.log('HistoryView: Geolocation error occurred:', {
+          code: error.code,
+          message: error.message,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        // For non-geolocation errors, show the original error message
+        errorMessage = error.message || 'Failed to fetch air quality data';
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch air quality data",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
