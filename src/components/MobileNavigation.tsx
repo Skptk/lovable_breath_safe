@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { X, Home, History, Map, Trophy, ShoppingBag, User, Settings, LogOut, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -92,98 +93,156 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
   return (
     <>
       {/* Mobile Navigation Overlay */}
-      {isMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-[9999] md:hidden transition-opacity duration-300"
-          onClick={toggleMobileMenu}
-        >
-          {/* Slide-out drawer */}
-          <div 
-            className={`fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-card border-r border-border shadow-2xl transform transition-transform duration-300 ease-out ${
-              isMenuOpen ? 'translate-x-0' : '-translate-x-full'
-            }`}
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div 
+            className="fixed inset-0 bg-black/50 z-[9999] md:hidden"
+            onClick={toggleMobileMenu}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-border bg-gradient-to-r from-primary/5 to-secondary/5">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <div className="w-4 h-4 bg-primary-foreground rounded-full"></div>
-                </div>
-                <h2 className="text-lg font-semibold text-foreground">Breath Safe</h2>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleMobileMenu}
-                className="h-8 w-8 rounded-full hover:bg-accent"
+            {/* Slide-out drawer */}
+            <motion.div 
+              className="fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-card border-r border-border shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ 
+                type: "spring", 
+                damping: 25, 
+                stiffness: 200,
+                duration: 0.4
+              }}
+            >
+              {/* Header */}
+              <motion.div 
+                className="flex items-center justify-between p-6 border-b border-border bg-gradient-to-r from-primary/5 to-secondary/5"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
               >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {/* Navigation Items */}
-            <nav className="p-6 space-y-2">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentView === item.id;
-                
-                return (
-                  <Button
-                    key={item.id}
-                    variant={isActive ? "default" : "ghost"}
-                    className={`w-full justify-start gap-3 h-12 rounded-lg transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-primary text-primary-foreground shadow-md' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                    }`}
-                    onClick={() => handleViewChange(item.id)}
+                <div className="flex items-center gap-3">
+                  <motion.div 
+                    className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    <Icon className="h-5 w-5" />
-                    <span className="font-medium">{item.label}</span>
+                    <div className="w-4 h-4 bg-primary-foreground rounded-full"></div>
+                  </motion.div>
+                  <h2 className="text-lg font-semibold text-foreground">Breath Safe</h2>
+                </div>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleMobileMenu}
+                    className="h-8 w-8 rounded-full hover:bg-accent"
+                  >
+                    <X className="h-4 w-4" />
                   </Button>
-                );
-              })}
-            </nav>
+                </motion.div>
+              </motion.div>
+              
+              {/* Navigation Items */}
+              <nav className="p-6 space-y-2">
+                {navItems.map((item, index) => {
+                  const Icon = item.icon;
+                  const isActive = currentView === item.id;
+                  
+                  return (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 + index * 0.05, duration: 0.3 }}
+                    >
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Button
+                          variant={isActive ? "default" : "ghost"}
+                          className={`w-full justify-start gap-3 h-12 rounded-lg transition-all duration-200 ${
+                            isActive 
+                              ? 'bg-primary text-primary-foreground shadow-md' 
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                          }`}
+                          onClick={() => handleViewChange(item.id)}
+                        >
+                          <Icon className="h-5 w-5" />
+                          <span className="font-medium">{item.label}</span>
+                        </Button>
+                      </motion.div>
+                    </motion.div>
+                  );
+                })}
+              </nav>
 
-            {/* Bottom Actions */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-border bg-gradient-to-t from-background to-transparent">
-              <div className="space-y-3">
-                {/* Theme Toggle */}
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3 h-12 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
-                  onClick={toggleTheme}
-                >
-                  {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                  <span className="font-medium">
-                    {isDark ? "Light Mode" : "Dark Mode"}
-                  </span>
-                </Button>
+              {/* Bottom Actions */}
+              <motion.div 
+                className="absolute bottom-0 left-0 right-0 p-6 border-t border-border bg-gradient-to-t from-background to-transparent"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.3 }}
+              >
+                <div className="space-y-3">
+                  {/* Theme Toggle */}
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 h-12 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
+                      onClick={toggleTheme}
+                    >
+                      {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                      <span className="font-medium">
+                        {isDark ? "Light Mode" : "Dark Mode"}
+                      </span>
+                    </Button>
+                  </motion.div>
 
-                {/* Settings */}
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3 h-12 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
-                >
-                  <Settings className="h-5 w-5" />
-                  <span className="font-medium">Settings</span>
-                </Button>
+                  {/* Settings */}
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 h-12 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
+                    >
+                      <Settings className="h-5 w-5" />
+                      <span className="font-medium">Settings</span>
+                    </Button>
+                  </motion.div>
 
-                {/* Sign Out */}
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3 h-12 rounded-lg text-muted-foreground hover:text-error hover:bg-error/10"
-                  onClick={handleSignOut}
-                >
-                  <LogOut className="h-5 w-5" />
-                  <span className="font-medium">Sign Out</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                  {/* Sign Out */}
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 h-12 rounded-lg text-muted-foreground hover:text-error hover:bg-error/10"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="h-5 w-5" />
+                      <span className="font-medium">Sign Out</span>
+                    </Button>
+                  </motion.div>
+                </div>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

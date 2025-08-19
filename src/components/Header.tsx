@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,21 +38,28 @@ export default function Header({
       <div className="flex items-center gap-4">
         {/* Mobile Menu Button */}
         {onMobileMenuToggle && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onMobileMenuToggle}
-            className="md:hidden h-10 w-10 rounded-full border-border hover:bg-accent"
-            aria-label="Toggle mobile menu"
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onMobileMenuToggle}
+              className="md:hidden h-10 w-10 rounded-full border-border hover:bg-accent"
+              aria-label="Toggle mobile menu"
+            >
+              {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </motion.div>
         )}
 
         {/* Greeting and subtitle */}
-        <div 
+        <motion.div 
           className={`${onNavigate ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
           onClick={() => onNavigate && onNavigate('profile')}
+          whileHover={onNavigate ? { scale: 1.02 } : {}}
+          whileTap={onNavigate ? { scale: 0.98 } : {}}
         >
           <h1 className="heading-lg text-foreground mb-1">
             {title}
@@ -61,7 +69,7 @@ export default function Header({
               {subtitle}
             </p>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {/* Right side - Search, actions, and profile */}
@@ -69,26 +77,36 @@ export default function Header({
         {/* Search Bar - Hide on very small screens */}
         <div className="relative hidden sm:block">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            type="text"
-            placeholder="Search AQI, features, products..."
-            onClick={() => setIsSearchOpen(true)}
-            className="pl-10 w-48 lg:w-64 bg-background border-border rounded-full h-9 cursor-pointer"
-            readOnly
-          />
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Input
+              type="text"
+              placeholder="Search AQI, features, products..."
+              onClick={() => setIsSearchOpen(true)}
+              className="pl-10 w-48 lg:w-64 bg-background border-border rounded-full h-9 cursor-pointer"
+              readOnly
+            />
+          </motion.div>
         </div>
 
         {/* Refresh Button */}
         {showRefresh && onRefresh && (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className="h-9 w-9 rounded-full border-border"
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="h-9 w-9 rounded-full border-border"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          </motion.div>
         )}
 
         {/* Notifications */}
@@ -96,12 +114,17 @@ export default function Header({
 
         {/* User Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={user?.user_metadata?.avatar_url} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-              {user?.email?.charAt(0).toUpperCase() || 'U'}
-            </AvatarFallback>
-          </Avatar>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={user?.user_metadata?.avatar_url} />
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                {user?.email?.charAt(0).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </motion.div>
           
           <div className="hidden lg:block">
             <p className="body-sm font-medium text-foreground">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import AirQualityDashboard from "@/components/AirQualityDashboard";
 import HistoryView from "@/components/HistoryView";
 import MapView from "@/components/MapView";
@@ -11,41 +12,39 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
 
-const Index = (): JSX.Element => {
+export default function Index(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [currentView, setCurrentView] = useState("dashboard");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   
-  // Get current view from URL params, default to dashboard
-  const currentView = searchParams.get('view') || 'dashboard';
+  // Listen for custom view change events
+  useEffect(() => {
+    const handleViewChange = (event: CustomEvent) => {
+      setCurrentView(event.detail.view);
+    };
+
+    window.addEventListener('viewChange', handleViewChange as EventListener);
+    return () => window.removeEventListener('viewChange', handleViewChange as EventListener);
+  }, []);
+
+  // Update current view based on URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const view = urlParams.get('view');
+    if (view && ['dashboard', 'history', 'map', 'rewards', 'store', 'profile'].includes(view)) {
+      setCurrentView(view);
+    }
+  }, [location.search]);
 
   const handleViewChange = (view: string) => {
-    // Update URL params without triggering navigation
-    setSearchParams({ view }, { replace: true });
+    setCurrentView(view);
+    // Update URL without page reload
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('view', view);
+    window.history.pushState({}, '', newUrl.toString());
   };
-
-  // Ensure URL is set when component mounts and handle URL changes
-  useEffect(() => {
-    // Only set default view if no view is specified
-    if (!searchParams.get('view')) {
-      setSearchParams({ view: 'dashboard' }, { replace: true });
-    }
-  }, []); // Empty dependency array to run only once on mount
-
-  // Listen for view changes from footer navigation
-  useEffect(() => {
-    const handleViewChangeEvent = (event: CustomEvent) => {
-      const { view } = event.detail;
-      handleViewChange(view);
-    };
-
-    window.addEventListener('viewChange', handleViewChangeEvent as EventListener);
-    
-    return () => {
-      window.removeEventListener('viewChange', handleViewChangeEvent as EventListener);
-    };
-  }, []);
 
   // Debug logging
   useEffect(() => {
@@ -144,7 +143,20 @@ const Index = (): JSX.Element => {
       {/* Main Content Area */}
       <div className="flex-1 md:ml-16 ml-0">
         <div className="p-4 sm:p-6 lg:p-8 w-full">
-          {renderView()}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentView}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ 
+                duration: 0.3, 
+                ease: "easeInOut"
+              }}
+            >
+              {renderView()}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 
@@ -152,6 +164,4 @@ const Index = (): JSX.Element => {
       <Footer />
     </div>
   );
-};
-
-export default Index;
+}
