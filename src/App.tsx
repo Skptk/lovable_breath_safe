@@ -27,8 +27,10 @@ const retry = (fn: () => Promise<any>, retriesLeft: number = 3, interval: number
 };
 
 // Lazy load pages with retry mechanism
+const Landing = lazy(() => retry(() => import("./pages/Landing")));
 const Index = lazy(() => retry(() => import("./pages/Index")));
 const Auth = lazy(() => retry(() => import("./pages/Auth")));
+const Onboarding = lazy(() => retry(() => import("./pages/Onboarding")));
 const Products = lazy(() => retry(() => import("./pages/Products")));
 const Privacy = lazy(() => retry(() => import("./pages/Privacy")));
 const Terms = lazy(() => retry(() => import("./pages/Terms")));
@@ -170,12 +172,14 @@ const App = (): JSX.Element => {
                 fallback={<LazyErrorFallback error={new Error("Failed to load route")} retry={() => window.location.reload()} />}
               >
                 <Routes>
+                  <Route path="/" element={<Landing />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/products" element={<Products />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route 
-                    path="/" 
+                    path="/dashboard" 
                     element={
                       <ProtectedRoute>
                         <Index />

@@ -5,18 +5,24 @@ import { X, Home, History, Map, Trophy, ShoppingBag, User } from "lucide-react";
 interface MobileNavigationProps {
   currentView: string;
   onViewChange: (view: string) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export default function MobileNavigation({ currentView, onViewChange }: MobileNavigationProps): JSX.Element {
+export default function MobileNavigation({ currentView, onViewChange, isOpen, onClose }: MobileNavigationProps): JSX.Element {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+  // Use external state if provided, otherwise use internal state
+  const isMenuOpen = isOpen !== undefined ? isOpen : isMobileMenuOpen;
+  const toggleMobileMenu = onClose ? onClose : () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   const handleViewChange = (view: string) => {
     onViewChange(view);
-    setIsMobileMenuOpen(false); // Close mobile menu when view changes
+    if (onClose) {
+      onClose(); // Use external close function if provided
+    } else {
+      setIsMobileMenuOpen(false); // Otherwise use internal state
+    }
   };
 
   // Handle Escape key to close mobile menu
@@ -56,7 +62,7 @@ export default function MobileNavigation({ currentView, onViewChange }: MobileNa
       </Button>
 
       {/* Mobile Navigation Overlay */}
-      {isMobileMenuOpen && (
+      {isMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-[9999] md:hidden"
           onClick={toggleMobileMenu}

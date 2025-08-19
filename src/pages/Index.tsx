@@ -7,6 +7,7 @@ import ProfileView from "@/components/ProfileView";
 import Rewards from "@/pages/Rewards";
 import Store from "@/pages/Store";
 import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
 
@@ -14,6 +15,7 @@ const Index = (): JSX.Element => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   // Get current view from URL params, default to dashboard
   const currentView = searchParams.get('view') || 'dashboard';
@@ -75,17 +77,59 @@ const Index = (): JSX.Element => {
     return null;
   }
 
+  const toggleMobileMenu = () => {
+    setShowMobileMenu(!showMobileMenu);
+  };
+
+  const getHeaderTitle = (view: string): string => {
+    switch (view) {
+      case "dashboard": return "Air Quality Dashboard";
+      case "history": return "Air Quality History";
+      case "map": return "Air Quality Map";
+      case "rewards": return "Rewards & Achievements";
+      case "store": return "Store & Products";
+      case "profile": return "Profile & Settings";
+      default: return "Breath Safe";
+    }
+  };
+
+  const getHeaderSubtitle = (view: string): string => {
+    switch (view) {
+      case "dashboard": return "Monitor your local air quality in real-time";
+      case "history": return "Track your environmental exposure over time";
+      case "map": return "Explore air quality data across your region";
+      case "rewards": return "Earn points for healthy choices";
+      case "store": return "Browse air quality products and services";
+      case "profile": return "Manage your account and preferences";
+      default: return "Your health, our priority";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex flex-col">
       {/* Sidebar Navigation */}
       <Sidebar currentView={currentView} onViewChange={handleViewChange} />
       
       {/* Mobile Navigation */}
-      <MobileNavigation currentView={currentView} onViewChange={handleViewChange} />
+      <MobileNavigation 
+        currentView={currentView} 
+        onViewChange={handleViewChange}
+        isOpen={showMobileMenu}
+        onClose={() => setShowMobileMenu(false)}
+      />
       
       {/* Main Content Area */}
       <div className="flex-1 md:ml-16 ml-0">
         <div className="p-6 lg:p-8 w-full">
+          {/* Header with mobile menu toggle */}
+          <Header
+            title={getHeaderTitle(currentView)}
+            subtitle={getHeaderSubtitle(currentView)}
+            onNavigate={handleViewChange}
+            showMobileMenu={showMobileMenu}
+            onMobileMenuToggle={toggleMobileMenu}
+          />
+          
           {renderView()}
         </div>
       </div>

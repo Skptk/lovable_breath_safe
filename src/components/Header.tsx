@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, Menu, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import SearchDialog from "./SearchDialog";
 import NotificationBell from "./NotificationBell";
@@ -14,6 +14,8 @@ interface HeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   onNavigate?: (route: string) => void;
+  showMobileMenu?: boolean;
+  onMobileMenuToggle?: () => void;
 }
 
 export default function Header({ 
@@ -22,7 +24,9 @@ export default function Header({
   showRefresh = false, 
   onRefresh, 
   isRefreshing = false,
-  onNavigate
+  onNavigate,
+  showMobileMenu = false,
+  onMobileMenuToggle
 }: HeaderProps): JSX.Element {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user } = useAuth();
@@ -49,6 +53,18 @@ export default function Header({
 
       {/* Right side - Search, actions, and profile */}
       <div className="flex items-center gap-4">
+        {/* Mobile Menu Button */}
+        {onMobileMenuToggle && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMobileMenuToggle}
+            className="md:hidden h-9 w-9 rounded-full border-border"
+          >
+            {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </Button>
+        )}
+
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
