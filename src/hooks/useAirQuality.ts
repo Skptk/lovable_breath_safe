@@ -34,6 +34,7 @@ export const useAirQuality = () => {
   const { handleError } = useErrorHandler();
   const { user } = useAuth();
   const [hasUserConsent, setHasUserConsent] = useState(false);
+  const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
   
   // Performance monitoring
   usePerformanceMonitor("useAirQuality");
@@ -72,6 +73,9 @@ export const useAirQuality = () => {
       } else if (storedPermission === 'denied') {
         setHasUserConsent(false);
       }
+      
+      // Mark that we've checked permissions
+      setHasRequestedPermission(true);
     };
 
     checkLocationPermission();
@@ -320,7 +324,7 @@ export const useAirQuality = () => {
     refetchIntervalInBackground: false, // Disable background refresh
     retry: 2, // Reduce retries for faster failure detection
     retryDelay: 500, // Faster retry delay
-    enabled: false, // Never auto-run - only run when explicitly requested by user
+    enabled: hasUserConsent && hasRequestedPermission, // Only run when user has consented and we've checked permissions
   });
 
   return {
@@ -331,6 +335,7 @@ export const useAirQuality = () => {
     error: query.error,
     data: query.data,
     hasUserConsent,
+    hasRequestedPermission,
     requestLocationPermission
   };
 };
