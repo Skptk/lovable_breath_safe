@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { cleanupAllChannels } from '@/lib/realtimeClient';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -45,6 +46,9 @@ export function useAuth() {
   };
 
   const signOut = async () => {
+    // Clean up all realtime channels before signing out
+    cleanupAllChannels();
+    
     setUser(null);
     setSession(null);
     setProfileValidated(false);

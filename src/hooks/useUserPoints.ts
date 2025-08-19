@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { createRealtimeChannel, removeRealtimeChannel } from '@/integrations/supabase/realtime';
+import { subscribeToChannel, unsubscribeFromChannel } from '@/lib/realtimeClient';
 
 interface UserPoints {
   totalPoints: number;
@@ -100,38 +100,37 @@ export const useUserPoints = (): UserPoints => {
   useEffect(() => {
     if (!user) return;
 
-    // Create realtime channels using the helper
-    const profileChannel = createRealtimeChannel('user-profile-points', {
+    // Subscribe to profile updates
+    subscribeToChannel('user-profile-points', (payload) => {
+      console.log('Profile points updated:', payload);
+      const newProfile = payload.new as { total_points: number };
+      if (newProfile.total_points !== undefined) {
+        setTotalPoints(newProfile.total_points);
+        setCurrencyRewards(newProfile.total_points / 1000 * 0.1);
+        setCanWithdraw(newProfile.total_points >= 500000);
+      }
+    }, {
       event: 'UPDATE',
       schema: 'public',
       table: 'profiles',
-      filter: `user_id=eq.${user.id}`,
-      callback: (payload) => {
-        console.log('Profile points updated:', payload);
-        const newProfile = payload.new as { total_points: number };
-        if (newProfile.total_points !== undefined) {
-          setTotalPoints(newProfile.total_points);
-          setCurrencyRewards(newProfile.total_points / 1000 * 0.1);
-          setCanWithdraw(newProfile.total_points >= 500000);
-        }
-      }
+      filter: `user_id=eq.${user.id}`
     });
 
-    const pointsChannel = createRealtimeChannel('user-points-inserts', {
+    // Subscribe to new points inserts
+    subscribeToChannel('user-points-inserts', (payload) => {
+      console.log('New points earned:', payload);
+      // Refresh to get updated total
+      fetchUserPoints();
+    }, {
       event: 'INSERT',
       schema: 'public',
       table: 'user_points',
-      filter: `user_id=eq.${user.id}`,
-      callback: (payload) => {
-        console.log('New points earned:', payload);
-        // Refresh to get updated total
-        fetchUserPoints();
-      }
+      filter: `user_id=eq.${user.id}`
     });
 
     return () => {
-      removeRealtimeChannel(profileChannel);
-      removeRealtimeChannel(pointsChannel);
+      unsubscribeFromChannel('user-profile-points');
+      unsubscribeFromChannel('user-points-inserts');
     };
   }, [user]);
 

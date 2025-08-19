@@ -110,6 +110,7 @@ src/
 - **Header Component Error** - Fixed "Header is not defined" runtime error by removing unused import and functions from Index component and adding Header to components index for proper module resolution
 - **Header Import Issues** - Fixed missing Header imports in ProfileView and created stable alias exports for maximum compatibility
 - **Supabase Realtime Stability** - Implemented graceful handling of WebSocket connection failures with exponential backoff retry and session-level fallback
+- **Realtime Connection Manager** - Centralized realtime client with Map-based channel management to prevent duplicate subscriptions and WebSocket spam
 
 ### 🆕 Current User Experience Improvements
 - **Map Interaction** - Map now occupies 600px height (was 384px) for better visibility and interaction
