@@ -25,7 +25,7 @@ export default function AirQualityDashboard({
   onMobileMenuToggle 
 }: AirQualityDashboardProps) {
   const { user } = useAuth();
-  const { data, isRefetching, refetch, hasUserConsent } = useAirQuality();
+  const { data, isRefetching: isRefreshing, refetch, hasUserConsent } = useAirQuality();
   const { totalPoints, currencyRewards } = useUserPoints();
   const [showPollutantModal, setShowPollutantModal] = useState(false);
 
@@ -35,11 +35,6 @@ export default function AirQualityDashboard({
     if (hasUserConsent) {
       refetch();
     }
-  };
-
-  const aqiStatus = {
-    status: data.aqi <= 50 ? "Good" : data.aqi <= 100 ? "Moderate" : "Poor",
-    color: data.aqi <= 50 ? "text-success" : data.aqi <= 100 ? "text-warning" : "text-error"
   };
 
   if (!data) {
@@ -59,6 +54,12 @@ export default function AirQualityDashboard({
     );
   }
 
+  // Calculate AQI status after data is confirmed to exist
+  const aqiStatus = {
+    status: data.aqi <= 50 ? "Good" : data.aqi <= 100 ? "Moderate" : "Poor",
+    color: data.aqi <= 50 ? "text-success" : data.aqi <= 100 ? "text-warning" : "text-error"
+  };
+
   return (
     <div className="space-y-6 lg:space-y-8">
       {/* Header */}
@@ -69,10 +70,10 @@ export default function AirQualityDashboard({
       >
         <Header
           title={`Hello, ${userName}!`}
-          subtitle={`Air quality data for ${data.location}`}
+          subtitle={`Air quality data for ${data.location || 'your area'}`}
           showRefresh={hasUserConsent}
           onRefresh={handleRefresh}
-          isRefreshing={isRefetching}
+          isRefreshing={isRefreshing}
           onNavigate={onNavigate}
           showMobileMenu={showMobileMenu}
           onMobileMenuToggle={onMobileMenuToggle}
@@ -175,7 +176,7 @@ export default function AirQualityDashboard({
                   </Badge>
                 </div>
                 <div className="text-sm text-muted-foreground/80">
-                  Updated {new Date(data.timestamp).toLocaleTimeString()}
+                  Updated {data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : 'Recently'}
                 </div>
               </div>
             </CardHeader>
@@ -343,11 +344,11 @@ export default function AirQualityDashboard({
                 >
                   <Button 
                     onClick={handleRefresh} 
-                    disabled={isRefetching}
+                    disabled={isRefreshing}
                     className="w-full"
                     variant="outline"
                   >
-                    {isRefetching ? (
+                    {isRefreshing ? (
                       <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                     ) : (
                       <RefreshCw className="h-4 w-4 mr-2" />
