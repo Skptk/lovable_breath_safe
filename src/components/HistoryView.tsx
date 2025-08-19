@@ -7,6 +7,7 @@ import { Calendar, MapPin, TrendingUp, Download, Loader2, AlertTriangle, Thermom
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
+import Header from "@/components/Header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,7 +70,12 @@ const getAQILabel = (aqi: number): string => {
   return "Hazardous";
 };
 
-export default function HistoryView(): JSX.Element {
+interface HistoryViewProps {
+  showMobileMenu?: boolean;
+  onMobileMenuToggle?: () => void;
+}
+
+export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: HistoryViewProps = {}): JSX.Element {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -464,57 +470,48 @@ export default function HistoryView(): JSX.Element {
     <div className="min-h-screen bg-background flex flex-col">
       <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Air Quality History
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Track your air quality exposure over time
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <Header
+        title="Air Quality History"
+        subtitle="Track your air quality exposure over time"
+        showRefresh={true}
+        onRefresh={fetchHistory}
+        isRefreshing={false}
+        showMobileMenu={showMobileMenu}
+        onMobileMenuToggle={onMobileMenuToggle}
+      />
+
+      {/* Action Buttons */}
+      <div className="flex items-center gap-2 justify-end">
+        {selectedEntries.size > 0 && (
           <Button
-            onClick={fetchHistory}
-            variant="outline"
+            onClick={bulkDeleteSelected}
+            variant="destructive"
             size="sm"
+            disabled={bulkDeleting}
             className="gap-2"
           >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
+            {bulkDeleting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-4 w-4" />
+                Delete Selected ({selectedEntries.size})
+              </>
+            )}
           </Button>
-          
-          {selectedEntries.size > 0 && (
-            <Button
-              onClick={bulkDeleteSelected}
-              variant="destructive"
-              size="sm"
-              disabled={bulkDeleting}
-              className="gap-2"
-            >
-              {bulkDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4" />
-                  Delete Selected ({selectedEntries.size})
-                </>
-              )}
-            </Button>
-          )}
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={selectAllEntries}
-            className="gap-2"
-          >
-            {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
-          </Button>
-        </div>
+        )}
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={selectAllEntries}
+          className="gap-2"
+        >
+          {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
+        </Button>
       </div>
 
       {/* Fetch AQI Data Button - Only shown after clearing history */}

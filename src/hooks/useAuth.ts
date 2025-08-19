@@ -31,6 +31,19 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const signUp = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    
+    if (error) {
+      throw error;
+    }
+    
+    return data;
+  };
+
   const signOut = async () => {
     setUser(null);
     setSession(null);
@@ -73,6 +86,7 @@ export function useAuth() {
     user,
     session,
     loading,
+    signUp,
     signOut,
     validateProfile,
     profileValidated,

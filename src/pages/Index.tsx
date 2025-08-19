@@ -55,11 +55,21 @@ const Index = (): JSX.Element => {
   const renderView = (): JSX.Element => {
     switch (currentView) {
       case "dashboard":
-        return <AirQualityDashboard onNavigate={handleViewChange} />;
+        return <AirQualityDashboard 
+          onNavigate={handleViewChange} 
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={toggleMobileMenu}
+        />;
       case "history":
-        return <HistoryView />;
+        return <HistoryView 
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={toggleMobileMenu}
+        />;
       case "map":
-        return <MapView />;
+        return <MapView 
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={toggleMobileMenu}
+        />;
       case "rewards":
         return <Rewards />;
       case "store":
@@ -67,7 +77,11 @@ const Index = (): JSX.Element => {
       case "profile":
         return <ProfileView />;
       default:
-        return <AirQualityDashboard />;
+        return <AirQualityDashboard 
+          onNavigate={handleViewChange}
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={toggleMobileMenu}
+        />;
     }
   };
 
@@ -121,15 +135,6 @@ const Index = (): JSX.Element => {
       {/* Main Content Area */}
       <div className="flex-1 md:ml-16 ml-0">
         <div className="p-6 lg:p-8 w-full">
-          {/* Header with mobile menu toggle */}
-          <Header
-            title={getHeaderTitle(currentView)}
-            subtitle={getHeaderSubtitle(currentView)}
-            onNavigate={handleViewChange}
-            showMobileMenu={showMobileMenu}
-            onMobileMenuToggle={toggleMobileMenu}
-          />
-          
           {renderView()}
         </div>
       </div>

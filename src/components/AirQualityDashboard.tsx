@@ -33,9 +33,11 @@ import {
 
 interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
+  showMobileMenu?: boolean;
+  onMobileMenuToggle?: () => void;
 }
 
-export default function AirQualityDashboard({ onNavigate }: AirQualityDashboardProps = {}): JSX.Element {
+export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobileMenuToggle }: AirQualityDashboardProps = {}): JSX.Element {
   const [selectedPollutant, setSelectedPollutant] = useState<{
     name: string;
     value: number;
@@ -159,8 +161,10 @@ export default function AirQualityDashboard({ onNavigate }: AirQualityDashboardP
         subtitle={`Air quality data for ${data.location}`}
         showRefresh={hasUserConsent}
         onRefresh={handleRefresh}
-        isRefreshing={isRefetching}
+        isRefetching={isRefetching}
         onNavigate={onNavigate}
+        showMobileMenu={showMobileMenu}
+        onMobileMenuToggle={onMobileMenuToggle}
       />
 
       {/* Stats Grid - Top Row with AQI Data */}
