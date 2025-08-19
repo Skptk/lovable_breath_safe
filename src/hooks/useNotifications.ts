@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { createRealtimeChannel, removeRealtimeChannel } from '@/integrations/supabase/realtime';
 
 export type Notification = Tables<'notifications'>;
 export type NotificationPreferences = Tables<'notification_preferences'>;
@@ -226,44 +227,38 @@ export const useNotifications = (): UseNotificationsReturn => {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel('user-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('Notification change received:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            const newNotification = payload.new as Notification;
-            // Only add if not expired
-            if (!newNotification.expires_at || new Date(newNotification.expires_at) > new Date()) {
-              setNotifications(prev => [newNotification, ...prev]);
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedNotification = payload.new as Notification;
-            setNotifications(prev => 
-              prev.map(notification => 
-                notification.id === updatedNotification.id ? updatedNotification : notification
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            const deletedNotification = payload.old as Notification;
-            setNotifications(prev => 
-              prev.filter(notification => notification.id !== deletedNotification.id)
-            );
+    const channel = createRealtimeChannel('user-notifications', {
+      event: '*',
+      schema: 'public',
+      table: 'notifications',
+      filter: `user_id=eq.${user.id}`,
+      callback: (payload) => {
+        console.log('Notification change received:', payload);
+        
+        if (payload.eventType === 'INSERT') {
+          const newNotification = payload.new as Notification;
+          // Only add if not expired
+          if (!newNotification.expires_at || new Date(newNotification.expires_at) > new Date()) {
+            setNotifications(prev => [newNotification, ...prev]);
           }
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedNotification = payload.new as Notification;
+          setNotifications(prev => 
+            prev.map(notification => 
+              notification.id === updatedNotification.id ? updatedNotification : notification
+            )
+          );
+        } else if (payload.eventType === 'DELETE') {
+          const deletedNotification = payload.old as Notification;
+          setNotifications(prev => 
+            prev.filter(notification => notification.id !== deletedNotification.id)
+          );
         }
-      )
-      .subscribe();
+      }
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      removeRealtimeChannel(channel);
     };
   }, [user]);
 

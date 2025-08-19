@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { createRealtimeChannel, removeRealtimeChannel } from '@/integrations/supabase/realtime';
 
 interface UserPoints {
   totalPoints: number;
@@ -99,44 +100,38 @@ export const useUserPoints = (): UserPoints => {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel('user-profile-points')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('Profile points updated:', payload);
-          const newProfile = payload.new as { total_points: number };
-          if (newProfile.total_points !== undefined) {
-            setTotalPoints(newProfile.total_points);
-            setCurrencyRewards(newProfile.total_points / 1000 * 0.1);
-            setCanWithdraw(newProfile.total_points >= 500000);
-          }
+    // Create realtime channels using the helper
+    const profileChannel = createRealtimeChannel('user-profile-points', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'profiles',
+      filter: `user_id=eq.${user.id}`,
+      callback: (payload) => {
+        console.log('Profile points updated:', payload);
+        const newProfile = payload.new as { total_points: number };
+        if (newProfile.total_points !== undefined) {
+          setTotalPoints(newProfile.total_points);
+          setCurrencyRewards(newProfile.total_points / 1000 * 0.1);
+          setCanWithdraw(newProfile.total_points >= 500000);
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'user_points',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('New points earned:', payload);
-          // Refresh to get updated total
-          fetchUserPoints();
-        }
-      )
-      .subscribe();
+      }
+    });
+
+    const pointsChannel = createRealtimeChannel('user-points-inserts', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'user_points',
+      filter: `user_id=eq.${user.id}`,
+      callback: (payload) => {
+        console.log('New points earned:', payload);
+        // Refresh to get updated total
+        fetchUserPoints();
+      }
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      removeRealtimeChannel(profileChannel);
+      removeRealtimeChannel(pointsChannel);
     };
   }, [user]);
 

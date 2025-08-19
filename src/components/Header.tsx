@@ -19,7 +19,7 @@ interface HeaderProps {
   onMobileMenuToggle?: () => void;
 }
 
-export default function Header({ 
+function Header({ 
   title, 
   subtitle, 
   showRefresh = false, 
@@ -146,3 +146,7 @@ export default function Header({
     </div>
   );
 }
+
+// Export both named and default exports for maximum compatibility
+export { Header };
+export default Header;
