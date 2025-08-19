@@ -143,19 +143,26 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
             variant: "default",
           });
         } else {
-          // After 3 retries, show fallback location
-          const fallbackLocation = {
-            latitude: 0,
-            longitude: 0,
-            city: 'Location Unavailable',
-            state: 'Please try again later',
-            country: ''
+          // After 3 retries, provide a demo location for new users
+          const demoLocation = {
+            latitude: -1.2921, // Nairobi coordinates as demo
+            longitude: 36.8219,
+            city: 'Demo Location',
+            state: 'Nairobi, Kenya',
+            country: 'Kenya'
           };
-          setUserLocation(fallbackLocation);
+          setUserLocation(demoLocation);
+          
+          // Set demo air quality data
+          setAirQualityData({
+            aqi: 45,
+            location: 'Demo Location',
+            timestamp: new Date().toISOString()
+          });
           
           toast({
-            title: "Location Services Unavailable",
-            description: "We'll retry automatically. You can also manually refresh the page.",
+            title: "Demo Mode Activated",
+            description: "Showing demo data while location services are being configured. Refresh to try again.",
             variant: "default",
           });
         }

@@ -98,6 +98,9 @@ src/
 - **Map Visibility** - Increased map height from 384px to 600px for better user interaction
 - **New User Geolocation** - Added retry mechanism and fallback handling for new accounts
 - **Leaflet Map Errors** - Fixed multiple map initialization conflicts and container issues
+- **Database Permission Errors** - Fixed 406 errors for new users without air quality readings
+- **UI Component Warnings** - Resolved controlled/uncontrolled Select component state issues
+- **New User Experience** - Added demo mode with fallback data for location-unavailable scenarios
 
 ### 🆕 Current User Experience Improvements
 - **Map Interaction** - Map now occupies 600px height (was 384px) for better visibility and interaction
@@ -105,6 +108,9 @@ src/
 - **Error Handling** - Better error messages and fallback options for location unavailable scenarios
 - **Auto-Retry** - 2-second delay between geolocation attempts for new accounts
 - **Visual Feedback** - Progress indicators showing retry attempts and auto-retry status
+- **Demo Mode** - Fallback demo data for new users when location services aren't ready
+- **Database Error Prevention** - Graceful handling of queries for users without air quality history
+- **UI State Consistency** - All Select components now properly initialized to prevent warnings
 
 ### 📱 Current Navigation System
 - **Single-Page Application** with URL parameters (`?view=dashboard`)

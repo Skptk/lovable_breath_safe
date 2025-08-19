@@ -98,9 +98,9 @@ export default function ProfileView() {
     mpesa_phone: ''
   });
   
-  // Local state for settings - don't initialize theme to prevent conflicts
+  // Local state for settings - initialize with default values to prevent controlled/uncontrolled warnings
   const [localSettings, setLocalSettings] = useState({
-    theme: undefined as 'light' | 'dark' | 'system' | undefined,
+    theme: 'system' as 'light' | 'dark' | 'system',
     language: 'en' as 'en' | 'es' | 'fr',
     units: 'metric' as 'metric' | 'imperial',
     dataRetention: '90days' as '30days' | '90days' | '1year' | 'forever',
@@ -195,33 +195,52 @@ export default function ProfileView() {
 
   const fetchUserStats = async () => {
     try {
-      const { count: readingsCount } = await supabase
+      // Check if user has any readings first
+      const { count: readingsCount, error: countError } = await supabase
         .from('air_quality_readings')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user?.id);
 
+      if (countError) {
+        console.log('No air quality readings found for new user:', countError.message);
+      }
+
       const totalPoints = profile?.total_points || 0;
 
-      const { data: lastReading } = await supabase
-        .from('air_quality_readings')
-        .select('timestamp, location_name')
-        .eq('user_id', user?.id)
-        .order('timestamp', { ascending: false })
-        .limit(1)
-        .single();
+      // Only try to fetch last reading if user has readings
+      let lastReading = null;
+      let locationStats = null;
+      
+      if (readingsCount && readingsCount > 0) {
+        try {
+          const { data: lastReadingData } = await supabase
+            .from('air_quality_readings')
+            .select('timestamp, location_name')
+            .eq('user_id', user?.id)
+            .order('timestamp', { ascending: false })
+            .limit(1)
+            .single();
 
-      const { data: locationStats } = await supabase
-        .from('air_quality_readings')
-        .select('location_name')
-        .eq('user_id', user?.id);
+          lastReading = lastReadingData;
+
+          const { data: locationStatsData } = await supabase
+            .from('air_quality_readings')
+            .select('location_name')
+            .eq('user_id', user?.id);
+
+          locationStats = locationStatsData;
+        } catch (readingError: any) {
+          console.log('Error fetching reading details:', readingError.message);
+        }
+      }
 
       const locationCounts = locationStats?.reduce((acc, record) => {
         acc[record.location_name] = (acc[record.location_name] || 0) + 1;
         return acc;
-      }, {} as Record<string, number>);
+      }, {} as Record<string, number>) || {};
 
-      const favoriteLocation = Object.entries(locationCounts || {})
-        .sort(([,a], [,b]) => b - a)[0]?.[0] || 'Unknown';
+      const favoriteLocation = Object.entries(locationCounts)
+        .sort(([,a], [,b]) => b - a)[0]?.[0] || 'No readings yet';
 
       setUserStats({
         totalReadings: readingsCount || 0,
@@ -235,6 +254,17 @@ export default function ProfileView() {
       });
     } catch (error: any) {
       console.error('Error fetching user stats:', error);
+      // Set default stats for new users
+      setUserStats({
+        totalReadings: 0,
+        totalPoints: profile?.total_points || 0,
+        memberSince: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { 
+          month: 'short', 
+          year: 'numeric' 
+        }) : 'Unknown',
+        lastReading: 'Never',
+        favoriteLocation: 'No readings yet'
+      });
     }
   };
 
