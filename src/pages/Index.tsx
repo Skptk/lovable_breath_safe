@@ -71,11 +71,20 @@ const Index = (): JSX.Element => {
           onMobileMenuToggle={toggleMobileMenu}
         />;
       case "rewards":
-        return <Rewards />;
+        return <Rewards 
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={toggleMobileMenu}
+        />;
       case "store":
-        return <Store />;
+        return <Store 
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={toggleMobileMenu}
+        />;
       case "profile":
-        return <ProfileView />;
+        return <ProfileView 
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={toggleMobileMenu}
+        />;
       default:
         return <AirQualityDashboard 
           onNavigate={handleViewChange}

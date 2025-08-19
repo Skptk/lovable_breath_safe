@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Header from "@/components/Header";
 import { 
   Trophy, 
   DollarSign, 
@@ -29,6 +30,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAchievements, UserAchievement, UserStreak } from '@/hooks/useAchievements';
 import { useUserPoints } from '@/hooks/useUserPoints';
 
+interface RewardsProps {
+  showMobileMenu?: boolean;
+  onMobileMenuToggle?: () => void;
+}
 
 interface Profile {
   id: string;
@@ -62,7 +67,7 @@ interface GiftCard {
   available: boolean;
 }
 
-export default function Rewards() {
+export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -323,6 +328,7 @@ export default function Rewards() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <Header showMobileMenu={showMobileMenu || false} onMobileMenuToggle={onMobileMenuToggle || (() => {})} />
       <div className="flex-1 space-y-card-gap p-4 md:p-6">
       {/* Header */}
       <div className="text-center space-y-4">

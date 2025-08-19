@@ -80,7 +80,12 @@ interface GiftCard {
   available: boolean;
 }
 
-export default function ProfileView() {
+interface ProfileViewProps {
+  showMobileMenu?: boolean;
+  onMobileMenuToggle?: () => void;
+}
+
+export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: ProfileViewProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -586,6 +591,12 @@ export default function ProfileView() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <Header 
+        title="Profile & Settings"
+        subtitle="Manage your account, preferences, and view your progress"
+        showMobileMenu={showMobileMenu}
+        onMobileMenuToggle={onMobileMenuToggle}
+      />
       <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Header */}
         <div>

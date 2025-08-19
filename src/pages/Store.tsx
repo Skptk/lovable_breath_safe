@@ -1,21 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Header from "@/components/Header";
 import { 
-  Search, 
-  Filter, 
-  ExternalLink, 
+  ShoppingBag, 
   Star, 
-  ShoppingCart,
-  AirVent,
-  Droplets,
-  Wind,
-  Shield,
-  Zap
+  DollarSign, 
+  Gift, 
+  TrendingUp, 
+  Users, 
+  Award,
+  Calendar,
+  Zap,
+  Crown,
+  Medal,
+  GiftIcon,
+  CreditCard,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Filter,
+  Search
 } from "lucide-react";
+import { useToast } from '@/components/ui/use-toast';
 import React from 'react'; // Added missing import for React
 
 
@@ -153,13 +167,13 @@ const products: Product[] = [
 ];
 
 const categories = [
-  { value: 'all', label: 'All Products', icon: ShoppingCart },
-  { value: 'air-purifier', label: 'Air Purifiers', icon: AirVent },
-  { value: 'dehumidifier', label: 'Dehumidifiers', icon: Droplets },
-  { value: 'humidifier', label: 'Humidifiers', icon: Wind },
-  { value: 'air-filter', label: 'Air Filters', icon: Shield },
-  { value: 'monitor', label: 'Monitors', icon: Zap },
-  { value: 'accessory', label: 'Accessories', icon: ShoppingCart }
+  { value: 'all', label: 'All Products', icon: ShoppingBag },
+  { value: 'air-purifier', label: 'Air Purifiers', icon: Zap },
+  { value: 'dehumidifier', label: 'Dehumidifiers', icon: DollarSign },
+  { value: 'humidifier', label: 'Humidifiers', icon: Gift },
+  { value: 'air-filter', label: 'Air Filters', icon: Crown },
+  { value: 'monitor', label: 'Monitors', icon: Medal },
+  { value: 'accessory', label: 'Accessories', icon: ShoppingBag }
 ];
 
 const stores = [
@@ -169,12 +183,20 @@ const stores = [
   { value: 'alibaba', label: 'Alibaba' }
 ];
 
-export default function Store() {
+interface StoreProps {
+  showMobileMenu?: boolean;
+  onMobileMenuToggle?: () => void;
+}
+
+export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStore, setSelectedStore] = useState('all');
-  const [sortBy, setSortBy] = useState('featured');
+  const [sortBy, setSortBy] = useState('rating');
 
+  // Filter products based on search, category, and store
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -215,11 +237,17 @@ export default function Store() {
 
   const getCategoryIcon = (category: string) => {
     const categoryData = categories.find(c => c.value === category);
-    return categoryData ? categoryData.icon : ShoppingCart;
+    return categoryData ? categoryData.icon : ShoppingBag;
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <Header 
+        title="Air Quality Store"
+        subtitle="Discover premium products to improve your indoor air quality"
+        showMobileMenu={showMobileMenu}
+        onMobileMenuToggle={onMobileMenuToggle}
+      />
       <div className="flex-1 space-y-card-gap p-4 md:p-6">
       {/* Header */}
       <div className="text-center space-y-4">
@@ -409,7 +437,7 @@ export default function Store() {
       {/* No Results */}
       {sortedProducts.length === 0 && (
         <div className="text-center py-12">
-          <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold mb-2">No products found</h3>
           <p className="text-muted-foreground">
             Try adjusting your search terms or filters to find what you're looking for.
