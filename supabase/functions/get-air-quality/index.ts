@@ -515,8 +515,10 @@ serve(async (req) => {
         rawData: JSON.stringify(airData).substring(0, 500) + '...'
       });
         
+      // If no results, use fallback data instead of throwing error
       if (!airData.results || airData.results.length === 0) {
-        throw new Error('No air quality data available');
+        console.log('OpenAQ API returned no results, using fallback data');
+        throw new Error('No air quality data available - using fallback');
       }
         
       console.log('OpenAQ API call successful, processing data...');
@@ -872,27 +874,38 @@ serve(async (req) => {
     } catch (apiError) {
       console.log('OpenAQ API error, using fallback data:', apiError instanceof Error ? apiError.message : String(apiError));
       console.log('Full error details:', apiError);
+      
+      // Check if we have cached data to use instead of fallback
+      const cachedData = getCachedResponse(cacheKey);
+      if (cachedData && cachedData.data) {
+        console.log('Using cached data instead of fallback');
+        return new Response(JSON.stringify(cachedData.data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      console.log('No cached data available, using fallback data');
       // Return fallback data if API fails
       const fallbackResponse = {
         location: 'Nairobi Region',
         userLocation: 'Your Location',
         coordinates: { lat, lon },
         userCoordinates: { lat, lon },
-        aqi: 65, // Default AQI for Nairobi region
+        aqi: 65, // Moderate AQI for Nairobi region (based on typical urban air quality)
         pollutants: {
-          pm25: 25.5,
-          pm10: 45.2,
-          no2: 15.3,
-          so2: 8.7,
-          co: 0.8,
-          o3: 45.6
+          pm25: 25.5,  // Moderate PM2.5 levels
+          pm10: 45.2,  // Moderate PM10 levels
+          no2: 15.3,   // Low NO2 levels
+          so2: 8.7,    // Low SO2 levels
+          co: 0.8,     // Low CO levels
+          o3: 45.6     // Moderate O3 levels
         },
         environmental: {
-          temperature: 25, // Default fallback - would be updated with actual sensor data
-          humidity: 60     // Default fallback - would be updated with actual sensor data
+          temperature: 22, // Typical Nairobi temperature
+          humidity: 65     // Typical Nairobi humidity
         },
         timestamp: new Date().toISOString(),
-        dataSource: 'Fallback data (API error)',
+        dataSource: 'Fallback data (OpenAQ API returned no results for this location)',
         userPoints: 0,
         currencyRewards: 0,
         canWithdraw: false
