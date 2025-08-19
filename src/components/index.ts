@@ -6,6 +6,7 @@ export { default as Navigation } from './Navigation';
 export { default as LeafletMap } from './LeafletMap';
 export { default as MapView } from './MapView';
 export { default as PollutantModal } from './PollutantModal';
+export { default as Header } from './Header';
 
 // Refactored UI Components
 export { LoadingSkeleton } from './ui/LoadingSkeleton';
