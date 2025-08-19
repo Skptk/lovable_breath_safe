@@ -45,12 +45,12 @@ export const LEAFLET_MAPS_CONFIG = {
 
 // Helper function to get AQI color
 export const getAQIColor = (aqi: number): string => {
-  if (aqi <= 50) return GOOGLE_MAPS_CONFIG.AQI_COLORS.good;
-  if (aqi <= 100) return GOOGLE_MAPS_CONFIG.AQI_COLORS.moderate;
-  if (aqi <= 150) return GOOGLE_MAPS_CONFIG.AQI_COLORS.unhealthySensitive;
-  if (aqi <= 200) return GOOGLE_MAPS_CONFIG.AQI_COLORS.unhealthy;
-  if (aqi <= 300) return GOOGLE_MAPS_CONFIG.AQI_COLORS.veryUnhealthy;
-  return GOOGLE_MAPS_CONFIG.AQI_COLORS.hazardous;
+  if (aqi <= 50) return LEAFLET_MAPS_CONFIG.AQI_COLORS.good;
+  if (aqi <= 100) return LEAFLET_MAPS_CONFIG.AQI_COLORS.moderate;
+  if (aqi <= 150) return LEAFLET_MAPS_CONFIG.AQI_COLORS.unhealthySensitive;
+  if (aqi <= 200) return LEAFLET_MAPS_CONFIG.AQI_COLORS.unhealthy;
+  if (aqi <= 300) return LEAFLET_MAPS_CONFIG.AQI_COLORS.veryUnhealthy;
+  return LEAFLET_MAPS_CONFIG.AQI_COLORS.hazardous;
 };
 
 // Helper function to get AQI label

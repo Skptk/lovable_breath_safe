@@ -39,8 +39,9 @@ interface MapViewProps {
 export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewProps = {}): JSX.Element {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [airQualityData, setAirQualityData] = useState<AirQualityData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locationRequested, setLocationRequested] = useState(false);
   const { toast } = useToast();
 
   // Mock nearby locations - in a real app, these would come from an API
@@ -75,11 +76,10 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
     },
   ];
 
-  useEffect(() => {
-    getUserLocation();
-  }, []);
-
   const getUserLocation = async (): Promise<void> => {
+    setLoading(true);
+    setLocationRequested(true);
+    setError(null);
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser');
       setLoading(false);
@@ -242,7 +242,15 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="space-y-6">
+        {/* Header */}
+        <Header
+          title="Air Quality Map"
+          subtitle="Explore air quality data across your region"
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={onMobileMenuToggle}
+        />
+
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
@@ -254,16 +262,63 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
     );
   }
 
+  if (!locationRequested && !userLocation) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <Header
+          title="Air Quality Map"
+          subtitle="Explore air quality data across your region"
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={onMobileMenuToggle}
+        />
+
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4 max-w-md">
+            <MapPin className="h-12 w-12 text-primary mx-auto" />
+            <h3 className="text-lg font-semibold">Enable Location Services</h3>
+            <p className="text-muted-foreground">
+              Allow location access to view air quality data and nearby monitoring stations on the map.
+            </p>
+            
+            <div className="text-sm text-muted-foreground space-y-2 p-4 bg-muted/50 rounded-lg">
+              <p><strong>What we'll show you:</strong></p>
+              <ul className="text-left list-disc list-inside space-y-1">
+                <li>Your current location on the map</li>
+                <li>Nearby air quality monitoring stations</li>
+                <li>Real-time air quality data for your area</li>
+                <li>Interactive map with detailed station information</li>
+              </ul>
+            </div>
+            
+            <Button onClick={getUserLocation} className="w-full" size="lg">
+              <MapPin className="h-4 w-4 mr-2" />
+              Enable Location & View Map
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
-      <div className="min-h-screen bg-background p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="space-y-6">
+        {/* Header */}
+        <Header
+          title="Air Quality Map"
+          subtitle="Explore air quality data across your region"
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={onMobileMenuToggle}
+        />
+
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4 max-w-md">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
             <h3 className="text-lg font-semibold">Location Access Required</h3>
             <p className="text-muted-foreground max-w-sm">{error}</p>
             
-            <div className="text-sm text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-lg">
+            <div className="text-sm text-muted-foreground space-y-2 p-4 bg-muted/50 rounded-lg">
               <p><strong>How to enable location access:</strong></p>
               <ol className="text-left list-decimal list-inside space-y-1">
                 <li>Allow location access when prompted</li>
@@ -275,6 +330,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
             
             <div className="flex flex-col gap-2">
               <Button onClick={getUserLocation} variant="outline" className="w-full">
+                <MapPin className="h-4 w-4 mr-2" />
                 Try Again
               </Button>
               <Button 
