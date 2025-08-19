@@ -53,12 +53,12 @@ export const StatCard = ({
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-lg"></div>
       
-      <CardContent className="relative p-6">
-        <div className="flex items-start justify-between">
+      <CardContent className="relative p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-3">
               {icon && (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-primary shadow-lg backdrop-blur-sm border border-primary/20">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center text-primary shadow-lg backdrop-blur-sm border border-primary/20">
                   {icon}
                 </div>
               )}
@@ -66,7 +66,7 @@ export const StatCard = ({
             </div>
             
             <div className="mb-3">
-              <h3 className="text-3xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{value}</h3>
+              <h3 className="text-2xl sm:text-3xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{value}</h3>
               {subtitle && (
                 <p className="text-sm text-muted-foreground/70 mt-1">{subtitle}</p>
               )}
@@ -81,7 +81,7 @@ export const StatCard = ({
           </div>
 
           {chart && (
-            <div className="ml-4 flex-shrink-0">
+            <div className="sm:ml-4 flex-shrink-0 self-center sm:self-start">
               {chart}
             </div>
           )}

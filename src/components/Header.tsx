@@ -33,8 +33,21 @@ export default function Header({
 
   return (
     <div className="flex items-center justify-between mb-6">
-      {/* Left side - Greeting and subtitle */}
+      {/* Left side - Mobile Menu Button and Greeting */}
       <div className="flex items-center gap-4">
+        {/* Mobile Menu Button */}
+        {onMobileMenuToggle && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMobileMenuToggle}
+            className="md:hidden h-10 w-10 rounded-full border-border hover:bg-accent"
+            aria-label="Toggle mobile menu"
+          >
+            {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        )}
+
         {/* Greeting and subtitle */}
         <div 
           className={`${onNavigate ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
@@ -44,7 +57,7 @@ export default function Header({
             {title}
           </h1>
           {subtitle && (
-            <p className="body-md text-muted-foreground">
+            <p className="body-md text-muted-foreground hidden sm:block">
               {subtitle}
             </p>
           )}
@@ -52,27 +65,15 @@ export default function Header({
       </div>
 
       {/* Right side - Search, actions, and profile */}
-      <div className="flex items-center gap-4">
-        {/* Mobile Menu Button */}
-        {onMobileMenuToggle && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onMobileMenuToggle}
-            className="md:hidden h-9 w-9 rounded-full border-border"
-          >
-            {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </Button>
-        )}
-
-        {/* Search Bar */}
-        <div className="relative">
+      <div className="flex items-center gap-2 sm:gap-4">
+        {/* Search Bar - Hide on very small screens */}
+        <div className="relative hidden sm:block">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             type="text"
             placeholder="Search AQI, features, products..."
             onClick={() => setIsSearchOpen(true)}
-            className="pl-10 w-64 bg-background border-border rounded-full h-9 cursor-pointer"
+            className="pl-10 w-48 lg:w-64 bg-background border-border rounded-full h-9 cursor-pointer"
             readOnly
           />
         </div>
@@ -94,7 +95,7 @@ export default function Header({
         <NotificationBell />
 
         {/* User Profile */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Avatar className="h-8 w-8">
             <AvatarImage src={user?.user_metadata?.avatar_url} />
             <AvatarFallback className="bg-primary text-primary-foreground text-sm">
@@ -102,7 +103,7 @@ export default function Header({
             </AvatarFallback>
           </Avatar>
           
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <p className="body-sm font-medium text-foreground">
               {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
             </p>

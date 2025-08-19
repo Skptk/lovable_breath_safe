@@ -134,7 +134,7 @@ const Index = (): JSX.Element => {
       
       {/* Main Content Area */}
       <div className="flex-1 md:ml-16 ml-0">
-        <div className="p-6 lg:p-8 w-full">
+        <div className="p-4 sm:p-6 lg:p-8 w-full">
           {renderView()}
         </div>
       </div>

@@ -18,11 +18,11 @@ export default function Footer() {
   if (!user) {
     return (
       <footer className="bg-card border-t border-border mt-auto">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
             {/* App Logo and Description */}
-            <div>
-              <div className="flex items-center gap-3 mb-4">
+            <div className="text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
                 <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
                   <span className="text-primary-foreground font-bold text-lg">B</span>
                 </div>
@@ -40,17 +40,17 @@ export default function Footer() {
             </div>
 
             {/* Legal Links Only */}
-            <div>
+            <div className="text-center md:text-left">
               <h4 className="font-semibold text-foreground mb-4">Legal</h4>
               <ul className="space-y-2">
                 <li>
-                  <Link to="/privacy" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Link to="/privacy" className="flex items-center justify-center md:justify-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <Shield className="h-4 w-4" />
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link to="/terms" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Link to="/terms" className="flex items-center justify-center md:justify-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <FileText className="h-4 w-4" />
                     Terms of Service
                   </Link>
@@ -66,11 +66,11 @@ export default function Footer() {
   // Full footer for authenticated users
   return (
     <footer className="bg-card border-t border-border mt-auto">
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {/* App Logo and Description */}
-          <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center gap-3 mb-4">
+          <div className="col-span-1 sm:col-span-2 text-center sm:text-left">
+            <div className="flex items-center justify-center sm:justify-start gap-3 mb-4">
               <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-lg">B</span>
               </div>
@@ -88,13 +88,13 @@ export default function Footer() {
           </div>
 
           {/* Navigation Links */}
-          <div>
+          <div className="text-center sm:text-left">
             <h4 className="font-semibold text-foreground mb-4">Navigation</h4>
             <ul className="space-y-2">
               <li>
                 <button 
                   onClick={() => navigateToView('dashboard')}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                  className="flex items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
                 >
                   <Home className="h-4 w-4" />
                   Dashboard
@@ -103,7 +103,7 @@ export default function Footer() {
               <li>
                 <button 
                   onClick={() => navigateToView('products')}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                  className="flex items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
                 >
                   <ShoppingBag className="h-4 w-4" />
                   Products
@@ -112,7 +112,7 @@ export default function Footer() {
               <li>
                 <button 
                   onClick={() => navigateToView('map')}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                  className="flex items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
                 >
                   <Map className="h-4 w-4" />
                   Map View
@@ -121,7 +121,7 @@ export default function Footer() {
               <li>
                 <button 
                   onClick={() => navigateToView('history')}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                  className="flex items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
                 >
                   <BarChart3 className="h-4 w-4" />
                   History
@@ -130,7 +130,7 @@ export default function Footer() {
               <li>
                 <button 
                   onClick={() => navigateToView('profile')}
-                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                  className="flex items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
                 >
                   <User className="h-4 w-4" />
                   Profile
@@ -140,17 +140,17 @@ export default function Footer() {
           </div>
 
           {/* Legal Links */}
-          <div>
+          <div className="text-center sm:text-left">
             <h4 className="font-semibold text-foreground mb-4">Legal</h4>
             <ul className="space-y-2">
               <li>
-                <Link to="/privacy" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/privacy" className="flex items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                   <Shield className="h-4 w-4" />
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link to="/terms" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/terms" className="flex items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                   <FileText className="h-4 w-4" />
                   Terms of Service
                 </Link>

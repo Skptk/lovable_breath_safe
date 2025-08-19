@@ -168,7 +168,7 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
       />
 
       {/* Stats Grid - Top Row with AQI Data */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <StatCard
           title="Air Quality Index"
           value={data.aqi}
@@ -209,9 +209,9 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        {/* News Articles Card - Takes 2 columns */}
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
+        {/* News Articles Card - Takes 2 columns on large screens */}
+        <div className="xl:col-span-2">
           <NewsCard />
         </div>
 
@@ -224,7 +224,7 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-lg"></div>
           
           <CardHeader className="relative pb-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex items-center gap-2">
                 <h3 className="heading-md font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">Air Quality Details</h3>
                 <Badge variant="outline" className={`${
@@ -249,7 +249,7 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
           <CardContent className="relative space-y-6">
             {/* AQI Progress Gauge */}
             <div className="text-center">
-              <div className="text-4xl font-bold mb-3 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{data.aqi}</div>
+              <div className="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{data.aqi}</div>
               <p className="text-sm text-muted-foreground/80 mb-6 leading-relaxed">
                 {data.aqi <= 50 ? "Air quality is good! Great for outdoor activities." :
                  data.aqi <= 100 ? "Air quality is moderate. Sensitive individuals should consider limiting outdoor activities." :
@@ -258,7 +258,7 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
               <div className="flex justify-center">
                 <ProgressGauge 
                   value={Math.min((data.aqi / 300) * 100, 100)} 
-                  size={120}
+                  size={100}
                   color={
                     data.aqi <= 50 ? "hsl(var(--success))" :
                     data.aqi <= 100 ? "hsl(var(--warning))" :
@@ -269,11 +269,11 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
             </div>
 
             {/* Pollutant Levels Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* PM2.5 */}
               <div className="text-center p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 backdrop-blur-sm">
                 <p className="text-sm text-muted-foreground/80 mb-2 font-medium">PM2.5</p>
-                <div className="text-2xl font-bold text-primary">{data.pm25?.toFixed(1) || 'N/A'}</div>
+                <div className="text-xl sm:text-2xl font-bold text-primary">{data.pm25?.toFixed(1) || 'N/A'}</div>
                 <span className="text-sm text-muted-foreground/70">µg/m³</span>
                 <div className={`flex items-center justify-center gap-1 mt-2 ${
                   data.pm25 <= 12 ? 'text-success' : 'text-error'
@@ -289,7 +289,7 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
               {/* PM10 */}
               <div className="text-center p-4 bg-gradient-to-br from-secondary/10 to-secondary/5 rounded-xl border border-secondary/20 backdrop-blur-sm">
                 <p className="text-sm text-muted-foreground/80 mb-2 font-medium">PM10</p>
-                <div className="text-2xl font-bold text-secondary">{data.pm10?.toFixed(1) || 'N/A'}</div>
+                <div className="text-xl sm:text-2xl font-bold text-secondary">{data.pm10?.toFixed(1) || 'N/A'}</div>
                 <span className="text-sm text-muted-foreground/70">µg/m³</span>
                 <div className={`flex items-center justify-center gap-1 mt-2 ${
                   data.pm10 <= 54 ? 'text-success' : 'text-error'
@@ -307,29 +307,29 @@ export default function AirQualityDashboard({ onNavigate, showMobileMenu, onMobi
             {(data.no2 || data.o3 || data.so2 || data.co) && (
               <div className="space-y-3">
                 <p className="text-sm font-medium text-muted-foreground/80">Other Pollutants</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {data.no2 && (
                     <div className="text-center p-3 bg-gradient-to-br from-blue-500/10 to-blue-500/5 rounded-lg border border-blue-500/20 backdrop-blur-sm">
                       <div className="font-medium text-blue-600">NO₂</div>
-                      <div className="text-lg font-bold text-blue-700">{data.no2.toFixed(1)} µg/m³</div>
+                      <div className="text-base sm:text-lg font-bold text-blue-700">{data.no2.toFixed(1)} µg/m³</div>
                     </div>
                   )}
                   {data.o3 && (
                     <div className="text-center p-3 bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-lg border border-green-500/20 backdrop-blur-sm">
                       <div className="font-medium text-green-600">O₃</div>
-                      <div className="text-lg font-bold text-green-700">{data.o3.toFixed(1)} µg/m³</div>
+                      <div className="text-base sm:text-lg font-bold text-green-700">{data.o3.toFixed(1)} µg/m³</div>
                     </div>
                   )}
                   {data.so2 && (
                     <div className="text-center p-3 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 rounded-lg border border-yellow-500/20 backdrop-blur-sm">
                       <div className="font-medium text-yellow-600">SO₂</div>
-                      <div className="text-lg font-bold text-yellow-700">{data.so2.toFixed(1)} µg/m³</div>
+                      <div className="text-base sm:text-lg font-bold text-yellow-700">{data.so2.toFixed(1)} µg/m³</div>
                     </div>
                   )}
                   {data.co && (
                     <div className="text-center p-3 bg-gradient-to-br from-red-500/10 to-red-500/5 rounded-lg border border-red-500/20 backdrop-blur-sm">
                       <div className="font-medium text-red-600">CO</div>
-                      <div className="text-lg font-bold text-red-700">{data.co.toFixed(1)} µg/m³</div>
+                      <div className="text-base sm:text-lg font-bold text-red-700">{data.co.toFixed(1)} µg/m³</div>
                     </div>
                   )}
                 </div>
