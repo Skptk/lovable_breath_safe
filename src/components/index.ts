@@ -8,6 +8,7 @@ export { default as MapView } from './MapView';
 export { default as PollutantModal } from './PollutantModal';
 export { Header } from './Header';
 export { default as LazyHeader } from './LazyHeader';
+export { RealtimeStatusBanner } from './RealtimeStatusBanner';
 
 // Refactored UI Components
 export { LoadingSkeleton } from './ui/LoadingSkeleton';

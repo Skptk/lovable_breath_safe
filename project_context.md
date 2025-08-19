@@ -111,6 +111,11 @@ src/
 - **Header Import Issues** - Fixed missing Header imports in ProfileView and created stable alias exports for maximum compatibility
 - **Supabase Realtime Stability** - Implemented graceful handling of WebSocket connection failures with exponential backoff retry and session-level fallback
 - **Realtime Connection Manager** - Centralized realtime client with Map-based channel management to prevent duplicate subscriptions and WebSocket spam
+- **Realtime Architecture Overhaul** - Complete rewrite of realtime client with singleton connection manager, reference counting, and automatic reconnection
+- **Realtime UI Feedback** - Added global status banner with smooth animations showing connection state (connected/reconnecting/disconnected)
+- **Realtime Hook System** - Created useRealtimeStatus hook for components to monitor connection status
+- **Realtime Error Handling** - Enhanced error handling with exponential backoff retry and channel-level error recovery
+- **Realtime Channel Management** - Implemented reference counting system to prevent premature channel cleanup and ensure proper lifecycle management
 
 ### 🆕 Current User Experience Improvements
 - **Map Interaction** - Map now occupies 600px height (was 384px) for better visibility and interaction
@@ -131,6 +136,10 @@ src/
 - **Mobile Header** - Integrated hamburger menu in header with proper mobile positioning and responsive elements
 - **Card Responsiveness** - Enhanced mobile layouts for dashboard cards, news articles, and stat displays
 - **Touch Optimization** - Better touch targets, spacing, and mobile-friendly interactions across all components
+- **Realtime Connection Status** - Global banner showing realtime connection state with smooth animations
+- **Realtime Error Recovery** - Automatic reconnection with exponential backoff and user-friendly status updates
+- **Realtime Channel Efficiency** - Reference counting system prevents duplicate subscriptions and ensures proper cleanup
+- **Realtime Performance** - Singleton connection manager reduces WebSocket overhead and improves connection stability
 
 ### 📱 Current Navigation System
 - **Single-Page Application** with URL parameters (`?view=dashboard`)
@@ -170,6 +179,14 @@ src/
 - **Authentication**: Email/password with session management
 - **Edge Functions**: Air quality data processing
 - **Real-time**: Live updates for notifications and data
+
+### Realtime Architecture
+- **Singleton Connection Manager** - Centralized realtime client with reference counting
+- **Channel Lifecycle Management** - Prevents duplicate subscriptions and ensures proper cleanup
+- **Automatic Reconnection** - Exponential backoff retry with user-friendly status updates
+- **Error Recovery** - Channel-level error handling with automatic recovery
+- **Performance Optimization** - Reduced WebSocket overhead and improved connection stability
+- **UI Status Integration** - Global banner showing connection state with smooth animations
 
 ### External APIs
 - **OpenAQ**: Air quality data (with fallback handling)
