@@ -49,7 +49,12 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
 
   // Initialize map when user location is available
   useEffect(() => {
-    if (!userLocation || !mapRef.current) return;
+    if (!userLocation || !mapRef.current || mapInstance) return;
+
+    // Check if the container already has a map instance
+    if (mapRef.current && mapRef.current._leaflet_id) {
+      return;
+    }
 
     try {
       // Create map instance
@@ -180,12 +185,20 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
   // Cleanup markers and map on unmount
   useEffect(() => {
     return () => {
-      markers.forEach(marker => marker.remove());
       if (mapInstance) {
+        // Remove all markers first
+        markers.forEach(marker => {
+          if (marker && mapInstance.hasLayer(marker)) {
+            mapInstance.removeLayer(marker);
+          }
+        });
+        // Remove the map instance
         mapInstance.remove();
+        setMapInstance(null);
+        setMarkers([]);
       }
     };
-  }, [markers, mapInstance]);
+  }, []); // Empty dependency array - only run on unmount
 
   if (mapError) {
     return (
