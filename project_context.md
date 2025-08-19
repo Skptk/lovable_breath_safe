@@ -107,7 +107,7 @@ src/
 - **Demo Mode UX** - Added retry options and reset functionality for better new user onboarding
 - **HistoryView Geolocation** - Fixed geolocation errors in history component with proper permission checking
 - **Mobile Experience** - Enhanced mobile navigation with slide-out drawer, improved responsive layouts, and better mobile spacing
-- **Header Component Error** - Fixed "Header is not defined" runtime error by removing unused import and functions from Index component
+- **Header Component Error** - Fixed "Header is not defined" runtime error by removing unused import and functions from Index component and adding Header to components index for proper module resolution
 
 ### 🆕 Current User Experience Improvements
 - **Map Interaction** - Map now occupies 600px height (was 384px) for better visibility and interaction
