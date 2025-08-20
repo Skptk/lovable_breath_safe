@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,11 @@ export default function Auth(): JSX.Element {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [passwordResetEmail, setPasswordResetEmail] = useState('');
   const [passwordResetSent, setPasswordResetSent] = useState(false);
+  const [showPasswordResetForm, setShowPasswordResetForm] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [devFormData, setDevFormData] = useState({
     email: 'dev@breathsafe.com',
     password: 'devpassword123'
@@ -47,7 +52,7 @@ export default function Auth(): JSX.Element {
     const isReset = urlParams.get('reset');
     if (isReset === 'true') {
       setShowForgotPassword(true);
-      setPasswordResetSent(true);
+      setShowPasswordResetForm(true);
     }
   }, []);
 
@@ -136,6 +141,63 @@ export default function Auth(): JSX.Element {
     setShowForgotPassword(false);
     setPasswordResetEmail('');
     setPasswordResetSent(false);
+    setShowPasswordResetForm(false);
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  // Handle actual password reset
+  const handlePasswordResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are identical.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password updated successfully!",
+        description: "You can now sign in with your new password.",
+      });
+
+      // Reset form and show sign in
+      setShowPasswordResetForm(false);
+      setShowForgotPassword(false);
+      setNewPassword('');
+      setConfirmPassword('');
+      setIsSignUp(false);
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to update password',
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Developer login function - handles development authentication
@@ -144,8 +206,6 @@ export default function Auth(): JSX.Element {
     
     try {
       const { email, password } = devFormData;
-      
-
       
       // First, try to sign in with existing account
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -494,6 +554,104 @@ export default function Auth(): JSX.Element {
                     </p>
                   </div>
                 )}
+                
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBackToSignIn}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to sign in
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Password Reset Form - Shows when user returns from email link */}
+          {showPasswordResetForm && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <div className="text-center space-y-4">
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Set your new password</span>
+                </div>
+                
+                <form onSubmit={handlePasswordResetSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="newPassword" className="text-sm font-medium text-left block">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        className="bg-background border-border pr-10"
+                        placeholder="Enter your new password"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="confirmPassword" className="text-sm font-medium text-left block">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        className="bg-background border-border pr-10"
+                        placeholder="Confirm your new password"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    type="submit"
+                    className="w-full bg-primary hover:bg-primary/90"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                    )}
+                    Update Password
+                  </Button>
+                </form>
                 
                 <Button
                   type="button"
