@@ -30,7 +30,8 @@ src/
 - **Dashboard** (`/?view=dashboard`) - Main app interface
 - **Profile** (`/?view=profile`) - User settings and preferences
 - **History** (`/?view=history`) - Air quality reading history
-- **Map** (`/?view=map`) - Interactive air quality map
+- **Weather** (`/?view=map`) - Comprehensive weather and air quality monitoring
+- **News** (`/?view=news`) - Health and environment news articles
 - **Store** (`/?view=store`) - Rewards and achievements
 - **Products** (`/?view=products`) - Product recommendations
 - **Auth** (`/auth`) - Authentication pages
@@ -45,8 +46,8 @@ src/
 - **WeatherStats** - Comprehensive weather and air quality monitoring (renamed from MapView)
 - **WindDashboard** - Interactive wind rose and wind data visualization
 - **WeatherForecast** - 7-day weather forecast with detailed meteorological data
-- **EmissionSourcesLayer** - Emission source mapping with clustering and pollutant data
 - **WeatherStatsCard** - Compact weather information for home dashboard
+- **NewsPage** - Dedicated news page with search, filtering, and article management
 
 ## UI Design System
 
@@ -184,6 +185,7 @@ src/
 - **Real-time Data Persistence** - Air quality data now automatically refreshes and saves every 15 minutes, ensuring consistent history tracking
 - **Enhanced History Management** - HistoryView now features clickable cards with detailed modal popups, comprehensive weather data display, and individual entry export functionality
 - **Console Warning Fixes** - Resolved DialogDescription warnings in HistoryDetailModal and improved error handling for OpenAQ API failures
+- **Major UI Overhaul** - Removed emissions sources from weather page, created dedicated news page, replaced news card with news preview on homepage, and removed redundant air quality details card
 
 ### 📱 Current Navigation System
 - **Single-Page Application** with URL parameters (`?view=dashboard`)
@@ -254,11 +256,12 @@ src/
 ### User Journey
 1. **Landing** → Learn about the app
 2. **Sign Up** → Create account
-3. **Dashboard** → View air quality, weather, and earn points
+3. **Dashboard** → View air quality, weather, and news preview
 4. **Weather** → Comprehensive weather stats, wind data, and forecasts
-5. **Profile** → Customize settings and view stats
-6. **History** → Track air quality over time
-7. **Rewards** → View achievements and progress
+5. **News** → Browse health and environment articles with search and filtering
+6. **Profile** → Customize settings and view stats
+7. **History** → Track air quality over time
+8. **Rewards** → View achievements and progress
 
 ## Performance Requirements
 
