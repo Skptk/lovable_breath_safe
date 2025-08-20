@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Clock, User, ArrowRight, Search, Filter, Calendar, BookOpen } from "luc
 import { Article, getLatestArticles, getAllArticles } from "@/data/articles";
 import ArticleModal from "./ArticleModal";
 import Header from "@/components/Header";
+import React from "react";
 
 interface NewsPageProps {
   showMobileMenu?: boolean;
@@ -22,42 +23,62 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
   const [sortBy, setSortBy] = useState<string>("latest");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [allArticles, setAllArticles] = useState<Article[]>([]);
   
-  // Safely get articles with error handling
-  let allArticles: Article[] = [];
-  try {
-    allArticles = getAllArticles();
-    setIsLoading(false);
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Failed to load articles');
-    setIsLoading(false);
-  }
+  // Move data fetching to useEffect to prevent render-time side effects
+  useEffect(() => {
+    const loadArticles = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const articles = getAllArticles();
+        setAllArticles(articles);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load articles');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadArticles();
+  }, []);
   
   // Filter and sort articles with null safety
-  const filteredArticles = allArticles
-    .filter(article => {
-      // Ensure article exists and has required properties
-      if (!article || !article.title || !article.excerpt || !article.category) {
-        return false;
-      }
-      
-      const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === "all" || article.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "latest":
-          return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-        case "oldest":
-          return new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime();
-        case "title":
-          return a.title.localeCompare(b.title);
-        default:
-          return 0;
-      }
-    });
+  const filteredArticles = React.useMemo(() => {
+    try {
+      return allArticles
+        .filter(article => {
+          // Ensure article exists and has required properties
+          if (!article || !article.title || !article.excerpt || !article.category) {
+            return false;
+          }
+          
+          const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                               article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
+          const matchesCategory = selectedCategory === "all" || article.category === selectedCategory;
+          return matchesSearch && matchesCategory;
+        })
+        .sort((a, b) => {
+          try {
+            switch (sortBy) {
+              case "latest":
+                return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+              case "oldest":
+                return new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime();
+              case "title":
+                return a.title.localeCompare(b.title);
+              default:
+                return 0;
+            }
+          } catch (err) {
+            return 0; // Fallback to no sorting if date parsing fails
+          }
+        });
+    } catch (err) {
+      console.error('Error filtering articles:', err);
+      return [];
+    }
+  }, [allArticles, searchQuery, selectedCategory, sortBy]);
 
   const getCategoryColor = (category: Article['category']) => {
     if (!category) {
@@ -356,11 +377,12 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
           )}
 
           {/* Article Modal */}
-          <ArticleModal
-            article={selectedArticle}
-            isOpen={!!selectedArticle}
-            onClose={() => setSelectedArticle(null)}
-          />
+          {selectedArticle && (
+            <ArticleModal
+              article={selectedArticle}
+              onClose={() => setSelectedArticle(null)}
+            />
+          )}
         </>
       )}
     </div>
