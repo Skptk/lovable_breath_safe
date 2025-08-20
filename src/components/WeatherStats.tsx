@@ -61,17 +61,23 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
   // Check for existing location permissions on component mount
   useEffect(() => {
     const checkExistingLocationPermission = async () => {
+      console.log('WeatherStats: Checking for existing location permissions...');
+      
       // Check if we have stored permission in localStorage (persistent across sessions)
       const storedPermission = localStorage.getItem('breath-safe-location-permission');
+      console.log('WeatherStats: Stored permission:', storedPermission);
       
       // Check if we have session-based permission (current browsing session)
       const sessionPermission = sessionStorage.getItem('breath-safe-session-location-permission');
+      console.log('WeatherStats: Session permission:', sessionPermission);
       
       if (storedPermission === 'granted' || sessionPermission === 'granted') {
+        console.log('WeatherStats: Found existing permission, checking browser permission...');
         // Check if browser still has permission
         if (navigator.permissions && navigator.permissions.query) {
           try {
             const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+            console.log('WeatherStats: Browser permission status:', permissionStatus.state);
             if (permissionStatus.state === 'granted') {
               // User has permission, automatically get location
               console.log('WeatherStats: User has existing location permission, automatically getting location');
@@ -93,6 +99,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
           }
         } else {
           // Permission API not supported, trust stored permission
+          console.log('WeatherStats: Permission API not supported, trusting stored permission');
           setLocationRequested(true);
           getUserLocation();
           return;
@@ -158,6 +165,17 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
   ];
 
   const getUserLocation = async (): Promise<void> => {
+    console.log('WeatherStats: getUserLocation called - checking permissions first');
+    
+    // Check if we already have location data and permission
+    const storedPermission = localStorage.getItem('breath-safe-location-permission');
+    const sessionPermission = sessionStorage.getItem('breath-safe-session-location-permission');
+    
+    if ((storedPermission === 'granted' || sessionPermission === 'granted') && userLocation) {
+      console.log('WeatherStats: User already has location and permission, skipping request');
+      return;
+    }
+    
     setLoading(true);
     setLocationRequested(true);
     setError(null);
@@ -416,7 +434,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
 
   // Auto-retry geolocation for new users after a delay
   useEffect(() => {
-    if (error && retryCount > 0 && retryCount < 3) {
+    if (error && retryCount > 0 && retryCount < 3 && !userLocation) {
       const timer = setTimeout(() => {
         console.log(`WeatherStats: Auto-retrying geolocation for new user (attempt ${retryCount + 1}/3)...`);
         
@@ -432,7 +450,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       
       return () => clearTimeout(timer);
     }
-  }, [error, retryCount]);
+  }, [error, retryCount, userLocation]);
 
   if (loading) {
     return (
@@ -456,7 +474,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
     );
   }
 
-  if (!locationRequested && !userLocation) {
+  if (!userLocation && !loading) {
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -510,7 +528,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
     );
   }
 
-  if (error) {
+  if (error && !userLocation) {
     return (
       <div className="space-y-6">
         {/* Header */}
