@@ -12,6 +12,7 @@ import NewsCard from "@/components/NewsCard";
 import { ProgressGauge } from "@/components/ui/ProgressGauge";
 import Header from "@/components/Header";
 import PollutantModal from "./PollutantModal";
+import WeatherStatsCard from "./WeatherStatsCard";
 
 interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
@@ -306,6 +307,20 @@ export default function AirQualityDashboard({
             }}
           />
         </motion.div>
+
+        {/* Weather Stats Card */}
+        {data?.coordinates && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
+          >
+            <WeatherStatsCard 
+              latitude={data.coordinates.lat} 
+              longitude={data.coordinates.lon} 
+            />
+          </motion.div>
+        )}
 
         {/* Main Content Grid */}
         <motion.div 

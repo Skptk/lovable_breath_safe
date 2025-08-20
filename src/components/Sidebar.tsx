@@ -11,7 +11,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "history", label: "History", icon: History },
-    { id: "map", label: "Map", icon: Map },
+    { id: "map", label: "Weather", icon: Map },
     { id: "rewards", label: "Rewards", icon: Trophy },
     { id: "store", label: "Store", icon: ShoppingBag },
     { id: "profile", label: "Profile", icon: User },

@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import AirQualityDashboard from "@/components/AirQualityDashboard";
 import HistoryView from "@/components/HistoryView";
-import MapView from "@/components/MapView";
+import WeatherStats from "@/components/WeatherStats";
 import ProfileView from "@/components/ProfileView";
 import Rewards from "@/pages/Rewards";
 import Store from "@/pages/Store";
@@ -64,7 +64,7 @@ export default function Index(): JSX.Element {
           onMobileMenuToggle={toggleMobileMenu}
         />;
       case "map":
-        return <MapView 
+        return <WeatherStats 
           showMobileMenu={showMobileMenu}
           onMobileMenuToggle={toggleMobileMenu}
         />;

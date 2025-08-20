@@ -36,10 +36,17 @@ src/
 - **Auth** (`/auth`) - Authentication pages
 
 ### Global Layout Components
-- **Sidebar** - Desktop navigation (Dashboard, Profile, History, Map, Store, Products)
+- **Sidebar** - Desktop navigation (Dashboard, Profile, History, Weather, Store, Products)
 - **Header** - App title, theme toggle, notifications
 - **Footer** - Navigation links and legal information
 - **MobileNavigation** - Hamburger menu for mobile devices
+
+### Weather & Environmental Components
+- **WeatherStats** - Comprehensive weather and air quality monitoring (renamed from MapView)
+- **WindDashboard** - Interactive wind rose and wind data visualization
+- **WeatherForecast** - 7-day weather forecast with detailed meteorological data
+- **EmissionSourcesLayer** - Emission source mapping with clustering and pollutant data
+- **WeatherStatsCard** - Compact weather information for home dashboard
 
 ## UI Design System
 
@@ -119,6 +126,14 @@ src/
 - **Realtime Channel Reference Counting** - Fixed immediate channel removal issue by implementing delayed cleanup with 1-second timeout to prevent premature unsubscription
 - **AQI Data Loading Issues** - Fixed infinite loading state by improving permission checking logic and adding timeout mechanism to prevent API calls from hanging indefinitely
 - **Realtime Subscription Stability** - Enhanced subscription cleanup with mounted state tracking and delayed unsubscription to prevent immediate channel removal during component lifecycle changes
+- **Weather Integration** - Successfully integrated comprehensive weather data, wind visualizations, and forecast overlays into the app
+- **Map to WeatherStats Rename** - Renamed MapView component to WeatherStats with enhanced weather functionality
+- **Wind Dashboard** - Added interactive wind rose visualization and wind data using Open-Meteo API with Windy API fallback
+- **Weather Forecast** - Implemented 7-day weather forecast with Open-Meteo API integration
+- **Emission Sources Layer** - Added toggleable emission sources overlay using OpenAQ data with clustering for dense regions
+- **Real-Time Weather** - Integrated OpenWeatherMap API for current weather conditions, temperature, humidity, and rain probability
+- **Dashboard Weather Card** - Added compact weather stats card to home dashboard showing key weather information
+- **API Integration** - Successfully integrated Open-Meteo, OpenWeatherMap, and OpenAQ APIs with proper fallback handling
 
 ### 🆕 Current User Experience Improvements
 - **Map Interaction** - Map now occupies 600px height (was 384px) for better visibility and interaction
@@ -147,6 +162,11 @@ src/
 - **AQI Loading Reliability** - Timeout mechanism prevents infinite loading states and provides better error handling for API failures
 - **Permission State Management** - Improved permission checking logic prevents race conditions and ensures consistent user experience
 - **Demo Data Fallback** - Added option to show demo data when API is unavailable, preventing users from being stuck on loading screens
+- **Comprehensive Weather Data** - Added real-time weather information including temperature, humidity, rain probability, and sunrise/sunset times
+- **Interactive Wind Visualizations** - Implemented wind rose charts and wind speed/direction displays with gust information
+- **Weather Forecasting** - Added 7-day weather forecast with temperature ranges, precipitation, and weather condition icons
+- **Emission Source Mapping** - Integrated emission source data with clustering and detailed pollutant information
+- **Multi-API Integration** - Robust integration of Open-Meteo, OpenWeatherMap, and OpenAQ APIs with intelligent fallback systems
 
 ### 📱 Current Navigation System
 - **Single-Page Application** with URL parameters (`?view=dashboard`)
@@ -196,25 +216,32 @@ src/
 - **UI Status Integration** - Global banner showing connection state with smooth animations
 
 ### External APIs
-- **OpenAQ**: Air quality data (with fallback handling)
+- **OpenAQ**: Air quality data and emission source information (with fallback handling)
+- **Open-Meteo**: Wind data, weather forecasts, and meteorological information (primary weather data source)
+- **OpenWeatherMap**: Real-time weather conditions, temperature, humidity, and precipitation data
+- **Windy API**: Wind data fallback when Open-Meteo is unavailable
 - **Google Maps**: Location services (when configured)
 
 ## User Experience Features
 
 ### Core Functionality
 - **Air Quality Monitoring** - Real-time AQI and pollutant data
-- **Location Services** - GPS-based air quality readings
-- **Personal Dashboard** - Customized air quality insights
-- **Health Tracking** - Environmental impact monitoring
-- **Rewards System** - Gamified environmental awareness
+- **Weather Monitoring** - Current conditions, forecasts, and meteorological data
+- **Wind Analysis** - Interactive wind rose, speed, direction, and gust information
+- **Emission Source Mapping** - Environmental impact sources with clustering and pollutant data
+- **Location Services** - GPS-based air quality and weather readings
+- **Personal Dashboard** - Customized air quality and weather insights
+- **Health Tracking** - Environmental impact monitoring and weather-related health factors
+- **Rewards System** - Gamified environmental awareness and weather monitoring
 
 ### User Journey
 1. **Landing** → Learn about the app
 2. **Sign Up** → Create account
-3. **Dashboard** → View air quality and earn points
-4. **Profile** → Customize settings and view stats
-5. **History** → Track air quality over time
-6. **Rewards** → View achievements and progress
+3. **Dashboard** → View air quality, weather, and earn points
+4. **Weather** → Comprehensive weather stats, wind data, and forecasts
+5. **Profile** → Customize settings and view stats
+6. **History** → Track air quality over time
+7. **Rewards** → View achievements and progress
 
 ## Performance Requirements
 
