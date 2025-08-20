@@ -58,6 +58,66 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
     refreshInterval: 900000 // 15 minutes
   });
 
+  // Check for existing location permissions on component mount
+  useEffect(() => {
+    const checkExistingLocationPermission = async () => {
+      // Check if we have stored permission in localStorage (persistent across sessions)
+      const storedPermission = localStorage.getItem('breath-safe-location-permission');
+      
+      // Check if we have session-based permission (current browsing session)
+      const sessionPermission = sessionStorage.getItem('breath-safe-session-location-permission');
+      
+      if (storedPermission === 'granted' || sessionPermission === 'granted') {
+        // Check if browser still has permission
+        if (navigator.permissions && navigator.permissions.query) {
+          try {
+            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+            if (permissionStatus.state === 'granted') {
+              // User has permission, automatically get location
+              console.log('WeatherStats: User has existing location permission, automatically getting location');
+              setLocationRequested(true);
+              getUserLocation();
+              return;
+            } else if (permissionStatus.state === 'denied') {
+              // Permission was revoked, clear stored permissions
+              localStorage.removeItem('breath-safe-location-permission');
+              sessionStorage.removeItem('breath-safe-session-location-permission');
+              console.log('WeatherStats: Location permission revoked by user');
+            }
+          } catch (error) {
+            console.log('Permission API not supported, using stored permission');
+            // If permission API not supported, trust stored permission
+            setLocationRequested(true);
+            getUserLocation();
+            return;
+          }
+        } else {
+          // Permission API not supported, trust stored permission
+          setLocationRequested(true);
+          getUserLocation();
+          return;
+        }
+      }
+      
+      // No stored permission or permission was revoked
+      console.log('WeatherStats: No existing location permission found');
+    };
+
+    checkExistingLocationPermission();
+  }, []);
+
+  // Cleanup session storage on unmount if user hasn't explicitly granted permission
+  useEffect(() => {
+    return () => {
+      // Only clear session storage if user hasn't explicitly granted permission
+      // This prevents clearing during normal navigation when user has granted permission
+      const hasExplicitPermission = localStorage.getItem('breath-safe-location-permission') === 'granted';
+      if (!hasExplicitPermission) {
+        sessionStorage.removeItem('breath-safe-session-location-permission');
+      }
+    };
+  }, []);
+
   // Helper function to convert wind direction degrees to cardinal directions
   const getWindDirection = (degrees: number): string => {
     const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
@@ -136,6 +196,11 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
               console.log('WeatherStats: Geolocation successful, coordinates:', position.coords.latitude, position.coords.longitude);
       const { latitude, longitude } = position.coords;
       
+      // Store location permission in localStorage for persistent storage and sessionStorage for current session
+      localStorage.setItem('breath-safe-location-permission', 'granted');
+      sessionStorage.setItem('breath-safe-session-location-permission', 'granted');
+      console.log('WeatherStats: Location permission stored for session persistence');
+      
       // Get city name from coordinates using reverse geocoding
       const cityName = await getCityFromCoordinates(latitude, longitude);
       
@@ -160,6 +225,10 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       
       if (err.code === 1) {
         errorMessage = 'Location access denied. Please enable location permissions in your browser settings.';
+        // Store denied permission to avoid repeated prompts
+        localStorage.setItem('breath-safe-location-permission', 'denied');
+        sessionStorage.setItem('breath-safe-session-location-permission', 'denied');
+        console.log('WeatherStats: Location permission denied and stored');
       } else if (err.code === 2) {
         errorMessage = 'Location unavailable. This usually happens on new accounts or when location services are not ready. Please try again in a few moments.';
       } else if (err.code === 3) {
@@ -330,11 +399,19 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
 
   const resetLocationPermission = () => {
     localStorage.removeItem('breath-safe-location-permission');
+    sessionStorage.removeItem('breath-safe-session-location-permission');
     setRetryCount(0);
     setError(null);
     setUserLocation(null);
     setAirQualityData(null);
     setLocationRequested(false);
+  };
+
+  // Check if user has already granted location permission in this session
+  const hasLocationPermission = (): boolean => {
+    const storedPermission = localStorage.getItem('breath-safe-location-permission');
+    const sessionPermission = sessionStorage.getItem('breath-safe-session-location-permission');
+    return storedPermission === 'granted' || sessionPermission === 'granted';
   };
 
   // Auto-retry geolocation for new users after a delay
@@ -393,9 +470,14 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4 max-w-md">
             <MapPin className="h-12 w-12 text-primary mx-auto" />
-            <h3 className="text-lg font-semibold">Enable Location Services</h3>
+            <h3 className="text-lg font-semibold">
+              {hasLocationPermission() ? 'Location Services Ready' : 'Enable Location Services'}
+            </h3>
             <p className="text-muted-foreground">
-              Allow location access to view air quality data and nearby monitoring stations on the map.
+              {hasLocationPermission() 
+                ? 'Your location permission is already enabled. Click below to view the map with your current location.'
+                : 'Allow location access to view air quality data and nearby monitoring stations on the map.'
+              }
             </p>
             
             <div className="text-sm text-muted-foreground space-y-2 p-4 bg-muted/50 rounded-lg">
@@ -410,8 +492,18 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
             
             <Button onClick={getUserLocation} className="w-full" size="lg">
               <MapPin className="h-4 w-4 mr-2" />
-              Enable Location & View Map
+              {hasLocationPermission() ? 'View Map with Location' : 'Enable Location & View Map'}
             </Button>
+            
+            {hasLocationPermission() && (
+              <Button 
+                onClick={resetLocationPermission} 
+                variant="outline" 
+                className="w-full"
+              >
+                Reset Location Permission
+              </Button>
+            )}
           </div>
         </div>
       </div>
