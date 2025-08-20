@@ -116,6 +116,9 @@ src/
 - **Realtime Hook System** - Created useRealtimeStatus hook for components to monitor connection status
 - **Realtime Error Handling** - Enhanced error handling with exponential backoff retry and channel-level error recovery
 - **Realtime Channel Management** - Implemented reference counting system to prevent premature channel cleanup and ensure proper lifecycle management
+- **Realtime Channel Reference Counting** - Fixed immediate channel removal issue by implementing delayed cleanup with 1-second timeout to prevent premature unsubscription
+- **AQI Data Loading Issues** - Fixed infinite loading state by improving permission checking logic and adding timeout mechanism to prevent API calls from hanging indefinitely
+- **Realtime Subscription Stability** - Enhanced subscription cleanup with mounted state tracking and delayed unsubscription to prevent immediate channel removal during component lifecycle changes
 
 ### 🆕 Current User Experience Improvements
 - **Map Interaction** - Map now occupies 600px height (was 384px) for better visibility and interaction
@@ -140,6 +143,10 @@ src/
 - **Realtime Error Recovery** - Automatic reconnection with exponential backoff and user-friendly status updates
 - **Realtime Channel Efficiency** - Reference counting system prevents duplicate subscriptions and ensures proper cleanup
 - **Realtime Performance** - Singleton connection manager reduces WebSocket overhead and improves connection stability
+- **Realtime Channel Stability** - Delayed cleanup mechanism prevents immediate channel removal and ensures stable realtime connections
+- **AQI Loading Reliability** - Timeout mechanism prevents infinite loading states and provides better error handling for API failures
+- **Permission State Management** - Improved permission checking logic prevents race conditions and ensures consistent user experience
+- **Demo Data Fallback** - Added option to show demo data when API is unavailable, preventing users from being stuck on loading screens
 
 ### 📱 Current Navigation System
 - **Single-Page Application** with URL parameters (`?view=dashboard`)
