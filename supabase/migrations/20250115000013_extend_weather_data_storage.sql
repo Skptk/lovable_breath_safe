@@ -98,11 +98,8 @@ GRANT SELECT ON public.comprehensive_weather_readings TO authenticated;
 -- Add RLS policy for the view
 ALTER VIEW public.comprehensive_weather_readings SET (security_invoker = true);
 
--- Create policy for users to view their own comprehensive readings
-CREATE POLICY "Users can view their own comprehensive weather readings" 
-ON public.comprehensive_weather_readings
-FOR SELECT 
-USING (auth.uid() = user_id);
+-- Note: Views with security_invoker = true automatically inherit RLS policies from the underlying table
+-- No need to create separate policies on the view itself
 
 -- Update the existing data_source column to be more descriptive
 UPDATE public.air_quality_readings 
@@ -113,10 +110,5 @@ SET data_source = CASE
 END
 WHERE data_source IS NOT NULL;
 
--- Log the migration completion
-INSERT INTO public.migrations_log (migration_name, applied_at, description)
-VALUES (
-  '20250115000013_extend_weather_data_storage',
-  NOW(),
-  'Extended air_quality_readings table with comprehensive weather data fields including wind, pressure, UV index, and forecast summary'
-) ON CONFLICT (migration_name) DO NOTHING;
+-- Note: Migration logging removed as migrations_log table may not exist
+-- Migration completion is tracked by Supabase automatically

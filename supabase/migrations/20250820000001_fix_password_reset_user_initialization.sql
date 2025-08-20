@@ -108,27 +108,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Grant execute permission
 GRANT EXECUTE ON FUNCTION public.initialize_all_existing_users() TO service_role;
 
--- Create a trigger to ensure user initialization on profile access
-CREATE OR REPLACE FUNCTION public.ensure_user_data_on_profile_access()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Ensure user has all required data before allowing access
-  PERFORM public.ensure_user_initialization(NEW.user_id);
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Note: BEFORE SELECT triggers are not supported in PostgreSQL
+-- User initialization will be handled by the client-side validation in useAuth.ts
+-- The ensure_user_initialization function can still be called manually when needed
 
--- Create trigger on profile access
-DROP TRIGGER IF EXISTS ensure_user_data_on_profile_access ON public.profiles;
-CREATE TRIGGER ensure_user_data_on_profile_access
-  BEFORE SELECT ON public.profiles
-  FOR EACH ROW
-  EXECUTE FUNCTION public.ensure_user_data_on_profile_access();
-
--- Grant execute permission
-GRANT EXECUTE ON FUNCTION public.ensure_user_data_on_profile_access() TO authenticated, service_role;
+-- Note: Function permissions are handled by the individual function grants above
 
 -- Comment on the functions
 COMMENT ON FUNCTION public.ensure_user_initialization(UUID) IS 'Ensures all required user data exists for a given user ID';
 COMMENT ON FUNCTION public.initialize_all_existing_users() IS 'Initializes all existing users who may be missing required data';
-COMMENT ON FUNCTION public.ensure_user_data_on_profile_access() IS 'Ensures user data exists before allowing profile access';
+-- Note: Function comments removed as functions were simplified
