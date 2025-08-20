@@ -26,6 +26,17 @@ export interface AirQualityData {
   environmental?: {
     temperature: number;
     humidity: number;
+    windSpeed?: number;
+    windDirection?: number;
+    windGust?: number;
+    airPressure?: number;
+    rainProbability?: number;
+    uvIndex?: number;
+    visibility?: number;
+    weatherCondition?: string;
+    feelsLikeTemperature?: number;
+    sunriseTime?: string;
+    sunsetTime?: string;
   };
 }
 
@@ -122,6 +133,23 @@ export const useAirQuality = () => {
         data_source: data.dataSource,
         created_at: new Date().toISOString()
       };
+
+      // Add comprehensive weather data if available
+      if (data.environmental) {
+        Object.assign(reading, {
+          wind_speed: data.environmental.windSpeed || null,
+          wind_direction: data.environmental.windDirection || null,
+          wind_gust: data.environmental.windGust || null,
+          air_pressure: data.environmental.airPressure || null,
+          rain_probability: data.environmental.rainProbability || null,
+          uv_index: data.environmental.uvIndex || null,
+          visibility: data.environmental.visibility || null,
+          weather_condition: data.environmental.weatherCondition || null,
+          feels_like_temperature: data.environmental.feelsLikeTemperature || null,
+          sunrise_time: data.environmental.sunriseTime || null,
+          sunset_time: data.environmental.sunsetTime || null,
+        });
+      }
 
       console.log('saveReadingToDatabase: Attempting to insert reading:', reading);
 

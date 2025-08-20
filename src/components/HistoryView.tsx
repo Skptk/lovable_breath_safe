@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, MapPin, TrendingUp, Download, Loader2, AlertTriangle, Thermometer, Droplets, Clock, Trash2, RefreshCw } from "lucide-react";
+import { Calendar, MapPin, TrendingUp, Download, Loader2, AlertTriangle, Thermometer, Droplets, Clock, Trash2, RefreshCw, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import HistoryDetailModal from "./HistoryDetailModal";
 
 
 interface HistoryEntry {
@@ -40,6 +41,18 @@ interface HistoryEntry {
   data_source: string | null;
   latitude: number;
   longitude: number;
+  // New weather fields
+  wind_speed?: number | null;
+  wind_direction?: number | null;
+  wind_gust?: number | null;
+  air_pressure?: number | null;
+  rain_probability?: number | null;
+  uv_index?: number | null;
+  visibility?: number | null;
+  weather_condition?: string | null;
+  feels_like_temperature?: number | null;
+  sunrise_time?: string | null;
+  sunset_time?: string | null;
 }
 
 // Helper functions for AQI display
@@ -84,6 +97,8 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [showFetchButton, setShowFetchButton] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -130,6 +145,18 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         data_source: (entry as any).data_source || null,
         latitude: entry.latitude,
         longitude: entry.longitude,
+        // New weather fields
+        wind_speed: (entry as any).wind_speed || null,
+        wind_direction: (entry as any).wind_direction || null,
+        wind_gust: (entry as any).wind_gust || null,
+        air_pressure: (entry as any).air_pressure || null,
+        rain_probability: (entry as any).rain_probability || null,
+        uv_index: (entry as any).uv_index || null,
+        visibility: (entry as any).visibility || null,
+        weather_condition: (entry as any).weather_condition || null,
+        feels_like_temperature: (entry as any).feels_like_temperature || null,
+        sunrise_time: (entry as any).sunrise_time || null,
+        sunset_time: (entry as any).sunset_time || null,
       }));
 
       setHistory(transformedData);
@@ -414,6 +441,16 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
     });
   };
 
+  const openEntryModal = (entry: HistoryEntry) => {
+    setSelectedEntry(entry);
+    setIsModalOpen(true);
+  };
+
+  const closeEntryModal = () => {
+    setIsModalOpen(false);
+    setSelectedEntry(null);
+  };
+
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
@@ -524,8 +561,11 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         title="Air Quality History"
         subtitle="Track your air quality exposure over time"
         showRefresh={true}
-        onRefresh={fetchHistory}
-        isRefreshing={false}
+        onRefresh={() => {
+          console.log('HistoryView: Refresh button clicked');
+          fetchHistory();
+        }}
+        isRefreshing={loading}
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
@@ -678,7 +718,11 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           </Card>
         ) : (
           history.map((entry) => (
-            <Card key={entry.id} className="bg-gradient-card shadow-card border-0">
+            <Card 
+              key={entry.id} 
+              className="bg-gradient-card shadow-card border-0 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] group"
+              onClick={() => openEntryModal(entry)}
+            >
               <CardContent className="p-4">
                 <div className="space-y-3">
                   {/* Header with AQI and Location */}
@@ -688,6 +732,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                         checked={selectedEntries.has(entry.id)}
                         onCheckedChange={() => toggleEntrySelection(entry.id)}
                         className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        onClick={(e) => e.stopPropagation()}
                       />
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -716,12 +761,24 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                           {entry.data_source}
                         </Badge>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEntryModal(entry);
+                        }}
+                      >
+                        <Eye className="h-3 w-3" />
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -804,12 +861,27 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                       )}
                     </div>
                   )}
+
+                  {/* Click hint */}
+                  <div className="flex items-center justify-center pt-2">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity">
+                      <Eye className="h-3 w-3" />
+                      <span>Click to view details</span>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      {/* History Detail Modal */}
+      <HistoryDetailModal
+        entry={selectedEntry}
+        isOpen={isModalOpen}
+        onClose={closeEntryModal}
+      />
     </div>
   </div>
   );
