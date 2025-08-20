@@ -46,13 +46,26 @@ export default function Auth(): JSX.Element {
     checkAuth();
   }, [navigate]);
 
-  // Check for password reset URL parameter
+  // Check for password reset URL parameter and recovery token
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const isReset = urlParams.get('reset');
-    if (isReset === 'true') {
-      setShowForgotPassword(true);
+    const accessToken = urlParams.get('access_token');
+    const refreshToken = urlParams.get('refresh_token');
+    
+    if (isReset === 'true' || (accessToken && refreshToken)) {
+      // Hide all other forms and show only password reset form
+      setIsSignUp(false);
+      setShowForgotPassword(false);
       setShowPasswordResetForm(true);
+      
+      // If we have tokens, set the session for password reset
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+      }
     }
   }, []);
 
@@ -114,7 +127,7 @@ export default function Auth(): JSX.Element {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(passwordResetEmail, {
-        redirectTo: `${window.location.origin}/auth?reset=true`
+        redirectTo: `${window.location.origin}/auth`
       });
 
       if (error) throw error;
@@ -171,6 +184,7 @@ export default function Auth(): JSX.Element {
     setIsLoading(true);
 
     try {
+      // Use the recovery flow to set the new password
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -190,11 +204,21 @@ export default function Auth(): JSX.Element {
       setIsSignUp(false);
     } catch (error: any) {
       console.error('Password reset error:', error);
-      toast({
-        title: "Error",
-        description: error.message || 'Failed to update password',
-        variant: "destructive",
-      });
+      
+      // If session is missing, provide better error message
+      if (error.message?.includes('Auth session missing')) {
+        toast({
+          title: "Reset link expired",
+          description: "The password reset link has expired. Please request a new one.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || 'Failed to update password',
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
