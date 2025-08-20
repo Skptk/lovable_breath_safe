@@ -292,32 +292,12 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
           // Log retry attempt for debugging
                       console.log(`WeatherStats: Retry attempt ${attemptNumber}/3 for new user geolocation`);
         } else {
-          // After 3 retries, provide a demo location for new users
-                      console.log('WeatherStats: Providing demo location after 3 failed attempts');
-          const demoLocation = {
-            latitude: -1.2921, // Nairobi coordinates as demo
-            longitude: 36.8219,
-            city: 'Demo Location',
-            state: 'Nairobi, Kenya',
-            country: 'Kenya'
-          };
-          setUserLocation(demoLocation);
+          // After 3 retries, show error instead of demo data
+          console.log('WeatherStats: All retry attempts failed, showing error');
+          setError('Location services are not available after multiple attempts. Please try again later.');
           
-          // Set demo air quality data
-          setAirQualityData({
-            aqi: 45,
-            location: 'Demo Location',
-            timestamp: new Date().toISOString()
-          });
-          
-          toast({
-            title: "Demo Mode Activated",
-            description: "Showing demo data while location services are being configured. You can try again later.",
-            variant: "default",
-          });
-          
-          // Clear the error since we're now in demo mode
-          setError(null);
+          // No demo data - show error instead
+          setError('Location services are not available. Please try again later.');
         }
       } else {
         toast({
@@ -397,22 +377,12 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
   };
 
   const updateNearbyLocations = (userLat: number, userLon: number): void => {
-    // In a real app, you would fetch nearby monitoring stations from an API
-    // For now, we'll create mock locations around the user's position
-    const mockLocations = [
-      { lat: userLat + 0.01, lon: userLon + 0.01, name: "Downtown Area" },
-      { lat: userLat - 0.01, lon: userLon + 0.02, name: "City Park" },
-      { lat: userLat + 0.02, lon: userLon - 0.01, name: "Industrial District" },
-      { lat: userLat - 0.02, lon: userLon - 0.02, name: "Residential Area" },
-    ];
-
-    // Update the nearby locations with real coordinates
-    mockLocations.forEach((loc, index) => {
-      if (nearbyLocations[index]) {
-        nearbyLocations[index].coordinates = [loc.lat, loc.lon];
-        nearbyLocations[index].name = loc.name;
-      }
-    });
+    // TODO: In a real app, you would fetch nearby monitoring stations from an API
+    // For now, we'll use the user's actual coordinates
+    if (nearbyLocations.length > 0) {
+      nearbyLocations[0].coordinates = [userLat, userLon];
+      nearbyLocations[0].name = "Your Location";
+    }
   };
 
   const getAQIColor = (aqi: number): string => {
@@ -579,11 +549,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
                   Attempt {retryCount}/3 - Auto-retrying in a few seconds...
                 </div>
               )}
-              {retryCount >= 3 && (
-                <div className="text-xs text-muted-foreground text-center p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
-                  Demo mode active - showing sample data
-                </div>
-              )}
+
               <Button onClick={getUserLocation} variant="outline" className="w-full">
                 <MapPin className="h-4 w-4 mr-2" />
                 Try Again Now
@@ -829,16 +795,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
                   <p className="text-xs text-muted-foreground">
                     {userLocation ? `${userLocation.city}, ${userLocation.country}` : 'Loading location...'}
                   </p>
-                  {userLocation?.city === 'Demo Location' && (
-                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      Demo mode - <button 
-                        onClick={getUserLocation}
-                        className="underline hover:no-underline"
-                      >
-                        Try real location
-                      </button>
-                    </div>
-                  )}
+
                 </div>
                 <div className="flex items-center gap-2">
 

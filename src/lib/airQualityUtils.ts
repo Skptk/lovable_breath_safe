@@ -55,16 +55,16 @@ export const createPollutantCards = (data: {
     { code: 'SO2', value: data.so2, threshold: 35, showIfZero: false },
     { code: 'CO', value: data.co, threshold: 4.4, showIfZero: false },
     { code: 'O3', value: data.o3, threshold: 54, showIfZero: false },
-    { code: 'TEMPERATURE', value: data.environmental?.temperature || 25, threshold: null, showIfZero: true },
-    { code: 'HUMIDITY', value: data.environmental?.humidity || 60, threshold: null, showIfZero: true },
+    { code: 'TEMPERATURE', value: data.environmental?.temperature || null, threshold: null, showIfZero: true },
+    { code: 'HUMIDITY', value: data.environmental?.humidity || null, threshold: null, showIfZero: true },
     { code: 'PM003', value: data.pm25 * 2, threshold: null, showIfZero: false } // Estimate PM0.3 from PM2.5
   ];
   
   // Filter pollutants based on data availability
   return pollutants.filter(pollutant => {
     if (pollutant.showIfZero) {
-      // Always show environmental sensors (temperature, humidity)
-      return true;
+      // Only show environmental sensors if they have real data
+      return pollutant.value !== null && pollutant.value !== undefined;
     }
     // Only show pollutant sensors if they have meaningful data
     return pollutant.value > 0;

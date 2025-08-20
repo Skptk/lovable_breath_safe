@@ -610,9 +610,9 @@ serve(async (req) => {
             co = latestMeasurements.get('co')?.value || 0;
             o3 = latestMeasurements.get('o3')?.value || 0;
             
-            // Add temperature and humidity if available
-            const temperature = latestMeasurements.get('temperature')?.value || 25; // Default fallback
-            const humidity = latestMeasurements.get('relativehumidity')?.value || latestMeasurements.get('humidity')?.value || 60; // Default fallback
+            // Add temperature and humidity if available (no fallbacks)
+            const temperature = latestMeasurements.get('temperature')?.value || null;
+            const humidity = latestMeasurements.get('relativehumidity')?.value || latestMeasurements.get('humidity')?.value || null;
             
             console.log('Actual measurements extracted:', { pm25, pm10, no2, so2, co, o3, temperature, humidity });
             
@@ -763,8 +763,8 @@ serve(async (req) => {
                     p_so2: so2 > 0 ? so2 : null,
                     p_co: co > 0 ? co : null,
                     p_o3: o3 > 0 ? o3 : null,
-                    p_temperature: 25, // Default fallback - would be updated with actual sensor data
-                    p_humidity: 60,    // Default fallback - would be updated with actual sensor data
+                    p_temperature: temperature || null, // Use real data or null
+                    p_humidity: humidity || null,       // Use real data or null
                     p_pm003: pm25 > 0 ? pm25 * 2 : null, // Estimate PM0.3 from PM2.5
                     p_data_source: 'OpenAQ API'
                   });

@@ -151,11 +151,11 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
         max: data.daily.temperature_2m_max[index],
         avg: data.daily.temperature_2m_mean[index]
       },
-      humidity: 70, // Open-Meteo doesn't provide humidity in daily forecast
+      humidity: null, // Open-Meteo doesn't provide humidity in daily forecast
       windSpeed: data.daily.wind_speed_10m_max[index],
       windDirection: data.daily.wind_direction_10m_dominant[index],
       rainProbability: data.daily.precipitation_probability_max[index],
-      weatherCondition: 'Unknown', // Open-Meteo doesn't provide weather conditions
+      weatherCondition: null, // Open-Meteo doesn't provide weather conditions
       uvIndex: undefined
     }));
   }, []);

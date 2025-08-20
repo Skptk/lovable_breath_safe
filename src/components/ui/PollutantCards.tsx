@@ -27,7 +27,7 @@ export const PollutantCards = ({ data, onPollutantClick }: PollutantCardsProps):
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold mb-2">{info.label}</div>
               <div className={`text-3xl font-bold ${isAboveThreshold ? 'text-red-600' : 'text-primary'}`}>
-                {pollutant.value.toFixed(1)}
+                {pollutant.value !== null ? pollutant.value.toFixed(1) : 'N/A'}
               </div>
               <div className="text-sm text-muted-foreground">{info.unit}</div>
               {pollutant.threshold && (

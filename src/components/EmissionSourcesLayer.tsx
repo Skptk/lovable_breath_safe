@@ -67,7 +67,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
           
           toast({
             title: "Emission Data Updated",
-            description: "Using demonstration data - OpenAQ has no coverage in this area",
+            description: "Using fallback data - OpenAQ has no coverage in this area",
           });
         }
       } else {
@@ -80,10 +80,10 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
       setEmissionSources(mockSources);
       setLastUpdated(new Date().toISOString());
       
-      toast({
-        title: "Emission Data Updated",
-        description: "Using demonstration data due to API limitations",
-      });
+                toast({
+            title: "Emission Data Updated",
+            description: "Using fallback data due to API limitations",
+          });
     } finally {
       setLoading(false);
     }

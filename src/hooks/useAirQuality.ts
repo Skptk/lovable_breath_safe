@@ -294,7 +294,8 @@ export const useAirQuality = () => {
           dataSource: typedResponse.dataSource || 'Unknown Source',
           userPoints: typedResponse.userPoints,
           currencyRewards: typedResponse.currencyRewards,
-          canWithdraw: typedResponse.canWithdraw
+          canWithdraw: typedResponse.canWithdraw,
+          environmental: typedResponse.environmental || null
         };
 
         // Save reading to database
