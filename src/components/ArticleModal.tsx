@@ -13,6 +13,11 @@ interface ArticleModalProps {
 export default function ArticleModal({ article, onClose }: ArticleModalProps) {
   const [isVisible, setIsVisible] = useState(false);
 
+  // Early return if no article
+  if (!article) {
+    return null;
+  }
+
   useEffect(() => {
     setIsVisible(true);
     // Prevent body scroll when modal is open
@@ -31,6 +36,10 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
   };
 
   const getCategoryColor = (category: Article['category']) => {
+    if (!category) {
+      return 'bg-muted/10 text-muted-foreground border-muted/20';
+    }
+    
     switch (category) {
       case 'health':
         return 'bg-error/10 text-error border-error/20';
@@ -46,11 +55,15 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (err) {
+      return 'Invalid date';
+    }
   };
 
   return (
@@ -83,17 +96,19 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
             
             {/* Header with image */}
             <div className="relative h-48 bg-gradient-to-r from-primary/20 to-accent/20">
-              <img 
-                src={article.imageUrl} 
-                alt={article.title}
-                className="w-full h-full object-cover opacity-60"
-              />
+              {article.imageUrl && (
+                <img 
+                  src={article.imageUrl} 
+                  alt={article.title || 'Article'}
+                  className="w-full h-full object-cover opacity-60"
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-4 left-6 right-16 text-white">
                 <Badge variant="outline" className={`mb-2 ${getCategoryColor(article.category)}`}>
-                  {article.category.charAt(0).toUpperCase() + article.category.slice(1)}
+                  {article.category ? article.category.charAt(0).toUpperCase() + article.category.slice(1) : 'Unknown'}
                 </Badge>
-                <h1 className="text-2xl font-bold">{article.title}</h1>
+                <h1 className="text-2xl font-bold">{article.title || 'Untitled Article'}</h1>
               </div>
             </div>
             
@@ -102,15 +117,15 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  <span>{article.author}</span>
+                  <span>{article.author || 'Unknown Author'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  <span>{formatDate(article.publishDate)}</span>
+                  <span>{article.publishedAt ? formatDate(article.publishedAt) : 'No date'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  <span>{article.readTime} min read</span>
+                  <span>{article.readTime ? `${article.readTime} min read` : 'Unknown read time'}</span>
                 </div>
               </div>
             </div>
@@ -118,13 +133,20 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
             {/* Content */}
             <CardContent className="p-6 max-h-[60vh] overflow-y-auto">
               <div className="prose prose-sm max-w-none">
-                <p className="text-lg text-muted-foreground mb-6 font-medium">
-                  {article.summary}
-                </p>
-                <div 
-                  className="article-content"
-                  dangerouslySetInnerHTML={{ __html: article.content }}
-                />
+                {article.summary && (
+                  <p className="text-lg text-muted-foreground mb-6 font-medium">
+                    {article.summary}
+                  </p>
+                )}
+                {article.content && (
+                  <div 
+                    className="article-content"
+                    dangerouslySetInnerHTML={{ __html: article.content }}
+                  />
+                )}
+                {!article.content && !article.summary && (
+                  <p className="text-muted-foreground">No content available for this article.</p>
+                )}
               </div>
             </CardContent>
           </div>
