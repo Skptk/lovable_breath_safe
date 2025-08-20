@@ -7,6 +7,7 @@ import { TrendingUp, TrendingDown, RefreshCw, Award, Zap, Clock, MapPin } from "
 import { useAirQuality } from "@/hooks/useAirQuality";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserPoints } from "@/hooks/useUserPoints";
+import { useRefreshCountdown } from "@/hooks/useRefreshCountdown";
 import { StatCard } from "@/components/ui/StatCard";
 import NewsCard from "@/components/NewsCard";
 import { ProgressGauge } from "@/components/ui/ProgressGauge";
@@ -30,6 +31,13 @@ export default function AirQualityDashboard({
   const { totalPoints, currencyRewards } = useUserPoints();
   const [showPollutantModal, setShowPollutantModal] = useState(false);
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+
+  // Refresh countdown for auto-refresh status
+  const refreshCountdown = useRefreshCountdown({
+    intervalMs: 15 * 60 * 1000, // 15 minutes
+    enabled: hasUserConsent,
+    lastRefreshTime: data?.timestamp
+  });
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
 
@@ -254,6 +262,50 @@ export default function AirQualityDashboard({
             showMobileMenu={showMobileMenu}
             onMobileMenuToggle={onMobileMenuToggle}
           />
+          
+          {/* Auto-refresh Status */}
+          {hasUserConsent && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+              className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-2 mx-4"
+            >
+              <Clock className="h-4 w-4" />
+              <span>Auto-refresh every 15 minutes</span>
+              {data?.timestamp && (
+                <span>• Last updated: {new Date(data.timestamp).toLocaleTimeString()}</span>
+              )}
+              {refreshCountdown.timeUntilNextRefresh > 0 && (
+                <span>• Next refresh in: {refreshCountdown.formatTimeLeft(refreshCountdown.timeUntilNextRefresh)}</span>
+              )}
+              {refreshCountdown.isRefreshing && (
+                <span className="text-primary font-medium">• Refreshing now...</span>
+              )}
+            </motion.div>
+            
+          )}
+          
+          {/* Refresh Progress Bar */}
+          {hasUserConsent && refreshCountdown.timeUntilNextRefresh > 0 && (
+            <motion.div
+              initial={{ opacity: 0, scaleX: 0 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+              className="mx-4"
+            >
+              <div className="w-full bg-muted rounded-full h-1.5">
+                <div 
+                  className="bg-primary h-1.5 rounded-full transition-all duration-1000 ease-linear"
+                  style={{ width: `${refreshCountdown.getProgressPercentage()}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>Last refresh</span>
+                <span>Next refresh</span>
+              </div>
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Stats Grid */}

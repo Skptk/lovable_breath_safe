@@ -330,20 +330,34 @@ export const useAirQuality = () => {
     queryFn: fetchAirQualityData,
     gcTime: 5 * 60 * 1000, // Cache for 5 minutes
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    refetchOnWindowFocus: false, // Disable auto-refresh when user returns
-    refetchOnMount: false, // Don't auto-fetch on mount
-    refetchOnReconnect: false, // Don't auto-fetch on reconnect
-    refetchInterval: false, // Disable automatic interval refreshing
-    refetchIntervalInBackground: false, // Disable background refresh
+    refetchOnWindowFocus: true, // Enable auto-refresh when user returns to tab
+    refetchOnMount: true, // Auto-fetch on mount when user has consent
+    refetchOnReconnect: true, // Auto-fetch on reconnect
+    refetchInterval: hasUserConsent ? 15 * 60 * 1000 : false, // Refresh every 15 minutes when user has consent
+    refetchIntervalInBackground: false, // Disable background refresh to save battery
     retry: 2, // Reduce retries for faster failure detection
     retryDelay: 500, // Faster retry delay
     enabled: hasUserConsent && hasRequestedPermission, // Only run when user has consented and we've checked permissions
   });
 
-  // Debug logging for permission states
+  // Debug logging for permission states and refresh behavior
   useEffect(() => {
     console.log('useAirQuality: Permission states:', { hasUserConsent, hasRequestedPermission, isLoading: query.isLoading });
+    
+    // Log refresh interval status
+    if (hasUserConsent) {
+      console.log('useAirQuality: Auto-refresh enabled - data will refresh every 15 minutes');
+    } else {
+      console.log('useAirQuality: Auto-refresh disabled - user consent required');
+    }
   }, [hasUserConsent, hasRequestedPermission, query.isLoading]);
+
+  // Log when data is being refetched
+  useEffect(() => {
+    if (query.isRefetching) {
+      console.log('useAirQuality: Refreshing air quality data...');
+    }
+  }, [query.isRefetching]);
 
   return {
     ...query,
