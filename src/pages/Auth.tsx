@@ -52,21 +52,73 @@ export default function Auth(): JSX.Element {
     const isReset = urlParams.get('reset');
     const accessToken = urlParams.get('access_token');
     const refreshToken = urlParams.get('refresh_token');
+    const type = urlParams.get('type');
     
-    if (isReset === 'true' || (accessToken && refreshToken)) {
+    // Also check hash fragment for tokens (Supabase sometimes puts them there)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const hashAccessToken = hashParams.get('access_token');
+    const hashRefreshToken = hashParams.get('refresh_token');
+    
+    // Check if this is a password recovery flow
+    if (isReset === 'true' || (accessToken && refreshToken) || (hashAccessToken && hashRefreshToken) || type === 'recovery') {
+      console.log('Password reset flow detected:', { 
+        isReset, 
+        accessToken: !!accessToken, 
+        refreshToken: !!refreshToken, 
+        hashAccessToken: !!hashAccessToken,
+        hashRefreshToken: !!hashRefreshToken,
+        type 
+      });
+      
       // Hide all other forms and show only password reset form
       setIsSignUp(false);
       setShowForgotPassword(false);
       setShowPasswordResetForm(true);
       
+      // Use tokens from either query params or hash fragment
+      const finalAccessToken = accessToken || hashAccessToken;
+      const finalRefreshToken = refreshToken || hashRefreshToken;
+      
       // If we have tokens, set the session for password reset
-      if (accessToken && refreshToken) {
+      if (finalAccessToken && finalRefreshToken) {
+        console.log('Setting recovery session...');
         supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
+          access_token: finalAccessToken,
+          refresh_token: finalRefreshToken
+        }).then(({ data, error }) => {
+          if (error) {
+            console.error('Error setting recovery session:', error);
+          } else {
+            console.log('Recovery session set successfully');
+          }
         });
       }
     }
+  }, []);
+
+  // Listen for auth state changes to handle recovery flow
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session?.user?.id);
+      
+      // If we get a recovery event and have a session, show password reset form
+      if (event === 'PASSWORD_RECOVERY' && session?.user) {
+        console.log('Password recovery event detected, showing reset form');
+        setIsSignUp(false);
+        setShowForgotPassword(false);
+        setShowPasswordResetForm(true);
+      }
+      
+      // If we get a token refreshed event and it's a recovery session, show password reset form
+      if (event === 'TOKEN_REFRESHED' && session?.user && window.location.hash.includes('type=recovery')) {
+        console.log('Token refreshed for recovery, showing reset form');
+        setIsSignUp(false);
+        setShowForgotPassword(false);
+        setShowPasswordResetForm(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
