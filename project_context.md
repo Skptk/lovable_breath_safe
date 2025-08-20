@@ -99,6 +99,7 @@ src/
 - **Database Integration** - Full CRUD operations with RLS
 
 ### 🔧 Recently Fixed Issues
+- **Placeholder Weather Data Removal** - ✅ COMPLETED: Removed all hardcoded fallback weather values (temperature 25°C, humidity 60%) and demo data (AQI 45, PM2.5 12.5, demo locations) from all components to ensure only real OpenWeatherMap API data is displayed, implemented proper error handling for missing API keys with clear console instructions for configuration
 - **Fallback AQI Data Removal** - ✅ COMPLETED: Removed all hardcoded fallback AQI values (65) from Supabase Edge Function to ensure only real air quality data is displayed, implemented proper error handling for missing OpenAQ API key with clear console instructions for configuration
 - **Realtime Connectivity Restored** - ✅ COMPLETED: Successfully resolved all WebSocket connection issues, realtime channels (user-notifications, user-profile-points, user-points-inserts) now working perfectly with successful subscriptions and no more CHANNEL_ERROR or TIMED_OUT issues
 - **CSP WebSocket Fix** - ✅ COMPLETED: Fixed critical Content Security Policy issue that was blocking Supabase WebSocket (wss://) connections, added Google Fonts support, and relaxed COEP policy to resolve realtime connection errors
