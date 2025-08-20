@@ -99,6 +99,7 @@ src/
 - **Database Integration** - Full CRUD operations with RLS
 
 ### 🔧 Recently Fixed Issues
+- **CSP WebSocket Fix** - ✅ COMPLETED: Fixed critical Content Security Policy issue that was blocking Supabase WebSocket (wss://) connections, added Google Fonts support, and relaxed COEP policy to resolve realtime connection errors
 - **Performance Optimization Phase 1** - ✅ COMPLETED: Implemented comprehensive build and bundling optimizations including enhanced Vite configuration with manual chunks for heavy libraries (Leaflet, Recharts, Framer Motion), React Query memory optimization with reduced GC time and stale time, Zustand store optimization with LRU cache implementation, route-level code splitting with lazy loading for all heavy components, Leaflet lifecycle optimization with dynamic imports and proper cleanup, security hardening by removing hardcoded Supabase credentials, Netlify security headers with CSP and caching policies, and preconnect/DNS prefetch for critical APIs
 - **Profile and Settings Separation** - ✅ COMPLETED: Successfully split ProfileView into dedicated ProfileView (profile management, rewards, withdrawals, account management) and SettingsView (site-wide settings, appearance, privacy, location, data management, notifications)
 - **Navigation Enhancement** - ✅ COMPLETED: Added dedicated Settings page to sidebar, footer, and mobile navigation with proper routing and view switching
