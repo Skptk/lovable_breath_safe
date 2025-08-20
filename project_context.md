@@ -183,6 +183,7 @@ src/
 - **Responsive Weather Layout** - Fully responsive weather data grid that adapts to all Tailwind breakpoints (sm, md, lg, xl)
 - **Real-time Data Persistence** - Air quality data now automatically refreshes and saves every 15 minutes, ensuring consistent history tracking
 - **Enhanced History Management** - HistoryView now features clickable cards with detailed modal popups, comprehensive weather data display, and individual entry export functionality
+- **Console Warning Fixes** - Resolved DialogDescription warnings in HistoryDetailModal and improved error handling for OpenAQ API failures
 
 ### 📱 Current Navigation System
 - **Single-Page Application** with URL parameters (`?view=dashboard`)
