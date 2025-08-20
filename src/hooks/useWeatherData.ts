@@ -299,6 +299,8 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
     refetchInterval: autoRefresh ? refreshInterval : false,
     staleTime: 300000, // 5 minutes
     gcTime: 900000, // 15 minutes
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // React Query for user's weather readings
@@ -357,6 +359,19 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
 
     return () => clearInterval(interval);
   }, [autoRefresh, refreshInterval, options.latitude, options.longitude, fetchAllWeatherData]);
+
+  // Handle coordinate changes and trigger data fetch
+  useEffect(() => {
+    if (options.latitude && options.longitude) {
+      console.log('useWeatherData: Coordinates changed, triggering data fetch:', options.latitude, options.longitude);
+      // Reset state when coordinates change
+      setCurrentWeather(null);
+      setForecast([]);
+      setError(null);
+      // Trigger the query to fetch new data
+      weatherQuery.refetch();
+    }
+  }, [options.latitude, options.longitude, weatherQuery.refetch]);
 
   // Memoized values
   const weatherSummary = useMemo(() => {

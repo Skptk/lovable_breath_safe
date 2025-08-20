@@ -58,6 +58,24 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
     refreshInterval: 900000 // 15 minutes
   });
 
+  // Debug logging for weather data hook
+  useEffect(() => {
+    console.log('WeatherStats: userLocation changed:', userLocation);
+    console.log('WeatherStats: weatherData state:', {
+      isLoading: weatherData.isLoading,
+      error: weatherData.error,
+      data: weatherData.data
+    });
+  }, [userLocation, weatherData.isLoading, weatherData.error, weatherData.data]);
+
+  // Trigger weather data fetch when user location becomes available
+  useEffect(() => {
+    if (userLocation?.latitude && userLocation?.longitude && !weatherData.data && !weatherData.isLoading) {
+      console.log('WeatherStats: Triggering manual weather data fetch for coordinates:', userLocation.latitude, userLocation.longitude);
+      weatherData.refetch();
+    }
+  }, [userLocation, weatherData.data, weatherData.isLoading, weatherData.refetch]);
+
   // Check for existing location permissions on component mount
   useEffect(() => {
     const checkExistingLocationPermission = async () => {
