@@ -58,6 +58,7 @@ export default function Auth(): JSX.Element {
     const accessToken = urlParams.get('access_token');
     const refreshToken = urlParams.get('refresh_token');
     const type = urlParams.get('type');
+    const code = urlParams.get('code');
     
     // Also check hash fragment for tokens (Supabase sometimes puts them there)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -65,11 +66,11 @@ export default function Auth(): JSX.Element {
     const hashRefreshToken = hashParams.get('refresh_token');
     const hashType = hashParams.get('type');
     
-    console.log('URL Parameters:', { isReset, accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+    console.log('URL Parameters:', { isReset, accessToken: !!accessToken, refreshToken: !!refreshToken, type, code: !!code });
     console.log('Hash Parameters:', { hashAccessToken: !!hashAccessToken, hashRefreshToken: !!hashRefreshToken, hashType });
     
     // Check if this is a password recovery flow
-    if (isReset === 'true' || (accessToken && refreshToken) || (hashAccessToken && hashRefreshToken) || type === 'recovery' || hashType === 'recovery') {
+    if (isReset === 'true' || (accessToken && refreshToken) || (hashAccessToken && hashRefreshToken) || type === 'recovery' || hashType === 'recovery' || code) {
       console.log('Password reset flow detected:', { 
         isReset, 
         accessToken: !!accessToken, 
@@ -77,7 +78,8 @@ export default function Auth(): JSX.Element {
         hashAccessToken: !!hashAccessToken,
         hashRefreshToken: !!hashRefreshToken,
         type,
-        hashType
+        hashType,
+        code: !!code
       });
       
       // Hide all other forms and show only password reset form
@@ -85,16 +87,24 @@ export default function Auth(): JSX.Element {
       setShowForgotPassword(false);
       setShowPasswordResetForm(true);
       
+      // If we have a code, exchange it for a session
+      if (code) {
+        console.log('Authorization code detected, exchanging for session...');
+        supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+          if (error) {
+            console.error('Error exchanging code for session:', error);
+          } else {
+            console.log('Code exchanged successfully, session established:', data.session?.user?.id);
+            // The auth state change listener should handle the session
+          }
+        });
+      }
       // Use tokens from either query params or hash fragment
-      const finalAccessToken = accessToken || hashAccessToken;
-      const finalRefreshToken = refreshToken || hashRefreshToken;
-      
-      // If we have tokens, set the session for password reset
-      if (finalAccessToken && finalRefreshToken) {
-        console.log('Setting recovery session...');
+      else if (accessToken && refreshToken) {
+        console.log('Setting recovery session with tokens...');
         supabase.auth.setSession({
-          access_token: finalAccessToken,
-          refresh_token: finalRefreshToken
+          access_token: accessToken,
+          refresh_token: refreshToken
         }).then(({ data, error }) => {
           if (error) {
             console.error('Error setting recovery session:', error);
@@ -141,6 +151,14 @@ export default function Auth(): JSX.Element {
       // If we get a session and we're in recovery mode, show password reset form
       if (event === 'SIGNED_IN' && session?.user && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))) {
         console.log('Signed in with recovery session, showing reset form');
+        setIsSignUp(false);
+        setShowForgotPassword(false);
+        setShowPasswordResetForm(true);
+      }
+      
+      // If we get a session and we have a code parameter (recovery flow), show password reset form
+      if (event === 'SIGNED_IN' && session?.user && window.location.search.includes('code=')) {
+        console.log('Signed in with recovery code, showing reset form');
         setIsSignUp(false);
         setShowForgotPassword(false);
         setShowPasswordResetForm(true);
