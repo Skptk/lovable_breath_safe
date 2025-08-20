@@ -9,6 +9,7 @@ export { default as WindDashboard } from './WindDashboard';
 export { default as WeatherForecast } from './WeatherForecast';
 export { default as EmissionSourcesLayer } from './EmissionSourcesLayer';
 export { default as WeatherStatsCard } from './WeatherStatsCard';
+export { default as NewsPage } from './NewsPage';
 export { default as PollutantModal } from './PollutantModal';
 export { Header } from './Header';
 export { default as LazyHeader } from './LazyHeader';

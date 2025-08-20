@@ -2,10 +2,12 @@ export interface Article {
   id: string;
   title: string;
   summary: string;
+  excerpt: string;
   content: string;
   imageUrl: string;
   author: string;
   publishDate: string;
+  publishedAt: string;
   category: 'health' | 'environment' | 'research' | 'tips';
   readTime: number; // in minutes
 }
@@ -15,6 +17,7 @@ export const articles: Article[] = [
     id: '1',
     title: 'Understanding PM2.5: The Invisible Threat in Our Air',
     summary: 'Learn about the tiny particles that pose the biggest risk to our respiratory health and how to protect yourself.',
+    excerpt: 'Learn about the tiny particles that pose the biggest risk to our respiratory health and how to protect yourself from PM2.5 exposure.',
     content: `
       <div class="space-y-6">
         <p>PM2.5 particles are microscopic pollutants that are 2.5 micrometers or smaller in diameter - about 30 times smaller than the width of a human hair. Despite their tiny size, these particles pose significant health risks because they can penetrate deep into our lungs and even enter our bloodstream.</p>
@@ -58,6 +61,7 @@ export const articles: Article[] = [
     imageUrl: '/placeholder.svg',
     author: 'Dr. Sarah Chen',
     publishDate: '2024-01-15',
+    publishedAt: '2024-01-15',
     category: 'health',
     readTime: 5
   },
@@ -65,6 +69,7 @@ export const articles: Article[] = [
     id: '2',
     title: 'Indoor Air Quality: Creating a Healthy Home Environment',
     summary: 'Discover practical tips for improving the air quality inside your home and creating a healthier living space.',
+    excerpt: 'Discover practical tips for improving the air quality inside your home and creating a healthier living space for you and your family.',
     content: `
       <div class="space-y-6">
         <p>While we often focus on outdoor air pollution, the air inside our homes can be 2-5 times more polluted than outdoor air. Creating a healthy indoor environment is crucial for our well-being, especially since we spend about 90% of our time indoors.</p>
@@ -111,13 +116,15 @@ export const articles: Article[] = [
     imageUrl: '/placeholder.svg',
     author: 'Michael Rodriguez',
     publishDate: '2024-01-12',
+    publishedAt: '2024-01-12',
     category: 'tips',
     readTime: 7
   },
-  {
+    {
     id: '3',
     title: 'Climate Change and Air Quality: Understanding the Connection',
     summary: 'Explore how climate change affects air pollution patterns and what it means for public health.',
+    excerpt: 'Explore how climate change affects air pollution patterns and what it means for public health and environmental protection.',
     content: `
       <div class="space-y-6">
         <p>Climate change and air quality are intricately connected, creating a complex web of environmental and health challenges. As global temperatures rise, we're seeing significant changes in air pollution patterns that directly impact human health.</p>
@@ -171,6 +178,7 @@ export const articles: Article[] = [
     imageUrl: '/placeholder.svg',
     author: 'Dr. Emma Thompson',
     publishDate: '2024-01-10',
+    publishedAt: '2024-01-10',
     category: 'environment',
     readTime: 8
   }
@@ -184,4 +192,8 @@ export function getLatestArticles(limit: number = 3): Article[] {
 
 export function getArticleById(id: string): Article | undefined {
   return articles.find(article => article.id === id);
+}
+
+export function getAllArticles(): Article[] {
+  return articles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 }

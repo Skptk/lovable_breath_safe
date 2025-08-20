@@ -3,13 +3,13 @@ import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, RefreshCw, Award, Zap, Clock, MapPin } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, Award, Zap, Clock, MapPin, ArrowRight } from "lucide-react";
 import { useAirQuality } from "@/hooks/useAirQuality";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { useRefreshCountdown } from "@/hooks/useRefreshCountdown";
 import { StatCard } from "@/components/ui/StatCard";
-import NewsCard from "@/components/NewsCard";
+
 import { ProgressGauge } from "@/components/ui/ProgressGauge";
 import Header from "@/components/Header";
 import PollutantModal from "./PollutantModal";
@@ -374,52 +374,83 @@ export default function AirQualityDashboard({
           </motion.div>
         )}
 
-        {/* Main Content Grid */}
-        <motion.div 
-          className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6"
+        {/* News Preview Section */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
         >
-          {/* News Articles Card */}
-          <div className="xl:col-span-2">
-            <NewsCard />
-          </div>
-
-          {/* Air Quality Details Card */}
-          <Card className="relative overflow-hidden">
+          <Card className="relative overflow-hidden bg-gradient-to-r from-card/80 to-card/60 backdrop-blur-sm border border-border/20">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Air Quality Details</h3>
-                <Badge variant="outline" className={aqiStatus.color}>
-                  {aqiStatus.status}
-                </Badge>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-semibold">Latest Health & Environment News</h3>
+                  <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+                    Stay Informed
+                  </Badge>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onNavigate?.('news')}
+                  className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
+                  View All News
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center">
-                <ProgressGauge
-                  value={Math.min((data.aqi / 300) * 100, 100)}
-                  size={80}
-                  color={
-                    data.aqi <= 50 ? "hsl(var(--success))" :
-                    data.aqi <= 100 ? "hsl(var(--warning))" :
-                    "hsl(var(--error))"
-                  }
-                />
-                <p className="text-sm text-muted-foreground mt-2">
-                  AQI: {data.aqi}
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div className="text-center p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">PM2.5</p>
-                  <p className="font-semibold">{data.pm25?.toFixed(1) || 'N/A'}</p>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Featured Article Preview */}
+                <div className="group cursor-pointer" onClick={() => onNavigate?.('news')}>
+                  <div className="relative h-32 overflow-hidden rounded-lg mb-3">
+                    <img 
+                      src="/placeholder.svg" 
+                      alt="Featured article"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                    <Badge className="absolute top-2 left-2 bg-primary/90 text-primary-foreground">
+                      Featured
+                    </Badge>
+                  </div>
+                  <h4 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                    Understanding Air Quality Impact on Respiratory Health
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Latest research on how air pollution affects lung function and overall health...
+                  </p>
                 </div>
-                <div className="text-center p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground">PM10</p>
-                  <p className="font-semibold">{data.pm10?.toFixed(1) || 'N/A'}</p>
+
+                {/* Quick News Items */}
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => onNavigate?.('news')}>
+                    <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                    <div>
+                      <h5 className="text-sm font-medium line-clamp-2">Environmental Protection Strategies</h5>
+                      <p className="text-xs text-muted-foreground">Effective ways to reduce your environmental footprint...</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => onNavigate?.('news')}>
+                    <div className="w-2 h-2 bg-success rounded-full mt-2 flex-shrink-0"></div>
+                    <div>
+                      <h5 className="text-sm font-medium line-clamp-2">Climate Change Updates</h5>
+                      <p className="text-xs text-muted-foreground">Latest findings on global climate patterns...</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* News Stats */}
+                <div className="space-y-3">
+                  <div className="text-center p-4 bg-muted/30 rounded-lg">
+                    <div className="text-2xl font-bold text-primary">50+</div>
+                    <div className="text-xs text-muted-foreground">Articles Available</div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/30 rounded-lg">
+                    <div className="text-2xl font-bold text-success">Daily</div>
+                    <div className="text-xs text-muted-foreground">Updates</div>
+                  </div>
                 </div>
               </div>
             </CardContent>

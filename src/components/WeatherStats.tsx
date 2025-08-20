@@ -9,7 +9,7 @@ import LeafletMap from "./LeafletMap";
 import Header from "@/components/Header";
 import WindDashboard from "./WindDashboard";
 import WeatherForecast from "./WeatherForecast";
-import EmissionSourcesLayer from "./EmissionSourcesLayer";
+
 import { useWeatherData } from "@/hooks/useWeatherData";
 
 
@@ -47,7 +47,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
   const [error, setError] = useState<string | null>(null);
   const [locationRequested, setLocationRequested] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const [showEmissionLayer, setShowEmissionLayer] = useState(false);
+
   const { toast } = useToast();
 
   // Weather data hook integration
@@ -687,12 +687,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
         />
         </div>
         
-        {showEmissionLayer && (
-          <EmissionSourcesLayer 
-            latitude={userLocation.latitude} 
-            longitude={userLocation.longitude} 
-          />
-        )}
+
 
         {/* Floating Header */}
         <div className="absolute top-4 left-4 right-4 z-10">
@@ -718,15 +713,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant={showEmissionLayer ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowEmissionLayer(!showEmissionLayer)}
-                    className="gap-2"
-                  >
-                    <Cloud className="h-4 w-4" />
-                    {showEmissionLayer ? 'Hide' : 'Show'} Emissions
-                  </Button>
+
                   <Button variant="outline" size="sm" className="gap-2">
                     <Layers className="h-4 w-4" />
                     Layers

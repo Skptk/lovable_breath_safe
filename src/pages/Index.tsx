@@ -7,6 +7,7 @@ import WeatherStats from "@/components/WeatherStats";
 import ProfileView from "@/components/ProfileView";
 import Rewards from "@/pages/Rewards";
 import Store from "@/pages/Store";
+import NewsPage from "@/components/NewsPage";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
@@ -32,7 +33,7 @@ export default function Index(): JSX.Element {
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const view = urlParams.get('view');
-    if (view && ['dashboard', 'history', 'map', 'rewards', 'store', 'profile'].includes(view)) {
+    if (view && ['dashboard', 'history', 'map', 'rewards', 'store', 'profile', 'news'].includes(view)) {
       setCurrentView(view);
     }
   }, [location.search]);
@@ -80,6 +81,11 @@ export default function Index(): JSX.Element {
         />;
       case "profile":
         return <ProfileView 
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={toggleMobileMenu}
+        />;
+      case "news":
+        return <NewsPage 
           showMobileMenu={showMobileMenu}
           onMobileMenuToggle={toggleMobileMenu}
         />;
