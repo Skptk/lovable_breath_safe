@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { cleanupAllChannels } from '@/lib/realtimeClient';
+import { cleanupAllChannels, destroyRealtimeManager } from '@/lib/realtimeClient';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -21,6 +21,7 @@ export function useAuth() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         setProfileValidated(false); // Reset profile validation when auth state changes
@@ -46,14 +47,42 @@ export function useAuth() {
   };
 
   const signOut = async () => {
-    // Clean up all realtime channels before signing out
-    cleanupAllChannels();
-    
-    setUser(null);
-    setSession(null);
-    setProfileValidated(false);
-    setValidationAttempted(false);
-    await supabase.auth.signOut();
+    try {
+      console.log('[Auth] Starting sign out process...');
+      
+      // First, clean up all realtime channels
+      console.log('[Auth] Cleaning up realtime channels...');
+      cleanupAllChannels();
+      
+      // Reset local state immediately to prevent further operations
+      setUser(null);
+      setSession(null);
+      setProfileValidated(false);
+      setValidationAttempted(false);
+      
+      // Sign out from Supabase
+      console.log('[Auth] Signing out from Supabase...');
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('[Auth] Error during sign out:', error);
+        throw error;
+      }
+      
+      console.log('[Auth] Sign out completed successfully');
+      
+      // Destroy realtime manager to prevent any further operations
+      destroyRealtimeManager();
+      
+    } catch (error) {
+      console.error('[Auth] Error during sign out:', error);
+      // Even if there's an error, ensure local state is cleared
+      setUser(null);
+      setSession(null);
+      setProfileValidated(false);
+      setValidationAttempted(false);
+      throw error;
+    }
   };
 
   const validateProfile = async () => {

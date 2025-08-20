@@ -98,6 +98,12 @@ src/
 - **Database Integration** - Full CRUD operations with RLS
 
 ### 🔧 Recently Fixed Issues
+- **Realtime Client Stability** - Fixed multiple realtime channel errors including CHANNEL_ERROR, TIMED_OUT, and connection issues during sign-out and view changes
+- **Realtime Manager Lifecycle** - Implemented proper destroy/reset functionality for realtime connection manager to prevent memory leaks and connection conflicts
+- **Sign-out Process** - Enhanced sign-out flow with proper realtime channel cleanup, state reset, and manager destruction to prevent post-signout errors
+- **Error Boundary Enhancement** - Improved error boundary component with better module loading error handling, network error detection, and recovery options
+- **Channel Reference Counting** - Fixed realtime channel reference counting issues that were causing premature channel removal and subscription conflicts
+- **Connection State Management** - Added proper connection state tracking and prevented operations on destroyed realtime managers
 - **Complete Password Reset Flow** - Implemented full password reset functionality including email-based reset, new password form with validation, and seamless user experience flow
 - **Forgot Password Flow** - Added comprehensive password reset functionality to authentication system with email-based reset, form validation, and user-friendly feedback
 - **React Error #301 Resolution** - Fixed critical React rendering errors in NewsPage component by correcting JSX structure and adding comprehensive null safety checks
@@ -148,6 +154,11 @@ src/
 - **Automatic Data Refresh Fix** - Resolved issue where air quality data was only stored on manual refresh, now automatically refreshes every 15 minutes
 
 ### 🆕 Current User Experience Improvements
+- **Realtime Connection Stability** - Significantly reduced realtime channel errors and connection issues during navigation and sign-out processes
+- **Enhanced Error Recovery** - Improved error boundary with specific handling for module loading errors, network issues, and general application errors
+- **Sign-out Reliability** - Sign-out process now properly cleans up all realtime connections and prevents post-signout errors
+- **Channel Lifecycle Management** - Better realtime channel management prevents duplicate subscriptions and ensures proper cleanup
+- **Connection State Tracking** - Real-time connection status monitoring with proper state management and error recovery
 - **Complete Password Reset Experience** - Users can now fully reset their passwords through email verification, set new passwords with validation, and seamlessly return to sign-in flow
 - **Authentication Enhancement** - Added forgot password functionality with email-based password reset, improved user onboarding for password recovery scenarios
 - **News Page Stability** - News page now fully functional with comprehensive error handling, null safety, and crash prevention
@@ -241,12 +252,14 @@ src/
 - **Real-time**: Live updates for notifications and data
 
 ### Realtime Architecture
-- **Singleton Connection Manager** - Centralized realtime client with reference counting
-- **Channel Lifecycle Management** - Prevents duplicate subscriptions and ensures proper cleanup
+- **Singleton Connection Manager** - Centralized realtime client with reference counting and lifecycle management
+- **Channel Lifecycle Management** - Prevents duplicate subscriptions and ensures proper cleanup with delayed removal
 - **Automatic Reconnection** - Exponential backoff retry with user-friendly status updates
-- **Error Recovery** - Channel-level error handling with automatic recovery
+- **Error Recovery** - Channel-level error handling with automatic recovery and connection state tracking
 - **Performance Optimization** - Reduced WebSocket overhead and improved connection stability
 - **UI Status Integration** - Global banner showing connection state with smooth animations
+- **Manager Lifecycle** - Proper destroy/reset functionality to prevent memory leaks and connection conflicts
+- **Connection State Tracking** - Real-time connection status monitoring with proper state management
 
 ### External APIs
 - **OpenAQ**: Air quality data and emission source information (with fallback handling)

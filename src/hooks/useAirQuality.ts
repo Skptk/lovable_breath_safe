@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store";
-import { useErrorHandler } from "@/components/ErrorBoundary/ErrorBoundary";
+
 import { usePerformanceMonitor, useThrottle } from "@/hooks/usePerformance";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -42,7 +42,7 @@ export interface AirQualityData {
 
 export const useAirQuality = () => {
   const { setCurrentAQI, setCurrentLocation, setLoading, setError } = useAppStore();
-  const { handleError } = useErrorHandler();
+
   const { user } = useAuth();
   const [hasUserConsent, setHasUserConsent] = useState(false);
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
@@ -315,12 +315,12 @@ export const useAirQuality = () => {
         console.error('Error in fetchAirQualityData:', err);
       }
       
-      handleError(error, 'useAirQuality.fetchAirQualityData');
+      console.error('useAirQuality.fetchAirQualityData error:', error);
       throw error; // Re-throw to be caught by useQuery
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, handleError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase]);
+  }, [setLoading, setError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase]);
 
   // Function to request location permission (should be called on user gesture)
   const requestLocationPermission = useCallback(async (): Promise<boolean> => {

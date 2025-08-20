@@ -1,63 +1,60 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home, AlertCircle } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
-  resetKey?: any;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
-  errorId: string | null;
+  isRecovering: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      hasError: false,
-      error: null,
+  public state: State = {
+    hasError: false,
+    error: null,
+    errorInfo: null,
+    isRecovering: false,
+  };
+
+  public static getDerivedStateFromError(error: Error): State {
+    // Update state so the next render will show the fallback UI
+    return { 
+      hasError: true, 
+      error, 
       errorInfo: null,
-      errorId: null,
+      isRecovering: false,
     };
   }
 
-  static getDerivedStateFromError(error: Error): Partial<State> {
-    return {
-      hasError: true,
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Log error to console
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    
+    // Update state with error info
+    this.setState({
       error,
-      errorId: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    };
-  }
+      errorInfo,
+    });
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.setState({ errorInfo });
-    
-    // Log error to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('ErrorBoundary caught an error:', error, errorInfo);
-    }
-    
     // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
-    
-    // Log error to external service in production
-    if (process.env.NODE_ENV === 'production') {
-      this.logErrorToService(error, errorInfo);
-    }
+
+    // Log to error reporting service if available
+    this.logErrorToService(error, errorInfo);
   }
 
-  private logErrorToService = async (error: Error, errorInfo: ErrorInfo) => {
+  private logErrorToService(error: Error, errorInfo: ErrorInfo) {
     try {
-      // You can integrate with services like Sentry, LogRocket, etc.
+      // Log error with additional context
       const errorData = {
         message: error.message,
         stack: error.stack,
@@ -65,70 +62,171 @@ export class ErrorBoundary extends Component<Props, State> {
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent,
         url: window.location.href,
-        errorId: this.state.errorId,
+        // Add any other relevant error context
       };
-      
-      // For now, just log to console
+
       console.error('Error logged:', errorData);
       
-      // TODO: Send to error tracking service
-      // await fetch('/api/errors', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(errorData),
-      // });
-    } catch (logError) {
-      console.error('Failed to log error:', logError);
+      // Here you could send to an error reporting service like Sentry
+      // if (window.Sentry) {
+      //   window.Sentry.captureException(error, { extra: errorData });
+      // }
+    } catch (loggingError) {
+      console.error('Failed to log error:', loggingError);
     }
-  };
+  }
 
-  private handleReset = () => {
+  private handleRetry = () => {
+    this.setState({ isRecovering: true });
+    
+    // Clear the error state
     this.setState({
       hasError: false,
       error: null,
       errorInfo: null,
-      errorId: null,
+      isRecovering: false,
     });
   };
 
   private handleGoHome = () => {
+    // Navigate to home page
     window.location.href = '/';
   };
 
-  private handleReportBug = () => {
-    const { error, errorInfo, errorId } = this.state;
-    if (!error) return;
-    
-    const bugReport = `
-Error Report (ID: ${errorId})
-
-Error: ${error.message}
-Stack: ${error.stack}
-
-Component Stack:
-${errorInfo?.componentStack}
-
-URL: ${window.location.href}
-User Agent: ${navigator.userAgent}
-Timestamp: ${new Date().toISOString()}
-    `.trim();
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(bugReport).then(() => {
-      alert('Error report copied to clipboard. Please send it to support.');
-    }).catch(() => {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = bugReport;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      alert('Error report copied to clipboard. Please send it to support.');
-    });
+  private handleReload = () => {
+    // Reload the page
+    window.location.reload();
   };
 
-  render() {
+  private isModuleLoadingError(): boolean {
+    return this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
+           this.state.error?.message?.includes('Loading chunk') ||
+           this.state.error?.message?.includes('Loading CSS chunk');
+  }
+
+  private isNetworkError(): boolean {
+    return this.state.error?.message?.includes('Failed to fetch') ||
+           this.state.error?.message?.includes('NetworkError') ||
+           this.state.error?.message?.includes('ERR_NETWORK');
+  }
+
+  private renderErrorContent() {
+    const { error, isRecovering } = this.state;
+    
+    if (isRecovering) {
+      return (
+        <div className="flex items-center justify-center p-8">
+          <RefreshCw className="h-6 w-6 animate-spin text-primary mr-3" />
+          <span className="text-lg">Recovering...</span>
+        </div>
+      );
+    }
+
+    const isModuleError = this.isModuleLoadingError();
+    const isNetworkError = this.isNetworkError();
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-card rounded-lg shadow-lg border border-border p-6 text-center">
+          {/* Error Icon */}
+          <div className="flex justify-center mb-4">
+            {isModuleError || isNetworkError ? (
+              <AlertCircle className="h-16 w-16 text-amber-500" />
+            ) : (
+              <AlertTriangle className="h-16 w-16 text-destructive" />
+            )}
+          </div>
+
+          {/* Error Title */}
+          <h1 className="text-xl font-semibold text-foreground mb-2">
+            {isModuleError ? 'Module Loading Error' : 
+             isNetworkError ? 'Network Error' : 'Something went wrong'}
+          </h1>
+
+          {/* Error Message */}
+          <p className="text-muted-foreground mb-6">
+            {isModuleError ? 
+              'Failed to load a component. This might be due to a network issue or deployment problem.' :
+             isNetworkError ?
+              'Unable to connect to the server. Please check your internet connection.' :
+              'An unexpected error occurred. Please try again or contact support if the problem persists.'
+            }
+          </p>
+
+          {/* Error Details (Development only) */}
+          {import.meta.env.DEV && error && (
+            <details className="mb-6 text-left">
+              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground mb-2">
+                Error Details (Development)
+              </summary>
+              <div className="bg-muted rounded p-3 text-xs font-mono text-muted-foreground overflow-auto max-h-32">
+                <div className="mb-2">
+                  <strong>Message:</strong> {error.message}
+                </div>
+                {error.stack && (
+                  <div>
+                    <strong>Stack:</strong>
+                    <pre className="whitespace-pre-wrap mt-1">{error.stack}</pre>
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            {isModuleError || isNetworkError ? (
+              <>
+                <Button 
+                  onClick={this.handleRetry} 
+                  className="w-full"
+                  disabled={isRecovering}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+                
+                <Button 
+                  onClick={this.handleReload} 
+                  variant="outline" 
+                  className="w-full"
+                >
+                  Reload Page
+                </Button>
+              </>
+            ) : (
+              <Button 
+                onClick={this.handleRetry} 
+                className="w-full"
+                disabled={isRecovering}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            )}
+            
+            <Button 
+              onClick={this.handleGoHome} 
+              variant="ghost" 
+              className="w-full"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Go Home
+            </Button>
+          </div>
+
+          {/* Additional Help */}
+          <div className="mt-6 pt-4 border-t border-border">
+            <p className="text-xs text-muted-foreground">
+              If this problem continues, try clearing your browser cache or contact support.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  public render() {
     if (this.state.hasError) {
       // Custom fallback UI
       if (this.props.fallback) {
@@ -136,92 +234,11 @@ Timestamp: ${new Date().toISOString()}
       }
 
       // Default error UI
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <AlertTriangle className="w-8 h-8 text-red-600" />
-              </div>
-              <CardTitle className="text-xl text-red-600">
-                Something went wrong
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground text-center">
-                We're sorry, but something unexpected happened. Our team has been notified.
-              </p>
-              
-              {process.env.NODE_ENV === 'development' && this.state.error && (
-                <details className="bg-muted p-3 rounded-md text-sm">
-                  <summary className="cursor-pointer font-medium mb-2">
-                    Error Details (Development)
-                  </summary>
-                  <pre className="whitespace-pre-wrap text-xs overflow-auto">
-                    {this.state.error.message}
-                    {'\n\n'}
-                    {this.state.error.stack}
-                  </pre>
-                </details>
-              )}
-              
-              <div className="flex flex-col gap-2">
-                <Button onClick={this.handleReset} className="w-full">
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Try Again
-                </Button>
-                
-                <Button variant="outline" onClick={this.handleGoHome} className="w-full">
-                  <Home className="w-4 h-4 mr-2" />
-                  Go Home
-                </Button>
-                
-                <Button variant="outline" onClick={this.handleReportBug} className="w-full">
-                  <Bug className="w-4 h-4 mr-2" />
-                  Report Bug
-                </Button>
-              </div>
-              
-              {this.state.errorId && (
-                <p className="text-xs text-muted-foreground text-center">
-                  Error ID: {this.state.errorId}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      );
+      return this.renderErrorContent();
     }
 
     return this.props.children;
   }
 }
 
-// Higher-order component for functional components
-export const withErrorBoundary = <P extends object>(
-  Component: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<Props, 'children'>
-) => {
-  const WrappedComponent = (props: P) => (
-    <ErrorBoundary {...errorBoundaryProps}>
-      <Component {...props} />
-    </ErrorBoundary>
-  );
-  
-  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
-  
-  return WrappedComponent;
-};
-
-// Hook for functional components to catch errors
-export const useErrorHandler = () => {
-  const handleError = (error: Error, context?: string) => {
-    console.error(`Error in ${context || 'component'}:`, error);
-    
-    // You can add custom error handling logic here
-    // For example, showing a toast notification
-    // toast.error(`An error occurred: ${error.message}`);
-  };
-
-  return { handleError };
-};
+export default ErrorBoundary;

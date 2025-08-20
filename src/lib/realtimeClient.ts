@@ -11,6 +11,7 @@ class RealtimeConnectionManager {
   private connectionStatus: 'connected' | 'reconnecting' | 'disconnected' = 'connected';
   private statusListeners: Set<(status: 'connected' | 'reconnecting' | 'disconnected') => void> = new Set();
   private pendingCleanups: Map<string, NodeJS.Timeout> = new Map(); // Track pending cleanups
+  private isDestroyed: boolean = false; // Track if manager is destroyed
 
   private constructor() {
     // Start with connected status
@@ -25,7 +26,7 @@ class RealtimeConnectionManager {
   }
 
   private setConnectionStatus(status: 'connected' | 'reconnecting' | 'disconnected'): void {
-    if (this.connectionStatus !== status) {
+    if (this.connectionStatus !== status && !this.isDestroyed) {
       this.connectionStatus = status;
       this.notifyStatusListeners(status);
       
@@ -45,7 +46,9 @@ class RealtimeConnectionManager {
   }
 
   private notifyStatusListeners(status: 'connected' | 'reconnecting' | 'disconnected'): void {
-    this.statusListeners.forEach(listener => listener(status));
+    if (!this.isDestroyed) {
+      this.statusListeners.forEach(listener => listener(status));
+    }
   }
 
   public subscribeToChannel(
@@ -58,8 +61,8 @@ class RealtimeConnectionManager {
       filter?: string;
     }
   ): void {
-    if (!REALTIME_ENABLED) {
-      console.warn(`[Realtime] Realtime disabled. Channel '${channelName}' not created.`);
+    if (!REALTIME_ENABLED || this.isDestroyed) {
+      console.warn(`[Realtime] Realtime disabled or manager destroyed. Channel '${channelName}' not created.`);
       return;
     }
 
@@ -111,8 +114,12 @@ class RealtimeConnectionManager {
       const subscription = channel.subscribe((status, error) => {
         if (status === 'SUBSCRIBED') {
           console.info(`[Realtime] Successfully subscribed to '${channelName}'`);
+          this.setConnectionStatus('connected');
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn(`[Realtime] Channel '${channelName}' subscription error:`, status, error);
+          // Don't change connection status for individual channel errors
+        } else if (status === 'CLOSED') {
+          console.info(`[Realtime] Channel '${channelName}' closed`);
         }
       });
 
@@ -129,10 +136,14 @@ class RealtimeConnectionManager {
   }
 
   public unsubscribeFromChannel(channelName: string, callback?: (payload: any) => void): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
     const channelData = this.activeChannels.get(channelName);
     
     if (!channelData) {
-      console.warn(`[Realtime] Channel '${channelName}' not found for unsubscription`);
+      // Channel not found - this is normal during cleanup, don't warn
       return;
     }
 
@@ -151,7 +162,9 @@ class RealtimeConnectionManager {
       
       // Schedule cleanup with a delay to prevent immediate removal
       const cleanupTimeout = setTimeout(() => {
-        this.removeChannel(channelName);
+        if (!this.isDestroyed) {
+          this.removeChannel(channelName);
+        }
       }, 1000); // 1 second delay
       
       this.pendingCleanups.set(channelName, cleanupTimeout);
@@ -159,22 +172,37 @@ class RealtimeConnectionManager {
   }
 
   private removeChannel(channelName: string): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
     const channelData = this.activeChannels.get(channelName);
     if (!channelData) return;
 
     console.info(`[Realtime] Removing channel '${channelName}'`);
     
     try {
+      // Check if channel is still active before removing
+      if (channelData.channel && typeof channelData.channel.unsubscribe === 'function') {
+        channelData.channel.unsubscribe();
+      }
       supabase.removeChannel(channelData.channel);
       this.activeChannels.delete(channelName);
       this.pendingCleanups.delete(channelName);
       console.info(`[Realtime] Successfully removed channel '${channelName}'`);
     } catch (error) {
       console.error(`[Realtime] Error removing channel '${channelName}':`, error);
+      // Force remove from our tracking even if Supabase removal fails
+      this.activeChannels.delete(channelName);
+      this.pendingCleanups.delete(channelName);
     }
   }
 
   public cleanupAllChannels(): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
     console.info(`[Realtime] Cleaning up ${this.activeChannels.size} active channels`);
     
     // Clear all pending cleanups
@@ -185,6 +213,10 @@ class RealtimeConnectionManager {
     
     for (const [channelName, channelData] of this.activeChannels.entries()) {
       try {
+        // Check if channel is still active before removing
+        if (channelData.channel && typeof channelData.channel.unsubscribe === 'function') {
+          channelData.channel.unsubscribe();
+        }
         supabase.removeChannel(channelData.channel);
         console.info(`[Realtime] Removed channel '${channelName}'`);
       } catch (error) {
@@ -197,15 +229,21 @@ class RealtimeConnectionManager {
   }
 
   public getConnectionStatus(): 'connected' | 'reconnecting' | 'disconnected' {
-    return this.connectionStatus;
+    return this.isDestroyed ? 'disconnected' : this.connectionStatus;
   }
 
   public addStatusListener(listener: (status: 'connected' | 'reconnecting' | 'disconnected') => void): () => void {
+    if (this.isDestroyed) {
+      return () => {}; // Return no-op cleanup function if destroyed
+    }
+
     this.statusListeners.add(listener);
     
     // Return cleanup function
     return () => {
-      this.statusListeners.delete(listener);
+      if (!this.isDestroyed) {
+        this.statusListeners.delete(listener);
+      }
     };
   }
 
@@ -217,33 +255,63 @@ class RealtimeConnectionManager {
     reconnectAttempts: number;
   } {
     return {
-      enabled: REALTIME_ENABLED,
+      enabled: REALTIME_ENABLED && !this.isDestroyed,
       activeChannels: Array.from(this.activeChannels.keys()),
       totalChannels: this.activeChannels.size,
-      connectionStatus: this.connectionStatus,
+      connectionStatus: this.getConnectionStatus(),
       reconnectAttempts: 0, // Simplified for now
     };
   }
 
   public isChannelActive(channelName: string): boolean {
-    return this.activeChannels.has(channelName);
+    return !this.isDestroyed && this.activeChannels.has(channelName);
   }
 
   public resetConnectionState(): void {
-    console.info('[Realtime] Connection state reset');
+    if (!this.isDestroyed) {
+      console.info('[Realtime] Connection state reset');
+      this.setConnectionStatus('connected');
+    }
   }
 
   public destroy(): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
+    console.info('[Realtime] Destroying realtime manager');
+    this.isDestroyed = true;
+    
     // Clean up all channels
     this.cleanupAllChannels();
     
     // Clear status listeners
     this.statusListeners.clear();
+    
+    // Reset instance to allow recreation if needed
+    RealtimeConnectionManager.instance = null as any;
+  }
+
+  public reset(): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
+    console.info('[Realtime] Resetting realtime manager');
+    this.cleanupAllChannels();
+    this.setConnectionStatus('connected');
   }
 }
 
 // Export singleton instance
-const realtimeManager = RealtimeConnectionManager.getInstance();
+let realtimeManager: RealtimeConnectionManager | null = null;
+
+function getRealtimeManager(): RealtimeConnectionManager {
+  if (!realtimeManager) {
+    realtimeManager = RealtimeConnectionManager.getInstance();
+  }
+  return realtimeManager;
+}
 
 // Export convenience functions that use the singleton
 export function subscribeToChannel(
@@ -256,36 +324,49 @@ export function subscribeToChannel(
     filter?: string;
   }
 ): void {
-  realtimeManager.subscribeToChannel(channelName, callback, config);
+  getRealtimeManager().subscribeToChannel(channelName, callback, config);
 }
 
 export function unsubscribeFromChannel(channelName: string, callback?: (payload: any) => void): void {
-  realtimeManager.unsubscribeFromChannel(channelName, callback);
+  getRealtimeManager().unsubscribeFromChannel(channelName, callback);
 }
 
 export function cleanupAllChannels(): void {
-  realtimeManager.cleanupAllChannels();
+  getRealtimeManager().cleanupAllChannels();
 }
 
 export function getChannelStatus() {
-  return realtimeManager.getChannelStatus();
+  return getRealtimeManager().getChannelStatus();
 }
 
 export function isChannelActive(channelName: string): boolean {
-  return realtimeManager.isChannelActive(channelName);
+  return getRealtimeManager().isChannelActive(channelName);
 }
 
 export function resetConnectionState(): void {
-  realtimeManager.resetConnectionState();
+  getRealtimeManager().resetConnectionState();
 }
 
 export function getConnectionStatus(): 'connected' | 'reconnecting' | 'disconnected' {
-  return realtimeManager.getConnectionStatus();
+  return getRealtimeManager().getConnectionStatus();
 }
 
 export function addConnectionStatusListener(listener: (status: 'connected' | 'reconnecting' | 'disconnected') => void): () => void {
-  return realtimeManager.addStatusListener(listener);
+  return getRealtimeManager().addStatusListener(listener);
+}
+
+export function destroyRealtimeManager(): void {
+  if (realtimeManager) {
+    realtimeManager.destroy();
+    realtimeManager = null;
+  }
+}
+
+export function resetRealtimeManager(): void {
+  if (realtimeManager) {
+    realtimeManager.reset();
+  }
 }
 
 // Export the manager instance for advanced usage
-export { realtimeManager };
+export { getRealtimeManager as realtimeManager };

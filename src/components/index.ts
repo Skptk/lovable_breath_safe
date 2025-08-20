@@ -24,7 +24,7 @@ export { UserPointsDisplay } from './ui/UserPointsDisplay';
 export { PollutantCards } from './ui/PollutantCards';
 
 // Error Boundary
-export { ErrorBoundary, withErrorBoundary, useErrorHandler } from './ErrorBoundary/ErrorBoundary';
+export { ErrorBoundary } from './ErrorBoundary/ErrorBoundary';
 
 // UI Components (re-export from shadcn/ui)
 export * from './ui/accordion';
