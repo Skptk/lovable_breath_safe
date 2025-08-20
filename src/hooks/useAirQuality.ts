@@ -57,9 +57,11 @@ export const useAirQuality = () => {
             const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
             if (permissionStatus.state === 'granted') {
               setHasUserConsent(true);
+              setHasRequestedPermission(true);
               return;
             } else if (permissionStatus.state === 'denied') {
               setHasUserConsent(false);
+              setHasRequestedPermission(true);
               localStorage.removeItem('breath-safe-location-permission');
               return;
             }
@@ -70,12 +72,15 @@ export const useAirQuality = () => {
         
         // If permission API not supported, trust stored permission
         setHasUserConsent(true);
+        setHasRequestedPermission(true);
       } else if (storedPermission === 'denied') {
         setHasUserConsent(false);
+        setHasRequestedPermission(true);
+      } else {
+        // No stored permission, mark as checked but not consented
+        setHasUserConsent(false);
+        setHasRequestedPermission(true);
       }
-      
-      // Mark that we've checked permissions
-      setHasRequestedPermission(true);
     };
 
     checkLocationPermission();
@@ -157,14 +162,22 @@ export const useAirQuality = () => {
 
       console.log('useAirQuality: Starting geolocation request with user consent');
 
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out after 45 seconds')), 45000);
+      });
+
       // Simple, reliable location detection that works on mobile
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      const positionPromise = new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           timeout: 30000, // 30 seconds - mobile devices need more time
           enableHighAccuracy: false, // Disable high accuracy for mobile compatibility
           maximumAge: 10 * 60 * 1000 // Allow 10-minute old data for mobile
         });
       });
+
+      // Race between timeout and geolocation
+      const position = await Promise.race([positionPromise, timeoutPromise]);
 
       console.log('useAirQuality: Geolocation successful, coordinates:', position.coords.latitude, position.coords.longitude);
 
@@ -326,6 +339,11 @@ export const useAirQuality = () => {
     retryDelay: 500, // Faster retry delay
     enabled: hasUserConsent && hasRequestedPermission, // Only run when user has consented and we've checked permissions
   });
+
+  // Debug logging for permission states
+  useEffect(() => {
+    console.log('useAirQuality: Permission states:', { hasUserConsent, hasRequestedPermission, isLoading: query.isLoading });
+  }, [hasUserConsent, hasRequestedPermission, query.isLoading]);
 
   return {
     ...query,

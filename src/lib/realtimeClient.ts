@@ -10,6 +10,7 @@ class RealtimeConnectionManager {
   private activeChannels: Map<string, { channel: RealtimeChannel; refs: number; callbacks: Set<(payload: any) => void> }> = new Map();
   private connectionStatus: 'connected' | 'reconnecting' | 'disconnected' = 'connected';
   private statusListeners: Set<(status: 'connected' | 'reconnecting' | 'disconnected') => void> = new Set();
+  private pendingCleanups: Map<string, NodeJS.Timeout> = new Map(); // Track pending cleanups
 
   private constructor() {
     // Start with connected status
@@ -60,6 +61,12 @@ class RealtimeConnectionManager {
     if (!REALTIME_ENABLED) {
       console.warn(`[Realtime] Realtime disabled. Channel '${channelName}' not created.`);
       return;
+    }
+
+    // Clear any pending cleanup for this channel
+    if (this.pendingCleanups.has(channelName)) {
+      clearTimeout(this.pendingCleanups.get(channelName)!);
+      this.pendingCleanups.delete(channelName);
     }
 
     let channelData = this.activeChannels.get(channelName);
@@ -138,22 +145,43 @@ class RealtimeConnectionManager {
     channelData.refs--;
     console.info(`[Realtime] Channel '${channelName}' refs: ${channelData.refs}`);
 
-    // If no more references, remove the channel
+    // If no more references, schedule removal with a delay to prevent immediate cleanup
     if (channelData.refs <= 0) {
-      console.info(`[Realtime] Removing channel '${channelName}' (no more references)`);
+      console.info(`[Realtime] Scheduling removal of channel '${channelName}' (no more references)`);
       
-      try {
-        supabase.removeChannel(channelData.channel);
-        this.activeChannels.delete(channelName);
-        console.info(`[Realtime] Successfully removed channel '${channelName}'`);
-      } catch (error) {
-        console.error(`[Realtime] Error removing channel '${channelName}':`, error);
-      }
+      // Schedule cleanup with a delay to prevent immediate removal
+      const cleanupTimeout = setTimeout(() => {
+        this.removeChannel(channelName);
+      }, 1000); // 1 second delay
+      
+      this.pendingCleanups.set(channelName, cleanupTimeout);
+    }
+  }
+
+  private removeChannel(channelName: string): void {
+    const channelData = this.activeChannels.get(channelName);
+    if (!channelData) return;
+
+    console.info(`[Realtime] Removing channel '${channelName}'`);
+    
+    try {
+      supabase.removeChannel(channelData.channel);
+      this.activeChannels.delete(channelName);
+      this.pendingCleanups.delete(channelName);
+      console.info(`[Realtime] Successfully removed channel '${channelName}'`);
+    } catch (error) {
+      console.error(`[Realtime] Error removing channel '${channelName}':`, error);
     }
   }
 
   public cleanupAllChannels(): void {
     console.info(`[Realtime] Cleaning up ${this.activeChannels.size} active channels`);
+    
+    // Clear all pending cleanups
+    for (const timeout of this.pendingCleanups.values()) {
+      clearTimeout(timeout);
+    }
+    this.pendingCleanups.clear();
     
     for (const [channelName, channelData] of this.activeChannels.entries()) {
       try {

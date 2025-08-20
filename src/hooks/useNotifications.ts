@@ -227,7 +227,10 @@ export const useNotifications = (): UseNotificationsReturn => {
   useEffect(() => {
     if (!user) return;
 
+    let isSubscribed = true; // Track if component is still mounted
+
     subscribeToChannel('user-notifications', (payload) => {
+      if (!isSubscribed) return; // Don't update state if unmounted
       console.log('Notification change received:', payload);
       
       if (payload.eventType === 'INSERT') {
@@ -257,7 +260,13 @@ export const useNotifications = (): UseNotificationsReturn => {
     });
 
     return () => {
-      unsubscribeFromChannel('user-notifications');
+      isSubscribed = false;
+      // Use a small delay to prevent immediate cleanup
+      setTimeout(() => {
+        if (!isSubscribed) {
+          unsubscribeFromChannel('user-notifications');
+        }
+      }, 100);
     };
   }, [user]);
 

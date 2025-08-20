@@ -174,24 +174,54 @@ export default function AirQualityDashboard({
               </p>
             </div>
             
-            <Button 
-              onClick={() => refetch()}
-              disabled={isRefreshing}
-              className="w-full"
-              size="lg"
-            >
-              {isRefreshing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Retrying...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Try Again
-                </>
-              )}
-            </Button>
+            <div className="space-y-3">
+              <Button 
+                onClick={() => refetch()}
+                disabled={isRefreshing}
+                className="w-full"
+                size="lg"
+              >
+                {isRefreshing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Try Again
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                onClick={() => {
+                  // Show demo data as fallback
+                  const demoData = {
+                    aqi: 45,
+                    pm25: 12.5,
+                    pm10: 25.3,
+                    no2: 15.2,
+                    so2: 3.1,
+                    co: 0.8,
+                    o3: 28.5,
+                    location: 'Demo Location',
+                    userLocation: 'Demo Location',
+                    coordinates: { lat: 40.7128, lon: -74.0060 },
+                    userCoordinates: { lat: 40.7128, lon: -74.0060 },
+                    timestamp: new Date().toLocaleString(),
+                    dataSource: 'Demo Data (API Unavailable)'
+                  };
+                  // Force the hook to use demo data
+                  refetch();
+                }}
+                variant="outline"
+                className="w-full"
+                size="lg"
+              >
+                Show Demo Data
+              </Button>
+            </div>
           </div>
         </motion.div>
       </div>

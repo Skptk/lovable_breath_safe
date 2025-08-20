@@ -100,8 +100,11 @@ export const useUserPoints = (): UserPoints => {
   useEffect(() => {
     if (!user) return;
 
+    let isSubscribed = true; // Track if component is still mounted
+
     // Subscribe to profile updates
     subscribeToChannel('user-profile-points', (payload) => {
+      if (!isSubscribed) return; // Don't update state if unmounted
       console.log('Profile points updated:', payload);
       const newProfile = payload.new as { total_points: number };
       if (newProfile.total_points !== undefined) {
@@ -118,6 +121,7 @@ export const useUserPoints = (): UserPoints => {
 
     // Subscribe to new points inserts
     subscribeToChannel('user-points-inserts', (payload) => {
+      if (!isSubscribed) return; // Don't update state if unmounted
       console.log('New points earned:', payload);
       // Refresh to get updated total
       fetchUserPoints();
@@ -129,8 +133,14 @@ export const useUserPoints = (): UserPoints => {
     });
 
     return () => {
-      unsubscribeFromChannel('user-profile-points');
-      unsubscribeFromChannel('user-points-inserts');
+      isSubscribed = false;
+      // Use a small delay to prevent immediate cleanup
+      setTimeout(() => {
+        if (!isSubscribed) {
+          unsubscribeFromChannel('user-profile-points');
+          unsubscribeFromChannel('user-points-inserts');
+        }
+      }, 100);
     };
   }, [user]);
 
