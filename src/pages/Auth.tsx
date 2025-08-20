@@ -5,13 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Eye, EyeOff, Code, AlertTriangle } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Code, AlertTriangle, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
 
 export default function Auth(): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showDevLogin, setShowDevLogin] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [passwordResetEmail, setPasswordResetEmail] = useState('');
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
   const [devFormData, setDevFormData] = useState({
     email: 'dev@breathsafe.com',
     password: 'devpassword123'
@@ -37,6 +40,16 @@ export default function Auth(): JSX.Element {
     };
     checkAuth();
   }, [navigate]);
+
+  // Check for password reset URL parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isReset = urlParams.get('reset');
+    if (isReset === 'true') {
+      setShowForgotPassword(true);
+      setPasswordResetSent(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -87,6 +100,42 @@ export default function Auth(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Handle password reset request
+  const handlePasswordReset = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(passwordResetEmail, {
+        redirectTo: `${window.location.origin}/auth?reset=true`
+      });
+
+      if (error) throw error;
+
+      setPasswordResetSent(true);
+      toast({
+        title: "Password reset email sent!",
+        description: "Check your email for a link to reset your password.",
+      });
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to send password reset email',
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reset the forgot password form
+  const handleBackToSignIn = (): void => {
+    setShowForgotPassword(false);
+    setPasswordResetEmail('');
+    setPasswordResetSent(false);
   };
 
   // Developer login function - handles development authentication
@@ -359,6 +408,21 @@ export default function Auth(): JSX.Element {
               </div>
             </div>
             
+            {/* Forgot Password Link - Only show on sign in */}
+            {!isSignUp && (
+              <div className="text-right">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-muted-foreground hover:text-foreground p-0 h-auto"
+                >
+                  Forgot your password?
+                </Button>
+              </div>
+            )}
+            
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90"
@@ -378,6 +442,72 @@ export default function Auth(): JSX.Element {
               {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
             </Button>
           </div>
+
+          {/* Forgot Password Form */}
+          {showForgotPassword && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <div className="text-center space-y-4">
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Mail className="h-4 w-4" />
+                  <span>Reset your password</span>
+                </div>
+                
+                {!passwordResetSent ? (
+                  <form onSubmit={handlePasswordReset} className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="resetEmail" className="text-sm font-medium text-left block">
+                        Email Address
+                      </label>
+                      <Input
+                        id="resetEmail"
+                        type="email"
+                        value={passwordResetEmail}
+                        onChange={(e) => setPasswordResetEmail(e.target.value)}
+                        required
+                        className="bg-background border-border"
+                        placeholder="Enter your email address"
+                      />
+                    </div>
+                    
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      className="w-full"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="mr-2 h-4 w-4" />
+                      )}
+                      Send Reset Link
+                    </Button>
+                  </form>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-center gap-2 text-green-600">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="font-medium">Reset email sent!</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Check your email for a link to reset your password. The link will expire in 24 hours.
+                    </p>
+                  </div>
+                )}
+                
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBackToSignIn}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to sign in
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Developer Login Section - Only visible in development */}
           {isDevelopment && (
