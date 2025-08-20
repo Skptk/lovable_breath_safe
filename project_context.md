@@ -177,6 +177,7 @@ src/
 - **Emission Source Mapping** - Integrated emission source data with clustering and detailed pollutant information
 - **Multi-API Integration** - Robust integration of Open-Meteo, OpenWeatherMap, and OpenAQ APIs with intelligent fallback systems
 - **Environment Configuration** - Resolved OpenWeatherMap API key missing error by properly configuring .env.local file for weather components
+- **API Key Configuration** - Fixed OpenWeatherMap API key configuration in .env.local file, resolving weather component loading errors
 - **Comprehensive Weather Data Storage** - Extended database schema to include wind speed, direction, pressure, UV index, and forecast summary alongside AQI readings
 - **Unified Weather Data Management** - New useWeatherData hook provides centralized weather data fetching, caching, and storage with React Query integration
 - **Enhanced WeatherStats Dashboard** - Added comprehensive weather overview cards with real-time temperature, humidity, wind, pressure, and visibility data
@@ -186,6 +187,7 @@ src/
 - **Enhanced History Management** - HistoryView now features clickable cards with detailed modal popups, comprehensive weather data display, and individual entry export functionality
 - **Console Warning Fixes** - Resolved DialogDescription warnings in HistoryDetailModal and improved error handling for OpenAQ API failures
 - **Major UI Overhaul** - Removed emissions sources from weather page, created dedicated news page, replaced news card with news preview on homepage, and removed redundant air quality details card
+- **News Page Console Error Fixes** - Added comprehensive null safety, error handling, and loading states to NewsPage component to resolve "Cannot read properties of null" errors
 
 ### 📱 Current Navigation System
 - **Single-Page Application** with URL parameters (`?view=dashboard`)
