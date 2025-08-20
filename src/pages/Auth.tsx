@@ -301,6 +301,18 @@ export default function Auth(): JSX.Element {
       setNewPassword('');
       setConfirmPassword('');
       setIsSignUp(false);
+      
+      // Clean up the URL by removing the recovery code parameter
+      const url = new URL(window.location.href);
+      url.searchParams.delete('code');
+      url.searchParams.delete('access_token');
+      url.searchParams.delete('refresh_token');
+      url.searchParams.delete('type');
+      url.searchParams.delete('reset');
+      
+      // Update the URL without the recovery parameters
+      window.history.replaceState({}, '', url.toString());
+      console.log('URL cleaned up after successful password reset');
     } catch (error: any) {
       console.error('Password reset error:', error);
       
