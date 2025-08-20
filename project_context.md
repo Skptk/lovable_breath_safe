@@ -139,6 +139,7 @@ src/
 - **Comprehensive Weather Hook** - Created useWeatherData hook for unified weather data management with React Query integration
 - **Enhanced WeatherStats Component** - Added comprehensive weather overview cards with real-time data display
 - **Dashboard Weather Cards** - Enhanced WeatherStatsCard with additional weather metrics including wind, pressure, and visibility
+- **History Detail Modal** - New comprehensive modal component for viewing detailed history information with export functionality
 - **Automatic Data Refresh Fix** - Resolved issue where air quality data was only stored on manual refresh, now automatically refreshes every 15 minutes
 
 ### 🆕 Current User Experience Improvements
@@ -181,6 +182,7 @@ src/
 - **Advanced Dashboard Weather Cards** - Enhanced WeatherStatsCard component with additional weather metrics and improved visual design
 - **Responsive Weather Layout** - Fully responsive weather data grid that adapts to all Tailwind breakpoints (sm, md, lg, xl)
 - **Real-time Data Persistence** - Air quality data now automatically refreshes and saves every 15 minutes, ensuring consistent history tracking
+- **Enhanced History Management** - HistoryView now features clickable cards with detailed modal popups, comprehensive weather data display, and individual entry export functionality
 
 ### 📱 Current Navigation System
 - **Single-Page Application** with URL parameters (`?view=dashboard`)
