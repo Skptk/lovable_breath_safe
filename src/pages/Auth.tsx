@@ -48,6 +48,11 @@ export default function Auth(): JSX.Element {
 
   // Check for password reset URL parameter and recovery token
   useEffect(() => {
+    console.log('Checking URL for recovery flow...');
+    console.log('Current URL:', window.location.href);
+    console.log('Search params:', window.location.search);
+    console.log('Hash:', window.location.hash);
+    
     const urlParams = new URLSearchParams(window.location.search);
     const isReset = urlParams.get('reset');
     const accessToken = urlParams.get('access_token');
@@ -58,16 +63,21 @@ export default function Auth(): JSX.Element {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const hashAccessToken = hashParams.get('access_token');
     const hashRefreshToken = hashParams.get('refresh_token');
+    const hashType = hashParams.get('type');
+    
+    console.log('URL Parameters:', { isReset, accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+    console.log('Hash Parameters:', { hashAccessToken: !!hashAccessToken, hashRefreshToken: !!hashRefreshToken, hashType });
     
     // Check if this is a password recovery flow
-    if (isReset === 'true' || (accessToken && refreshToken) || (hashAccessToken && hashRefreshToken) || type === 'recovery') {
+    if (isReset === 'true' || (accessToken && refreshToken) || (hashAccessToken && hashRefreshToken) || type === 'recovery' || hashType === 'recovery') {
       console.log('Password reset flow detected:', { 
         isReset, 
         accessToken: !!accessToken, 
         refreshToken: !!refreshToken, 
         hashAccessToken: !!hashAccessToken,
         hashRefreshToken: !!hashRefreshToken,
-        type 
+        type,
+        hashType
       });
       
       // Hide all other forms and show only password reset form
@@ -92,7 +102,18 @@ export default function Auth(): JSX.Element {
             console.log('Recovery session set successfully');
           }
         });
+      } else {
+        console.log('No recovery tokens found, but recovery flow detected');
+        
+        // If we detect recovery flow but no tokens, try to handle it as a recovery request
+        // This might happen when Supabase redirects after processing the verification
+        if (type === 'recovery' || hashType === 'recovery') {
+          console.log('Recovery type detected, waiting for session...');
+          // The auth state change listener should handle this
+        }
       }
+    } else {
+      console.log('No password reset flow detected');
     }
   }, []);
 
@@ -112,6 +133,14 @@ export default function Auth(): JSX.Element {
       // If we get a token refreshed event and it's a recovery session, show password reset form
       if (event === 'TOKEN_REFRESHED' && session?.user && window.location.hash.includes('type=recovery')) {
         console.log('Token refreshed for recovery, showing reset form');
+        setIsSignUp(false);
+        setShowForgotPassword(false);
+        setShowPasswordResetForm(true);
+      }
+      
+      // If we get a session and we're in recovery mode, show password reset form
+      if (event === 'SIGNED_IN' && session?.user && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))) {
+        console.log('Signed in with recovery session, showing reset form');
         setIsSignUp(false);
         setShowForgotPassword(false);
         setShowPasswordResetForm(true);
