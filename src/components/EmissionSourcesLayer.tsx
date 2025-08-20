@@ -74,9 +74,8 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
         throw new Error(`OpenAQ API request failed: ${response.status}`);
       }
     } catch (error) {
-      console.warn('OpenAQ API failed, using mock data:', error);
-      
-      // Fallback to mock data
+      // OpenAQ API often fails due to CORS or network issues - this is expected
+      // Silently fall back to mock data for better user experience
       const mockSources = generateMockEmissionSources();
       setEmissionSources(mockSources);
       setLastUpdated(new Date().toISOString());

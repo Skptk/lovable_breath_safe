@@ -124,7 +124,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
     }
 
     try {
-      console.log('MapView: Starting geolocation request...');
+      console.log('WeatherStats: Starting geolocation request...');
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           timeout: 30000, // 30 seconds - mobile devices need more time
@@ -133,7 +133,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
         });
       });
 
-      console.log('MapView: Geolocation successful, coordinates:', position.coords.latitude, position.coords.longitude);
+              console.log('WeatherStats: Geolocation successful, coordinates:', position.coords.latitude, position.coords.longitude);
       const { latitude, longitude } = position.coords;
       
       // Get city name from coordinates using reverse geocoding
@@ -170,7 +170,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       
       // For new users or location unavailable, provide fallback location
       if (err.code === 2) {
-        console.log('MapView: Providing fallback location for new user, retry count:', retryCount);
+        console.log('WeatherStats: Providing fallback location for new user, retry count:', retryCount);
         
         if (retryCount < 3) {
           // Increment retry count and show retry message
@@ -185,10 +185,10 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
           });
           
           // Log retry attempt for debugging
-          console.log(`MapView: Retry attempt ${attemptNumber}/3 for new user geolocation`);
+                      console.log(`WeatherStats: Retry attempt ${attemptNumber}/3 for new user geolocation`);
         } else {
           // After 3 retries, provide a demo location for new users
-          console.log('MapView: Providing demo location after 3 failed attempts');
+                      console.log('WeatherStats: Providing demo location after 3 failed attempts');
           const demoLocation = {
             latitude: -1.2921, // Nairobi coordinates as demo
             longitude: 36.8219,
@@ -341,7 +341,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
   useEffect(() => {
     if (error && retryCount > 0 && retryCount < 3) {
       const timer = setTimeout(() => {
-        console.log(`MapView: Auto-retrying geolocation for new user (attempt ${retryCount + 1}/3)...`);
+        console.log(`WeatherStats: Auto-retrying geolocation for new user (attempt ${retryCount + 1}/3)...`);
         
         // Show user feedback about the auto-retry
         toast({

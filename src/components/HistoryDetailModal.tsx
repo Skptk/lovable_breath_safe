@@ -167,9 +167,14 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold">
-              Air Quality Reading Details
-            </DialogTitle>
+            <div>
+              <DialogTitle className="text-xl font-semibold">
+                Air Quality Reading Details
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Detailed information about this air quality reading including weather data and environmental metrics.
+              </p>
+            </div>
             <Button
               onClick={handleExport}
               disabled={exporting}
