@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sun, Cloud, CloudRain, Thermometer, Droplets, Eye, RefreshCw, AlertTriangle } from "lucide-react";
+import { Sun, Cloud, CloudRain, Thermometer, Droplets, Eye, RefreshCw, AlertTriangle, Wind, Gauge, Compass } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useWeatherData } from "@/hooks/useWeatherData";
 
 interface WeatherData {
   temperature: number;
@@ -14,6 +15,10 @@ interface WeatherData {
   sunset: string;
   weatherCode: number;
   description: string;
+  windSpeed?: number;
+  windDirection?: number;
+  airPressure?: number;
+  visibility?: number;
 }
 
 interface WeatherStatsCardProps {
@@ -61,7 +66,11 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
             hour12: true 
           }),
           weatherCode: data.weather[0].id,
-          description: data.weather[0].description
+          description: data.weather[0].description,
+          windSpeed: data.wind?.speed ? data.wind.speed * 3.6 : undefined, // Convert m/s to km/h
+          windDirection: data.wind?.deg,
+          airPressure: data.main.pressure,
+          visibility: data.visibility ? data.visibility / 1000 : undefined // Convert m to km
         });
         
         setLastUpdated(new Date().toISOString());
@@ -96,6 +105,13 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
     if (weatherCode >= 801 && weatherCode < 900) return <Cloud className="h-6 w-6 text-gray-500" />; // Clouds
     
     return <Cloud className="h-6 w-6 text-gray-500" />; // Default
+  };
+
+  // Helper function to convert wind direction degrees to cardinal directions
+  const getWindDirection = (degrees: number): string => {
+    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    const index = Math.round(degrees / 22.5) % 16;
+    return directions[index];
   };
 
   const getTemperatureColor = (temp: number): string => {
@@ -217,6 +233,52 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
                 </div>
               </div>
             </div>
+
+            {/* Additional Weather Data */}
+            {(weatherData.windSpeed || weatherData.airPressure || weatherData.visibility) && (
+              <div className="grid grid-cols-2 gap-4">
+                {weatherData.windSpeed && (
+                  <div className="text-center p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <Wind className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm font-medium">Wind</span>
+                    </div>
+                    <div className="text-lg font-semibold text-gray-600">
+                      {weatherData.windSpeed.toFixed(1)} km/h
+                    </div>
+                    {weatherData.windDirection && (
+                      <div className="text-xs text-muted-foreground">
+                        {weatherData.windDirection}° {getWindDirection(weatherData.windDirection)}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {weatherData.airPressure && (
+                  <div className="text-center p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <Gauge className="h-4 w-4 text-purple-500" />
+                      <span className="text-sm font-medium">Pressure</span>
+                    </div>
+                    <div className="text-lg font-semibold text-purple-600">
+                      {weatherData.airPressure} hPa
+                    </div>
+                  </div>
+                )}
+
+                {weatherData.visibility && (
+                  <div className="text-center p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <Eye className="h-4 w-4 text-indigo-500" />
+                      <span className="text-sm font-medium">Visibility</span>
+                    </div>
+                    <div className="text-lg font-semibold text-indigo-600">
+                      {weatherData.visibility.toFixed(1)} km
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Sunrise/Sunset */}
             <div className="grid grid-cols-2 gap-4">

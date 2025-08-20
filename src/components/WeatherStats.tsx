@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Layers, Loader2, AlertTriangle, Wind, Cloud, Sun, CloudRain } from "lucide-react";
+import { MapPin, Navigation, Layers, Loader2, AlertTriangle, Wind, Cloud, Sun, CloudRain, Thermometer, Droplets, Eye, Gauge, Compass } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import LeafletMap from "./LeafletMap";
@@ -10,6 +10,7 @@ import Header from "@/components/Header";
 import WindDashboard from "./WindDashboard";
 import WeatherForecast from "./WeatherForecast";
 import EmissionSourcesLayer from "./EmissionSourcesLayer";
+import { useWeatherData } from "@/hooks/useWeatherData";
 
 
 interface NearbyLocation {
@@ -34,7 +35,7 @@ interface AirQualityData {
   timestamp: string;
 }
 
-interface MapViewProps {
+interface WeatherStatsProps {
   showMobileMenu?: boolean;
   onMobileMenuToggle?: () => void;
 }
@@ -48,6 +49,21 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
   const [retryCount, setRetryCount] = useState(0);
   const [showEmissionLayer, setShowEmissionLayer] = useState(false);
   const { toast } = useToast();
+
+  // Weather data hook integration
+  const weatherData = useWeatherData({
+    latitude: userLocation?.latitude,
+    longitude: userLocation?.longitude,
+    autoRefresh: true,
+    refreshInterval: 900000 // 15 minutes
+  });
+
+  // Helper function to convert wind direction degrees to cardinal directions
+  const getWindDirection = (degrees: number): string => {
+    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    const index = Math.round(degrees / 22.5) % 16;
+    return directions[index];
+  };
 
   // Mock nearby locations - in a real app, these would come from an API
   const nearbyLocations: NearbyLocation[] = [
@@ -522,16 +538,127 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Weather Conditions</CardTitle>
-            <Sun className="h-4 w-4 text-muted-foreground" />
+            {weatherData.currentWeather?.weatherCondition === 'Rain' ? (
+              <CloudRain className="h-4 w-4 text-muted-foreground" />
+            ) : weatherData.currentWeather?.weatherCondition === 'Clouds' ? (
+              <Cloud className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Sun className="h-4 w-4 text-muted-foreground" />
+            )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Loading...</div>
-            <p className="text-xs text-muted-foreground">
-              Weather data will appear here
+            {weatherData.loading ? (
+              <div className="text-2xl font-bold">Loading...</div>
+            ) : weatherData.currentWeather ? (
+              <>
+                <div className="text-2xl font-bold flex items-center gap-2">
+                  <Thermometer className="h-6 w-6 text-orange-500" />
+                  {weatherData.currentWeather.temperature}°C
+                </div>
+                <div className="text-sm text-muted-foreground space-y-1 mt-2">
+                  <div className="flex items-center gap-2">
+                    <Droplets className="h-3 w-3 text-blue-500" />
+                    Humidity: {weatherData.currentWeather.humidity}%
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Wind className="h-3 w-3 text-gray-500" />
+                    Wind: {weatherData.currentWeather.windSpeed} km/h
+                  </div>
+                  {weatherData.currentWeather.feelsLikeTemperature && (
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-3 w-3 text-purple-500" />
+                      Feels like: {weatherData.currentWeather.feelsLikeTemperature}°C
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-2xl font-bold text-muted-foreground">No Data</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-2">
+              {weatherData.currentWeather?.timestamp ? 
+                `Updated: ${new Date(weatherData.currentWeather.timestamp).toLocaleTimeString()}` : 
+                'Weather data unavailable'
+              }
             </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Comprehensive Weather Data */}
+      {userLocation && weatherData.currentWeather && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Temperature & Feels Like */}
+          <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Thermometer className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                <span className="text-sm font-medium">Temperature</span>
+              </div>
+              <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
+                {weatherData.currentWeather.temperature}°C
+              </div>
+              {weatherData.currentWeather.feelsLikeTemperature && (
+                <div className="text-sm text-muted-foreground">
+                  Feels like {weatherData.currentWeather.feelsLikeTemperature}°C
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Humidity & Pressure */}
+          <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Droplets className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium">Humidity</span>
+              </div>
+              <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                {weatherData.currentWeather.humidity}%
+              </div>
+              {weatherData.currentWeather.airPressure && (
+                <div className="text-sm text-muted-foreground">
+                  {weatherData.currentWeather.airPressure} hPa
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Wind Information */}
+          <Card className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Wind className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm font-medium">Wind</span>
+              </div>
+              <div className="text-2xl font-bold text-gray-700 dark:text-gray-300">
+                {weatherData.currentWeather.windSpeed} km/h
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {weatherData.currentWeather.windDirection}° {getWindDirection(weatherData.currentWeather.windDirection)}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Visibility & UV */}
+          <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Eye className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                <span className="text-sm font-medium">Visibility</span>
+              </div>
+              <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                {weatherData.currentWeather.visibility || 'N/A'} km
+              </div>
+              {weatherData.currentWeather.uvIndex && (
+                <div className="text-sm text-muted-foreground">
+                  UV Index: {weatherData.currentWeather.uvIndex}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Wind Dashboard */}
       {userLocation && (
@@ -553,12 +680,11 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       <div className="relative h-[calc(100vh-200px)] min-h-[600px]">
         {/* Leaflet Map Integration - Full width/height */}
         <div className="w-full h-full rounded-lg overflow-hidden border border-border">
-          <LeafletMap 
-            userLocation={userLocation}
-            airQualityData={airQualityData}
-            nearbyLocations={nearbyLocations}
-            showEmissionLayer={showEmissionLayer}
-          />
+                  <LeafletMap
+          userLocation={userLocation}
+          airQualityData={airQualityData}
+          nearbyLocations={nearbyLocations}
+        />
         </div>
         
         {showEmissionLayer && (
