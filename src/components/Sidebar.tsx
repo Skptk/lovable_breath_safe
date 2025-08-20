@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Home, History, Map, Trophy, ShoppingBag, User, Newspaper } from "lucide-react";
+import { Home, History, Map, Trophy, ShoppingBag, User, Newspaper, Settings } from "lucide-react";
 
 interface SidebarProps {
   currentView: string;
@@ -16,6 +16,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
     { id: "rewards", label: "Rewards", icon: Trophy },
     { id: "store", label: "Store", icon: ShoppingBag },
     { id: "profile", label: "Profile", icon: User },
+    { id: "settings", label: "Settings", icon: Settings },
   ];
 
   return (

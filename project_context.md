@@ -28,7 +28,8 @@ src/
 ### Key Pages
 - **Landing** (`/`) - Public homepage with hero and features
 - **Dashboard** (`/?view=dashboard`) - Main app interface
-- **Profile** (`/?view=profile`) - User settings and preferences
+- **Profile** (`/?view=profile`) - User profile management and rewards
+- **Settings** (`/?view=settings`) - Site-wide settings and preferences
 - **History** (`/?view=history`) - Air quality reading history
 - **Weather** (`/?view=map`) - Comprehensive weather and air quality monitoring
 - **News** (`/?view=news`) - Health and environment news articles
@@ -98,6 +99,8 @@ src/
 - **Database Integration** - Full CRUD operations with RLS
 
 ### 🔧 Recently Fixed Issues
+- **Profile and Settings Separation** - ✅ COMPLETED: Successfully split ProfileView into dedicated ProfileView (profile management, rewards, withdrawals, account management) and SettingsView (site-wide settings, appearance, privacy, location, data management, notifications)
+- **Navigation Enhancement** - ✅ COMPLETED: Added dedicated Settings page to sidebar, footer, and mobile navigation with proper routing and view switching
 - **Realtime Client Stability** - Fixed multiple realtime channel errors including CHANNEL_ERROR, TIMED_OUT, and connection issues during sign-out and view changes
 - **Realtime Manager Lifecycle** - Implemented proper destroy/reset functionality for realtime connection manager to prevent memory leaks and connection conflicts
 - **Sign-out Process** - Enhanced sign-out flow with proper realtime channel cleanup, state reset, and manager destruction to prevent post-signout errors
@@ -216,8 +219,27 @@ src/
 - **Single-Page Application** with URL parameters (`?view=dashboard`)
 - **Custom Event System** for view changes between components
 - **Footer Navigation** - Uses `navigateToView()` function
-- **Sidebar Navigation** - Direct view switching
+- **Sidebar Navigation** - Direct view switching with 8 main views
 - **Mobile Navigation** - Hamburger menu with dropdown
+- **Profile & Settings Separation** - Dedicated ProfileView for user management and dedicated SettingsView for app preferences
+
+### 🔧 Profile & Settings Architecture
+
+#### ProfileView (Profile Management)
+- **User Information** - Edit name, view email, avatar management
+- **User Statistics** - Total readings, points earned, member since, favorite location
+- **Rewards System** - Points display, gift card redemption, currency conversion
+- **Withdrawal Management** - Request withdrawals, view withdrawal history
+- **Account Management** - Data export, account deletion options
+- **Sign Out** - User authentication logout
+
+#### SettingsView (Site-Wide Preferences)
+- **Notifications** - Push notifications, email preferences, alert settings
+- **Appearance** - Theme preferences, language selection, unit systems
+- **Privacy** - Data sharing, public profile, location history settings
+- **Location** - Auto-location, accuracy settings, location history
+- **Data Management** - Retention policies, data export, storage settings
+- **Legal** - Privacy policy, terms of service links
 
 ## Development Guidelines
 

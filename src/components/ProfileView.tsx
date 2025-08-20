@@ -6,41 +6,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/use-toast';
-import { useTheme } from '@/contexts/ThemeContext';
 import Header from "@/components/Header";
 import { 
   User, 
-  Settings, 
-  Bell, 
-  Shield, 
-  HelpCircle, 
   LogOut,
   Download,
-  Smartphone,
   Award,
   Edit3,
   Save,
   X,
-  Globe,
-  Palette,
-  Database,
+  Shield,
   Calendar,
   MapPin,
   Activity,
   Zap,
   Loader2,
   AlertTriangle,
-  CheckCircle,
   DollarSign,
   Gift,
   CreditCard
 } from "lucide-react";
-import NotificationSettings from "./NotificationSettings";
 
 interface Profile {
   id: string;
@@ -103,35 +92,15 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     paypal_email: '',
     mpesa_phone: ''
   });
-  
-  // Local state for settings - initialize with default values to prevent controlled/uncontrolled warnings
-  const [localSettings, setLocalSettings] = useState({
-    theme: 'system' as 'light' | 'dark' | 'system',
-    language: 'en' as 'en' | 'es' | 'fr',
-    units: 'metric' as 'metric' | 'imperial',
-    dataRetention: '90days' as '30days' | '90days' | '1year' | 'forever',
-    privacy: {
-      shareData: false,
-      publicProfile: false,
-      locationHistory: true
-    },
-    location: {
-      autoLocation: true,
-      locationAccuracy: 'high' as 'high' | 'medium' | 'low',
-      locationHistory: true
-    }
-  });
 
   const { user, signOut } = useAuth();
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     if (user) {
       fetchProfile();
       fetchWithdrawalRequests();
       fetchGiftCards();
-      loadLocalSettings();
     }
   }, [user]);
 
@@ -141,33 +110,6 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
       fetchUserStats();
     }
   }, [profile]);
-
-
-
-  const loadLocalSettings = () => {
-    // Load settings from localStorage
-    const savedSettings = localStorage.getItem('breath-safe-profile-settings');
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings);
-        // Only load non-theme settings to prevent theme switching
-        const { theme: _, ...nonThemeSettings } = parsed;
-        setLocalSettings(prev => ({
-          ...prev,
-          ...nonThemeSettings
-        }));
-      } catch (error) {
-        console.warn('Failed to parse saved settings, using defaults');
-      }
-    }
-  };
-
-  const saveLocalSettings = (newSettings: typeof localSettings) => {
-    setLocalSettings(newSettings);
-    localStorage.setItem('breath-safe-profile-settings', JSON.stringify(newSettings));
-    // Never change the theme from profile settings - only allow theme changes from the sidebar toggle
-    // This prevents the profile page from overriding the user's current theme preference
-  };
 
   const fetchProfile = async () => {
     try {
@@ -246,7 +188,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
       }, {} as Record<string, number>) || {};
 
       const favoriteLocation = Object.entries(locationCounts)
-        .sort(([,a], [,b]) => b - a)[0]?.[0] || 'No readings yet';
+        .sort(([,a], [,b]) => (b || 0) - (a || 0))[0]?.[0] || 'No readings yet';
 
       setUserStats({
         totalReadings: readingsCount || 0,
@@ -494,7 +436,6 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
       const exportData = {
         profile: profile,
         readings: readings || [],
-        settings: localSettings,
         exportDate: new Date().toISOString()
       };
 
@@ -539,30 +480,6 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     }
   };
 
-  const updateLocalSetting = (category: keyof typeof localSettings, key: string, value: any) => {
-    if (category === 'theme' || category === 'language' || category === 'units' || category === 'dataRetention') {
-      const newSettings = {
-        ...localSettings,
-        [category]: value
-      };
-      saveLocalSettings(newSettings);
-    } else if (category === 'privacy' || category === 'location') {
-      const newSettings = {
-        ...localSettings,
-        [category]: {
-          ...localSettings[category],
-          [key]: value
-        }
-      };
-      saveLocalSettings(newSettings);
-    }
-    
-    toast({
-      title: "Setting Updated",
-      description: `${key} has been updated successfully.`,
-    });
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
@@ -593,8 +510,8 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header 
-        title="Profile & Settings"
-        subtitle="Manage your account, preferences, and view your progress"
+        title="Profile"
+        subtitle="Manage your account, view progress, and redeem rewards"
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
@@ -605,7 +522,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
             Profile
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your account and preferences
+            Manage your account and view your progress
           </p>
         </div>
 
@@ -730,105 +647,24 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
           </Card>
         </div>
 
-        {/* Settings Tabs */}
-        <Tabs defaultValue="notifications" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="privacy">Privacy</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="location">Location</TabsTrigger>
+        {/* Profile Tabs */}
+        <Tabs defaultValue="rewards" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="rewards">Rewards</TabsTrigger>
             <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
+            <TabsTrigger value="account">Account</TabsTrigger>
           </TabsList>
 
-          {/* Notifications Tab */}
-          <TabsContent value="notifications" className="space-y-4">
-            <NotificationSettings />
-          </TabsContent>
-
-          {/* Privacy Tab */}
-          <TabsContent value="privacy" className="space-y-4">
+          {/* Account Tab */}
+          <TabsContent value="account" className="space-y-4">
             <Card className="bg-gradient-card shadow-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
-                  Privacy & Security
+                  Account Management
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="share-data">Share Data for Research</Label>
-                    <p className="text-sm text-muted-foreground">Anonymously contribute to air quality research</p>
-                  </div>
-                  <Switch
-                    id="share-data"
-                    checked={localSettings.privacy.shareData}
-                    onCheckedChange={(checked) => updateLocalSetting('privacy', 'shareData', checked)}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="public-profile">Public Profile</Label>
-                    <p className="text-sm text-muted-foreground">Allow others to see your profile</p>
-                  </div>
-                  <Switch
-                    id="public-profile"
-                    checked={localSettings.privacy.publicProfile}
-                    onCheckedChange={(checked) => updateLocalSetting('privacy', 'publicProfile', checked)}
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="location-history">Location History</Label>
-                    <p className="text-sm text-muted-foreground">Store your location history</p>
-                  </div>
-                  <Switch
-                    id="location-history"
-                    checked={localSettings.privacy.locationHistory}
-                    onCheckedChange={(checked) => updateLocalSetting('privacy', 'locationHistory', checked)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Privacy Policy & Terms */}
-            <Card className="bg-gradient-card shadow-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <HelpCircle className="h-5 w-5" />
-                  Legal & Documentation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Privacy Policy</Label>
-                  <p className="text-sm text-muted-foreground">Read our privacy policy to understand how we protect your data</p>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start gap-2"
-                    onClick={() => window.open('/privacy', '_blank')}
-                  >
-                    <Shield className="h-4 w-4" />
-                    Read Privacy Policy
-                  </Button>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Terms of Service</Label>
-                  <p className="text-sm text-muted-foreground">Review our terms and conditions for using Breath Safe</p>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start gap-2"
-                    onClick={() => window.open('/terms', '_blank')}
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                    Read Terms of Service
-                  </Button>
-                </div>
-                
                 <div className="space-y-2">
                   <Label>Data Export & Deletion</Label>
                   <p className="text-sm text-muted-foreground">Manage your data and account</p>
@@ -860,152 +696,6 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                       Delete Account
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Preferences Tab */}
-          <TabsContent value="preferences" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  App Preferences
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="theme">Theme Preference</Label>
-                  <p className="text-sm text-muted-foreground">Your preferred theme (use sidebar toggle to change current theme)</p>
-                  <Select
-                    value={localSettings.theme}
-                    onValueChange={(value: 'light' | 'dark' | 'system') => 
-                      updateLocalSetting('theme', 'theme', value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">Light</SelectItem>
-                      <SelectItem value="dark">Dark</SelectItem>
-                      <SelectItem value="system">System</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="language">Language</Label>
-                  <Select
-                    value={localSettings.language}
-                    onValueChange={(value: 'en' | 'es' | 'fr') => 
-                      updateLocalSetting('language', 'language', value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="es">Español</SelectItem>
-                      <SelectItem value="fr">Français</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="units">Units</Label>
-                  <Select
-                    value={localSettings.units}
-                    onValueChange={(value: 'metric' | 'imperial') => 
-                      updateLocalSetting('units', 'units', value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="metric">Metric (μg/m³)</SelectItem>
-                      <SelectItem value="imperial">Imperial (ppm)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="data-retention">Data Retention</Label>
-                  <Select
-                    value={localSettings.dataRetention}
-                    onValueChange={(value: '30days' | '90days' | '1year' | 'forever') => 
-                      updateLocalSetting('dataRetention', 'dataRetention', value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="30days">30 Days</SelectItem>
-                      <SelectItem value="90days">90 Days</SelectItem>
-                      <SelectItem value="1year">1 Year</SelectItem>
-                      <SelectItem value="forever">Forever</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Location Tab */}
-          <TabsContent value="location" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Location Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="auto-location">Auto Location</Label>
-                    <p className="text-sm text-muted-foreground">Automatically detect your location</p>
-                  </div>
-                  <Switch
-                    id="auto-location"
-                    checked={localSettings.location.autoLocation}
-                    onCheckedChange={(checked) => updateLocalSetting('location', 'autoLocation', checked)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="location-accuracy">Location Accuracy</Label>
-                  <Select
-                    value={localSettings.location.locationAccuracy}
-                    onValueChange={(value: 'high' | 'medium' | 'low') => 
-                      updateLocalSetting('location', 'locationAccuracy', value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="high">High (GPS)</SelectItem>
-                      <SelectItem value="medium">Medium (WiFi)</SelectItem>
-                      <SelectItem value="low">Low (IP)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="location-history-setting">Location History</Label>
-                    <p className="text-sm text-muted-foreground">Store your location history</p>
-                  </div>
-                  <Switch
-                    id="location-history-setting"
-                    checked={localSettings.location.locationHistory}
-                    onCheckedChange={(checked) => updateLocalSetting('location', 'locationHistory', checked)}
-                  />
                 </div>
               </CardContent>
             </Card>

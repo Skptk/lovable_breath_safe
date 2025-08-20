@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Heart, Shield, FileText, ShoppingBag, Map, BarChart3, User, Home } from "lucide-react";
+import { Heart, Shield, FileText, ShoppingBag, Map, BarChart3, User, Home, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 
@@ -185,6 +185,20 @@ export default function Footer() {
                   >
                     <User className="h-4 w-4" />
                     Profile
+                  </button>
+                </motion.div>
+              </li>
+              <li>
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <button 
+                    onClick={() => navigateToView('settings')}
+                    className="flex items-center justify-center sm:justify-start gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
                   </button>
                 </motion.div>
               </li>

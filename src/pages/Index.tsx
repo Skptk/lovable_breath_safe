@@ -5,6 +5,7 @@ import AirQualityDashboard from "@/components/AirQualityDashboard";
 import HistoryView from "@/components/HistoryView";
 import WeatherStats from "@/components/WeatherStats";
 import ProfileView from "@/components/ProfileView";
+import SettingsView from "@/components/SettingsView";
 import Rewards from "@/pages/Rewards";
 import Store from "@/pages/Store";
 import NewsPage from "@/components/NewsPage";
@@ -33,7 +34,7 @@ export default function Index(): JSX.Element {
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const view = urlParams.get('view');
-    if (view && ['dashboard', 'history', 'map', 'rewards', 'store', 'profile', 'news'].includes(view)) {
+    if (view && ['dashboard', 'history', 'map', 'rewards', 'store', 'profile', 'settings', 'news'].includes(view)) {
       setCurrentView(view);
     }
   }, [location.search]);
@@ -81,6 +82,11 @@ export default function Index(): JSX.Element {
         />;
       case "profile":
         return <ProfileView 
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={toggleMobileMenu}
+        />;
+      case "settings":
+        return <SettingsView 
           showMobileMenu={showMobileMenu}
           onMobileMenuToggle={toggleMobileMenu}
         />;

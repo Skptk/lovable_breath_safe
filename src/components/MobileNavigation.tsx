@@ -64,10 +64,12 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "history", label: "History", icon: History },
-    { id: "map", label: "Map", icon: Map },
+    { id: "map", label: "Weather", icon: Map },
+    { id: "news", label: "News", icon: History },
     { id: "rewards", label: "Rewards", icon: Trophy },
     { id: "store", label: "Store", icon: ShoppingBag },
     { id: "profile", label: "Profile", icon: User },
+    { id: "settings", label: "Settings", icon: Settings },
   ];
 
   const handleSignOut = async () => {
@@ -217,6 +219,7 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
                     <Button
                       variant="ghost"
                       className="w-full justify-start gap-3 h-12 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
+                      onClick={() => handleViewChange('settings')}
                     >
                       <Settings className="h-5 w-5" />
                       <span className="font-medium">Settings</span>
