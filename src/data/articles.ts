@@ -186,14 +186,23 @@ export const articles: Article[] = [
 
 export function getLatestArticles(limit: number = 3): Article[] {
   return articles
+    .filter(article => article && article.id && article.title && article.imageUrl)
     .sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime())
     .slice(0, limit);
 }
 
 export function getArticleById(id: string): Article | undefined {
-  return articles.find(article => article.id === id);
+  const article = articles.find(article => article.id === id);
+  // Ensure the found article is valid
+  if (article && article.id && article.title && article.imageUrl) {
+    return article;
+  }
+  return undefined;
 }
 
 export function getAllArticles(): Article[] {
-  return articles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+  // Ensure we return a valid array and filter out any invalid articles
+  return articles
+    .filter(article => article && article.id && article.title && article.imageUrl)
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 }

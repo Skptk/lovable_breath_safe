@@ -20,12 +20,27 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("latest");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  const allArticles = getAllArticles();
+  // Safely get articles with error handling
+  let allArticles: Article[] = [];
+  try {
+    allArticles = getAllArticles();
+    setIsLoading(false);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Failed to load articles');
+    setIsLoading(false);
+  }
   
-  // Filter and sort articles
+  // Filter and sort articles with null safety
   const filteredArticles = allArticles
     .filter(article => {
+      // Ensure article exists and has required properties
+      if (!article || !article.title || !article.excerpt || !article.category) {
+        return false;
+      }
+      
       const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = selectedCategory === "all" || article.category === selectedCategory;
@@ -90,7 +105,47 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
         onMobileMenuToggle={onMobileMenuToggle}
       />
 
-      {/* Search and Filter Controls */}
+      {/* Loading State */}
+      {isLoading && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="text-center py-12"
+        >
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading articles...</p>
+        </motion.div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="text-center py-12"
+        >
+          <div className="max-w-md mx-auto space-y-4">
+            <div className="w-24 h-24 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+              <BookOpen className="w-12 h-12 text-destructive" />
+            </div>
+            <h3 className="text-xl font-semibold">Failed to Load Articles</h3>
+            <p className="text-muted-foreground">{error}</p>
+            <Button
+              variant="outline"
+              onClick={() => window.location.reload()}
+            >
+              Try Again
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Only show content when not loading and no errors */}
+      {!isLoading && !error && (
+        <>
+          {/* Search and Filter Controls */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -173,11 +228,17 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
       >
-        {filteredArticles.map((article, index) => (
-          <motion.div
-            key={article.id}
-            className="group cursor-pointer"
-            onClick={() => setSelectedArticle(article)}
+        {filteredArticles.map((article, index) => {
+          // Additional safety check for article properties
+          if (!article || !article.id || !article.title || !article.imageUrl) {
+            return null; // Skip rendering invalid articles
+          }
+          
+          return (
+            <motion.div
+              key={article.id}
+              className="group cursor-pointer"
+              onClick={() => setSelectedArticle(article)}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ 
@@ -255,42 +316,45 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
               </CardContent>
             </Card>
           </motion.div>
-        ))}
+        );
+        })}
       </motion.div>
 
-      {/* No Results Message */}
-      {filteredArticles.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="text-center py-12"
-        >
-          <div className="max-w-md mx-auto space-y-4">
-            <BookOpen className="h-16 w-16 text-muted-foreground mx-auto opacity-50" />
-            <h3 className="text-lg font-semibold text-foreground">No articles found</h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search terms or filters to find what you're looking for.
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedCategory("all");
-              }}
+          {/* No Results Message */}
+          {filteredArticles.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="text-center py-12"
             >
-              Clear all filters
-            </Button>
-          </div>
-        </motion.div>
-      )}
+              <div className="max-w-md mx-auto space-y-4">
+                <BookOpen className="h-16 w-16 text-muted-foreground mx-auto opacity-50" />
+                <h3 className="text-lg font-semibold text-foreground">No articles found</h3>
+                <p className="text-muted-foreground">
+                  Try adjusting your search terms or filters to find what you're looking for.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedCategory("all");
+                  }}
+                >
+                  Clear all filters
+                </Button>
+              </div>
+            </motion.div>
+          )}
 
-      {/* Article Modal */}
-      <ArticleModal
-        article={selectedArticle}
-        isOpen={!!selectedArticle}
-        onClose={() => setSelectedArticle(null)}
-      />
+          {/* Article Modal */}
+          <ArticleModal
+            article={selectedArticle}
+            isOpen={!!selectedArticle}
+            onClose={() => setSelectedArticle(null)}
+          />
+        </>
+      )}
     </div>
   );
 }
