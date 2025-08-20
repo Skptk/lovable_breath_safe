@@ -3,16 +3,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Loader2, AlertTriangle, Map } from 'lucide-react';
 import { getAQIColor, getAQILabel, LEAFLET_MAPS_CONFIG } from '@/config/maps';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 
-// Fix for default markers in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// Dynamic imports for Leaflet
+let L: any = null;
+let leafletCSSLoaded = false;
 
 interface LeafletMapProps {
   userLocation: {
@@ -40,8 +34,30 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
-  const [markers, setMarkers] = useState<L.Marker[]>([]);
+  const [mapInstance, setMapInstance] = useState<any | null>(null);
+  const [markers, setMarkers] = useState<any[]>([]);
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
+
+  // Load Leaflet dynamically
+  useEffect(() => {
+    const loadLeaflet = async () => {
+      try {
+        if (!L) {
+          L = await import('leaflet');
+          if (!leafletCSSLoaded) {
+            await import('leaflet/dist/leaflet.css');
+            leafletCSSLoaded = true;
+          }
+        }
+        setLeafletLoaded(true);
+      } catch (error) {
+        console.error('Failed to load Leaflet:', error);
+        setMapError('Failed to load map library');
+      }
+    };
+
+    loadLeaflet();
+  }, []);
 
   // Dark theme tile layer configuration
   const darkTileLayer = LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark;
@@ -49,15 +65,15 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
 
   // Initialize map when user location is available
   useEffect(() => {
-    if (!userLocation || !mapRef.current || mapInstance) return;
+    if (!userLocation || !mapRef.current || mapInstance || !leafletLoaded || !L) return;
 
     // Check if the container already has a map instance
-    if (mapRef.current && mapRef.current._leaflet_id) {
+    if (mapRef.current && (mapRef.current as any)._leaflet_id) {
       return;
     }
 
     try {
-      // Create map instance
+      // Create map instance with performance optimizations
       const map = L.map(mapRef.current, {
         center: [userLocation.latitude, userLocation.longitude],
         zoom: LEAFLET_MAPS_CONFIG.DEFAULT_ZOOM,
@@ -70,6 +86,9 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         dragging: true,
         touchZoom: true,
         tap: true,
+        preferCanvas: true, // Performance optimization
+        updateWhenIdle: true, // Reduce CPU usage
+        zoomAnimation: false, // Reduce jank on low-end devices
       });
 
       // Add dark theme tile layer
@@ -128,7 +147,7 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       }).addTo(map);
 
       // Add nearby monitoring stations
-      const newMarkers: L.Marker[] = [];
+      const newMarkers: any[] = [];
       nearbyLocations.forEach((location) => {
         if (location.coordinates[0] !== 0 && location.coordinates[1] !== 0) {
           const marker = L.marker([location.coordinates[0], location.coordinates[1]], {
@@ -180,25 +199,25 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       console.error('Error initializing map:', error);
       setMapError('Failed to initialize map');
     }
-  }, [userLocation, nearbyLocations]);
+  }, [userLocation, nearbyLocations, leafletLoaded, L]);
 
   // Cleanup markers and map on unmount
   useEffect(() => {
     return () => {
       if (mapInstance) {
-        // Remove all markers first
-        markers.forEach(marker => {
-          if (marker && mapInstance.hasLayer(marker)) {
-            mapInstance.removeLayer(marker);
-          }
+        // Remove all layers first
+        mapInstance.eachLayer((layer: any) => {
+          mapInstance.removeLayer(layer);
         });
+        // Remove all event listeners
+        mapInstance.off();
         // Remove the map instance
         mapInstance.remove();
         setMapInstance(null);
         setMarkers([]);
       }
     };
-  }, []); // Empty dependency array - only run on unmount
+  }, [mapInstance]); // Include mapInstance in dependencies
 
   if (mapError) {
     return (

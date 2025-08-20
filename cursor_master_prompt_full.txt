@@ -1,0 +1,576 @@
+[MASTER PROMPT — Breath-safe Optimization]
+
+# Cursor Master Prompt — Optimize `breath-safe`
+
+You are Cursor working on the repo **`lovable_breath_safe/`** (Vite + React + TS + shadcn/ui + Zustand + React Query + Supabase + Leaflet + Recharts + Framer Motion). The production site is on Netlify.
+
+**Primary goals** (in order):
+1) **Reduce initial load time** and total JS/CSS shipped
+2) **Lower Chrome RAM usage** during a long session (idle + navigation)
+3) **Eliminate security flaws** (esp. secrets handling + RLS + headers)
+4) Keep UX and features intact, with graceful fallbacks
+
+When you finish each task group below, open a PR per group with a clear description, a before/after metric table, and a quick test plan.
+
+---
+
+## 0) Repo awareness & constraints
+- The codebase lives at: `lovable_breath_safe/`
+- Entry: `index.html` → `src/main.tsx` → `src/App.tsx`
+- Routing: `react-router-dom`
+- Pages in `src/pages`: `Index`, `Landing`, `Auth`, `Onboarding`, `Products`, `Store`, `Rewards`, `Terms`, `Privacy`, `NotFound`.
+- Heavy deps: `leaflet`, `react-leaflet` (map), `recharts` (charts), `framer-motion`, `@tanstack/react-query`, `@supabase/supabase-js`, many `@radix-ui/*`.
+- Global store: `src/store/index.ts` (Zustand, persisted, includes an in-memory cache)
+- Netlify config: `netlify.toml`
+- **Security red flag**: `src/integrations/supabase/client.ts` contains **fallback Supabase URL + anon key** constants.
+
+> Throughout, prefer small, surgical changes that deliver large wins. Do not break user flows.
+
+---
+
+## 1) Build & bundling optimizations (Vite/Rollup)
+
+### 1.1 Update `vite.config.ts`
+- Keep SWC plugin.
+- Ensure these options under `build`:
+  - `target: "es2020"`
+  - `cssCodeSplit: true`
+  - `minify: "esbuild"`
+  - `brotliSize: false` (faster build, we’ll rely on Netlify compression)
+  - `sourcemap: false` in production (already disabled)
+- Expand `manualChunks` to isolate heavy libs so they only load when needed:
+  ```ts
+  manualChunks: {
+    vendor: ["react", "react-dom"],
+    router: ["react-router-dom"],
+    query: ["@tanstack/react-query"],
+    supabase: ["@supabase/supabase-js"],
+    leaflet: ["leaflet", "react-leaflet"],
+    charts: ["recharts"],
+    motion: ["framer-motion"],
+    date: ["date-fns"],
+    ui: [
+      "@radix-ui/react-accordion",
+      "@radix-ui/react-alert-dialog",
+      "@radix-ui/react-aspect-ratio",
+      "@radix-ui/react-avatar",
+      "@radix-ui/react-checkbox",
+      "@radix-ui/react-collapsible",
+      "@radix-ui/react-context-menu",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-hover-card",
+      "@radix-ui/react-label",
+      "@radix-ui/react-menubar",
+      "@radix-ui/react-navigation-menu",
+      "@radix-ui/react-popover",
+      "@radix-ui/react-progress",
+      "@radix-ui/react-radio-group",
+      "@radix-ui/react-scroll-area",
+      "@radix-ui/react-select",
+      "@radix-ui/react-separator",
+      "@radix-ui/react-slider",
+      "@radix-ui/react-slot",
+      "@radix-ui/react-switch",
+      "@radix-ui/react-tabs",
+      "@radix-ui/react-toast",
+      "@radix-ui/react-toggle",
+      "@radix-ui/react-toggle-group",
+      "@radix-ui/react-tooltip"
+    ],
+  }
+  ```
+- Keep predictable `chunkFileNames`, `entryFileNames`, `assetFileNames`.
+
+### 1.2 Add analyzer tooling (dev-only)
+- Add `rollup-plugin-visualizer` and `vite-plugin-inspect` as devDeps.
+- Scripts:
+  ```json
+  "analyze": "vite build --mode production && npx rollup-plugin-visualizer --template treemap --open dist/stats.html"
+  ```
+- In PR, include a screenshot of the treemap and a table of sizes before/after.
+
+> Acceptance: Initial JS downloaded on `/` decreases meaningfully (target: **−30–50%**), and Time-to-Interactive improves in Lighthouse.
+
+---
+
+## 2) Route-level & component-level code splitting
+
+### 2.1 Lazy-load pages
+- Convert imports in `src/App.tsx` to dynamic `React.lazy` for **all** non-root-critical pages (`Auth`, `Onboarding`, `Products`, `Store`, `Rewards`, `Terms`, `Privacy`, `NotFound`).
+- Wrap routes in `<Suspense fallback={<PageSkeleton/>}>`.
+- Create a small `PageSkeleton` in `src/components/skeletons/PageSkeleton.tsx`.
+
+### 2.2 Lazy-load heavy components on Index
+- In `src/pages/Index.tsx`, **do not** import heavy components eagerly.
+- Convert to lazy imports with visible threshold using IntersectionObserver:
+  - `AirQualityDashboard` (keep above the fold pieces minimal; lazy-load sub-sections)
+  - `HistoryView`
+  - `WeatherStats`
+  - `NewsPage`
+  - `MapView` (very heavy: Leaflet)
+- Provide specific skeletons for each (small, DOM-light placeholders).
+
+### 2.3 Split *sub-components*
+- `LeafletMap.tsx`: change to **dynamic import** of `leaflet` and its CSS within the component block, only when rendered. Example:
+  ```ts
+  const L = await import("leaflet");
+  await import("leaflet/dist/leaflet.css");
+  ```
+- For Recharts, dynamically import the chart container components the first time they become visible.
+- For Framer Motion, switch to `LazyMotion` + `domAnimation` and only import motion features where needed.
+
+> Acceptance: Navigating to tabs that don’t need maps/charts should not download those chunks. Confirm via Network panel.
+
+---
+
+## 3) Reduce runtime memory (RAM) & leaks
+
+### 3.1 React Query tuning (src/main.tsx)
+Replace the `QueryClient` config with:
+```ts
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // lower RAM footprint
+      gcTime: 2 * 60 * 1000,       // Garbage collect after 2 min (v4 name)
+      staleTime: 60 * 1000,        // 1 min is enough for AQI/Weather
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      retry: 1,
+      keepPreviousData: true,
+    },
+    mutations: {
+      retry: 1,
+    }
+  }
+});
+```
+- Where long polling exists, ensure `refetchInterval` is conservative and **cleared** on tab hidden.
+
+### 3.2 Zustand store hygiene (`src/store/index.ts`)
+- **Do not persist** transient cache and large snapshots. Update the `persist` config to **partialize**:
+  ```ts
+  persist(
+    (set, get) => ({ /* ... */ }),
+    {
+      name: 'app-store',
+      partialize: (state) => ({
+        // Pick only what must survive reloads
+        user: state.user,
+        profile: state.profile,
+        currentLocation: state.currentLocation,
+        // EXCLUDE: cache, lastReading, error, isLoading, etc.
+      })
+    }
+  )
+  ```
+- Replace the naive `cache: { [key]: {data, timestamp, ttl} }` with a small LRU (max 50 entries) and strict TTL (e.g., 5 minutes). Evict on set and on interval.
+- Avoid storing large API payloads in Zustand if React Query already caches them; prefer Query cache.
+
+### 3.3 Leaflet lifecycle & map options (`src/components/LeafletMap.tsx`)
+- Ensure **proper cleanup**:
+  ```ts
+  useEffect(() => {
+    const map = L.map(node, { preferCanvas: true });
+    // ... attach layers/events
+    return () => {
+      map.eachLayer((lyr) => map.removeLayer(lyr));
+      map.off();
+      map.remove();
+    };
+  }, []);
+  ```
+- Use `{ preferCanvas: true }` and lower `updateWhenZooming/moving` to reduce CPU.
+- Debounce/throttle geolocation and marker updates.
+- Limit number of station markers rendered at once (e.g., top N by proximity), cluster if necessary.
+
+### 3.4 AbortControllers & effects
+- For all `fetch`/Supabase queries inside effects or custom hooks, support cancellation with `AbortController` and **clean up** on unmount.
+- Ensure **intervals/timeouts** are cleared in cleanup.
+
+### 3.5 Motion & animations
+- Wrap animations with `prefers-reduced-motion` guard.
+- Replace global `motion.div` usage with `LazyMotion` and enable animations only when on-screen (IntersectionObserver).
+
+> Acceptance: After idling 5 minutes on the dashboard and navigating between tabs, Chrome Task Manager shows substantially lower memory than before (aim **< 400–500 MB** on a typical machine).
+
+---
+
+## 4) Critical security fixes
+
+### 4.1 Remove embedded Supabase credentials
+- In `src/integrations/supabase/client.ts`: **delete** `FALLBACK_SUPABASE_URL` and `FALLBACK_SUPABASE_KEY` (the hardcoded anon key). Fail fast if env vars are missing, **without** printing secrets.
+- Read from `import.meta.env.VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` only.
+- Ensure `.env.local` is gitignored (it already is). Verify no secrets in repo history.
+- **Rotate** the anon key in Supabase after removal.
+
+### 4.2 RLS (Row Level Security)
+- Confirm RLS is **enabled for all tables**. Review the included SQL fix files (`fix_achievements_rls.sql`, `fix_missing_policies.sql`, `fix_user_settings_table.sql`) and ensure they are applied in the Supabase project.
+- Ensure policies restrict access to `auth.uid()` rows only. No table should be world-readable unless intended.
+
+### 4.3 Client vs service role
+- The client must use only **anon** key. Any privileged actions go through Edge Functions (service role key) **server-side only**.
+- Audit calls in `src/services` and `src/hooks` to ensure no operation requires service role from client.
+
+### 4.4 Netlify security headers
+- Update `netlify.toml` with strong defaults:
+  ```toml
+  [[headers]]
+  for = "/*"
+  [headers.values]
+  Content-Security-Policy = "default-src 'self'; connect-src 'self' https://*.supabase.co https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://api.openweathermap.org; img-src 'self' data: https://*; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none';"
+  Referrer-Policy = "strict-origin-when-cross-origin"
+  X-Content-Type-Options = "nosniff"
+  X-Frame-Options = "DENY"
+  Permissions-Policy = "geolocation=(self), microphone=()"
+  Cross-Origin-Opener-Policy = "same-origin"
+  Cross-Origin-Embedder-Policy = "require-corp"
+  Cross-Origin-Resource-Policy = "same-site"
+  ```
+- If COEP breaks third-party content, relax only the minimal directives (add `crossorigin` headers or drop COEP).
+
+> Acceptance: No secrets in the codebase; RLS enforced; basic security headers present in prod responses.
+
+---
+
+## 5) Network & caching strategy
+
+### 5.1 Netlify caching for static assets
+- In `netlify.toml`, add long-term caching for hashed assets, conservative for HTML:
+  ```toml
+  [[headers]]
+  for = "/assets/*"
+  [headers.values]
+  Cache-Control = "public, max-age=31536000, immutable"
+
+  [[headers]]
+  for = "/js/*"
+  [headers.values]
+  Cache-Control = "public, max-age=31536000, immutable"
+
+  [[headers]]
+  for = "/index.html"
+  [headers.values]
+  Cache-Control = "no-store"
+  ```
+
+### 5.2 Preconnect & DNS Prefetch (index.html)
+- Add:
+  ```html
+  <link rel="preconnect" href="https://*.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
+  ```
+- Only add what’s actually used in production.
+
+### 5.3 Image & icon hygiene
+- Host Leaflet marker icons **locally** and import via `new URL('.../marker.png', import.meta.url)` to avoid network delays.
+- Ensure no unoptimized large images exist in `public/`. If any, compress or switch to modern formats.
+
+---
+
+## 6) UI-level performance improvements
+
+### 6.1 Virtualize long lists
+- If `HistoryView` or other components render many rows/cards, use `react-window` (lightweight) for windowing.
+- Paginate by default (e.g., 25 items) with “Load more”.
+
+### 6.2 Minimize re-renders
+- Audit props/state; memoize stable children; use `useMemo`/`useCallback` where hot paths re-render frequently.
+- For icon sets (`lucide-react`), import **named icons only** (already used); avoid dynamic wildcards.
+
+### 6.3 CSS & layout
+- Ensure Tailwind `content` globs are correct (they are). Remove unused custom CSS from `App.css`/`index.css` if any.
+
+---
+
+## 7) Maps-specific tweaks (Leaflet)
+- Use a single tile provider with appropriate attribution and **lower** tile resolution on low DPR devices.
+- Set `updateWhenIdle: true`, disable `zoomAnimation` if it causes jank on low-end devices.
+- Debounce moving events; don’t refetch data on every pan — add a small settle delay (e.g., 400ms).
+- Cap nearby station markers to a reasonable number (e.g., 100 max) and cluster if necessary.
+
+---
+
+## 8) Observability & profiling (dev-only)
+- Add a small dev panel (disabled in production) to show:
+  - current number of mounted components (approx via React DevTools hook or custom counters)
+  - React Query cache stats
+  - `performance.memory` (Chrome only) sampled every 30s
+- Log to console only when `import.meta.env.DEV`.
+
+---
+
+## 9) QA checklist & acceptance tests
+- Lighthouse Performance (mobile, Fast 3G), PWA not required: Score ≥ 90 on `/` and ≥ 85 on `/map`.
+- Network panel: no maps/charts bundles fetched until their view is visible.
+- Chrome Task Manager after 5 minutes idle + 3 tab switches: memory **< 500MB**.
+- Security: No secrets in the repo; CSP headers present; RLS verified via Supabase dashboard.
+
+---
+
+## 10) Concrete edits & snippets
+
+### 10.1 `src/main.tsx` (React Query config)
+- Replace existing `QueryClient` init with the snippet in **3.1**.
+
+### 10.2 `src/pages/Index.tsx`
+- Convert heavy imports to:
+  ```ts
+  const AirQualityDashboard = lazy(() => import("@/components/AirQualityDashboard"));
+  const HistoryView = lazy(() => import("@/components/HistoryView"));
+  const WeatherStats = lazy(() => import("@/components/WeatherStats"));
+  const NewsPage = lazy(() => import("@/components/NewsPage"));
+  const MapView = lazy(() => import("@/components/MapView"));
+  ```
+- Use IntersectionObserver-based wrappers to render them only when scrolled into view.
+
+### 10.3 `src/components/LeafletMap.tsx`
+- Dynamic imports for `leaflet` and CSS; cleanup on unmount; `preferCanvas: true`.
+- Replace external CDN marker URLs with local assets imported via Vite.
+
+### 10.4 `src/integrations/supabase/client.ts`
+- Delete fallback keys, validate presence of envs, and **do not** log actual values.
+- Example guard:
+  ```ts
+  if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+    throw new Error("Supabase env vars missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify.");
+  }
+  ```
+
+### 10.5 `netlify.toml`
+- Add headers in **4.4** and caching in **5.1**.
+
+### 10.6 `index.html`
+- Add `preconnect`/`dns-prefetch` in **5.2**.
+
+### 10.7 Zustand store partialize
+- Implement `partialize` as shown in **3.2** and replace in-memory cache with an LRU utility (create `src/lib/lru.ts`).
+
+---
+
+## 11) Documentation updates
+- Update `README.md` with:
+  - How to run `npm run analyze`
+  - Where to tune React Query GC/stale times
+  - How to configure Netlify env vars & security headers
+  - RLS policy checklist
+
+---
+
+## 12) Deliverables per PR
+- Summary of changes
+- Before/after metrics (bundle size, Lighthouse P, memory snapshot)
+- Any trade-offs or regressions
+
+---
+
+**Proceed to implement all items above.** Keep each group as a focused PR so regressions are easy to bisect. When done, produce a one-page performance report with screenshots and metrics.
+
+
+---
+
+[CONTINUATION — From 5.2 onward]
+
+## 5.2 Preconnect & DNS Prefetch (index.html)
+
+**Goal:** Reduce DNS and TLS negotiation times for critical third-party APIs.
+
+**Tasks:**
+- Open `index.html`.
+- In the `<head>` section, add the following:
+  ```html
+  <!-- Preconnect to critical endpoints -->
+  <link rel="preconnect" href="https://*.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
+  ```
+- Only add preconnects for **actively used production APIs** to avoid DNS thrashing.
+
+**Testing:**
+- Use Chrome DevTools → Network → look for reduced initial connection times.
+
+---
+
+## 5.3 Image & Icon Hygiene
+
+**Goal:** Reduce image payload size and remove unnecessary requests.
+
+**Tasks:**
+- Audit `public/` for large, unoptimized images.
+- Compress any large images >150KB or convert to **WebP/AVIF**.
+- Replace Leaflet CDN marker URLs with **local imports**:
+  ```ts
+  const markerIcon = new L.Icon({
+    iconUrl: new URL("../assets/marker-icon.png", import.meta.url).href,
+    shadowUrl: new URL("../assets/marker-shadow.png", import.meta.url).href,
+  });
+  ```
+- Remove unused images from `public/`.
+
+**Testing:**
+- Network tab → ensure fewer remote calls for markers.
+- Lighthouse → Image payload should drop ≥ 20%.
+
+---
+
+## 6) UI-Level Performance Improvements
+
+### 6.1 Virtualize Long Lists
+
+**Goal:** Reduce DOM nodes and improve scrolling performance.
+
+**Tasks:**
+- If `HistoryView` or other components render >50 items, switch to **react-window**.
+- Example:
+  ```ts
+  import { FixedSizeList } from "react-window";
+  
+  <FixedSizeList
+    height={500}
+    itemCount={data.length}
+    itemSize={48}
+    width="100%"
+  >
+    {({ index, style }) => <HistoryRow style={style} data={data[index]} />}
+  </FixedSizeList>
+  ```
+
+**Testing:**
+- Chrome DevTools → Performance tab → DOM node count must stay <500.
+
+---
+
+### 6.2 Minimize Re-Renders
+
+**Goal:** Reduce unnecessary React component updates.
+
+**Tasks:**
+- Use `React.memo` for stable list items.
+- Use `useMemo` and `useCallback` on expensive computed values.
+- Audit components for unnecessary props causing re-renders.
+- For `lucide-react`, import **only named icons**:
+  ```ts
+  import { CloudIcon, WindIcon } from "lucide-react";
+  ```
+
+**Testing:**
+- React Profiler → verify reduced re-render counts.
+
+---
+
+### 6.3 CSS & Layout Simplification
+
+**Goal:** Reduce unused CSS and simplify layouts.
+
+**Tasks:**
+- Confirm `tailwind.config.js` content globs are correct:
+  ```js
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"]
+  ```
+- Remove unused CSS rules from `App.css` and `index.css`.
+- Prefer **Tailwind utilities** over custom classes where possible.
+
+**Testing:**
+- Run `npm run build` and confirm CSS bundle size reduction ≥ 15%.
+
+---
+
+## 7) Maps-Specific Performance Tweaks (Leaflet)
+
+**Goal:** Optimize Leaflet for mobile and low-end hardware.
+
+**Tasks:**
+- Use `preferCanvas: true` when initializing maps.
+- Lower rendering cost on low DPR devices:
+  ```ts
+  const map = L.map("map", {
+    preferCanvas: true,
+    updateWhenIdle: true,
+    zoomAnimation: false,
+  });
+  ```
+- Reduce simultaneous marker rendering:
+  - Cap to **100 closest stations**.
+  - Use marker clustering (`react-leaflet-markercluster`) if available.
+- Debounce map drag/pan events:
+  ```ts
+  const onMoveEnd = useCallback(debounce(() => refetch(), 400), []);
+  ```
+
+**Testing:**
+- Use Performance tab → confirm reduced FPS drops on map interactions.
+
+---
+
+## 8) Observability & Profiling (Dev-Only)
+
+**Goal:** Measure memory, bundle size, and mounted components for debugging.
+
+**Tasks:**
+- Create `src/devtools/Profiler.tsx`:
+  ```ts
+  import { useEffect } from "react";
+  
+  export default function Profiler() {
+    useEffect(() => {
+      if (!import.meta.env.DEV) return;
+      const log = () => {
+        if ((performance as any).memory) {
+          console.log("Memory:", (performance as any).memory.usedJSHeapSize / 1e6, "MB");
+        }
+      };
+      const id = setInterval(log, 30000);
+      return () => clearInterval(id);
+    }, []);
+    return null;
+  }
+  ```
+- Mount this component **only in dev** inside `src/main.tsx`:
+  ```ts
+  {import.meta.env.DEV && <Profiler />}
+  ```
+
+**Testing:**
+- Watch console logs in dev mode for real-time memory usage.
+
+---
+
+## 9) QA Checklist & Acceptance Tests
+
+### Performance
+- Lighthouse (mobile, Fast 3G) ≥ **90** on `/`.
+- `/map` should defer Leaflet bundle until visible.
+
+### Memory
+- Open dashboard → idle 5 min → Chrome Task Manager < **500MB**.
+
+### Security
+- No hardcoded Supabase credentials.
+- RLS policies enforced.
+- `securityheaders.com` → score **A+**.
+
+### Caching
+- Netlify → verify immutable caching for assets and JS bundles.
+
+### Observability
+- `npm run analyze` → confirm bundle size drops ≥ 30%.
+
+---
+
+## 10) Deliverables for Cursor
+
+- Separate PRs per optimization group.
+- Include before/after metrics:
+  - Bundle size
+  - Lighthouse score
+  - Memory usage snapshot
+- Include screenshots of:
+  - Rollup treemap
+  - Lighthouse performance tab
+  - Chrome Task Manager memory
+
+---
+
+**Proceed to implement from section 5.2 onward following this plan. Keep each PR isolated and measurable.**

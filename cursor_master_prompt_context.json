@@ -1,0 +1,18 @@
+{
+    "version": "1.0",
+    "name": "Breath-safe Optimization Context",
+    "description": "This context provides the full master prompt for optimizing the Breath-safe webapp, ensuring Cursor follows performance, memory, and security best practices. Cursor must adhere to the instructions in `project_context.md` for global context, record all changes there, and avoid breaking any existing functionality.",
+    "instructions": {
+        "master_prompt": "cursor_master_prompt_full.txt",
+        "project_context": "project_context.md",
+        "requirements": [
+            "Always reference project_context.md before making any changes.",
+            "Document every modification and its reasoning in project_context.md under a 'Change Log' section.",
+            "Do not break existing functionality; run self-checks after each modification.",
+            "Prioritize reducing page load times, Chrome RAM usage, and improving overall security.",
+            "Use lazy loading, code splitting, and optimize assets where applicable.",
+            "Apply secure coding practices, sanitize all inputs, and harden authentication flows.",
+            "Ensure optimized Netlify deployment configurations are respected."
+        ]
+    }
+}

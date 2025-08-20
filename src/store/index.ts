@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
+import { LRUCache } from '@/lib/lru';
 
 // Types
 export interface AppState {
@@ -18,14 +19,8 @@ export interface AppState {
   currentLocation: string | null;
   lastReading: any | null;
   
-  // Cache State
-  cache: {
-    [key: string]: {
-      data: any;
-      timestamp: number;
-      ttl: number;
-    };
-  };
+  // Cache State - Using LRU cache
+  cache: LRUCache;
 }
 
 export interface AppActions {
@@ -64,7 +59,7 @@ const initialState: AppState = {
   currentAQI: null,
   currentLocation: null,
   lastReading: null,
-  cache: {},
+  cache: new LRUCache(100), // Initialize LRU cache with a size of 100
 };
 
 // Create store
@@ -91,7 +86,7 @@ export const useAppStore = create<AppStore>()(
             currentAQI: null,
             currentLocation: null,
             lastReading: null,
-            cache: {},
+            cache: new LRUCache(100), // Reset cache on logout
           });
         },
         
@@ -103,21 +98,12 @@ export const useAppStore = create<AppStore>()(
         // Cache Actions
         setCache: (key, data, ttl = 5 * 60 * 1000) => {
           const { cache } = get();
-          set({
-            cache: {
-              ...cache,
-              [key]: {
-                data,
-                timestamp: Date.now(),
-                ttl,
-              },
-            },
-          });
+          cache.set(key, { data, timestamp: Date.now(), ttl });
         },
         
         getCache: (key) => {
           const { cache } = get();
-          const cached = cache[key];
+          const cached = cache.get(key);
           
           if (!cached) return null;
           
@@ -133,34 +119,25 @@ export const useAppStore = create<AppStore>()(
         clearCache: (key) => {
           const { cache } = get();
           if (key) {
-            const newCache = { ...cache };
-            delete newCache[key];
-            set({ cache: newCache });
+            cache.delete(key);
           } else {
-            set({ cache: {} });
+            cache.clear();
           }
         },
         
         clearExpiredCache: () => {
           const { cache } = get();
-          const now = Date.now();
-          const newCache = { ...cache };
-          
-          Object.keys(newCache).forEach((key) => {
-            const cached = newCache[key];
-            if (now - cached.timestamp > cached.ttl) {
-              delete newCache[key];
-            }
-          });
-          
-          set({ cache: newCache });
+          cache.clearExpired();
         },
       }),
       {
         name: 'breath-safe-store',
         partialize: (state) => ({
-          sidebarOpen: state.sidebarOpen,
+          // Pick only what must survive reloads
+          user: state.user,
+          profile: state.profile,
           currentLocation: state.currentLocation,
+          // EXCLUDE: cache, lastReading, error, isLoading, etc.
         }),
       }
     ),
