@@ -361,37 +361,17 @@ serve(async (req) => {
     });
     
     if (!OPENAQ_API_KEY) {
-      console.log('OpenAQ API key not configured, using fallback AQI calculation');
-      // Return fallback data instead of throwing error
-      const fallbackResponse = {
-        location: 'Nairobi Region',
-        userLocation: 'Your Location',
-        coordinates: { lat, lon },
-        userCoordinates: { lat, lon },
-        aqi: 65, // Default AQI for Nairobi region
-        pollutants: {
-          pm25: 25.5,
-          pm10: 45.2,
-          no2: 15.3,
-          so2: 8.7,
-          co: 0.8,
-          o3: 45.6
-        },
-        environmental: {
-          temperature: 25, // Default fallback - would be updated with actual sensor data
-          humidity: 60     // Default fallback - would be updated with actual sensor data
-        },
-        timestamp: new Date().toISOString(),
-        dataSource: 'Fallback data (API key not configured)',
-        userPoints: 0,
-        currencyRewards: 0,
-        canWithdraw: false
-      };
+      console.log('❌ OpenAQ API key not configured - air quality data unavailable');
+      console.log('🔑 To enable air quality monitoring, set OPENAQ_API_KEY in Supabase environment variables');
+      console.log('📖 Get your API key from: https://docs.openaq.org/docs/getting-started');
       
-      // Cache the fallback response
-      setCachedResponse(cacheKey, fallbackResponse, 'Nairobi Region');
-      
-      return new Response(JSON.stringify(fallbackResponse), {
+      return new Response(JSON.stringify({
+        error: 'OpenAQ API key not configured',
+        message: 'Air quality monitoring requires OpenAQ API key configuration',
+        instructions: 'Set OPENAQ_API_KEY in Supabase environment variables',
+        documentation: 'https://docs.openaq.org/docs/getting-started'
+      }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -651,33 +631,20 @@ serve(async (req) => {
               } else {
                 aqi = Math.round(301 + ((pm25 - 250.4) / (500.4 - 250.4)) * 199);
               }
-            } else {
-              aqi = 65; // Fallback AQI
-            }
+                    } else {
+          console.log('❌ No PM2.5 data available for AQI calculation');
+          aqi = null; // No fallback - real data required
+        }
             
           } else {
-            console.log('Measurements API call failed, using fallback values');
+            console.log('❌ Measurements API call failed - no fallback data available');
             trackApiFailure('measurements_api', `Status: ${measurementsResponse.status}`);
-            // Use fallback values if measurements API fails
-            aqi = 65;
-            pm25 = 25.5;
-            pm10 = 45.2;
-            no2 = 15.3;
-            so2 = 8.7;
-            co = 0.8;
-            o3 = 45.6;
+            throw new Error(`Measurements API failed with status: ${measurementsResponse.status}`);
           }
         } catch (measurementError) {
-          console.log('Error fetching measurements, using fallback values:', measurementError instanceof Error ? measurementError.message : String(measurementError));
+          console.log('❌ Error fetching measurements - no fallback data available:', measurementError instanceof Error ? measurementError.message : String(measurementError));
           trackApiFailure('measurements_fetch', measurementError instanceof Error ? measurementError.message : String(measurementError));
-          // Use fallback values if measurements API fails
-          aqi = 65;
-          pm25 = 25.5;
-          pm10 = 45.2;
-          no2 = 15.3;
-          so2 = 8.7;
-          co = 0.8;
-          o3 = 45.6;
+          throw new Error(`Failed to fetch measurements: ${measurementError instanceof Error ? measurementError.message : String(measurementError)}`);
         }
         
       } else if (isMeasurementData) {
@@ -727,9 +694,10 @@ serve(async (req) => {
           } else {
             aqi = Math.round(301 + ((pm25 - 250.4) / (500.4 - 250.4)) * 199);
           }
-        } else {
-          aqi = 65; // Fallback AQI
-        }
+                    } else {
+              console.log('❌ No PM2.5 data available for AQI calculation');
+              aqi = null; // No fallback - real data required
+            }
         
         console.log('Processed measurement data:', { aqi, pm25, pm10, no2, so2, co, o3 });
       }
@@ -838,6 +806,12 @@ serve(async (req) => {
         }
       }
       
+      // Validate that we have real AQI data
+      if (aqi === null || aqi === undefined) {
+        console.log('❌ No valid AQI data available - cannot return response');
+        throw new Error('No valid AQI data available from OpenAQ API');
+      }
+      
       // Prepare response
       const response = {
         location: nearestCity.name,
@@ -854,8 +828,8 @@ serve(async (req) => {
           o3
         },
         environmental: {
-          temperature: 25, // Default fallback - would be updated with actual sensor data
-          humidity: 60     // Default fallback - would be updated with actual sensor data
+          temperature: null, // No fallback - real data required
+          humidity: null     // No fallback - real data required
         },
         timestamp: new Date().toISOString(),
         dataSource: 'OpenAQ API',
@@ -884,37 +858,16 @@ serve(async (req) => {
         });
       }
       
-      console.log('No cached data available, using fallback data');
-      // Return fallback data if API fails
-      const fallbackResponse = {
-        location: 'Nairobi Region',
-        userLocation: 'Your Location',
-        coordinates: { lat, lon },
-        userCoordinates: { lat, lon },
-        aqi: 65, // Moderate AQI for Nairobi region (based on typical urban air quality)
-        pollutants: {
-          pm25: 25.5,  // Moderate PM2.5 levels
-          pm10: 45.2,  // Moderate PM10 levels
-          no2: 15.3,   // Low NO2 levels
-          so2: 8.7,    // Low SO2 levels
-          co: 0.8,     // Low CO levels
-          o3: 45.6     // Moderate O3 levels
-        },
-        environmental: {
-          temperature: 22, // Typical Nairobi temperature
-          humidity: 65     // Typical Nairobi humidity
-        },
-        timestamp: new Date().toISOString(),
-        dataSource: 'Fallback data (OpenAQ API returned no results for this location)',
-        userPoints: 0,
-        currencyRewards: 0,
-        canWithdraw: false
-      };
+      console.log('❌ No cached data available - API failure with no fallbacks');
+      console.log('🔑 Check OpenAQ API key configuration and network connectivity');
       
-      // Cache the fallback response
-      setCachedResponse(cacheKey, fallbackResponse, 'Nairobi Region');
-      
-      return new Response(JSON.stringify(fallbackResponse), {
+      return new Response(JSON.stringify({
+        error: 'OpenAQ API failure',
+        message: 'Unable to retrieve air quality data - no fallbacks available',
+        instructions: 'Check API key configuration and network connectivity',
+        timestamp: new Date().toISOString()
+      }), {
+        status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

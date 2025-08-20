@@ -220,11 +220,46 @@ export const useAirQuality = () => {
       });
 
       if (error) {
+        console.error('❌ Supabase function error:', error.message);
+        
+        // Check for specific API key configuration errors
+        if (error.message.includes('OpenAQ API key not configured')) {
+          console.error('🔑 MISSING OPENAQ API KEY - Air quality monitoring unavailable');
+          console.error('📋 To fix this issue:');
+          console.error('   1. Go to your Supabase project dashboard');
+          console.error('   2. Navigate to Settings → Environment variables');
+          console.error('   3. Add: OPENAQ_API_KEY = your_api_key_here');
+          console.error('   4. Get your API key from: https://docs.openaq.org/docs/getting-started');
+          console.error('   5. Redeploy your Supabase Edge Functions');
+        } else if (error.message.includes('OpenAQ API failure')) {
+          console.error('🌐 OPENAQ API FAILURE - Check API key and network connectivity');
+        }
+        
         throw new Error(`Supabase function error: ${error.message}`);
       }
 
       if (!response) {
         throw new Error('No response data received');
+      }
+      
+      // Check for error responses from the Edge Function
+      if (response && typeof response === 'object' && 'error' in response) {
+        const errorResponse = response as any;
+        console.error('❌ Edge Function returned error:', errorResponse.error);
+        console.error('📝 Message:', errorResponse.message);
+        console.error('📋 Instructions:', errorResponse.instructions);
+        
+        if (errorResponse.error === 'OpenAQ API key not configured') {
+          console.error('🔑 MISSING OPENAQ API KEY - Air quality monitoring unavailable');
+          console.error('📋 To fix this issue:');
+          console.error('   1. Go to your Supabase project dashboard');
+          console.error('   2. Navigate to Settings → Environment variables');
+          console.error('   3. Add: OPENAQ_API_KEY = your_api_key_here');
+          console.error('   4. Get your API key from: https://docs.openaq.org/docs/getting-started');
+          console.error('   5. Redeploy your Supabase Edge Functions');
+        }
+        
+        throw new Error(`Edge Function error: ${errorResponse.error} - ${errorResponse.message}`);
       }
 
       // Debug: Log the response structure
