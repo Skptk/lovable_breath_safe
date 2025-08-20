@@ -69,11 +69,42 @@ export function useAuth() {
         .single();
 
       if (error || !data) {
-        // Profile doesn't exist, but don't automatically sign out
-        // Let the user handle this situation
-        console.warn('User profile not found in database');
-        setProfileValidated(false);
-        return false;
+        // Profile doesn't exist, try to initialize user data
+        console.warn('User profile not found in database, attempting to initialize...');
+        
+        try {
+          // Call the ensure_user_initialization function
+          const { error: initError } = await supabase.rpc('ensure_user_initialization', {
+            p_user_id: user.id
+          });
+          
+          if (initError) {
+            console.error('Failed to initialize user data:', initError);
+            setProfileValidated(false);
+            return false;
+          } else {
+            console.log('User data initialized successfully');
+            // Try to validate again
+            const { data: retryData, error: retryError } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('user_id', user.id)
+              .single();
+              
+            if (retryError || !retryData) {
+              console.warn('Profile still not found after initialization');
+              setProfileValidated(false);
+              return false;
+            } else {
+              setProfileValidated(true);
+              return true;
+            }
+          }
+        } catch (initError) {
+          console.error('Error during user initialization:', initError);
+          setProfileValidated(false);
+          return false;
+        }
       } else {
         setProfileValidated(true);
         return true;
