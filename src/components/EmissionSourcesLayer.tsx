@@ -4,6 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Cloud, MapPin, AlertTriangle, RefreshCw, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 interface EmissionSource {
   id: string;
@@ -60,30 +67,29 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
             description: `Found ${sources.length} emission sources in your area`,
           });
         } else {
-          // Generate mock data for demonstration
-          const mockSources = generateMockEmissionSources();
-          setEmissionSources(mockSources);
+          // No data available from OpenAQ - set empty array
+          setEmissionSources([]);
           setLastUpdated(new Date().toISOString());
           
           toast({
-            title: "Emission Data Updated",
-            description: "Using fallback data - OpenAQ has no coverage in this area",
+            title: "No Emission Data",
+            description: "OpenAQ has no coverage in this area",
           });
         }
       } else {
         throw new Error(`OpenAQ API request failed: ${response.status}`);
       }
     } catch (error) {
-      // OpenAQ API often fails due to CORS or network issues - this is expected
-      // Silently fall back to mock data for better user experience
-      const mockSources = generateMockEmissionSources();
-      setEmissionSources(mockSources);
+      // OpenAQ API failed - set empty array instead of mock data
+      setEmissionSources([]);
+      setError("Unable to fetch emission data at this time");
       setLastUpdated(new Date().toISOString());
       
-                toast({
-            title: "Emission Data Updated",
-            description: "Using fallback data due to API limitations",
-          });
+      toast({
+        title: "Emission Data Unavailable",
+        description: "Unable to fetch emission data due to API limitations",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -120,38 +126,6 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
     return Array.from(locationMap.values())
       .sort((a, b) => a.distance - b.distance)
       .slice(0, 20); // Limit to 20 closest sources
-  };
-
-  const generateMockEmissionSources = (): EmissionSource[] => {
-    const mockTypes = ['Industrial Plant', 'Power Station', 'Traffic Hub', 'Construction Site', 'Agricultural Area'];
-    const sources: EmissionSource[] = [];
-    
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * 2 * Math.PI;
-      const distance = 2 + Math.random() * 8; // 2-10 km
-      const sourceLat = latitude + Math.cos(angle) * distance / 111; // Approximate km to degrees
-      const sourceLon = longitude + Math.sin(angle) * distance / (111 * Math.cos(latitude * Math.PI / 180));
-      
-      sources.push({
-        id: `mock-${i}`,
-        name: `${mockTypes[i % mockTypes.length]} ${i + 1}`,
-        type: mockTypes[i % mockTypes.length],
-        latitude: sourceLat,
-        longitude: sourceLon,
-        emissions: {
-          pm25: Math.random() * 50 + 10,
-          pm10: Math.random() * 100 + 20,
-          no2: Math.random() * 80 + 15,
-          so2: Math.random() * 30 + 5,
-          co: Math.random() * 2000 + 500,
-          o3: Math.random() * 60 + 20
-        },
-        lastUpdated: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString(),
-        distance: distance
-      });
-    }
-    
-    return sources.sort((a, b) => a.distance - b.distance);
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -263,6 +237,26 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
     );
   }
 
+  if (emissionSources.length === 0) {
+    return (
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Cloud className="h-5 w-5" />
+            Emission Sources
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <Cloud className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No emission sources found in your area</p>
+            <p className="text-sm mt-2">Try refreshing or check back later for updated data</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="mt-4">
       <CardHeader>
@@ -289,57 +283,71 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
         </div>
       </CardHeader>
       <CardContent>
-        {emissionSources.length > 0 ? (
-          <div className="space-y-4">
-            {/* Emission Sources Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {emissionSources.map((source) => (
-                <div key={source.id} className="p-4 bg-muted/30 rounded-lg border">
-                  {/* Source Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm">{source.name}</h4>
-                      <p className="text-xs text-muted-foreground">{source.type}</p>
-                      <div className="flex items-center gap-1 mt-1">
-                        <MapPin className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {source.distance.toFixed(1)} km away
-                        </span>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {new Date(source.lastUpdated).toLocaleDateString()}
-                    </Badge>
-                  </div>
-
-                  {/* Emissions Summary */}
-                  <div className="space-y-2">
-                    {Object.entries(source.emissions).map(([parameter, value]) => {
-                      const { level, color } = getEmissionLevel(value, parameter);
-                      return (
-                        <div key={parameter} className="flex items-center justify-between">
-                          <span className="text-xs font-medium uppercase">{parameter}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">{value.toFixed(1)} {getParameterUnit(parameter)}</span>
-                            <div className={`w-2 h-2 rounded-full ${color}`}></div>
-                            <span className="text-xs text-muted-foreground">{level}</span>
+        {emissionSources.length > 0 && (
+          <div className="space-y-6">
+            {/* Emission Sources Carousel */}
+            <div className="relative">
+              <Carousel
+                opts={{
+                  align: "start",
+                  loop: false,
+                }}
+                className="w-full"
+              >
+                <CarouselContent className="-ml-2 md:-ml-4">
+                  {emissionSources.map((source) => (
+                    <CarouselItem key={source.id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                      <div className="p-4 bg-muted/30 rounded-lg border h-full">
+                        {/* Source Header */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{source.name}</h4>
+                            <p className="text-xs text-muted-foreground">{source.type}</p>
+                            <div className="flex items-center gap-1 mt-1">
+                              <MapPin className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">
+                                {source.distance.toFixed(1)} km away
+                              </span>
+                            </div>
                           </div>
+                          <Badge variant="outline" className="text-xs">
+                            {new Date(source.lastUpdated).toLocaleDateString()}
+                          </Badge>
                         </div>
-                      );
-                    })}
-                  </div>
 
-                  {/* Detailed View */}
-                  {showDetails && (
-                    <div className="mt-3 pt-3 border-t border-border">
-                      <div className="text-xs text-muted-foreground">
-                        <div>Coordinates: {source.latitude.toFixed(4)}, {source.longitude.toFixed(4)}</div>
-                        <div>Last Updated: {new Date(source.lastUpdated).toLocaleString()}</div>
+                        {/* Emissions Summary */}
+                        <div className="space-y-2">
+                          {Object.entries(source.emissions).map(([parameter, value]) => {
+                            const { level, color } = getEmissionLevel(value, parameter);
+                            return (
+                              <div key={parameter} className="flex items-center justify-between">
+                                <span className="text-xs font-medium uppercase">{parameter}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm">{value.toFixed(1)} {getParameterUnit(parameter)}</span>
+                                  <div className={`w-2 h-2 rounded-full ${color}`}></div>
+                                  <span className="text-xs text-muted-foreground">{level}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Detailed View */}
+                        {showDetails && (
+                          <div className="mt-3 pt-3 border-t border-border">
+                            <div className="text-xs text-muted-foreground">
+                              <div>Coordinates: {source.latitude.toFixed(4)}, {source.longitude.toFixed(4)}</div>
+                              <div>Last Updated: {new Date(source.lastUpdated).toLocaleString()}</div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
             </div>
 
             {/* Summary Stats */}
@@ -362,9 +370,9 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
               </div>
               <div className="p-3 bg-muted/30 rounded-lg text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {emissionSources.filter(s => s.type === 'Industrial Plant').length}
+                  {emissionSources.filter(s => s.type === 'Monitoring Station').length}
                 </div>
-                <div className="text-xs text-muted-foreground">Industrial</div>
+                <div className="text-xs text-muted-foreground">Monitoring Stations</div>
               </div>
             </div>
 
@@ -374,10 +382,6 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
                 Last updated: {new Date(lastUpdated).toLocaleString()}
               </div>
             )}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            No emission sources found in your area
           </div>
         )}
       </CardContent>
