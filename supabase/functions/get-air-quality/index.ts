@@ -20,22 +20,58 @@ interface CacheEntry {
 // Simple in-memory cache (in production, consider Redis or similar)
 const responseCache = new Map<string, CacheEntry>();
 
-interface OpenAQData {
-  results: Array<{
-    location: string;
-    city: string;
-    country: string;
-    coordinates: {
-      latitude: number;
-      longitude: number;
+interface OpenWeatherMapAirPollution {
+  coord: {
+    lat: number;
+    lon: number;
+  };
+  list: Array<{
+    dt: number;
+    main: {
+      aqi: number;
     };
-    measurements: Array<{
-      parameter: string;
-      value: number;
-      unit: string;
-      lastUpdated: string;
-    }>;
+    components: {
+      co: number;
+      no: number;
+      no2: number;
+      o3: number;
+      so2: number;
+      pm2_5: number;
+      pm10: number;
+      nh3: number;
+    };
   }>;
+}
+
+interface OpenWeatherMapWeather {
+  coord: {
+    lat: number;
+    lon: number;
+  };
+  weather: Array<{
+    id: number;
+    main: string;
+    description: string;
+    icon: string;
+  }>;
+  main: {
+    temp: number;
+    feels_like: number;
+    pressure: number;
+    humidity: number;
+  };
+  wind: {
+    speed: number;
+    deg: number;
+    gust?: number;
+  };
+  visibility: number;
+  sys: {
+    sunrise: number;
+    sunset: number;
+  };
+  name: string;
+  country?: string;
 }
 
 interface GeoLocation {
@@ -55,72 +91,21 @@ interface CityData {
   distance: number;
 }
 
-// Error tracking and alerting
-interface ErrorTracker {
-  apiFailures: Map<string, { count: number; lastOccurrence: number; }>;
-  consecutiveFailures: number;
-  lastAlert: number;
-}
-
-const errorTracker: ErrorTracker = {
-  apiFailures: new Map(),
-  consecutiveFailures: 0,
-  lastAlert: 0
-};
-
-// Track API failures and send alerts
-function trackApiFailure(endpoint: string, error: string) {
-  const now = Date.now();
-  const failure = errorTracker.apiFailures.get(endpoint) || { count: 0, lastOccurrence: 0 };
-  
-  failure.count++;
-  failure.lastOccurrence = now;
-  errorTracker.apiFailures.set(endpoint, failure);
-  
-  errorTracker.consecutiveFailures++;
-  
-  // Send alert if we have multiple consecutive failures or high failure rate
-  if (errorTracker.consecutiveFailures >= 3 || failure.count >= 5) {
-    const timeSinceLastAlert = now - errorTracker.lastAlert;
-    if (timeSinceLastAlert > 15 * 60 * 1000) { // Alert every 15 minutes max
-      console.error(`🚨 ALERT: API failures detected! Endpoint: ${endpoint}, Consecutive failures: ${errorTracker.consecutiveFailures}, Total failures: ${failure.count}`);
-      errorTracker.lastAlert = now;
-      
-      // Reset consecutive failures after alert
-      errorTracker.consecutiveFailures = 0;
-    }
-  }
-}
-
-// Reset failure count on successful API call
-function resetApiFailures() {
-  errorTracker.consecutiveFailures = 0;
-  errorTracker.apiFailures.clear();
-}
-
 // Cache management functions
-function getCacheKey(lat: number, lon: number, radius: number = 10000): string {
-  // Round coordinates to reduce cache fragmentation
-  const roundedLat = Math.round(lat * 1000) / 1000;
-  const roundedLon = Math.round(lon * 1000) / 1000;
-  return `${roundedLat},${roundedLon},${radius}`;
+function getCacheKey(lat: number, lon: number): string {
+  return `${lat.toFixed(4)},${lon.toFixed(4)}`;
 }
 
 function getCachedResponse(cacheKey: string): any | null {
   const entry = responseCache.get(cacheKey);
-  if (!entry) return null;
-  
-  const now = Date.now();
-  if (now - entry.timestamp > CACHE_DURATION) {
-    responseCache.delete(cacheKey);
-    return null;
+  if (entry && Date.now() - entry.timestamp < CACHE_DURATION) {
+    return entry;
   }
-  
-  return entry.data;
+  return null;
 }
 
-function setCachedResponse(cacheKey: string, data: any, location: string) {
-  // Clean up old entries if cache is full
+function setCachedResponse(cacheKey: string, data: any, location: string): void {
+  // Remove oldest entries if cache is full
   if (responseCache.size >= MAX_CACHE_SIZE) {
     const oldestKey = responseCache.keys().next().value;
     responseCache.delete(oldestKey);
@@ -133,152 +118,7 @@ function setCachedResponse(cacheKey: string, data: any, location: string) {
   });
 }
 
-// Calculate distance between two points using Haversine formula
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-
-// Enhanced location detection with multiple fallback strategies
-async function findNearestMajorCity(userLat: number, userLon: number, apiKey: string): Promise<CityData> {
-  try {
-    // Search for cities within a reasonable radius (100km) to find major cities
-    const searchRadius = 100; // km
-    const latDelta = searchRadius / 111; // Approximate degrees per km
-    
-    // Search in a grid pattern around the user's location
-    const searchPoints = [
-      { lat: userLat, lon: userLon }, // User's exact location
-      { lat: userLat + latDelta, lon: userLon }, // North
-      { lat: userLat - latDelta, lon: userLon }, // South
-      { lat: userLat, lon: userLon + latDelta }, // East
-      { lat: userLat, lon: userLon - latDelta }, // West
-      { lat: userLat + latDelta, lon: userLon + latDelta }, // Northeast
-      { lat: userLat + latDelta, lon: userLon - latDelta }, // Northwest
-      { lat: userLat - latDelta, lon: userLon + latDelta }, // Southeast
-      { lat: userLat - latDelta, lon: userLon - latDelta }, // Southwest
-    ];
-
-    let nearestCity: CityData | null = null;
-    let shortestDistance = Infinity;
-
-    for (const point of searchPoints) {
-      try {
-        // Use OpenAQ API v3 to find cities with air quality data - try multiple radii
-        const locationRadii = [50000, 100000, 200000]; // 50km, 100km, 200km
-        
-        for (const radius of locationRadii) {
-          try {
-            console.log(`Searching for cities at point ${point.lat}, ${point.lon} with ${radius/1000}km radius...`);
-            const response = await fetch(
-              `https://api.openaq.org/v3/locations?coordinates=${point.lat},${point.lon}&radius=${radius}&limit=10`,
-              {
-                headers: {
-                  'X-API-Key': apiKey,
-                  'Accept': 'application/json'
-                }
-              }
-            );
-
-            if (response.ok) {
-              const cities = await response.json();
-              
-              for (const city of cities.results || []) {
-                const distance = calculateDistance(userLat, userLon, city.coordinates.latitude, city.coordinates.longitude);
-                
-                if (distance < shortestDistance && city.name) {
-                  shortestDistance = distance;
-                  nearestCity = {
-                    name: city.name,
-                    lat: city.coordinates.latitude,
-                    lon: city.coordinates.longitude,
-                    country: city.country?.name || city.country?.code || 'Unknown',
-                    distance: distance
-                  };
-                  console.log(`Found city: ${city.name} at ${distance.toFixed(1)}km with ${radius/1000}km search radius`);
-                }
-              }
-              
-              // If we found cities with this radius, no need to try larger ones
-              if (cities.results && cities.results.length > 0) {
-                break;
-              }
-            }
-          } catch (radiusError) {
-            console.error(`Error searching at point ${point.lat}, ${point.lon} with ${radius/1000}km radius:`, radiusError);
-            continue;
-          }
-        }
-      } catch (error) {
-        console.error(`Error searching at point ${point.lat}, ${point.lon}:`, error);
-        continue;
-      }
-    }
-
-    if (nearestCity) {
-      return nearestCity;
-    }
-
-    // Enhanced fallback: Try to get better location info using reverse geocoding
-    try {
-      const reverseGeocodeResponse = await fetch(
-        `https://api.openaq.org/v2/cities?coordinates=${userLat},${userLon}&radius=1000&limit=1`,
-        {
-          headers: {
-            'X-API-Key': apiKey,
-            'Accept': 'application/json'
-          }
-        }
-      );
-      
-      if (reverseGeocodeResponse.ok) {
-        const geoData = await reverseGeocodeResponse.json();
-        const location = geoData.results?.[0];
-        
-        if (location) {
-          return {
-            name: location.name || location.city || 'Your Location',
-            lat: userLat,
-            lon: userLon,
-            country: location.country || 'Unknown',
-            distance: 0
-          };
-        }
-      }
-    } catch (reverseError) {
-      console.error('Reverse geocoding failed:', reverseError);
-    }
-
-    // Final fallback to user's location
-    return {
-      name: 'Your Location',
-      lat: userLat,
-      lon: userLon,
-      country: 'Unknown',
-      distance: 0
-    };
-
-  } catch (error) {
-    console.error('Error finding nearest major city:', error);
-    // Fallback to user's location
-    return {
-      name: 'Your Location',
-      lat: userLat,
-      lon: userLon,
-      country: 'Unknown',
-      distance: 0
-    };
-  }
-}
-
-// Get user location details using reverse geocoding
+// Get user location details using OpenWeatherMap reverse geocoding
 async function getUserLocationDetails(lat: number, lon: number, apiKey: string): Promise<{
   name: string;
   country: string;
@@ -288,26 +128,20 @@ async function getUserLocationDetails(lat: number, lon: number, apiKey: string):
 }> {
   try {
     const response = await fetch(
-      `https://api.openaq.org/v2/cities?coordinates=${lat},${lon}&radius=1000&limit=1`,
-      {
-        headers: {
-          'X-API-Key': apiKey,
-          'Accept': 'application/json'
-        }
-      }
+      `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`
     );
     
     if (response.ok) {
-      const geoData = await response.json();
-      const location = geoData.results?.[0];
+      const geoData: GeoLocation[] = await response.json();
+      const location = geoData[0];
       
       if (location) {
         return {
-          name: location.name || location.city || 'Your Location',
+          name: location.name || 'Your Location',
           country: location.country || 'Unknown',
           state: location.state,
-          city: location.name || location.city,
-          area: location.name || location.city
+          city: location.name || 'Your Location',
+          area: location.name || 'Your Location'
         };
       }
     }
@@ -336,7 +170,7 @@ function canWithdraw(points: number): boolean {
 }
 
 serve(async (req) => {
-  console.log('=== FUNCTION STARTED - VERSION WITH DEBUGGING ===');
+  console.log('=== FUNCTION STARTED - OPENWEATHERMAP VERSION ===');
   console.log('Request method:', req.method);
   console.log('Request headers:', Object.fromEntries(req.headers.entries()));
   
@@ -362,415 +196,110 @@ serve(async (req) => {
       });
     }
 
-    const OPENAQ_API_KEY = Deno.env.get('OPENAQ_API_KEY');
+    const OPENWEATHERMAP_API_KEY = Deno.env.get('OPENWEATHERMAP_API_KEY');
     console.log('Environment variable check:', {
-      hasApiKey: !!OPENAQ_API_KEY,
-      apiKeyLength: OPENAQ_API_KEY?.length || 0,
-      apiKeyStart: OPENAQ_API_KEY?.substring(0, 10) + '...' || 'none'
+      hasApiKey: !!OPENWEATHERMAP_API_KEY,
+      apiKeyLength: OPENWEATHERMAP_API_KEY?.length || 0,
+      apiKeyStart: OPENWEATHERMAP_API_KEY?.substring(0, 10) + '...' || 'none'
     });
     
     // Test all environment variables to see what's available
     console.log('All available environment variables:', {
       supabaseUrl: Deno.env.get('SUPABASE_URL') ? 'SET' : 'NOT SET',
       supabaseKey: Deno.env.get('SUPABASE_ANON_KEY') ? 'SET' : 'NOT SET',
-      openaqKey: Deno.env.get('OPENAQ_API_KEY') ? 'SET' : 'NOT SET'
+      openweathermapKey: Deno.env.get('OPENWEATHERMAP_API_KEY') ? 'SET' : 'NOT SET'
     });
     
-    if (!OPENAQ_API_KEY) {
-      console.log('❌ OpenAQ API key not configured - air quality data unavailable');
-      console.log('🔑 To enable air quality monitoring, set OPENAQ_API_KEY in Supabase environment variables');
-      console.log('📖 Get your API key from: https://docs.openaq.org/docs/getting-started');
+    if (!OPENWEATHERMAP_API_KEY) {
+      console.log('❌ OpenWeatherMap API key not configured - air quality data unavailable');
+      console.log('🔑 To enable air quality monitoring, set OPENWEATHERMAP_API_KEY in Supabase environment variables');
+      console.log('📖 Get your API key from: https://openweathermap.org/api');
       
       return new Response(JSON.stringify({
-        error: 'OpenAQ API key not configured',
-        message: 'Air quality monitoring requires OpenAQ API key configuration',
-        instructions: 'Set OPENAQ_API_KEY in Supabase environment variables',
-        documentation: 'https://docs.openaq.org/docs/getting-started'
+        error: 'OpenWeatherMap API key not configured',
+        message: 'Air quality monitoring requires OpenWeatherMap API key configuration',
+        instructions: 'Set OPENWEATHERMAP_API_KEY in Supabase environment variables',
+        documentation: 'https://openweathermap.org/api'
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
-    // Skip API key test to improve performance
-    console.log('Proceeding with air quality data collection...');
+    console.log('Proceeding with air quality data collection using OpenWeatherMap...');
 
     // Get user's location details
     let userLocationDetails;
-    let nearestCity;
     
     try {
-      console.log('Starting OpenAQ API calls with key:', OPENAQ_API_KEY.substring(0, 10) + '...');
+      console.log('Starting OpenWeatherMap API calls with key:', OPENWEATHERMAP_API_KEY.substring(0, 10) + '...');
       
-      userLocationDetails = await getUserLocationDetails(lat, lon, OPENAQ_API_KEY);
+      userLocationDetails = await getUserLocationDetails(lat, lon, OPENWEATHERMAP_API_KEY);
       console.log('User location details obtained');
       
-      nearestCity = await findNearestMajorCity(lat, lon, OPENAQ_API_KEY);
-      console.log('Nearest city found:', nearestCity);
+      // Get air quality data from OpenWeatherMap Air Pollution API
+      console.log('Making OpenWeatherMap Air Pollution API call...');
       
-      // Get air quality data from OpenAQ API v3
-      console.log('Making OpenAQ measurements API call...');
+      const airPollutionResponse = await fetch(
+        `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${OPENWEATHERMAP_API_KEY}`
+      );
       
-      let airData;
-      let airResponse: Response | null = null;
-      
-      // Progressive radius search strategy: start with 10km and increase to 200km
-      const searchRadii = [10000, 25000, 50000, 100000, 200000]; // 10km, 25km, 50km, 100km, 200km
-      let successfulRadius = 0;
-      
-      // First try: v3 measurements with progressive radius
-      for (const radius of searchRadii) {
-        try {
-          console.log(`Trying v3 measurements endpoint with ${radius/1000}km radius...`);
-          const response = await fetch(
-            `https://api.openaq.org/v3/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=${radius}&limit=100`,
-            {
-              headers: {
-                'X-API-Key': OPENAQ_API_KEY,
-                'Accept': 'application/json'
-              }
-            }
-          );
-          
-          if (response.ok) {
-            airData = await response.json();
-            if (airData.results && airData.results.length > 0) {
-              console.log(`v3 measurements endpoint successful with ${radius/1000}km radius`);
-              successfulRadius = radius;
-              airResponse = response;
-              resetApiFailures(); // Reset failure count on success
-              break;
-            } else {
-              console.log(`v3 measurements endpoint returned no results with ${radius/1000}km radius, trying next radius...`);
-              continue;
-            }
-          } else {
-            console.log(`v3 measurements endpoint failed with ${radius/1000}km radius, trying next radius...`);
-            trackApiFailure('v3_measurements', `Status: ${response.status} at ${radius/1000}km`);
-            continue;
-          }
-        } catch (error) {
-          console.log(`v3 measurements endpoint error with ${radius/1000}km radius:`, error);
-          continue;
-        }
+      if (!airPollutionResponse.ok) {
+        console.log('❌ Air Pollution API call failed:', airPollutionResponse.status);
+        throw new Error(`Air Pollution API failed with status: ${airPollutionResponse.status}`);
       }
       
-      // If v3 measurements failed, try v3 locations with progressive radius
-      if (!airData || !airData.results || airData.results.length === 0) {
-        console.log('v3 measurements failed, trying v3 locations with progressive radius...');
-        
-        for (const radius of searchRadii) {
-          try {
-            console.log(`Trying v3 locations endpoint with ${radius/1000}km radius...`);
-            const response = await fetch(
-              `https://api.openaq.org/v3/locations?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=${radius}&limit=100`,
-              {
-                headers: {
-                  'X-API-Key': OPENAQ_API_KEY,
-                  'Accept': 'application/json'
-                }
-              }
-            );
-            
-            if (response.ok) {
-              airData = await response.json();
-              if (airData.results && airData.results.length > 0) {
-                console.log(`v3 locations endpoint successful with ${radius/1000}km radius`);
-                successfulRadius = radius;
-                airResponse = response;
-                resetApiFailures(); // Reset failure count on success
-                break;
-              } else {
-                console.log(`v3 locations endpoint returned no results with ${radius/1000}km radius, trying next radius...`);
-                continue;
-              }
-            } else {
-              console.log(`v3 locations endpoint failed with ${radius/1000}km radius, trying next radius...`);
-              trackApiFailure('v3_locations', `Status: ${response.status} at ${radius/1000}km`);
-              continue;
-            }
-          } catch (v3Error) {
-            console.log(`v3 locations endpoint error with ${radius/1000}km radius:`, v3Error);
-            continue;
-          }
-        }
+      const airPollutionData: OpenWeatherMapAirPollution = await airPollutionResponse.json();
+      console.log('Air Pollution API call successful, processing data...');
+      
+      // Get weather data from OpenWeatherMap Weather API
+      console.log('Making OpenWeatherMap Weather API call...');
+      
+      const weatherResponse = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHERMAP_API_KEY}&units=metric`
+      );
+      
+      if (!weatherResponse.ok) {
+        console.log('❌ Weather API call failed:', weatherResponse.status);
+        throw new Error(`Weather API failed with status: ${weatherResponse.status}`);
       }
       
-      // If v3 endpoints failed, try v2 measurements as fallback with progressive radius
-      if (!airData || !airData.results || airData.results.length === 0) {
-        console.log('v3 endpoints failed, trying v2 measurements with progressive radius...');
-        
-        for (const radius of searchRadii) {
-          try {
-            console.log(`Trying v2 measurements endpoint with ${radius/1000}km radius...`);
-            const response = await fetch(
-              `https://api.openaq.org/v2/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=${radius}&limit=100`,
-              {
-                headers: {
-                  'X-API-Key': OPENAQ_API_KEY,
-                  'Accept': 'application/json'
-                }
-              }
-            );
-            
-            if (response.ok) {
-              airData = await response.json();
-              if (airData.results && airData.results.length > 0) {
-                console.log(`v2 measurements endpoint successful with ${radius/1000}km radius`);
-                successfulRadius = radius;
-                airResponse = response;
-                resetApiFailures(); // Reset failure count on success
-                break;
-              } else {
-                console.log(`v2 measurements endpoint returned no results with ${radius/1000}km radius, trying next radius...`);
-                continue;
-              }
-            } else {
-              console.log(`v2 measurements endpoint failed with ${radius/1000}km radius, trying next radius...`);
-              trackApiFailure('v2_measurements', `Status: ${response.status} at ${radius/1000}km`);
-              continue;
-            }
-          } catch (v2Error) {
-            console.log(`v2 measurements endpoint error with ${radius/1000}km radius:`, v2Error);
-            continue;
-          }
-        }
+      const weatherData: OpenWeatherMapWeather = await weatherResponse.json();
+      console.log('Weather API call successful, processing data...');
+      
+      // Process air pollution data
+      const airQuality = airPollutionData.list[0];
+      const aqi = airQuality.main.aqi;
+      
+      // Convert OpenWeatherMap AQI (1-5) to standard AQI (0-500)
+      let standardAQI: number;
+      switch (aqi) {
+        case 1: standardAQI = 50; break;   // Good
+        case 2: standardAQI = 100; break;  // Moderate
+        case 3: standardAQI = 150; break;  // Unhealthy for Sensitive Groups
+        case 4: standardAQI = 200; break;  // Unhealthy
+        case 5: standardAQI = 300; break;  // Very Unhealthy
+        default: standardAQI = 50;
       }
       
-      // If all endpoints failed, use fallback data
-      if (!airData || !airData.results || airData.results.length === 0) {
-        console.log('All API endpoints failed with all radius attempts, using fallback data');
-        trackApiFailure('all_endpoints_all_radii', 'No results found even with 200km radius');
-        throw new Error('No air quality data available - using fallback');
-      }
+      // Extract pollutant values (convert from μg/m³ to μg/m³ - no conversion needed)
+      const pm25 = airQuality.components.pm2_5;
+      const pm10 = airQuality.components.pm10;
+      const no2 = airQuality.components.no2;
+      const so2 = airQuality.components.so2;
+      const co = airQuality.components.co;
+      const o3 = airQuality.components.o3;
       
-      // Log the successful search radius
-      if (successfulRadius > 0) {
-        console.log(`✅ Found air quality data within ${successfulRadius/1000}km radius`);
-      }
-      
-      // Ensure we have a valid response before proceeding
-      if (!airResponse) {
-        console.log('❌ No valid API response available');
-        throw new Error('No valid API response available');
-      }
-        
-      console.log('OpenAQ API response status:', airResponse.status);
-        
-      // Debug: Log the raw OpenAQ response
-      console.log('OpenAQ API Response:', {
-        status: airResponse.status,
-        resultsCount: airData.results?.length || 0,
-        firstResult: airData.results?.[0] || 'No results',
-        rawData: JSON.stringify(airData).substring(0, 500) + '...'
+      console.log('Processed air pollution data:', { 
+        openweathermapAQI: aqi, 
+        standardAQI, 
+        pm25, 
+        pm10, 
+        no2, 
+        so2, 
+        co, 
+        o3 
       });
-        
-      // If no results, use fallback data instead of throwing error
-      if (!airData.results || airData.results.length === 0) {
-        console.log('OpenAQ API returned no results, using fallback data');
-        throw new Error('No air quality data available - using fallback');
-      }
-        
-      console.log('OpenAQ API call successful, processing data...');
-      
-      // Process OpenAQ data to extract AQI and pollutants
-      let aqi = 0;
-      let pm25 = 0;
-      let pm10 = 0;
-      let no2 = 0;
-      let so2 = 0;
-      let co = 0;
-      let o3 = 0;
-
-      // Check if this is location data (v3 locations) or measurement data (v2/v3 measurements)
-      const isLocationData = airData.results[0]?.sensors && airData.results[0]?.coordinates;
-      const isMeasurementData = airData.results[0]?.measurements || airData.results[0]?.value !== undefined;
-      
-      console.log('Data type detected:', { isLocationData, isMeasurementData });
-      
-      if (isLocationData) {
-        // This is location data from v3 locations endpoint
-        console.log('Processing location data, extracting sensor information...');
-        
-        // Extract sensor information from the location
-        const availableSensors: string[] = [];
-        airData.results.forEach((location: any) => {
-          if (location.sensors) {
-            location.sensors.forEach((sensor: any) => {
-              const param = sensor.parameter?.name?.toLowerCase() || '';
-              console.log('Found sensor:', { param, sensor: sensor.name });
-              
-              // Store sensor availability for later measurement fetching
-              if (param.includes('pm25') || param.includes('pm2.5')) {
-                console.log('PM2.5 sensor available');
-                availableSensors.push('pm25');
-              } else if (param.includes('pm10')) {
-                console.log('PM10 sensor available');
-                availableSensors.push('pm10');
-              } else if (param.includes('pm1')) {
-                console.log('PM1 sensor available');
-                availableSensors.push('pm1');
-              } else if (param.includes('no2')) {
-                console.log('NO2 sensor available');
-                availableSensors.push('no2');
-              } else if (param.includes('so2')) {
-                console.log('SO2 sensor available');
-                availableSensors.push('so2');
-              } else if (param.includes('co')) {
-                console.log('CO sensor available');
-                availableSensors.push('co');
-              } else if (param.includes('o3')) {
-                console.log('O3 sensor available');
-                availableSensors.push('o3');
-              } else if (param.includes('temperature')) {
-                console.log('Temperature sensor available');
-                availableSensors.push('temperature');
-              } else if (param.includes('relativehumidity') || param.includes('humidity')) {
-                console.log('Humidity sensor available');
-                availableSensors.push('humidity');
-              } else if (param.includes('um003')) {
-                console.log('PM0.3 sensor available');
-                availableSensors.push('pm003');
-              }
-            });
-          }
-        });
-        
-        // Try to fetch actual measurements from the detected sensors
-        console.log('Attempting to fetch measurements from available sensors:', availableSensors);
-        
-        try {
-          // Make a measurements API call to get actual data from the detected location
-          const measurementsResponse = await fetch(
-            `https://api.openaq.org/v3/measurements?location_id=${airData.results[0].id}&limit=100`,
-            {
-              headers: {
-                'X-API-Key': OPENAQ_API_KEY,
-                'Accept': 'application/json'
-              }
-            }
-          );
-          
-          if (measurementsResponse.ok) {
-            const measurementsData = await measurementsResponse.json();
-            console.log('Measurements API call successful, processing data...');
-            
-            // Process the actual measurements
-            const latestMeasurements = new Map();
-            
-            for (const result of measurementsData.results || []) {
-              if (result.parameter && result.value !== undefined) {
-                const key = result.parameter.toLowerCase();
-                const existing = latestMeasurements.get(key);
-                
-                if (!existing || new Date(result.lastUpdated || result.date?.utc || new Date()) > new Date(existing.lastUpdated)) {
-                  latestMeasurements.set(key, { 
-                    value: result.value, 
-                    lastUpdated: result.lastUpdated || result.date?.utc || new Date() 
-                  });
-                }
-              }
-            }
-            
-            // Extract pollutant values from actual measurements
-            pm25 = latestMeasurements.get('pm25')?.value || latestMeasurements.get('pm2.5')?.value || 0;
-            pm10 = latestMeasurements.get('pm10')?.value || 0;
-            no2 = latestMeasurements.get('no2')?.value || 0;
-            so2 = latestMeasurements.get('so2')?.value || 0;
-            co = latestMeasurements.get('co')?.value || 0;
-            o3 = latestMeasurements.get('o3')?.value || 0;
-            
-            // Add temperature and humidity if available (no fallbacks)
-            const temperature = latestMeasurements.get('temperature')?.value || null;
-            const humidity = latestMeasurements.get('relativehumidity')?.value || latestMeasurements.get('humidity')?.value || null;
-            
-            console.log('Actual measurements extracted:', { pm25, pm10, no2, so2, co, o3, temperature, humidity });
-            
-            // Calculate AQI based on actual PM2.5 if available
-            if (pm25 > 0) {
-              if (pm25 <= 12) {
-                aqi = Math.round((pm25 / 12) * 50);
-              } else if (pm25 <= 35.4) {
-                aqi = Math.round(51 + ((pm25 - 12) / (35.4 - 12)) * 49);
-              } else if (pm25 <= 55.4) {
-                aqi = Math.round(101 + ((pm25 - 35.4) / (55.4 - 35.4)) * 49);
-              } else if (pm25 <= 150.4) {
-                aqi = Math.round(151 + ((pm25 - 55.4) / (150.4 - 55.4)) * 49);
-              } else if (pm25 <= 250.4) {
-                aqi = Math.round(201 + ((pm25 - 150.4) / (250.4 - 150.4)) * 49);
-              } else {
-                aqi = Math.round(301 + ((pm25 - 250.4) / (500.4 - 250.4)) * 199);
-              }
-                    } else {
-          console.log('❌ No PM2.5 data available for AQI calculation');
-          aqi = null; // No fallback - real data required
-        }
-            
-          } else {
-            console.log('❌ Measurements API call failed - no fallback data available');
-            trackApiFailure('measurements_api', `Status: ${measurementsResponse.status}`);
-            throw new Error(`Measurements API failed with status: ${measurementsResponse.status}`);
-          }
-        } catch (measurementError) {
-          console.log('❌ Error fetching measurements - no fallback data available:', measurementError instanceof Error ? measurementError.message : String(measurementError));
-          trackApiFailure('measurements_fetch', measurementError instanceof Error ? measurementError.message : String(measurementError));
-          throw new Error(`Failed to fetch measurements: ${measurementError instanceof Error ? measurementError.message : String(measurementError)}`);
-        }
-        
-      } else if (isMeasurementData) {
-        // This is measurement data from v2/v3 measurements endpoint
-        console.log('Processing measurement data...');
-        
-        // Find the most recent measurements for each parameter
-        const latestMeasurements = new Map();
-        
-        for (const result of airData.results) {
-          if (result.measurements) {
-            for (const measurement of result.measurements) {
-              const key = measurement.parameter;
-              const existing = latestMeasurements.get(key);
-              
-              if (!existing || new Date(measurement.lastUpdated) > new Date(existing.lastUpdated)) {
-                latestMeasurements.set(key, measurement);
-              }
-            }
-          } else if (result.value !== undefined && result.parameter) {
-            // Direct measurement format
-            const key = result.parameter.toLowerCase();
-            latestMeasurements.set(key, { value: result.value, lastUpdated: result.lastUpdated || new Date() });
-          }
-        }
-        
-        // Extract pollutant values
-        pm25 = latestMeasurements.get('pm25')?.value || latestMeasurements.get('pm2.5')?.value || 0;
-        pm10 = latestMeasurements.get('pm10')?.value || 0;
-        no2 = latestMeasurements.get('no2')?.value || 0;
-        so2 = latestMeasurements.get('so2')?.value || 0;
-        co = latestMeasurements.get('co')?.value || 0;
-        o3 = latestMeasurements.get('o3')?.value || 0;
-        
-        // Calculate AQI based on PM2.5 (simplified calculation)
-        if (pm25 > 0) {
-          if (pm25 <= 12) {
-            aqi = Math.round((pm25 / 12) * 50);
-          } else if (pm25 <= 35.4) {
-            aqi = Math.round(51 + ((pm25 - 12) / (35.4 - 12)) * 49);
-          } else if (pm25 <= 55.4) {
-            aqi = Math.round(101 + ((pm25 - 35.4) / (55.4 - 35.4)) * 49);
-          } else if (pm25 <= 150.4) {
-            aqi = Math.round(151 + ((pm25 - 55.4) / (150.4 - 55.4)) * 49);
-          } else if (pm25 <= 250.4) {
-            aqi = Math.round(201 + ((pm25 - 150.4) / (250.4 - 150.4)) * 49);
-          } else {
-            aqi = Math.round(301 + ((pm25 - 250.4) / (500.4 - 250.4)) * 199);
-          }
-                    } else {
-              console.log('❌ No PM2.5 data available for AQI calculation');
-              aqi = null; // No fallback - real data required
-            }
-        
-        console.log('Processed measurement data:', { aqi, pm25, pm10, no2, so2, co, o3 });
-      }
       
       // Get user data from Supabase
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -824,8 +353,8 @@ serve(async (req) => {
                     p_user_id: user.id,
                     p_latitude: lat,
                     p_longitude: lon,
-                    p_location_name: nearestCity.name,
-                    p_aqi: aqi,
+                    p_location_name: weatherData.name || 'Your Location',
+                    p_aqi: standardAQI,
                     p_pm25: pm25 > 0 ? pm25 : null,
                     p_pm10: pm10 > 0 ? pm10 : null,
                     p_pm1: pm25 > 0 ? pm25 * 0.7 : null, // Estimate PM1 from PM2.5
@@ -833,10 +362,10 @@ serve(async (req) => {
                     p_so2: so2 > 0 ? so2 : null,
                     p_co: co > 0 ? co : null,
                     p_o3: o3 > 0 ? o3 : null,
-                    p_temperature: temperature || null, // Use real data or null
-                    p_humidity: humidity || null,       // Use real data or null
+                    p_temperature: weatherData.main.temp || null,
+                    p_humidity: weatherData.main.humidity || null,
                     p_pm003: pm25 > 0 ? pm25 * 2 : null, // Estimate PM0.3 from PM2.5
-                    p_data_source: 'OpenAQ API'
+                    p_data_source: 'OpenWeatherMap API'
                   });
                 
                 if (insertError) {
@@ -876,19 +405,13 @@ serve(async (req) => {
         }
       }
       
-      // Validate that we have real AQI data
-      if (aqi === null || aqi === undefined) {
-        console.log('❌ No valid AQI data available - cannot return response');
-        throw new Error('No valid AQI data available from OpenAQ API');
-      }
-      
       // Prepare response
       const response = {
-        location: nearestCity.name,
+        location: weatherData.name || 'Your Location',
         userLocation: userLocationDetails.name,
-        coordinates: { lat: nearestCity.lat, lon: nearestCity.lon },
+        coordinates: { lat: weatherData.coord.lat, lon: weatherData.coord.lon },
         userCoordinates: { lat, lon },
-        aqi,
+        aqi: standardAQI,
         pollutants: {
           pm25,
           pm10,
@@ -898,25 +421,33 @@ serve(async (req) => {
           o3
         },
         environmental: {
-          temperature: null, // No fallback - real data required
-          humidity: null     // No fallback - real data required
+          temperature: weatherData.main.temp,
+          humidity: weatherData.main.humidity
+        },
+        weather: {
+          condition: weatherData.weather[0]?.main || 'Unknown',
+          description: weatherData.weather[0]?.description || 'Unknown',
+          pressure: weatherData.main.pressure,
+          windSpeed: weatherData.wind.speed,
+          windDirection: weatherData.wind.deg,
+          visibility: weatherData.visibility / 1000 // Convert m to km
         },
         timestamp: new Date().toISOString(),
-        dataSource: 'OpenAQ API',
+        dataSource: 'OpenWeatherMap API',
         userPoints,
         currencyRewards,
         canWithdraw
       };
       
       // Cache the successful response
-      setCachedResponse(cacheKey, response, nearestCity.name);
+      setCachedResponse(cacheKey, response, weatherData.name || 'Your Location');
       
       return new Response(JSON.stringify(response), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
       
     } catch (apiError) {
-      console.log('OpenAQ API error, using fallback data:', apiError instanceof Error ? apiError.message : String(apiError));
+      console.log('OpenWeatherMap API error:', apiError instanceof Error ? apiError.message : String(apiError));
       console.log('Full error details:', apiError);
       
       // Check if we have cached data to use instead of fallback
@@ -929,10 +460,10 @@ serve(async (req) => {
       }
       
       console.log('❌ No cached data available - API failure with no fallbacks');
-      console.log('🔑 Check OpenAQ API key configuration and network connectivity');
+      console.log('🔑 Check OpenWeatherMap API key configuration and network connectivity');
       
       return new Response(JSON.stringify({
-        error: 'OpenAQ API failure',
+        error: 'OpenWeatherMap API failure',
         message: 'Unable to retrieve air quality data - no fallbacks available',
         instructions: 'Check API key configuration and network connectivity',
         timestamp: new Date().toISOString()

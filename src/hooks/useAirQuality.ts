@@ -224,8 +224,8 @@ export const useAirQuality = () => {
         return openWeatherMapData;
       }
 
-      // Fallback to OpenAQ if OpenWeatherMap is not available
-      console.log('Manual refresh: Falling back to OpenAQ API');
+          // Use OpenWeatherMap as primary source
+    console.log('Manual refresh: Using OpenWeatherMap API');
       // We'll handle this in the main fetch function
       return null;
     } catch (error) {
@@ -266,98 +266,64 @@ export const useAirQuality = () => {
       const { data: { session } } = await supabase.auth.getSession();
       console.log('User session:', session ? 'Authenticated' : 'Not authenticated');
       
-      // Try OpenAQ first
-      const openAQResponse = await supabase.functions.invoke('get-air-quality', {
+          // Try OpenWeatherMap first
+    const openWeatherMapResponse = await supabase.functions.invoke('get-air-quality', {
         body: { lat: latitude, lon: longitude }
       });
 
-      if (openAQResponse.error) {
-        console.error('❌ Supabase function error (OpenAQ):', openAQResponse.error.message);
+      if (openWeatherMapResponse.error) {
+        console.error('❌ Supabase function error (OpenWeatherMap):', openWeatherMapResponse.error.message);
         
         // Check for specific API key configuration errors
-        if (openAQResponse.error.message.includes('OpenAQ API key not configured')) {
-          console.error('🔑 MISSING OPENAQ API KEY - Air quality monitoring unavailable');
+        if (openWeatherMapResponse.error.message.includes('OpenWeatherMap API key not configured')) {
+          console.error('🔑 MISSING OPENWEATHERMAP API KEY - Air quality monitoring unavailable');
           console.error('📋 To fix this issue:');
           console.error('   1. Go to your Supabase project dashboard');
           console.error('   2. Navigate to Settings → Environment variables');
-          console.error('   3. Add: OPENAQ_API_KEY = your_api_key_here');
-          console.error('   4. Get your API key from: https://docs.openaq.org/docs/getting-started');
+          console.error('   3. Add: OPENWEATHERMAP_API_KEY = your_api_key_here');
+          console.error('   4. Get your API key from: https://openweathermap.org/api');
           console.error('   5. Redeploy your Supabase Edge Functions');
-        } else if (openAQResponse.error.message.includes('OpenAQ API failure')) {
-          console.error('🌐 OPENAQ API FAILURE - Check API key and network connectivity');
+        } else if (openWeatherMapResponse.error.message.includes('OpenWeatherMap API failure')) {
+          console.error('🌐 OPENWEATHERMAP API FAILURE - Check API key and network connectivity');
         }
         
-        // Fallback to OpenWeatherMap if OpenAQ fails
-        const openWeatherMapData = await fetchOpenWeatherMapAirQuality(latitude, longitude);
-        if (openWeatherMapData) {
-          console.log('Using OpenWeatherMap Air Pollution API as fallback for OpenAQ failure');
-          // Update global state
-          setCurrentAQI(openWeatherMapData.aqi);
-          setCurrentLocation(openWeatherMapData.location);
-          throttledLocationUpdate(openWeatherMapData.location);
-          
-          // Save reading to database
-          console.log('fetchAirQualityData: About to save reading to database (OpenWeatherMap fallback)');
-          await saveReadingToDatabase(openWeatherMapData);
-          console.log('fetchAirQualityData: Reading saved to database (OpenWeatherMap fallback)');
-          
-          return openWeatherMapData;
-        }
-        
-        throw new Error(`Supabase function error (OpenAQ): ${openAQResponse.error.message}`);
+        throw new Error(`Supabase function error (OpenWeatherMap): ${openWeatherMapResponse.error.message}`);
       }
 
-      if (!openAQResponse.data) {
-        throw new Error('No response data received from OpenAQ function');
+      if (!openWeatherMapResponse.data) {
+        throw new Error('No response data received from OpenWeatherMap function');
       }
       
       // Check for error responses from the Edge Function
-      if (openAQResponse.data && typeof openAQResponse.data === 'object' && 'error' in openAQResponse.data) {
-        const errorResponse = openAQResponse.data as any;
-        console.error('❌ Edge Function returned error (OpenAQ):', errorResponse.error);
+      if (openWeatherMapResponse.data && typeof openWeatherMapResponse.data === 'object' && 'error' in openWeatherMapResponse.data) {
+        const errorResponse = openWeatherMapResponse.data as any;
+        console.error('❌ Edge Function returned error (OpenWeatherMap):', errorResponse.error);
         console.error('📝 Message:', errorResponse.message);
         console.error('📋 Instructions:', errorResponse.instructions);
         
-        if (errorResponse.error === 'OpenAQ API key not configured') {
-          console.error('🔑 MISSING OPENAQ API KEY - Air quality monitoring unavailable');
+        if (errorResponse.error === 'OpenWeatherMap API key not configured') {
+          console.error('🔑 MISSING OPENWEATHERMAP API KEY - Air quality monitoring unavailable');
           console.error('📋 To fix this issue:');
           console.error('   1. Go to your Supabase project dashboard');
           console.error('   2. Navigate to Settings → Environment variables');
-          console.error('   3. Add: OPENAQ_API_KEY = your_api_key_here');
-          console.error('   4. Get your API key from: https://docs.openaq.org/docs/getting-started');
+          console.error('   3. Add: OPENWEATHERMAP_API_KEY = your_api_key_here');
+          console.error('   4. Get your API key from: https://openweathermap.org/api');
           console.error('   5. Redeploy your Supabase Edge Functions');
         }
         
-        // Fallback to OpenWeatherMap if OpenAQ fails
-        const openWeatherMapData = await fetchOpenWeatherMapAirQuality(latitude, longitude);
-        if (openWeatherMapData) {
-          console.log('Using OpenWeatherMap Air Pollution API as fallback for OpenAQ failure');
-          // Update global state
-          setCurrentAQI(openWeatherMapData.aqi);
-          setCurrentLocation(openWeatherMapData.location);
-          throttledLocationUpdate(openWeatherMapData.location);
-          
-          // Save reading to database
-          console.log('fetchAirQualityData: About to save reading to database (OpenWeatherMap fallback)');
-          await saveReadingToDatabase(openWeatherMapData);
-          console.log('fetchAirQualityData: Reading saved to database (OpenWeatherMap fallback)');
-          
-          return openWeatherMapData;
-        }
-        
-        throw new Error(`Edge Function error (OpenAQ): ${errorResponse.error} - ${errorResponse.message}`);
+        throw new Error(`Edge Function error (OpenWeatherMap): ${errorResponse.error} - ${errorResponse.message}`);
       }
 
       // Debug: Log the response structure
-      console.log('Supabase function response (OpenAQ):', openAQResponse.data);
-      console.log('Response type:', typeof openAQResponse.data);
-      console.log('Response keys:', Object.keys(openAQResponse.data));
+      console.log('Supabase function response (OpenWeatherMap):', openWeatherMapResponse.data);
+      console.log('Response type:', typeof openWeatherMapResponse.data);
+      console.log('Response keys:', Object.keys(openWeatherMapResponse.data));
 
       // Check if the response has the expected structure
-      if (openAQResponse.data && typeof openAQResponse.data === 'object' && 'pollutants' in openAQResponse.data) {
+      if (openWeatherMapResponse.data && typeof openWeatherMapResponse.data === 'object' && 'pollutants' in openWeatherMapResponse.data) {
         // New enhanced format with capital city data
-        const typedResponse = openAQResponse.data as any;
-        console.log('Using enhanced format (OpenAQ), AQI:', typedResponse.aqi);
+        const typedResponse = openWeatherMapResponse.data as any;
+        console.log('Using enhanced format (OpenWeatherMap), AQI:', typedResponse.aqi);
         
         // Update global state
         setCurrentAQI(typedResponse.aqi);
@@ -390,9 +356,9 @@ export const useAirQuality = () => {
         console.log('fetchAirQualityData: Reading saved to database (enhanced format)');
         
         return airQualityData;
-      } else if (openAQResponse.data && typeof openAQResponse.data === 'object' && 'list' in openAQResponse.data && Array.isArray((openAQResponse.data as any).list)) {
+      } else if (openWeatherMapResponse.data && typeof openWeatherMapResponse.data === 'object' && 'list' in openWeatherMapResponse.data && Array.isArray((openWeatherMapResponse.data as any).list)) {
         // Raw OpenWeatherMap format (fallback)
-        const typedResponse = openAQResponse.data as any;
+        const typedResponse = openWeatherMapResponse.data as any;
         const currentData = typedResponse.list[0];
         
         const airQualityData = {
@@ -419,7 +385,7 @@ export const useAirQuality = () => {
         return airQualityData;
       } else {
         // Fallback for unexpected format
-        console.error('Unexpected response format (OpenAQ):', openAQResponse.data);
+        console.error('Unexpected response format (OpenAQ):', openWeatherMapResponse.data);
         throw new Error('Unexpected data format received from API');
       }
     } catch (err) {
