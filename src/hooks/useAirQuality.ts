@@ -129,6 +129,115 @@ export const useAirQuality = () => {
     }
   }, [user]);
 
+  // Function to fetch air quality data from OpenWeatherMap Air Pollution API
+  const fetchOpenWeatherMapAirQuality = useCallback(async (latitude: number, longitude: number) => {
+    const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
+    if (!apiKey) {
+      console.log('OpenWeatherMap API key not configured, skipping air pollution data fetch');
+      return null;
+    }
+
+    try {
+      console.log('Fetching air quality data from OpenWeatherMap Air Pollution API...');
+      
+      const response = await fetch(
+        `http://api.openweathermap.org/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=${apiKey}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`OpenWeatherMap API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('OpenWeatherMap Air Pollution API response:', data);
+
+      if (data.list && data.list.length > 0) {
+        const currentData = data.list[0];
+        const components = currentData.components;
+        const main = currentData.main;
+
+        // Convert OpenWeatherMap AQI to standard scale (1-5 to 0-500)
+        const aqiMap = {
+          1: 50,   // Good
+          2: 100,  // Fair
+          3: 150,  // Moderate
+          4: 200,  // Poor
+          5: 300   // Very Poor
+        };
+
+        const standardAQI = aqiMap[main.aqi] || main.aqi * 50;
+
+        return {
+          aqi: standardAQI,
+          pm25: components.pm2_5,
+          pm10: components.pm10,
+          no2: components.no2,
+          so2: components.so2,
+          co: components.co,
+          o3: components.o3,
+          location: 'OpenWeatherMap Air Pollution API',
+          userLocation: 'Current Location',
+          coordinates: { lat: latitude, lon: longitude },
+          userCoordinates: { lat: latitude, lon: longitude },
+          timestamp: new Date().toLocaleString(),
+          dataSource: 'OpenWeatherMap Air Pollution API',
+          userPoints: 0,
+          currencyRewards: 0,
+          canWithdraw: false
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error fetching OpenWeatherMap air quality data:', error);
+      return null;
+    }
+  }, []);
+
+  // Manual refresh function that can use either API
+  const manualRefresh = useCallback(async () => {
+    if (!hasUserConsent) {
+      console.log('Manual refresh skipped - user consent not granted');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const location = await getCurrentLocation();
+      if (!location) {
+        throw new Error('Unable to get current location');
+      }
+
+      // Try OpenWeatherMap first if available
+      const openWeatherMapData = await fetchOpenWeatherMapAirQuality(location.coords.latitude, location.coords.longitude);
+      if (openWeatherMapData) {
+        console.log('Manual refresh: Using OpenWeatherMap Air Pollution API');
+        // Update global state
+        setCurrentAQI(openWeatherMapData.aqi);
+        setCurrentLocation(openWeatherMapData.location);
+        throttledLocationUpdate(openWeatherMapData.location);
+        
+        // Save reading to database
+        await saveReadingToDatabase(openWeatherMapData);
+        return openWeatherMapData;
+      }
+
+      // Fallback to OpenAQ if OpenWeatherMap is not available
+      console.log('Manual refresh: Falling back to OpenAQ API');
+      // We'll handle this in the main fetch function
+      return null;
+    } catch (error) {
+      console.error('Manual refresh failed:', error);
+      setError(error instanceof Error ? error.message : 'Failed to refresh air quality data');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [hasUserConsent, getCurrentLocation, fetchOpenWeatherMapAirQuality, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, saveReadingToDatabase, setLoading, setError]);
+
+  // Enhanced fetch function that tries both APIs
   const fetchAirQualityData = useCallback(async (): Promise<AirQualityData> => {
     if (!navigator.geolocation) {
       throw new Error('Geolocation not supported by your browser');
@@ -157,15 +266,16 @@ export const useAirQuality = () => {
       const { data: { session } } = await supabase.auth.getSession();
       console.log('User session:', session ? 'Authenticated' : 'Not authenticated');
       
-      const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
+      // Try OpenAQ first
+      const openAQResponse = await supabase.functions.invoke('get-air-quality', {
         body: { lat: latitude, lon: longitude }
       });
 
-      if (error) {
-        console.error('❌ Supabase function error:', error.message);
+      if (openAQResponse.error) {
+        console.error('❌ Supabase function error (OpenAQ):', openAQResponse.error.message);
         
         // Check for specific API key configuration errors
-        if (error.message.includes('OpenAQ API key not configured')) {
+        if (openAQResponse.error.message.includes('OpenAQ API key not configured')) {
           console.error('🔑 MISSING OPENAQ API KEY - Air quality monitoring unavailable');
           console.error('📋 To fix this issue:');
           console.error('   1. Go to your Supabase project dashboard');
@@ -173,21 +283,38 @@ export const useAirQuality = () => {
           console.error('   3. Add: OPENAQ_API_KEY = your_api_key_here');
           console.error('   4. Get your API key from: https://docs.openaq.org/docs/getting-started');
           console.error('   5. Redeploy your Supabase Edge Functions');
-        } else if (error.message.includes('OpenAQ API failure')) {
+        } else if (openAQResponse.error.message.includes('OpenAQ API failure')) {
           console.error('🌐 OPENAQ API FAILURE - Check API key and network connectivity');
         }
         
-        throw new Error(`Supabase function error: ${error.message}`);
+        // Fallback to OpenWeatherMap if OpenAQ fails
+        const openWeatherMapData = await fetchOpenWeatherMapAirQuality(latitude, longitude);
+        if (openWeatherMapData) {
+          console.log('Using OpenWeatherMap Air Pollution API as fallback for OpenAQ failure');
+          // Update global state
+          setCurrentAQI(openWeatherMapData.aqi);
+          setCurrentLocation(openWeatherMapData.location);
+          throttledLocationUpdate(openWeatherMapData.location);
+          
+          // Save reading to database
+          console.log('fetchAirQualityData: About to save reading to database (OpenWeatherMap fallback)');
+          await saveReadingToDatabase(openWeatherMapData);
+          console.log('fetchAirQualityData: Reading saved to database (OpenWeatherMap fallback)');
+          
+          return openWeatherMapData;
+        }
+        
+        throw new Error(`Supabase function error (OpenAQ): ${openAQResponse.error.message}`);
       }
 
-      if (!response) {
-        throw new Error('No response data received');
+      if (!openAQResponse.data) {
+        throw new Error('No response data received from OpenAQ function');
       }
       
       // Check for error responses from the Edge Function
-      if (response && typeof response === 'object' && 'error' in response) {
-        const errorResponse = response as any;
-        console.error('❌ Edge Function returned error:', errorResponse.error);
+      if (openAQResponse.data && typeof openAQResponse.data === 'object' && 'error' in openAQResponse.data) {
+        const errorResponse = openAQResponse.data as any;
+        console.error('❌ Edge Function returned error (OpenAQ):', errorResponse.error);
         console.error('📝 Message:', errorResponse.message);
         console.error('📋 Instructions:', errorResponse.instructions);
         
@@ -201,19 +328,36 @@ export const useAirQuality = () => {
           console.error('   5. Redeploy your Supabase Edge Functions');
         }
         
-        throw new Error(`Edge Function error: ${errorResponse.error} - ${errorResponse.message}`);
+        // Fallback to OpenWeatherMap if OpenAQ fails
+        const openWeatherMapData = await fetchOpenWeatherMapAirQuality(latitude, longitude);
+        if (openWeatherMapData) {
+          console.log('Using OpenWeatherMap Air Pollution API as fallback for OpenAQ failure');
+          // Update global state
+          setCurrentAQI(openWeatherMapData.aqi);
+          setCurrentLocation(openWeatherMapData.location);
+          throttledLocationUpdate(openWeatherMapData.location);
+          
+          // Save reading to database
+          console.log('fetchAirQualityData: About to save reading to database (OpenWeatherMap fallback)');
+          await saveReadingToDatabase(openWeatherMapData);
+          console.log('fetchAirQualityData: Reading saved to database (OpenWeatherMap fallback)');
+          
+          return openWeatherMapData;
+        }
+        
+        throw new Error(`Edge Function error (OpenAQ): ${errorResponse.error} - ${errorResponse.message}`);
       }
 
       // Debug: Log the response structure
-      console.log('Supabase function response:', response);
-      console.log('Response type:', typeof response);
-      console.log('Response keys:', Object.keys(response));
+      console.log('Supabase function response (OpenAQ):', openAQResponse.data);
+      console.log('Response type:', typeof openAQResponse.data);
+      console.log('Response keys:', Object.keys(openAQResponse.data));
 
       // Check if the response has the expected structure
-      if (response && typeof response === 'object' && 'pollutants' in response) {
+      if (openAQResponse.data && typeof openAQResponse.data === 'object' && 'pollutants' in openAQResponse.data) {
         // New enhanced format with capital city data
-        const typedResponse = response as any;
-        console.log('Using enhanced format, AQI:', typedResponse.aqi);
+        const typedResponse = openAQResponse.data as any;
+        console.log('Using enhanced format (OpenAQ), AQI:', typedResponse.aqi);
         
         // Update global state
         setCurrentAQI(typedResponse.aqi);
@@ -246,9 +390,9 @@ export const useAirQuality = () => {
         console.log('fetchAirQualityData: Reading saved to database (enhanced format)');
         
         return airQualityData;
-      } else if (response && typeof response === 'object' && 'list' in response && Array.isArray((response as any).list)) {
+      } else if (openAQResponse.data && typeof openAQResponse.data === 'object' && 'list' in openAQResponse.data && Array.isArray((openAQResponse.data as any).list)) {
         // Raw OpenWeatherMap format (fallback)
-        const typedResponse = response as any;
+        const typedResponse = openAQResponse.data as any;
         const currentData = typedResponse.list[0];
         
         const airQualityData = {
@@ -275,7 +419,7 @@ export const useAirQuality = () => {
         return airQualityData;
       } else {
         // Fallback for unexpected format
-        console.error('Unexpected response format:', response);
+        console.error('Unexpected response format (OpenAQ):', openAQResponse.data);
         throw new Error('Unexpected data format received from API');
       }
     } catch (err) {
@@ -309,7 +453,7 @@ export const useAirQuality = () => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase, getCurrentLocation]);
+  }, [setLoading, setError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase, getCurrentLocation, fetchOpenWeatherMapAirQuality]);
 
   const query = useQuery({
     queryKey: ['airQuality', hasUserConsent, hasRequestedPermission, user?.id],
@@ -346,23 +490,13 @@ export const useAirQuality = () => {
   }, [query.isRefetching]);
 
   return {
-    ...query,
-    refetch: query.refetch,
-    isRefetching: query.isRefetching,
-    isLoading: query.isLoading,
-    error: query.error,
     data: query.data,
+    isLoading: query.isLoading,
+    isRefetching: query.isRefetching,
+    error: query.error,
+    refetch: query.refetch,
+    manualRefresh,
     hasUserConsent,
-    hasRequestedPermission,
-    // Add manual refresh function for user control
-    manualRefresh: () => {
-      if (hasUserConsent && hasRequestedPermission) {
-        console.log('Manual refresh requested by user');
-        return query.refetch();
-      } else {
-        console.log('Manual refresh skipped - user consent or permission check not ready');
-        return Promise.resolve({ data: undefined, error: null });
-      }
-    }
+    hasRequestedPermission
   };
 };

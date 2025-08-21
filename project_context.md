@@ -99,6 +99,11 @@ src/
 - **Database Integration** - Full CRUD operations with RLS
 
 ### 🔧 Recently Fixed Issues
+- **Map Card Structure Fix** - ✅ COMPLETED: Fixed WeatherStats map container to be a proper card with the map inside and floating title card on top, improved visual hierarchy and consistency with other dashboard components
+- **OpenWeatherMap Air Pollution API Integration** - ✅ COMPLETED: Added OpenWeatherMap air pollution API integration as an additional data source alongside OpenAQ API, implemented fallback mechanism when OpenAQ fails, added AQI conversion from OpenWeatherMap scale (1-5) to standard scale (0-500), configured API key 56ab74b487631610f9b44a6e51fe72f0 for Netlify deployment
+- **WeatherStatsCard 400 Error Fix** - ✅ COMPLETED: Fixed WeatherStatsCard 400 error by passing coordinates from AirQualityDashboard, added validation to prevent API calls with invalid coordinates, enhanced error handling with specific error messages for different API failure types
+- **Duplicate AQI Data Removal** - ✅ COMPLETED: Removed duplicate AQI data display by eliminating circular progress gauge that showed same AQI value as percentage, cleaned up redundant information for better user experience
+- **Titillium Web Font Implementation** - ✅ COMPLETED: Implemented Titillium Web font from Google Fonts throughout the application, added all font weights (200-900) with proper typography hierarchy, updated main headline to use font-black (900) weight as requested, applied consistent font weights across all components for better visual hierarchy
 - **OpenAQ API Progressive Radius Search** - ✅ COMPLETED: Enhanced OpenAQ API search with progressive radius strategy (10km → 25km → 50km → 100km → 200km), improved location search with multiple radii (50km, 100km, 200km), better coverage in areas with limited sensors like Kenya, enhanced city detection and fallback handling
 - **Settings Page Loading Error Fix** - ✅ COMPLETED: Fixed Settings page loading error by adding missing methods to useNotifications hook, implemented proper notification preferences interface matching database schema, added preferences, updatePreferences, initializePreferences, and isLoading properties, enhanced error handling and loading states for better user experience
 - **View Switching Loop Fix** - ✅ COMPLETED: Fixed rapid view switching between dashboard and map views by removing problematic useEffect dependencies in Index component, preventing view switching loops and improving navigation stability
@@ -311,7 +316,7 @@ src/
 ### External APIs
 - **OpenAQ**: Air quality data and emission source information (with fallback handling)
 - **Open-Meteo**: Wind data, weather forecasts, and meteorological information (primary weather data source)
-- **OpenWeatherMap**: Real-time weather conditions, temperature, humidity, and precipitation data
+- **OpenWeatherMap**: Real-time weather conditions, temperature, humidity, precipitation data, and air pollution data (AQI, PM2.5, PM10, NO2, SO2, CO, O3) with API key 56ab74b487631610f9b44a6e51fe72f0 configured for Netlify deployment
 - **Windy API**: Wind data fallback when Open-Meteo is unavailable
 - **Google Maps**: Location services (when configured)
 

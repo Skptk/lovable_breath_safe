@@ -785,108 +785,106 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       )}
 
       {/* Map Container */}
-      <div className="relative h-[calc(100vh-200px)] min-h-[600px]">
-        {/* Leaflet Map Integration - Full width/height */}
-        <div className="w-full h-full rounded-lg overflow-hidden border border-border">
-                  <LeafletMap
-          userLocation={userLocation}
-          airQualityData={airQualityData}
-          nearbyLocations={nearbyLocations}
-        />
-        </div>
-        
+      <Card className="relative h-[calc(100vh-200px)] min-h-[600px] shadow-card">
+        <CardContent className="p-0 h-full">
+          {/* Leaflet Map Integration - Full width/height within card */}
+          <div className="w-full h-full rounded-lg overflow-hidden">
+            <LeafletMap
+              userLocation={userLocation}
+              airQualityData={airQualityData}
+              nearbyLocations={nearbyLocations}
+            />
+          </div>
 
-
-        {/* Floating Header */}
-        <div className="absolute top-4 left-4 right-4 z-10">
-          <Card className="bg-card/90 backdrop-blur-sm border-border shadow-lg">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-lg font-bold text-foreground">
-                    Weather & Air Quality Stats
-                  </h1>
-                  <p className="text-xs text-muted-foreground">
-                    {userLocation ? `${userLocation.city}, ${userLocation.country}` : 'Loading location...'}
-                  </p>
-
-                </div>
-                <div className="flex items-center gap-2">
-
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Layers className="h-4 w-4" />
-                    Layers
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Bottom Sheet for Stations */}
-        <div className="absolute bottom-0 left-0 right-0 z-10">
-          <div className="bg-card/95 backdrop-blur-sm border-t border-border rounded-t-2xl shadow-2xl">
-            {/* Drag Handle */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-12 h-1 bg-muted-foreground/30 rounded-full"></div>
-            </div>
-            
-            {/* Current Location Summary */}
-            {userLocation && (
-              <div className="px-4 pb-3 border-b border-border">
+          {/* Floating Header */}
+          <div className="absolute top-4 left-4 right-4 z-10">
+            <Card className="bg-card/90 backdrop-blur-sm border-border shadow-lg">
+              <CardContent className="p-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Navigation className="h-4 w-4 text-primary" />
-                    <div>
-                      <div className="font-medium text-sm">
-                        {userLocation.city}
-                        {userLocation.state && `, ${userLocation.state}`}
-                        {userLocation.country && `, ${userLocation.country}`}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
-                      </div>
-                    </div>
+                  <div>
+                    <h1 className="text-lg font-bold text-foreground">
+                      Weather & Air Quality Stats
+                    </h1>
+                    <p className="text-xs text-muted-foreground">
+                      {userLocation ? `${userLocation.city}, ${userLocation.country}` : 'Loading location...'}
+                    </p>
                   </div>
-                  <Badge 
-                    variant="secondary"
-                    className={`${getAQIColor(airQualityData?.aqi || 0)} text-white border-0`}
-                  >
-                    AQI {airQualityData?.aqi || 'Loading...'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Layers className="h-4 w-4" />
+                      Layers
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              </CardContent>
+            </Card>
+          </div>
 
-            {/* Stations List */}
-            <div className="px-4 py-3 max-h-64 overflow-y-auto">
-              <h3 className="text-sm font-semibold text-foreground mb-3">
-                Nearby Monitoring Stations
-              </h3>
+          {/* Bottom Sheet for Stations */}
+          <div className="absolute bottom-0 left-0 right-0 z-10">
+            <div className="bg-card/95 backdrop-blur-sm border-t border-border rounded-t-2xl shadow-2xl">
+              {/* Drag Handle */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-12 h-1 bg-muted-foreground/30 rounded-full"></div>
+              </div>
               
-              <div className="space-y-2">
-                {nearbyLocations.map((location) => (
-                  <div key={location.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+              {/* Current Location Summary */}
+              {userLocation && (
+                <div className="px-4 pb-3 border-b border-border">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${getAQIColor(location.aqi)}`} />
+                      <Navigation className="h-4 w-4 text-primary" />
                       <div>
-                        <div className="font-medium text-sm">{location.name}</div>
-                        <div className="text-xs text-muted-foreground">{location.distance}</div>
+                        <div className="font-medium text-sm">
+                          {userLocation.city}
+                          {userLocation.state && `, ${userLocation.state}`}
+                          {userLocation.country && `, ${userLocation.country}`}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
+                        </div>
                       </div>
                     </div>
                     <Badge 
                       variant="secondary"
-                      className={`${getAQIColor(location.aqi)} text-white border-0 text-xs`}
+                      className={`${getAQIColor(airQualityData?.aqi || 0)} text-white border-0`}
                     >
-                      AQI {location.aqi}
+                      AQI {airQualityData?.aqi || 'Loading...'}
                     </Badge>
                   </div>
-                ))}
+                </div>
+              )}
+
+              {/* Stations List */}
+              <div className="px-4 py-3 max-h-64 overflow-y-auto">
+                <h3 className="text-sm font-semibold text-foreground mb-3">
+                  Nearby Monitoring Stations
+                </h3>
+                
+                <div className="space-y-2">
+                  {nearbyLocations.map((location) => (
+                    <div key={location.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${getAQIColor(location.aqi)}`} />
+                        <div>
+                          <div className="font-medium text-sm">{location.name}</div>
+                          <div className="text-xs text-muted-foreground">{location.distance}</div>
+                        </div>
+                      </div>
+                      <Badge 
+                        variant="secondary"
+                        className={`${getAQIColor(location.aqi)} text-white border-0 text-xs`}
+                      >
+                        AQI {location.aqi}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
