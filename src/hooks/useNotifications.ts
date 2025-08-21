@@ -68,7 +68,7 @@ export const useNotifications = () => {
     try {
       const { data, error } = await supabase
         .from('user_settings')
-        .select('notification_preferences')
+        .select('settings')
         .eq('user_id', user.id)
         .single();
 
@@ -76,8 +76,16 @@ export const useNotifications = () => {
         throw error;
       }
 
-      if (data?.notification_preferences) {
-        setSettings(data.notification_preferences);
+      if (data?.settings?.notifications) {
+        // Map from the JSONB structure to our interface
+        const notificationSettings = data.settings.notifications;
+        setSettings({
+          email_notifications: notificationSettings.email || true,
+          push_notifications: notificationSettings.push || true,
+          air_quality_alerts: notificationSettings.airQualityAlerts || true,
+          weather_alerts: notificationSettings.weatherAlerts || false,
+          achievement_notifications: notificationSettings.achievementNotifications || true
+        });
       }
     } catch (error) {
       console.error('Error fetching notification settings:', error);
@@ -160,11 +168,32 @@ export const useNotifications = () => {
     try {
       const updatedSettings = { ...settings, ...newSettings };
       
+      // First get the current settings to preserve other fields
+      const { data: currentData } = await supabase
+        .from('user_settings')
+        .select('settings')
+        .eq('user_id', user.id)
+        .single();
+
+      const currentSettings = currentData?.settings || {};
+      
+      // Update the notifications section while preserving other settings
+      const updatedFullSettings = {
+        ...currentSettings,
+        notifications: {
+          email: updatedSettings.email_notifications,
+          push: updatedSettings.push_notifications,
+          airQualityAlerts: updatedSettings.air_quality_alerts,
+          weatherAlerts: updatedSettings.weather_alerts,
+          achievementNotifications: updatedSettings.achievement_notifications
+        }
+      };
+
       const { error } = await supabase
         .from('user_settings')
         .upsert({
           user_id: user.id,
-          notification_preferences: updatedSettings
+          settings: updatedFullSettings
         });
 
       if (error) throw error;

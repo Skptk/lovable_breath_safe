@@ -60,12 +60,7 @@ export default function AirQualityDashboard({
       const granted = await requestLocationPermission();
       if (granted) {
         console.log('Location permission granted, refreshing data...');
-        // Wait a moment for the state to update, then refresh
-        setTimeout(() => {
-          if (hasUserConsent) {
-            manualRefresh();
-          }
-        }, 100);
+        // Don't auto-refresh, let the useQuery hook handle it when hasUserConsent changes
       } else {
         console.log('Location permission denied by user');
       }

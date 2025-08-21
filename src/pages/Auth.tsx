@@ -40,7 +40,7 @@ export default function Auth(): JSX.Element {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        navigate('/');
+        navigate('/dashboard?view=dashboard');
       }
     };
     checkAuth();
@@ -205,7 +205,7 @@ export default function Auth(): JSX.Element {
         });
 
         // Redirect to dashboard after successful login
-        navigate('/');
+        navigate('/dashboard?view=dashboard');
       }
     } catch (error: any) {
       console.error('Authentication error:', error);
@@ -356,7 +356,7 @@ export default function Auth(): JSX.Element {
         });
         
         // Redirect to dashboard after successful login
-        navigate('/');
+        navigate('/dashboard?view=dashboard');
         return;
       }
 
@@ -467,7 +467,7 @@ export default function Auth(): JSX.Element {
         });
         
         // Redirect to dashboard after successful login
-        navigate('/');
+        navigate('/dashboard?view=dashboard');
         return;
       }
 

@@ -312,18 +312,18 @@ export const useAirQuality = () => {
   }, [setLoading, setError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase, getCurrentLocation]);
 
   const query = useQuery({
-    queryKey: ['airQuality', hasUserConsent, hasRequestedPermission],
+    queryKey: ['airQuality', hasUserConsent, hasRequestedPermission, user?.id],
     queryFn: fetchAirQualityData,
-    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 2 * 60 * 1000, // Cache for 2 minutes
+    staleTime: 1 * 60 * 1000, // Consider data fresh for 1 minute
     refetchOnWindowFocus: false, // Disable auto-refresh when user returns to tab to prevent loops
-    refetchOnMount: false, // Disable auto-fetch on mount to prevent loops
+    refetchOnMount: true, // Enable mount fetch when conditions are met
     refetchOnReconnect: false, // Disable auto-fetch on reconnect to prevent loops
     refetchInterval: false, // Disable automatic refresh to prevent loops
     refetchIntervalInBackground: false, // Disable background refresh to save battery
     retry: 1, // Reduce retries to prevent loops
-    retryDelay: 1000, // Increase retry delay
-    enabled: hasUserConsent && hasRequestedPermission, // Only run when everything is ready
+    retryDelay: 2000, // Increase retry delay
+    enabled: hasUserConsent && hasRequestedPermission && !!user, // Only run when everything is ready including user
   });
 
   // Debug logging for permission states and refresh behavior
