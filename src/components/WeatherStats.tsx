@@ -63,19 +63,19 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
   useEffect(() => {
     console.log('WeatherStats: userLocation changed:', userLocation);
     console.log('WeatherStats: weatherData state:', {
-      isLoading: weatherData.isLoading,
+      loading: weatherData.loading,
       error: weatherData.error,
-      data: weatherData.data
+      currentWeather: weatherData.currentWeather
     });
-  }, [userLocation, weatherData.isLoading, weatherData.error, weatherData.data]);
+  }, [userLocation, weatherData.loading, weatherData.error, weatherData.currentWeather]);
 
   // Trigger weather data fetch when user location becomes available
   useEffect(() => {
-    if (userLocation?.latitude && userLocation?.longitude && !weatherData.data && !weatherData.isLoading) {
+    if (userLocation?.latitude && userLocation?.longitude && !weatherData.currentWeather && !weatherData.loading) {
       console.log('WeatherStats: Triggering manual weather data fetch for coordinates:', userLocation.latitude, userLocation.longitude);
       weatherData.refetch();
     }
-  }, [userLocation, weatherData.data, weatherData.isLoading, weatherData.refetch]);
+  }, [userLocation, weatherData.currentWeather, weatherData.loading, weatherData.refetch]);
 
   // Check for existing location permissions on component mount
   useEffect(() => {
@@ -263,7 +263,12 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       updateNearbyLocations(latitude, longitude);
       
     } catch (err: any) {
-      console.error('Error getting location:', err);
+      // Reduce console noise for location errors
+      if (err.code === 1) {
+        console.log('Location permission denied by user');
+      } else {
+        console.error('Error getting location:', err);
+      }
       
       let errorMessage = 'Failed to get your location.';
       

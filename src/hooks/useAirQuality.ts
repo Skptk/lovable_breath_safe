@@ -349,12 +349,23 @@ export const useAirQuality = () => {
       
       // Only log geolocation errors if user has actually granted consent
       if (hasUserConsent && err instanceof GeolocationPositionError) {
-        console.error('Geolocation error after user consent:', err);
-        if (err.code === 2) {
-          console.log('Position unavailable - this may be a temporary issue with location services');
+        // Reduce console noise for common geolocation errors
+        switch (err.code) {
+          case 1: // PERMISSION_DENIED
+            console.log('Location permission denied - user needs to enable location access');
+            break;
+          case 2: // POSITION_UNAVAILABLE
+            console.log('Position unavailable - this may be a temporary issue with location services');
+            break;
+          case 3: // TIMEOUT
+            console.log('Location request timed out - please try again');
+            break;
+          default:
+            console.error('Geolocation error after user consent:', err);
         }
       } else if (!hasUserConsent && err instanceof GeolocationPositionError) {
-        console.log('Geolocation error ignored - user consent not granted yet');
+        // Don't log errors when user hasn't consented yet
+        console.log('Geolocation skipped - user consent not granted yet');
       } else {
         console.error('Error in fetchAirQualityData:', err);
       }
@@ -391,7 +402,25 @@ export const useAirQuality = () => {
       }
       return false;
     } catch (error) {
-      console.error('Location permission denied:', error);
+      // Only log specific error types, reduce console noise
+      if (error instanceof GeolocationPositionError) {
+        switch (error.code) {
+          case 1: // PERMISSION_DENIED
+            console.log('Location permission denied by user');
+            break;
+          case 2: // POSITION_UNAVAILABLE
+            console.log('Location position unavailable');
+            break;
+          case 3: // TIMEOUT
+            console.log('Location request timed out');
+            break;
+          default:
+            console.log('Location permission error:', error.message);
+        }
+      } else {
+        console.log('Location permission request failed:', error);
+      }
+      
       // Store denied permission to avoid repeated prompts
       localStorage.setItem('breath-safe-location-permission', 'denied');
       return false;
