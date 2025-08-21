@@ -99,6 +99,7 @@ src/
 - **Database Integration** - Full CRUD operations with RLS
 
 ### 🔧 Recently Fixed Issues
+- **OpenAQ API Progressive Radius Search** - ✅ COMPLETED: Enhanced OpenAQ API search with progressive radius strategy (10km → 25km → 50km → 100km → 200km), improved location search with multiple radii (50km, 100km, 200km), better coverage in areas with limited sensors like Kenya, enhanced city detection and fallback handling
 - **Settings Page Loading Error Fix** - ✅ COMPLETED: Fixed Settings page loading error by adding missing methods to useNotifications hook, implemented proper notification preferences interface matching database schema, added preferences, updatePreferences, initializePreferences, and isLoading properties, enhanced error handling and loading states for better user experience
 - **View Switching Loop Fix** - ✅ COMPLETED: Fixed rapid view switching between dashboard and map views by removing problematic useEffect dependencies in Index component, preventing view switching loops and improving navigation stability
 - **Multiple Hook Calls Prevention** - ✅ COMPLETED: Added hook instance tracking to prevent multiple useAirQuality hook calls, improving permission check guards with better logging and instance tracking, and preventing React Query from running multiple times
@@ -436,7 +437,7 @@ src/
 
 #### **API Integration** ⚠️
 - **Supabase**: Fully functional with realtime
-- **OpenAQ**: Air quality data working but limited coverage in some regions (Kenya location returning no results, using fallback data), requires OPENAQ_API_KEY in Supabase environment variables
+- **OpenAQ**: Air quality data working with enhanced progressive radius search (10km → 200km) for better coverage in areas with limited sensors (like Kenya), requires OPENAQ_API_KEY in Supabase environment variables
 - **Open-Meteo**: Wind and forecast data working
 - **OpenWeatherMap**: API key needed for enhanced weather features
 
