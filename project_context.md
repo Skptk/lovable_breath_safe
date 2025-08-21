@@ -99,6 +99,7 @@ src/
 - **Database Integration** - Full CRUD operations with RLS
 
 ### 🔧 Recently Fixed Issues
+- **Settings Page Loading Error Fix** - ✅ COMPLETED: Fixed Settings page loading error by adding missing methods to useNotifications hook, implemented proper notification preferences interface matching database schema, added preferences, updatePreferences, initializePreferences, and isLoading properties, enhanced error handling and loading states for better user experience
 - **View Switching Loop Fix** - ✅ COMPLETED: Fixed rapid view switching between dashboard and map views by removing problematic useEffect dependencies in Index component, preventing view switching loops and improving navigation stability
 - **Multiple Hook Calls Prevention** - ✅ COMPLETED: Added hook instance tracking to prevent multiple useAirQuality hook calls, improving permission check guards with better logging and instance tracking, and preventing React Query from running multiple times
 - **Location Permission Loop Fix** - ✅ COMPLETED: Fixed multiple 'Location permission denied by user' console messages by adding refs to prevent multiple permission checks, improving requestLocationPermission function with duplicate request prevention, disabling React Query auto-refresh to prevent permission loops, and adding manual refresh function for user control
@@ -435,7 +436,7 @@ src/
 
 #### **API Integration** ⚠️
 - **Supabase**: Fully functional with realtime
-- **OpenAQ**: Air quality data working (requires OPENAQ_API_KEY in Supabase environment variables)
+- **OpenAQ**: Air quality data working but limited coverage in some regions (Kenya location returning no results, using fallback data), requires OPENAQ_API_KEY in Supabase environment variables
 - **Open-Meteo**: Wind and forecast data working
 - **OpenWeatherMap**: API key needed for enhanced weather features
 
