@@ -39,11 +39,9 @@ export default function Index(): JSX.Element {
       const newView = event.detail.view;
       console.log('Index component - View change event received:', newView);
       
-      // Add a small delay to prevent rapid view changes from causing realtime issues
-      setTimeout(() => {
-        setCurrentView(newView);
-        console.log('Index component - Current view:', newView, 'URL:', location.pathname + location.search);
-      }, 100);
+      // Update view immediately without delay
+      setCurrentView(newView);
+      console.log('Index component - Current view updated to:', newView);
     };
 
     window.addEventListener('viewChange', handleViewChange as EventListener);
@@ -51,15 +49,16 @@ export default function Index(): JSX.Element {
     return () => {
       window.removeEventListener('viewChange', handleViewChange as EventListener);
     };
-  }, [location.pathname, location.search]);
+  }, []);
 
-  // Update current view based on URL parameters
+  // Initialize current view from URL parameters on mount only
   useEffect(() => {
     const view = searchParams.get("view") || "dashboard";
     if (view !== currentView) {
+      console.log('Index component - Initializing view from URL:', view);
       setCurrentView(view);
     }
-  }, [searchParams, currentView]);
+  }, []); // Empty dependency array - only run on mount
 
   // Cleanup realtime channels on unmount
   useEffect(() => {
