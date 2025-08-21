@@ -54,9 +54,6 @@ export function getSupabaseClient() {
 // Export the singleton instance
 export const supabase = getSupabaseClient();
 
-// Prevent modification of the exported instance
-Object.freeze(supabase);
-
 // Export a function to reset the instance (useful for testing)
 export function resetSupabaseClient() {
   if (supabaseInstance) {

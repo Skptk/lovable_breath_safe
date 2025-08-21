@@ -52,7 +52,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     if (!user) {
       console.log('🔄 User signed out, cleaning up realtime channels...');
       cleanupAllChannels();
-      activeSubscriptions.clear();
+      activeSubscriptions.current.clear();
     }
   }, [user]);
 
@@ -65,12 +65,12 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     const subscriptionId = `notifications_${user.id}_${Date.now()}`;
     
-    if (activeSubscriptions.has(subscriptionId)) {
+    if (activeSubscriptions.current.has(subscriptionId)) {
       console.warn('Notifications subscription already active, skipping');
       return () => {};
     }
 
-    activeSubscriptions.add(subscriptionId);
+    activeSubscriptions.current.add(subscriptionId);
     console.log('🔔 Subscribing to notifications channel for user:', user.id);
     
     subscribeToChannel(`user-notifications-${user.id}`, callback, {
@@ -84,7 +84,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     return () => {
       console.log('🔔 Unsubscribing from notifications channel for user:', user.id);
       unsubscribeFromChannel(`user-notifications-${user.id}`, callback);
-      activeSubscriptions.delete(subscriptionId);
+      activeSubscriptions.current.delete(subscriptionId);
     };
   }, [user]);
 
@@ -97,12 +97,12 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     const subscriptionId = `points_${user.id}_${Date.now()}`;
     
-    if (activeSubscriptions.has(subscriptionId)) {
+    if (activeSubscriptions.current.has(subscriptionId)) {
       console.warn('User points subscription already active, skipping');
       return () => {};
     }
 
-    activeSubscriptions.add(subscriptionId);
+    activeSubscriptions.current.add(subscriptionId);
     console.log('💰 Subscribing to user points channel for user:', user.id);
     
     subscribeToChannel(`user-points-${user.id}`, callback, {
@@ -116,7 +116,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     return () => {
       console.log('💰 Unsubscribing from user points channel for user:', user.id);
       unsubscribeFromChannel(`user-points-${user.id}`, callback);
-      activeSubscriptions.delete(subscriptionId);
+      activeSubscriptions.current.delete(subscriptionId);
     };
   }, [user]);
 
@@ -129,12 +129,12 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     const subscriptionId = `profile-points_${user.id}_${Date.now()}`;
     
-    if (activeSubscriptions.has(subscriptionId)) {
+    if (activeSubscriptions.current.has(subscriptionId)) {
       console.warn('User profile points subscription already active, skipping');
       return () => {};
     }
 
-    activeSubscriptions.add(subscriptionId);
+    activeSubscriptions.current.add(subscriptionId);
     console.log('👤 Subscribing to user profile points channel for user:', user.id);
     
     subscribeToChannel(`user-profile-points-${user.id}`, callback, {
@@ -148,7 +148,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     return () => {
       console.log('👤 Unsubscribing from user profile points channel for user:', user.id);
       unsubscribeFromChannel(`user-profile-points-${user.id}`, callback);
-      activeSubscriptions.delete(subscriptionId);
+      activeSubscriptions.current.delete(subscriptionId);
     };
   }, [user]);
 
