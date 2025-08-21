@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAllChannels, destroyRealtimeManager } from '@/lib/realtimeClient';
@@ -9,6 +9,10 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [profileValidated, setProfileValidated] = useState(false);
   const [validationAttempted, setValidationAttempted] = useState(false);
+  
+  // Use refs to prevent duplicate auth state changes
+  const lastAuthEvent = useRef<string | null>(null);
+  const lastUserId = useRef<string | null>(null);
 
   useEffect(() => {
     // Get initial session
@@ -16,12 +20,39 @@ export function useAuth() {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // Track initial session
+      if (session?.user?.id) {
+        lastUserId.current = session.user.id;
+        lastAuthEvent.current = 'INITIAL_SESSION';
+      }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id);
+        const userId = session?.user?.id;
+        
+        // Prevent duplicate INITIAL_SESSION events for the same user
+        if (event === 'INITIAL_SESSION' && 
+            lastAuthEvent.current === 'INITIAL_SESSION' && 
+            lastUserId.current === userId) {
+          console.log('Auth state change: Skipping duplicate INITIAL_SESSION for user:', userId);
+          return;
+        }
+        
+        // Prevent duplicate events for the same user and event type
+        if (lastAuthEvent.current === event && lastUserId.current === userId) {
+          console.log('Auth state change: Skipping duplicate event:', event, 'for user:', userId);
+          return;
+        }
+        
+        console.log('Auth state change:', event, userId);
+        
+        // Update tracking
+        lastAuthEvent.current = event;
+        lastUserId.current = userId;
+        
         setSession(session);
         setUser(session?.user ?? null);
         setProfileValidated(false); // Reset profile validation when auth state changes

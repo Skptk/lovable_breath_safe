@@ -46,6 +46,7 @@ export const useAirQuality = () => {
   const { user } = useAuth();
   const [hasUserConsent, setHasUserConsent] = useState(false);
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false); // Prevent multiple simultaneous requests
   
   // Performance monitoring
   usePerformanceMonitor("useAirQuality");
@@ -184,7 +185,14 @@ export const useAirQuality = () => {
       throw new Error('Location access not yet granted. Please click the location button to enable.');
     }
 
+    // Prevent multiple simultaneous location requests
+    if (isRequestingLocation) {
+      console.log('useAirQuality: Location request already in progress, skipping duplicate request');
+      throw new Error('Location request already in progress. Please wait.');
+    }
+
     try {
+      setIsRequestingLocation(true);
       setLoading(true);
       setError(null);
 
@@ -355,8 +363,9 @@ export const useAirQuality = () => {
       throw error; // Re-throw to be caught by useQuery
     } finally {
       setLoading(false);
+      setIsRequestingLocation(false);
     }
-  }, [setLoading, setError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase]);
+  }, [setLoading, setError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase, isRequestingLocation]);
 
   // Function to request location permission (should be called on user gesture)
   const requestLocationPermission = useCallback(async (): Promise<boolean> => {

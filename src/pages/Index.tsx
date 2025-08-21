@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
+import { cleanupAllChannels } from "@/lib/realtimeClient";
 
 // Lazy load heavy components
 const AirQualityDashboard = lazy(() => import("@/components/AirQualityDashboard"));
@@ -35,21 +36,38 @@ export default function Index(): JSX.Element {
   // Listen for custom view change events
   useEffect(() => {
     const handleViewChange = (event: CustomEvent) => {
-      setCurrentView(event.detail.view);
+      const newView = event.detail.view;
+      console.log('Index component - View change event received:', newView);
+      
+      // Add a small delay to prevent rapid view changes from causing realtime issues
+      setTimeout(() => {
+        setCurrentView(newView);
+        console.log('Index component - Current view:', newView, 'URL:', location.pathname + location.search);
+      }, 100);
     };
 
     window.addEventListener('viewChange', handleViewChange as EventListener);
-    return () => window.removeEventListener('viewChange', handleViewChange as EventListener);
-  }, []);
+    
+    return () => {
+      window.removeEventListener('viewChange', handleViewChange as EventListener);
+    };
+  }, [location.pathname, location.search]);
 
   // Update current view based on URL parameters
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const view = urlParams.get('view');
-    if (view && ['dashboard', 'history', 'map', 'rewards', 'store', 'profile', 'settings', 'news'].includes(view)) {
+    const view = searchParams.get("view") || "dashboard";
+    if (view !== currentView) {
       setCurrentView(view);
     }
-  }, [location.search]);
+  }, [searchParams, currentView]);
+
+  // Cleanup realtime channels on unmount
+  useEffect(() => {
+    return () => {
+      console.log('Index component unmounting - cleaning up realtime channels');
+      cleanupAllChannels();
+    };
+  }, []);
 
   const handleViewChange = (view: string) => {
     setCurrentView(view);

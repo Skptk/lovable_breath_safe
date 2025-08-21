@@ -12,10 +12,23 @@ class RealtimeConnectionManager {
   private statusListeners: Set<(status: 'connected' | 'reconnecting' | 'disconnected') => void> = new Set();
   private pendingCleanups: Map<string, NodeJS.Timeout> = new Map(); // Track pending cleanups
   private isDestroyed: boolean = false; // Track if manager is destroyed
+  private navigationState: { currentView: string; lastViewChange: number } = { currentView: 'dashboard', lastViewChange: Date.now() }; // Track navigation state
 
   private constructor() {
     // Start with connected status
     this.setConnectionStatus('connected');
+    
+    // Listen for view changes to prevent duplicate subscriptions during navigation
+    if (typeof window !== 'undefined') {
+      window.addEventListener('viewChange', (event: any) => {
+        const newView = event.detail?.view;
+        if (newView && newView !== this.navigationState.currentView) {
+          this.navigationState.currentView = newView;
+          this.navigationState.lastViewChange = Date.now();
+          console.log(`[Realtime] View changed to: ${newView}, preventing duplicate subscriptions for 2 seconds`);
+        }
+      });
+    }
   }
 
   public static getInstance(): RealtimeConnectionManager {
@@ -63,6 +76,13 @@ class RealtimeConnectionManager {
   ): void {
     if (!REALTIME_ENABLED || this.isDestroyed) {
       console.warn(`[Realtime] Realtime disabled or manager destroyed. Channel '${channelName}' not created.`);
+      return;
+    }
+
+    // Prevent duplicate subscriptions during rapid navigation changes
+    const timeSinceLastViewChange = Date.now() - this.navigationState.lastViewChange;
+    if (timeSinceLastViewChange < 2000) { // 2 second cooldown after view change
+      console.log(`[Realtime] Skipping channel '${channelName}' subscription - too soon after view change (${timeSinceLastViewChange}ms ago)`);
       return;
     }
 

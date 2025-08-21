@@ -46,6 +46,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationRequested, setLocationRequested] = useState(false);
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false); // Prevent multiple simultaneous requests
   const [retryCount, setRetryCount] = useState(0);
 
   const { toast } = useToast();
@@ -194,9 +195,16 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       return;
     }
     
+    // Prevent multiple simultaneous location requests
+    if (isRequestingLocation) {
+      console.log('WeatherStats: Location request already in progress, skipping duplicate request');
+      return;
+    }
+    
     setLoading(true);
     setLocationRequested(true);
     setError(null);
+    setIsRequestingLocation(true);
     
     // Check if geolocation is supported
     if (!navigator.geolocation) {
@@ -308,6 +316,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       }
     } finally {
       setLoading(false);
+      setIsRequestingLocation(false); // Reset the requesting state
     }
   };
 
