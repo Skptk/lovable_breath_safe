@@ -68,6 +68,8 @@ export const useAppStore = create<AppStore>()(
     persist(
       (set, get) => ({
         ...initialState,
+        // Ensure cache is always a proper LRU instance
+        cache: new LRUCache(100),
         
         // UI Actions
         setLoading: (loading) => set({ isLoading: loading }),
@@ -139,6 +141,12 @@ export const useAppStore = create<AppStore>()(
           currentLocation: state.currentLocation,
           // EXCLUDE: cache, lastReading, error, isLoading, etc.
         }),
+        onRehydrateStorage: () => (state) => {
+          // Reinitialize cache after rehydration since it's not persisted
+          if (state) {
+            state.cache = new LRUCache(100);
+          }
+        },
       }
     ),
     {

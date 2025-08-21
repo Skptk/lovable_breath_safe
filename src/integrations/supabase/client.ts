@@ -30,21 +30,32 @@ let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
 export function getSupabaseClient() {
   if (!supabaseInstance) {
     console.log('🔧 Creating Supabase client instance...');
+    
+    // Create configuration object to avoid freezing issues
+    const clientConfig = {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        storage: window.localStorage,
+        storageKey: 'supabase.auth.token'
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        }
+      },
+      global: {
+        headers: {
+          'x-client-info': 'breath-safe-app'
+        }
+      }
+    };
+    
     supabaseInstance = createClient<Database>(
       SUPABASE_URL!,
       SUPABASE_PUBLISHABLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true
-        },
-        realtime: {
-          params: {
-            eventsPerSecond: 10
-          }
-        }
-      }
+      clientConfig
     );
     console.log('✅ Supabase client instance created');
   }
