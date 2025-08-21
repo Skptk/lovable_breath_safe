@@ -3,13 +3,14 @@ import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, RefreshCw, Award, Zap, Clock, MapPin, ArrowRight } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, Award, Zap, Clock, MapPin, ArrowRight, User, Satellite } from "lucide-react";
 import { useAirQuality } from "@/hooks/useAirQuality";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { useRefreshCountdown } from "@/hooks/useRefreshCountdown";
 import { useLocation } from "@/contexts/LocationContext";
 import { StatCard } from "@/components/ui/StatCard";
+import { getAQIColor, getAQILabel } from "@/config/maps";
 
 import Header from "@/components/Header";
 import PollutantModal from "./PollutantModal";
@@ -211,11 +212,17 @@ export default function AirQualityDashboard({
 
   // Show dashboard with data
   if (data) {
-    const aqiStatus = {
-      status: data.aqi <= 50 ? "Good" : data.aqi <= 100 ? "Moderate" : "Poor",
-      color: data.aqi <= 50 ? "text-success" :
-             data.aqi <= 100 ? "text-warning" : "text-destructive"
-    };
+    // Use the proper AQI color and label functions
+    const aqiColor = getAQIColor(data.aqi);
+    const aqiLabel = getAQILabel(data.aqi);
+    
+    // Determine if this is user location or sensor data
+    const isUserLocation = data.dataSource === 'OpenWeatherMap API' && 
+                          data.coordinates.lat === data.userCoordinates.lat && 
+                          data.coordinates.lon === data.userCoordinates.lon;
+    
+    const locationSource = isUserLocation ? 'Your Location' : 'Nearest Sensor';
+    const locationIcon = isUserLocation ? User : Satellite;
 
     // Debug: Log coordinates being passed to WeatherStatsCard
     console.log('AirQualityDashboard: Passing coordinates to WeatherStatsCard:', {
@@ -253,19 +260,39 @@ export default function AirQualityDashboard({
                {/* AQI Display */}
                <div className="flex items-center justify-center gap-8">
                  <div className="text-center">
-                   <div className="text-6xl font-bold text-primary mb-2">
+                   <div 
+                     className="text-6xl font-bold mb-2"
+                     style={{ color: aqiColor }}
+                   >
                      {data.aqi}
                    </div>
-                   <Badge variant="outline" className={aqiStatus.color}>
-                     {aqiStatus.status}
+                   <Badge 
+                     variant="outline" 
+                     className="px-4 py-2 text-sm font-semibold"
+                     style={{ 
+                       borderColor: aqiColor, 
+                       color: aqiColor,
+                       backgroundColor: `${aqiColor}10`
+                     }}
+                   >
+                     {aqiLabel}
                    </Badge>
                  </div>
                </div>
 
-              {/* Location Info */}
+              {/* Location Info with Source */}
               <div className="flex items-center justify-center gap-2 text-muted-foreground">
                 <MapPin className="w-4 h-4" />
                 <span>{data.location}</span>
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  <locationIcon className="w-3 h-3 mr-1" />
+                  {locationSource}
+                </Badge>
+              </div>
+
+              {/* Data Source Info */}
+              <div className="text-xs text-muted-foreground">
+                Data source: {data.dataSource}
               </div>
 
               {/* Action Buttons */}

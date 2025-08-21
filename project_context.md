@@ -92,7 +92,8 @@ src/
 - **Authentication System** - Full Supabase auth with email/password
 - **Dashboard** - Air quality display, notifications, rewards
 - **Profile Management** - User settings, preferences, data
-- **Air Quality Monitoring** - Real-time data from OpenAQ API
+- **Air Quality Monitoring** - Real-time data from OpenWeatherMap API (migrated from OpenAQ)
+- **AQI Display System** - Proper color coding based on AQI values with location source indication
 - **Rewards System** - Points, achievements, streaks
 - **Theme System** - Light/dark mode with persistence
 - **Mobile Navigation** - Responsive design with hamburger menu

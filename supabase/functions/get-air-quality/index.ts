@@ -210,6 +210,30 @@ serve(async (req) => {
       openweathermapKey: Deno.env.get('OPENWEATHERMAP_API_KEY') ? 'SET' : 'NOT SET'
     });
     
+    // Debug: List ALL environment variables
+    console.log('🔍 DEBUGGING: All environment variable keys available:');
+    const envVars = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENWEATHERMAP_API_KEY', 'OPENAQ_API_KEY'];
+    for (const key of envVars) {
+      const value = Deno.env.get(key);
+      console.log(`  ${key}: ${value ? 'SET' : 'NOT SET'}`);
+    }
+    
+    // Debug: Check for any variations of the key name
+    console.log('🔍 DEBUGGING: Checking for key name variations:');
+    const possibleKeys = [
+      'OPENWEATHERMAP_API_KEY',
+      'OPENWEATHERMAP_APIKEY',
+      'OPENWEATHER_API_KEY',
+      'OPENWEATHER_APIKEY',
+      'WEATHER_API_KEY',
+      'WEATHER_APIKEY'
+    ];
+    
+    for (const key of possibleKeys) {
+      const value = Deno.env.get(key);
+      console.log(`  ${key}: ${value ? 'SET (' + value.substring(0, 10) + '...)' : 'NOT SET'}`);
+    }
+    
     if (!OPENWEATHERMAP_API_KEY) {
       console.log('❌ OpenWeatherMap API key not configured - air quality data unavailable');
       console.log('🔑 To enable air quality monitoring, set OPENWEATHERMAP_API_KEY in Supabase environment variables');
