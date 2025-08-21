@@ -61,11 +61,11 @@ function Header({
           whileHover={onNavigate ? { scale: 1.02 } : {}}
           whileTap={onNavigate ? { scale: 0.98 } : {}}
         >
-          <h1 className="heading-lg text-foreground mb-1">
+          <h1 className="heading-lg text-foreground mb-1 font-black">
             {title}
           </h1>
           {subtitle && (
-            <p className="body-md text-muted-foreground hidden sm:block">
+            <p className="body-md text-muted-foreground hidden sm:block font-light">
               {subtitle}
             </p>
           )}

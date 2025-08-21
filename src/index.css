@@ -1,5 +1,5 @@
 /* Font family import - must come first */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,200;0,300;0,400;0,600;0,700;0,900;1,200;1,300;1,400;1,600;1,700;1,900&display=swap');
 
 /* Leaflet CSS imports */
 @import 'leaflet/dist/leaflet.css';
@@ -156,7 +156,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Titillium Web', sans-serif;
     font-weight: 400;
     line-height: 1.4;
     letter-spacing: 0.5px;
@@ -164,7 +164,7 @@
 
   /* Typography from Design System */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Titillium Web', sans-serif;
     font-weight: 600;
     line-height: 1.4;
     letter-spacing: 0.5px;
@@ -172,22 +172,26 @@
 
   .heading-lg {
     font-size: 24px;
-    font-weight: 600;
+    font-weight: 700;
+    font-family: 'Titillium Web', sans-serif;
   }
 
   .heading-md {
     font-size: 18px;
     font-weight: 600;
+    font-family: 'Titillium Web', sans-serif;
   }
 
   .body-md {
     font-size: 14px;
     font-weight: 400;
+    font-family: 'Titillium Web', sans-serif;
   }
 
   .body-sm {
     font-size: 12px;
     font-weight: 400;
+    font-family: 'Titillium Web', sans-serif;
   }
 
   /* Component-specific styles from design system */
@@ -306,6 +310,31 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* Titillium Web Font Weight Classes */
+  .font-thin {
+    font-weight: 200;
+  }
+  
+  .font-light {
+    font-weight: 300;
+  }
+  
+  .font-normal {
+    font-weight: 400;
+  }
+  
+  .font-semibold {
+    font-weight: 600;
+  }
+  
+  .font-bold {
+    font-weight: 700;
+  }
+  
+  .font-black {
+    font-weight: 900;
   }
 
   /* Responsive Typography Scaling */

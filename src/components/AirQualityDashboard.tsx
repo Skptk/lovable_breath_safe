@@ -11,7 +11,6 @@ import { useRefreshCountdown } from "@/hooks/useRefreshCountdown";
 import { useLocation } from "@/contexts/LocationContext";
 import { StatCard } from "@/components/ui/StatCard";
 
-import { ProgressGauge } from "@/components/ui/ProgressGauge";
 import Header from "@/components/Header";
 import PollutantModal from "./PollutantModal";
 import WeatherStatsCard from "./WeatherStatsCard";
@@ -244,30 +243,24 @@ export default function AirQualityDashboard({
             <CardHeader className="text-center pb-4">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
-                <h2 className="text-2xl font-bold">Current Air Quality</h2>
+                <h2 className="text-2xl font-black text-primary">Current Air Quality</h2>
               </div>
               <p className="text-muted-foreground">
                 Last updated: {data.timestamp}
               </p>
             </CardHeader>
             <CardContent className="text-center space-y-6">
-              {/* AQI Display */}
-              <div className="flex items-center justify-center gap-8">
-                <div className="text-center">
-                  <div className="text-6xl font-bold text-primary mb-2">
-                    {data.aqi}
-                  </div>
-                  <Badge variant="outline" className={aqiStatus.color}>
-                    {aqiStatus.status}
-                  </Badge>
-                </div>
-                
-                <ProgressGauge 
-                  value={Math.min((data.aqi / 500) * 100, 100)} 
-                  size={120}
-                  strokeWidth={8}
-                />
-              </div>
+               {/* AQI Display */}
+               <div className="flex items-center justify-center gap-8">
+                 <div className="text-center">
+                   <div className="text-6xl font-bold text-primary mb-2">
+                     {data.aqi}
+                   </div>
+                   <Badge variant="outline" className={aqiStatus.color}>
+                     {aqiStatus.status}
+                   </Badge>
+                 </div>
+               </div>
 
               {/* Location Info */}
               <div className="flex items-center justify-center gap-2 text-muted-foreground">
@@ -317,7 +310,7 @@ export default function AirQualityDashboard({
         >
           <Card className="shadow-card">
             <CardHeader>
-              <h3 className="text-lg font-semibold">Pollutant Levels</h3>
+              <h3 className="text-lg font-bold">Pollutant Levels</h3>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -368,7 +361,7 @@ export default function AirQualityDashboard({
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-yellow-600" />
-                <h3 className="text-lg font-semibold">Your Progress</h3>
+                <h3 className="text-lg font-bold">Your Progress</h3>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -411,7 +404,7 @@ export default function AirQualityDashboard({
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-semibold">Auto Refresh</h3>
+                <h3 className="text-lg font-bold">Auto Refresh</h3>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">

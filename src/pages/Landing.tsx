@@ -110,12 +110,12 @@ export default function Landing(): JSX.Element {
               🌱 Breathe Cleaner, Live Healthier
             </Badge>
             
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
+            <h1 className="text-4xl md:text-6xl font-black text-foreground mb-6 leading-tight">
               Monitor Air Quality
               <span className="block text-primary">Protect Your Health</span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed font-light">
               Get real-time air quality data, track your environmental exposure, and earn rewards for making healthy choices. 
               Your lungs will thank you.
             </p>
@@ -149,13 +149,13 @@ export default function Landing(): JSX.Element {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+                <div className="text-3xl md:text-4xl font-black text-primary mb-2">
                   {stat.value}
                 </div>
-                <div className="text-sm font-medium text-foreground mb-1">
+                <div className="text-sm font-semibold text-foreground mb-1">
                   {stat.label}
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground font-light">
                   {stat.description}
                 </div>
               </div>
@@ -171,7 +171,7 @@ export default function Landing(): JSX.Element {
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Everything You Need to Breathe Better
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-light">
               Our comprehensive platform combines cutting-edge technology with user-friendly design to keep you informed and healthy.
             </p>
           </div>

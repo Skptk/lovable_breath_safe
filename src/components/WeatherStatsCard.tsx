@@ -171,7 +171,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5 text-blue-600" />
-            Weather Information
+            <span className="font-bold">Weather Information</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -191,7 +191,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5" />
-            Current Weather
+            <span className="font-bold">Current Weather</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -212,7 +212,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5" />
-            Current Weather
+            <span className="font-bold">Current Weather</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -235,7 +235,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5" />
-            Current Weather
+            <span className="font-bold">Current Weather</span>
           </CardTitle>
           <Button onClick={fetchWeatherData} size="sm" variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -271,7 +271,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Droplets className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm font-medium">Humidity</span>
+                  <span className="text-sm font-semibold">Humidity</span>
                 </div>
                 <div className="text-xl font-bold text-blue-600">
                   {weatherData.humidity}%
@@ -281,7 +281,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <CloudRain className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm font-medium">Rain Chance</span>
+                  <span className="text-sm font-semibold">Rain Chance</span>
                 </div>
                 <div className="text-xl font-bold text-blue-600">
                   {weatherData.rainProbability.toFixed(0)}%
@@ -296,7 +296,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
                   <div className="text-center p-3 bg-muted/30 rounded-lg">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Wind className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm font-medium">Wind</span>
+                      <span className="text-sm font-semibold">Wind</span>
                     </div>
                     <div className="text-lg font-semibold text-gray-600">
                       {weatherData.windSpeed.toFixed(1)} km/h
@@ -313,7 +313,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
                   <div className="text-center p-3 bg-muted/30 rounded-lg">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Gauge className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm font-medium">Pressure</span>
+                      <span className="text-sm font-semibold">Pressure</span>
                     </div>
                     <div className="text-lg font-semibold text-purple-600">
                       {weatherData.airPressure} hPa
@@ -325,7 +325,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
                   <div className="text-center p-3 bg-muted/30 rounded-lg">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Eye className="h-4 w-4 text-indigo-500" />
-                      <span className="text-sm font-medium">Visibility</span>
+                      <span className="text-sm font-semibold">Visibility</span>
                     </div>
                     <div className="text-lg font-semibold text-indigo-600">
                       {weatherData.visibility.toFixed(1)} km
@@ -340,7 +340,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Sun className="h-4 w-4 text-yellow-500" />
-                  <span className="text-sm font-medium">Sunrise</span>
+                  <span className="text-sm font-semibold">Sunrise</span>
                 </div>
                 <div className="text-lg font-semibold text-yellow-600">
                   {weatherData.sunrise}
@@ -350,7 +350,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
               <div className="text-center p-3 bg-muted/30 rounded-lg">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Sun className="h-4 w-4 text-orange-500" />
-                  <span className="text-sm font-medium">Sunset</span>
+                  <span className="text-sm font-semibold">Sunset</span>
                 </div>
                 <div className="text-lg font-semibold text-orange-600">
                   {weatherData.sunset}
