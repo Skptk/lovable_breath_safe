@@ -171,33 +171,49 @@ async function findNearestMajorCity(userLat: number, userLon: number, apiKey: st
 
     for (const point of searchPoints) {
       try {
-        // Use OpenAQ API v3 to find cities with air quality data
-        const response = await fetch(
-          `https://api.openaq.org/v3/locations?coordinates=${point.lat},${point.lon}&radius=50000&limit=10`,
-          {
-            headers: {
-              'X-API-Key': apiKey,
-              'Accept': 'application/json'
-            }
-          }
-        );
+        // Use OpenAQ API v3 to find cities with air quality data - try multiple radii
+        const locationRadii = [50000, 100000, 200000]; // 50km, 100km, 200km
+        
+        for (const radius of locationRadii) {
+          try {
+            console.log(`Searching for cities at point ${point.lat}, ${point.lon} with ${radius/1000}km radius...`);
+            const response = await fetch(
+              `https://api.openaq.org/v3/locations?coordinates=${point.lat},${point.lon}&radius=${radius}&limit=10`,
+              {
+                headers: {
+                  'X-API-Key': apiKey,
+                  'Accept': 'application/json'
+                }
+              }
+            );
 
-        if (response.ok) {
-          const cities = await response.json();
-          
-          for (const city of cities.results || []) {
-            const distance = calculateDistance(userLat, userLon, city.coordinates.latitude, city.coordinates.longitude);
-            
-            if (distance < shortestDistance && city.name) {
-              shortestDistance = distance;
-              nearestCity = {
-                name: city.name,
-                lat: city.coordinates.latitude,
-                lon: city.coordinates.longitude,
-                country: city.country?.name || city.country?.code || 'Unknown',
-                distance: distance
-              };
+            if (response.ok) {
+              const cities = await response.json();
+              
+              for (const city of cities.results || []) {
+                const distance = calculateDistance(userLat, userLon, city.coordinates.latitude, city.coordinates.longitude);
+                
+                if (distance < shortestDistance && city.name) {
+                  shortestDistance = distance;
+                  nearestCity = {
+                    name: city.name,
+                    lat: city.coordinates.latitude,
+                    lon: city.coordinates.longitude,
+                    country: city.country?.name || city.country?.code || 'Unknown',
+                    distance: distance
+                  };
+                  console.log(`Found city: ${city.name} at ${distance.toFixed(1)}km with ${radius/1000}km search radius`);
+                }
+              }
+              
+              // If we found cities with this radius, no need to try larger ones
+              if (cities.results && cities.results.length > 0) {
+                break;
+              }
             }
+          } catch (radiusError) {
+            console.error(`Error searching at point ${point.lat}, ${point.lon} with ${radius/1000}km radius:`, radiusError);
+            continue;
           }
         }
       } catch (error) {
@@ -395,39 +411,19 @@ serve(async (req) => {
       // Get air quality data from OpenAQ API v3
       console.log('Making OpenAQ measurements API call...');
       
-      // Try multiple endpoint formats for v3
-      let airResponse;
       let airData;
+      let airResponse: Response | null = null;
       
-      // First try: v3 measurements with coordinates
-      try {
-        console.log('Trying v3 measurements endpoint with coordinates...');
-        airResponse = await fetch(
-          `https://api.openaq.org/v3/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=10000&limit=100`,
-          {
-            headers: {
-              'X-API-Key': OPENAQ_API_KEY,
-              'Accept': 'application/json'
-            }
-          }
-        );
-        
-        if (airResponse.ok) {
-          airData = await airResponse.json();
-          console.log('v3 measurements endpoint successful');
-          resetApiFailures(); // Reset failure count on success
-        } else {
-          console.log('v3 measurements endpoint failed, trying alternative...');
-          trackApiFailure('v3_measurements', `Status: ${airResponse.status}`);
-          throw new Error(`v3 measurements failed: ${airResponse.status}`);
-        }
-      } catch (error) {
-        console.log('First attempt failed, trying v3 locations endpoint...');
-        
-        // Second try: v3 locations with coordinates
+      // Progressive radius search strategy: start with 10km and increase to 200km
+      const searchRadii = [10000, 25000, 50000, 100000, 200000]; // 10km, 25km, 50km, 100km, 200km
+      let successfulRadius = 0;
+      
+      // First try: v3 measurements with progressive radius
+      for (const radius of searchRadii) {
         try {
-          airResponse = await fetch(
-            `https://api.openaq.org/v3/locations?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=10000&limit=100`,
+          console.log(`Trying v3 measurements endpoint with ${radius/1000}km radius...`);
+          const response = await fetch(
+            `https://api.openaq.org/v3/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=${radius}&limit=100`,
             {
               headers: {
                 'X-API-Key': OPENAQ_API_KEY,
@@ -436,22 +432,38 @@ serve(async (req) => {
             }
           );
           
-          if (airResponse.ok) {
-            airData = await airResponse.json();
-            console.log('v3 locations endpoint successful');
-            resetApiFailures(); // Reset failure count on success
+          if (response.ok) {
+            airData = await response.json();
+            if (airData.results && airData.results.length > 0) {
+              console.log(`v3 measurements endpoint successful with ${radius/1000}km radius`);
+              successfulRadius = radius;
+              airResponse = response;
+              resetApiFailures(); // Reset failure count on success
+              break;
+            } else {
+              console.log(`v3 measurements endpoint returned no results with ${radius/1000}km radius, trying next radius...`);
+              continue;
+            }
           } else {
-            console.log('v3 locations endpoint failed, trying v2 fallback...');
-            trackApiFailure('v3_locations', `Status: ${airResponse.status}`);
-            throw new Error(`v3 locations failed: ${airResponse.status}`);
+            console.log(`v3 measurements endpoint failed with ${radius/1000}km radius, trying next radius...`);
+            trackApiFailure('v3_measurements', `Status: ${response.status} at ${radius/1000}km`);
+            continue;
           }
-        } catch (v3Error) {
-          console.log('v3 endpoints failed, trying v2 measurements as fallback...');
-          
-          // Third try: v2 measurements (fallback)
+        } catch (error) {
+          console.log(`v3 measurements endpoint error with ${radius/1000}km radius:`, error);
+          continue;
+        }
+      }
+      
+      // If v3 measurements failed, try v3 locations with progressive radius
+      if (!airData || !airData.results || airData.results.length === 0) {
+        console.log('v3 measurements failed, trying v3 locations with progressive radius...');
+        
+        for (const radius of searchRadii) {
           try {
-            airResponse = await fetch(
-              `https://api.openaq.org/v2/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=10000&limit=100`,
+            console.log(`Trying v3 locations endpoint with ${radius/1000}km radius...`);
+            const response = await fetch(
+              `https://api.openaq.org/v3/locations?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=${radius}&limit=100`,
               {
                 headers: {
                   'X-API-Key': OPENAQ_API_KEY,
@@ -460,29 +472,87 @@ serve(async (req) => {
               }
             );
             
-            if (airResponse.ok) {
-              airData = await airResponse.json();
-              console.log('v2 measurements endpoint successful (fallback)');
-              resetApiFailures(); // Reset failure count on success
+            if (response.ok) {
+              airData = await response.json();
+              if (airData.results && airData.results.length > 0) {
+                console.log(`v3 locations endpoint successful with ${radius/1000}km radius`);
+                successfulRadius = radius;
+                airResponse = response;
+                resetApiFailures(); // Reset failure count on success
+                break;
+              } else {
+                console.log(`v3 locations endpoint returned no results with ${radius/1000}km radius, trying next radius...`);
+                continue;
+              }
             } else {
-              trackApiFailure('v2_measurements', `Status: ${airResponse.status}`);
-              throw new Error(`v2 measurements failed: ${airResponse.status}`);
+              console.log(`v3 locations endpoint failed with ${radius/1000}km radius, trying next radius...`);
+              trackApiFailure('v3_locations', `Status: ${response.status} at ${radius/1000}km`);
+              continue;
             }
-          } catch (v2Error) {
-            console.log('All API endpoints failed, using fallback data');
-            const errorMsg = error instanceof Error ? error.message : String(error);
-            const v3ErrorMsg = v3Error instanceof Error ? v3Error.message : String(v3Error);
-            const v2ErrorMsg = v2Error instanceof Error ? v2Error.message : String(v2Error);
-            trackApiFailure('all_endpoints', `v3 measurements (${errorMsg}), v3 locations (${v3ErrorMsg}), v2 measurements (${v2ErrorMsg})`);
-            throw new Error(`All endpoints failed: v3 measurements (${errorMsg}), v3 locations (${v3ErrorMsg}), v2 measurements (${v2ErrorMsg})`);
+          } catch (v3Error) {
+            console.log(`v3 locations endpoint error with ${radius/1000}km radius:`, v3Error);
+            continue;
           }
         }
       }
       
-      // Check if we have data before proceeding
-      if (!airData || !airData.results) {
-        console.log('No air data available, using fallback');
-        throw new Error('No air quality data available');
+      // If v3 endpoints failed, try v2 measurements as fallback with progressive radius
+      if (!airData || !airData.results || airData.results.length === 0) {
+        console.log('v3 endpoints failed, trying v2 measurements with progressive radius...');
+        
+        for (const radius of searchRadii) {
+          try {
+            console.log(`Trying v2 measurements endpoint with ${radius/1000}km radius...`);
+            const response = await fetch(
+              `https://api.openaq.org/v2/measurements?coordinates=${nearestCity.lat},${nearestCity.lon}&radius=${radius}&limit=100`,
+              {
+                headers: {
+                  'X-API-Key': OPENAQ_API_KEY,
+                  'Accept': 'application/json'
+                }
+              }
+            );
+            
+            if (response.ok) {
+              airData = await response.json();
+              if (airData.results && airData.results.length > 0) {
+                console.log(`v2 measurements endpoint successful with ${radius/1000}km radius`);
+                successfulRadius = radius;
+                airResponse = response;
+                resetApiFailures(); // Reset failure count on success
+                break;
+              } else {
+                console.log(`v2 measurements endpoint returned no results with ${radius/1000}km radius, trying next radius...`);
+                continue;
+              }
+            } else {
+              console.log(`v2 measurements endpoint failed with ${radius/1000}km radius, trying next radius...`);
+              trackApiFailure('v2_measurements', `Status: ${response.status} at ${radius/1000}km`);
+              continue;
+            }
+          } catch (v2Error) {
+            console.log(`v2 measurements endpoint error with ${radius/1000}km radius:`, v2Error);
+            continue;
+          }
+        }
+      }
+      
+      // If all endpoints failed, use fallback data
+      if (!airData || !airData.results || airData.results.length === 0) {
+        console.log('All API endpoints failed with all radius attempts, using fallback data');
+        trackApiFailure('all_endpoints_all_radii', 'No results found even with 200km radius');
+        throw new Error('No air quality data available - using fallback');
+      }
+      
+      // Log the successful search radius
+      if (successfulRadius > 0) {
+        console.log(`✅ Found air quality data within ${successfulRadius/1000}km radius`);
+      }
+      
+      // Ensure we have a valid response before proceeding
+      if (!airResponse) {
+        console.log('❌ No valid API response available');
+        throw new Error('No valid API response available');
       }
         
       console.log('OpenAQ API response status:', airResponse.status);
