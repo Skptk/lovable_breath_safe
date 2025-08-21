@@ -401,20 +401,20 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
 
         <Card className="bg-gradient-card shadow-card border-0">
           <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-purple-500 mb-2">
-              <Star className="w-8 h-8 mx-auto mb-2" />
-              {achievements.filter(a => a.unlocked).length}
-            </div>
+                          <div className="text-3xl font-bold text-purple-500 mb-2">
+                <Star className="w-8 h-8 mx-auto mb-2" />
+                {achievements ? achievements.filter(a => a.unlocked).length : 0}
+              </div>
             <p className="text-sm text-muted-foreground">Achievements</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-card shadow-card border-0">
           <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-orange-500 mb-2">
-              <Flame className="w-8 h-8 mx-auto mb-2" />
-              {streaks.length > 0 ? Math.max(...streaks.map(s => s.current_streak)) : 0}
-            </div>
+                          <div className="text-3xl font-bold text-orange-500 mb-2">
+                <Flame className="w-8 h-8 mx-auto mb-2" />
+                {streaks && streaks.length > 0 ? Math.max(...streaks.map(s => s.current_streak)) : 0}
+              </div>
             <p className="text-sm text-muted-foreground">Best Streak</p>
           </CardContent>
         </Card>
@@ -440,7 +440,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {streaks.length === 0 ? (
+              {!streaks || streaks.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-4">🔥</div>
                   <p className="text-muted-foreground">No streaks found. They will be created when you first check air quality.</p>
@@ -460,7 +460,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {streaks.map((streak) => {
+                  {streaks && streaks.map((streak) => {
                     const displayInfo = getStreakDisplayInfo(streak.streak_type);
                     return (
                       <Card key={streak.id} className="border-2 border-orange-200 bg-orange-50/50">
@@ -508,12 +508,12 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {achievements.length === 0 ? (
+              {!achievements || achievements.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-4">🏆</div>
                   <p className="text-muted-foreground">No achievements found yet. Start checking air quality to unlock achievements!</p>
                 </div>
-              ) : achievements.filter(a => a.unlocked).length === 0 ? (
+              ) : achievements && achievements.filter(a => a.unlocked).length === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-4">🎯</div>
                   <p className="text-muted-foreground">No achievements unlocked yet. Keep checking air quality to make progress!</p>
@@ -523,7 +523,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {achievements
+                  {achievements && achievements
                     .filter(a => a.unlocked)
                     .slice(0, 4)
                     .map((achievement) => {
@@ -563,7 +563,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {achievements.length === 0 ? (
+              {!achievements || achievements.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-4">🎯</div>
                   <p className="text-muted-foreground">No achievements found. They will be created when you first check air quality.</p>
@@ -582,7 +582,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                   </Button>
                 </div>
               ) : (
-                achievements.map((achievement) => {
+                achievements && achievements.map((achievement) => {
                   const displayInfo = getAchievementDisplayInfo(achievement);
                   const progressPercentage = achievement.max_progress > 0 ? (achievement.progress / achievement.max_progress) * 100 : 0;
                   const remainingProgress = Math.max(0, achievement.max_progress - achievement.progress);
