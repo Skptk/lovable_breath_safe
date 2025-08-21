@@ -23,6 +23,23 @@ interface NotificationSettings {
   achievement_notifications: boolean;
 }
 
+// New interface for notification preferences that matches the database schema
+interface NotificationPreferences {
+  aqi_alerts: boolean;
+  aqi_threshold: number;
+  achievement_notifications: boolean;
+  points_notifications: boolean;
+  withdrawal_notifications: boolean;
+  shop_notifications: boolean;
+  streak_notifications: boolean;
+  daily_reminders: boolean;
+  weekly_summaries: boolean;
+  system_announcements: boolean;
+  maintenance_alerts: boolean;
+  email_notifications: boolean;
+  push_notifications: boolean;
+}
+
 export const useNotifications = () => {
   const { user } = useAuth();
   const { subscribeToNotifications } = useRealtime();
@@ -34,7 +51,9 @@ export const useNotifications = () => {
     weather_alerts: true,
     achievement_notifications: true
   });
+  const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Fetch notifications from database
@@ -58,6 +77,97 @@ export const useNotifications = () => {
       console.error('Error fetching notifications:', error);
     } finally {
       setLoading(false);
+    }
+  }, [user]);
+
+  // Fetch notification preferences from the notification_preferences table
+  const fetchPreferences = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (data) {
+        setPreferences(data);
+      } else {
+        // Create default preferences if none exist
+        await initializePreferences();
+      }
+    } catch (error) {
+      console.error('Error fetching notification preferences:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  // Initialize default notification preferences
+  const initializePreferences = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const defaultPreferences: NotificationPreferences = {
+        aqi_alerts: true,
+        aqi_threshold: 100,
+        achievement_notifications: true,
+        points_notifications: true,
+        withdrawal_notifications: true,
+        shop_notifications: true,
+        streak_notifications: true,
+        daily_reminders: true,
+        weekly_summaries: true,
+        system_announcements: true,
+        maintenance_alerts: true,
+        email_notifications: false,
+        push_notifications: true
+      };
+
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .insert({
+          user_id: user.id,
+          ...defaultPreferences
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPreferences(data);
+      return data;
+    } catch (error) {
+      console.error('Error initializing notification preferences:', error);
+      throw error;
+    }
+  }, [user]);
+
+  // Update notification preferences
+  const updatePreferences = useCallback(async (newPreferences: NotificationPreferences) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .update(newPreferences)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPreferences(data);
+      return data;
+    } catch (error) {
+      console.error('Error updating notification preferences:', error);
+      throw error;
     }
   }, [user]);
 
@@ -278,8 +388,9 @@ export const useNotifications = () => {
     if (user) {
       fetchNotifications();
       fetchSettings();
+      fetchPreferences(); // Fetch preferences on mount
     }
-  }, [user, fetchNotifications, fetchSettings]);
+  }, [user, fetchNotifications, fetchSettings, fetchPreferences]);
 
   return {
     notifications,
@@ -291,6 +402,10 @@ export const useNotifications = () => {
     deleteNotification,
     updateSettings,
     createNotification,
-    fetchNotifications
+    fetchNotifications,
+    preferences,
+    updatePreferences,
+    initializePreferences,
+    isLoading
   };
 };
