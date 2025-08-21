@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, RefreshCw, Award, Zap, Clock, MapPin, ArrowRight } from "lucide-react";
 import { useAirQuality } from "@/hooks/useAirQuality";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { useRefreshCountdown } from "@/hooks/useRefreshCountdown";
+import { useLocation } from "@/contexts/LocationContext";
 import { StatCard } from "@/components/ui/StatCard";
 
 import { ProgressGauge } from "@/components/ui/ProgressGauge";
@@ -27,23 +28,21 @@ export default function AirQualityDashboard({
   onMobileMenuToggle 
 }: AirQualityDashboardProps) {
   const { user } = useAuth();
-  const { data, isRefetching: isRefreshing, refetch, hasUserConsent, hasRequestedPermission, requestLocationPermission, isLoading, error, manualRefresh } = useAirQuality();
-  const { totalPoints, currencyRewards } = useUserPoints();
-  const [showPollutantModal, setShowPollutantModal] = useState(false);
-  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
-
-  // Refresh countdown for auto-refresh status
-  const refreshCountdown = useRefreshCountdown({
-    intervalMs: 15 * 60 * 1000, // 15 minutes
-    enabled: hasUserConsent,
-    lastRefreshTime: data?.timestamp
-  });
+  const { data, isRefetching: isRefreshing, refetch, hasUserConsent, hasRequestedPermission, isLoading, error, manualRefresh } = useAirQuality();
+  const { userPoints, isLoading: pointsLoading } = useUserPoints();
+  const { timeUntilRefresh, manualRefresh: refreshCountdown } = useRefreshCountdown();
+  const { requestLocationPermission, isRequestingPermission } = useLocation();
+  
+  const [selectedPollutant, setSelectedPollutant] = useState<{
+    name: string;
+    value: number;
+    unit: string;
+  } | null>(null);
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
 
   const handleRefresh = () => {
     if (hasUserConsent) {
-      console.log('User requested manual refresh');
       manualRefresh();
     } else {
       console.log('Refresh skipped - user consent not granted');
@@ -56,7 +55,6 @@ export default function AirQualityDashboard({
       return;
     }
     
-    setIsRequestingPermission(true);
     try {
       console.log('Starting location permission request...');
       const granted = await requestLocationPermission();
@@ -73,8 +71,6 @@ export default function AirQualityDashboard({
       }
     } catch (error) {
       console.error('Failed to request location permission:', error);
-    } finally {
-      setIsRequestingPermission(false);
     }
   };
 
@@ -102,7 +98,7 @@ export default function AirQualityDashboard({
       <div className="space-y-6 lg:space-y-8">
         <Header
           title={`Hello, ${userName}!`}
-          subtitle="Enable location access to view air quality data"
+          subtitle="Enable location access to monitor air quality"
           showMobileMenu={showMobileMenu}
           onMobileMenuToggle={onMobileMenuToggle}
         />
@@ -114,59 +110,43 @@ export default function AirQualityDashboard({
           className="text-center py-12"
         >
           <div className="max-w-md mx-auto space-y-6">
-            <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mx-auto">
-              <MapPin className="w-12 h-12 text-muted-foreground" />
+            <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+              <MapPin className="w-12 h-12 text-primary" />
             </div>
             
             <div className="space-y-3">
               <h3 className="text-xl font-semibold">Location Access Required</h3>
               <p className="text-muted-foreground">
-                To provide you with accurate air quality data for your area, we need access to your location.
+                To provide accurate air quality data for your area, we need access to your location.
               </p>
             </div>
             
-            <Button 
-              onClick={handleRequestLocationPermission}
-              disabled={isRequestingPermission}
-              className="w-full"
-              size="lg"
-            >
-              {isRequestingPermission ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Requesting Permission...
-                </>
-              ) : (
-                <>
-                  <MapPin className="w-4 h-4 mr-2" />
-                  Enable Location Access
-                </>
-              )}
-            </Button>
-            
-            <p className="text-xs text-muted-foreground">
-              Your location data is only used to fetch air quality information and is never stored or shared.
-            </p>
+            <div className="space-y-3">
+              <Button 
+                onClick={handleRequestLocationPermission}
+                disabled={isRequestingPermission}
+                className="w-full"
+                size="lg"
+              >
+                {isRequestingPermission ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Requesting...
+                  </>
+                ) : (
+                  <>
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Enable Location Access
+                  </>
+                )}
+              </Button>
+              
+              <p className="text-xs text-muted-foreground">
+                Your location is only used to fetch air quality data and is never stored or shared.
+              </p>
+            </div>
           </div>
         </motion.div>
-      </div>
-    );
-  }
-
-  // Show loading state while fetching data
-  if (!data && isLoading) {
-    return (
-      <div className="space-y-6 lg:space-y-8">
-        <Header
-          title={`Hello, ${userName}!`}
-          subtitle="Loading air quality data..."
-          showMobileMenu={showMobileMenu}
-          onMobileMenuToggle={onMobileMenuToggle}
-        />
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading air quality data...</p>
-        </div>
       </div>
     );
   }
@@ -220,7 +200,14 @@ export default function AirQualityDashboard({
                 )}
               </Button>
               
-
+              <Button 
+                variant="outline"
+                onClick={handleRequestLocationPermission}
+                className="w-full"
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                Re-check Location
+              </Button>
             </div>
           </div>
         </motion.div>
@@ -232,242 +219,241 @@ export default function AirQualityDashboard({
   if (data) {
     const aqiStatus = {
       status: data.aqi <= 50 ? "Good" : data.aqi <= 100 ? "Moderate" : "Poor",
-      color: data.aqi <= 50 ? "text-success" : data.aqi <= 100 ? "text-warning" : "text-error"
+      color: data.aqi <= 50 ? "text-success" :
+             data.aqi <= 100 ? "text-warning" : "text-destructive"
     };
 
     return (
       <div className="space-y-6 lg:space-y-8">
-        {/* Header */}
+        <Header
+          title={`Hello, ${userName}!`}
+          subtitle={`Air quality in ${data.location}`}
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={onMobileMenuToggle}
+        />
+
+        {/* Main AQI Card */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <Header
-            title={`Hello, ${userName}!`}
-            subtitle={`Air quality data for ${data.location || 'your area'}`}
-            showRefresh={hasUserConsent}
-            onRefresh={handleRefresh}
-            isRefreshing={isRefreshing}
-            onNavigate={onNavigate}
-            showMobileMenu={showMobileMenu}
-            onMobileMenuToggle={onMobileMenuToggle}
-          />
-          
-          {/* Auto-refresh Status */}
-          {hasUserConsent && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-              className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-2 mx-4"
-            >
-              <Clock className="h-4 w-4" />
-              <span>Auto-refresh every 15 minutes</span>
-              {data?.timestamp && (
-                <span>• Last updated: {new Date(data.timestamp).toLocaleTimeString()}</span>
-              )}
-              {refreshCountdown.timeUntilNextRefresh > 0 && (
-                <span>• Next refresh in: {refreshCountdown.formatTimeLeft(refreshCountdown.timeUntilNextRefresh)}</span>
-              )}
-              {refreshCountdown.isRefreshing && (
-                <span className="text-primary font-medium">• Refreshing now...</span>
-              )}
-            </motion.div>
-            
-          )}
-          
-          {/* Refresh Progress Bar */}
-          {hasUserConsent && refreshCountdown.timeUntilNextRefresh > 0 && (
-            <motion.div
-              initial={{ opacity: 0, scaleX: 0 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-              className="mx-4"
-            >
-              <div className="w-full bg-muted rounded-full h-1.5">
-                <div 
-                  className="bg-primary h-1.5 rounded-full transition-all duration-1000 ease-linear"
-                  style={{ width: `${refreshCountdown.getProgressPercentage()}%` }}
-                />
+          <Card className="bg-gradient-card shadow-card border-0">
+            <CardHeader className="text-center pb-4">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <TrendingUp className="w-5 h-5 text-primary" />
+                <h2 className="text-2xl font-bold">Current Air Quality</h2>
               </div>
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                <span>Last refresh</span>
-                <span>Next refresh</span>
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
-
-        {/* Stats Grid */}
-        <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-        >
-          <StatCard
-            title="Current AQI"
-            value={data.aqi}
-            subtitle="Air Quality Index"
-            icon={<TrendingUp className="h-5 w-5" />}
-            change={{
-              value: "Good",
-              type: data.aqi <= 50 ? "increase" : data.aqi <= 100 ? "neutral" : "decrease"
-            }}
-          />
-          
-          <StatCard
-            title="PM2.5"
-            value={`${data.pm25?.toFixed(1) || 'N/A'} µg/m³`}
-            subtitle="Fine particles"
-            icon={<MapPin className="h-5 w-5" />}
-            change={{
-              value: data.pm25 <= 12 ? "Good" : "High",
-              type: data.pm25 <= 12 ? "increase" : "decrease"
-            }}
-          />
-          
-          <StatCard
-            title="PM10"
-            value={`${data.pm10?.toFixed(1) || 'N/A'} µg/m³`}
-            subtitle="Coarse particles"
-            icon={<Clock className="h-5 w-5" />}
-            change={{
-              value: data.pm10 <= 54 ? "Good" : "High",
-              type: data.pm10 <= 54 ? "increase" : "decrease"
-            }}
-          />
-          
-          <StatCard
-            title="Total Points"
-            value={totalPoints.toLocaleString()}
-            subtitle="Earned rewards"
-            icon={<Award className="h-5 w-5" />}
-            change={{
-              value: `$${currencyRewards.toFixed(2)}`,
-              type: "increase"
-            }}
-          />
-        </motion.div>
-
-        {/* Weather Stats Card */}
-        {data?.coordinates && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.15 }}
-          >
-            <WeatherStatsCard 
-              latitude={data.coordinates.lat} 
-              longitude={data.coordinates.lon} 
-            />
-          </motion.div>
-        )}
-
-        {/* News Preview Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-        >
-          <Card className="relative overflow-hidden bg-gradient-to-r from-card/80 to-card/60 backdrop-blur-sm border border-border/20">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold">Latest Health & Environment News</h3>
-                  <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
-                    Stay Informed
+              <p className="text-muted-foreground">
+                Last updated: {data.timestamp}
+              </p>
+            </CardHeader>
+            <CardContent className="text-center space-y-6">
+              {/* AQI Display */}
+              <div className="flex items-center justify-center gap-8">
+                <div className="text-center">
+                  <div className="text-6xl font-bold text-primary mb-2">
+                    {data.aqi}
+                  </div>
+                  <Badge variant="outline" className={aqiStatus.color}>
+                    {aqiStatus.status}
                   </Badge>
                 </div>
-                <Button
+                
+                <ProgressGauge 
+                  value={data.aqi} 
+                  max={500} 
+                  size={120}
+                  strokeWidth={8}
+                />
+              </div>
+
+              {/* Location Info */}
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <MapPin className="w-4 h-4" />
+                <span>{data.location}</span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 justify-center">
+                <Button 
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
                   variant="outline"
                   size="sm"
-                  onClick={() => onNavigate?.('news')}
-                  className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors"
                 >
-                  View All News
-                  <ArrowRight className="h-4 w-4" />
+                  {isRefreshing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Refresh
+                    </>
+                  )}
                 </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Featured Article Preview */}
-                <div className="group cursor-pointer" onClick={() => onNavigate?.('news')}>
-                  <div className="relative h-32 overflow-hidden rounded-lg mb-3">
-                    <img 
-                      src="/placeholder.svg" 
-                      alt="Featured article"
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                    <Badge className="absolute top-2 left-2 bg-primary/90 text-primary-foreground">
-                      Featured
-                    </Badge>
-                  </div>
-                  <h4 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                    Understanding Air Quality Impact on Respiratory Health
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Latest research on how air pollution affects lung function and overall health...
-                  </p>
-                </div>
-
-                {/* Quick News Items */}
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => onNavigate?.('news')}>
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                    <div>
-                      <h5 className="text-sm font-medium line-clamp-2">Environmental Protection Strategies</h5>
-                      <p className="text-xs text-muted-foreground">Effective ways to reduce your environmental footprint...</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => onNavigate?.('news')}>
-                    <div className="w-2 h-2 bg-success rounded-full mt-2 flex-shrink-0"></div>
-                    <div>
-                      <h5 className="text-sm font-medium line-clamp-2">Climate Change Updates</h5>
-                      <p className="text-xs text-muted-foreground">Latest findings on global climate patterns...</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* News Stats */}
-                <div className="space-y-3">
-                  <div className="text-center p-4 bg-muted/30 rounded-lg">
-                    <div className="text-2xl font-bold text-primary">50+</div>
-                    <div className="text-xs text-muted-foreground">Articles Available</div>
-                  </div>
-                  <div className="text-center p-4 bg-muted/30 rounded-lg">
-                    <div className="text-2xl font-bold text-success">Daily</div>
-                    <div className="text-xs text-muted-foreground">Updates</div>
-                  </div>
-                </div>
+                
+                <Button 
+                  onClick={() => onNavigate?.('map')}
+                  variant="outline"
+                  size="sm"
+                >
+                  <MapPin className="w-4 h-4 mr-2" />
+                  View Map
+                </Button>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
+        {/* Pollutant Details */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+        >
+          <Card className="shadow-card">
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Pollutant Levels</h3>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { name: 'PM2.5', value: data.pm25, unit: 'μg/m³', color: 'text-blue-600' },
+                  { name: 'PM10', value: data.pm10, unit: 'μg/m³', color: 'text-green-600' },
+                  { name: 'NO₂', value: data.no2, unit: 'ppb', color: 'text-orange-600' },
+                  { name: 'O₃', value: data.o3, unit: 'ppb', color: 'text-purple-600' }
+                ].map((pollutant) => (
+                  <div
+                    key={pollutant.name}
+                    className="text-center p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => setSelectedPollutant(pollutant)}
+                  >
+                    <div className={`text-lg font-semibold ${pollutant.color}`}>
+                      {pollutant.value}
+                    </div>
+                    <div className="text-sm text-muted-foreground">{pollutant.name}</div>
+                    <div className="text-xs text-muted-foreground">{pollutant.unit}</div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Weather Stats Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+        >
+          <WeatherStatsCard />
+        </motion.div>
+
+        {/* User Stats and Rewards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-6"
+        >
+          {/* Points and Rewards */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Award className="w-5 h-5 text-yellow-600" />
+                <h3 className="text-lg font-semibold">Your Progress</h3>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pointsLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Total Points</span>
+                    <span className="text-2xl font-bold text-yellow-600">
+                      {userPoints?.totalPoints || 0}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Readings Today</span>
+                    <span className="text-lg font-semibold">
+                      {userPoints?.todayReadings || 0}
+                    </span>
+                  </div>
+                  
+                  <Button 
+                    onClick={() => onNavigate?.('profile')}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    <Award className="w-4 h-4 mr-2" />
+                    View Rewards
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Refresh Countdown */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-semibold">Auto Refresh</h3>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {Math.floor(timeUntilRefresh / 60)}:{(timeUntilRefresh % 60).toString().padStart(2, '0')}
+                </div>
+                <p className="text-sm text-muted-foreground">Until next update</p>
+              </div>
+              
+              <Button 
+                onClick={refreshCountdown}
+                className="w-full"
+                variant="outline"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh Now
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Pollutant Modal */}
-        <PollutantModal 
-          pollutant={null}
-          onClose={() => setShowPollutantModal(false)}
-        />
+        {selectedPollutant && (
+          <PollutantModal
+            pollutant={selectedPollutant}
+            onClose={() => setSelectedPollutant(null)}
+          />
+        )}
       </div>
     );
   }
 
-  // Fallback
+  // Show loading state
   return (
     <div className="space-y-6 lg:space-y-8">
       <Header
         title={`Hello, ${userName}!`}
-        subtitle="Unable to load dashboard"
+        subtitle="Loading air quality data..."
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
+      
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Something went wrong. Please refresh the page.</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-muted-foreground">Fetching air quality data...</p>
       </div>
     </div>
   );

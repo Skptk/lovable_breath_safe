@@ -1,155 +1,175 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
-import { subscribeToChannel, unsubscribeFromChannel } from '@/lib/realtimeClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRealtime } from '@/contexts/RealtimeContext';
 
 interface UserPoints {
   totalPoints: number;
-  currencyRewards: number;
-  canWithdraw: boolean;
-  isLoading: boolean;
-  error: string | null;
-  refreshPoints: () => void;
+  todayReadings: number;
+  weeklyReadings: number;
+  monthlyReadings: number;
+  pointsHistory: PointRecord[];
+  recentEarnings: PointRecord[];
 }
 
-export const useUserPoints = (): UserPoints => {
-  const [totalPoints, setTotalPoints] = useState(0);
-  const [currencyRewards, setCurrencyRewards] = useState(0);
-  const [canWithdraw, setCanWithdraw] = useState(false);
+interface PointRecord {
+  id: string;
+  user_id: string;
+  points_earned: number;
+  aqi_value: number;
+  location_name: string;
+  timestamp: string;
+  created_at: string;
+}
+
+export const useUserPoints = () => {
+  const { user } = useAuth();
+  const { subscribeToUserPoints, subscribeToUserProfilePoints } = useRealtime();
+  const [userPoints, setUserPoints] = useState<UserPoints>({
+    totalPoints: 0,
+    todayReadings: 0,
+    weeklyReadings: 0,
+    monthlyReadings: 0,
+    pointsHistory: [],
+    recentEarnings: []
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
 
-  const fetchUserPoints = async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
+  // Fetch user points data
+  const fetchUserPoints = useCallback(async () => {
+    if (!user) return;
 
     try {
       setIsLoading(true);
       setError(null);
 
-      // First get the profile
-      const { data: profile, error: profileError } = await supabase
+      // Get total points from profiles table
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('total_points')
         .eq('user_id', user.id)
         .single();
 
-      if (profileError) {
-        // Check if it's a "no rows" error (user profile doesn't exist)
-        if (profileError.code === 'PGRST116') {
-          console.warn('User profile not found in database');
-          // This will trigger the useAuth hook to sign out the user
-          return;
-        }
-        throw profileError;
-      }
+      if (profileError) throw profileError;
 
-      // Also get the sum from user_points table for verification
-      const { data: pointsHistory, error: pointsError } = await supabase
+      const totalPoints = profileData?.total_points || 0;
+
+      // Get points history
+      const { data: pointsData, error: pointsError } = await supabase
         .from('user_points')
-        .select('points_earned')
-        .eq('user_id', user.id);
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
 
-      if (pointsError) {
-        console.warn('Could not fetch points history:', pointsError);
-      }
+      if (pointsError) throw pointsError;
 
-      // Calculate total from history
-      const calculatedTotal = pointsHistory?.reduce((sum, record) => sum + (record.points_earned || 0), 0) || 0;
-      const profileTotal = profile?.total_points || 0;
+      // Calculate reading counts
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(today.getFullYear(), now.getMonth() - 1, now.getDate());
 
-      // Use the higher value or sync if there's a mismatch
-      const actualTotal = Math.max(calculatedTotal, profileTotal);
+      const todayReadings = pointsData?.filter(record => 
+        new Date(record.created_at) >= today
+      ).length || 0;
 
-      // If there's a significant mismatch, update the profile
-      if (Math.abs(actualTotal - profileTotal) > 0 && calculatedTotal > profileTotal) {
-        console.log('Syncing profile points with calculated total:', calculatedTotal);
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ total_points: calculatedTotal })
-          .eq('user_id', user.id);
+      const weeklyReadings = pointsData?.filter(record => 
+        new Date(record.created_at) >= weekAgo
+      ).length || 0;
 
-        if (updateError) {
-          console.error('Error syncing points:', updateError);
-        }
-      }
+      const monthlyReadings = pointsData?.filter(record => 
+        new Date(record.created_at) >= monthAgo
+      ).length || 0;
 
-      setTotalPoints(actualTotal);
-      setCurrencyRewards(actualTotal / 1000 * 0.1);
-      setCanWithdraw(actualTotal >= 500000);
+      // Get recent earnings (last 10)
+      const recentEarnings = pointsData?.slice(0, 10) || [];
+
+      setUserPoints({
+        totalPoints,
+        todayReadings,
+        weeklyReadings,
+        monthlyReadings,
+        pointsHistory: pointsData || [],
+        recentEarnings
+      });
+
     } catch (err: any) {
       console.error('Error fetching user points:', err);
       setError(err.message || 'Failed to fetch user points');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const refreshPoints = () => {
-    fetchUserPoints();
-  };
-
-  useEffect(() => {
-    fetchUserPoints();
   }, [user]);
 
-  // Set up real-time subscription for profile changes
+  // Subscribe to realtime updates
   useEffect(() => {
     if (!user) return;
 
-    let isSubscribed = true; // Track if component is still mounted
-
-    // Subscribe to profile updates
-    subscribeToChannel('user-profile-points', (payload) => {
-      if (!isSubscribed) return; // Don't update state if unmounted
+    // Subscribe to profile points updates
+    const unsubscribeProfile = subscribeToUserProfilePoints((payload) => {
       console.log('Profile points updated:', payload);
-      const newProfile = payload.new as { total_points: number };
-      if (newProfile.total_points !== undefined) {
-        setTotalPoints(newProfile.total_points);
-        setCurrencyRewards(newProfile.total_points / 1000 * 0.1);
-        setCanWithdraw(newProfile.total_points >= 500000);
+      if (payload.eventType === 'UPDATE') {
+        const updatedProfile = payload.new as any;
+        setUserPoints(prev => ({
+          ...prev,
+          totalPoints: updatedProfile.total_points || 0
+        }));
       }
-    }, {
-      event: 'UPDATE',
-      schema: 'public',
-      table: 'profiles',
-      filter: `user_id=eq.${user.id}`
     });
 
-    // Subscribe to new points inserts
-    subscribeToChannel('user-points-inserts', (payload) => {
-      if (!isSubscribed) return; // Don't update state if unmounted
+    // Subscribe to user points inserts
+    const unsubscribePoints = subscribeToUserPoints((payload) => {
       console.log('New points earned:', payload);
-      // Refresh to get updated total
-      fetchUserPoints();
-    }, {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'user_points',
-      filter: `user_id=eq.${user.id}`
+      if (payload.eventType === 'INSERT') {
+        const newPointRecord = payload.new as PointRecord;
+        
+        // Add to recent earnings
+        setUserPoints(prev => ({
+          ...prev,
+          pointsHistory: [newPointRecord, ...prev.pointsHistory],
+          recentEarnings: [newPointRecord, ...prev.recentEarnings.slice(0, 9)],
+          todayReadings: prev.todayReadings + 1,
+          weeklyReadings: prev.weeklyReadings + 1,
+          monthlyReadings: prev.monthlyReadings + 1
+        }));
+
+        // Refresh total points
+        fetchUserPoints();
+      }
     });
 
     return () => {
-      isSubscribed = false;
-      // Use a small delay to prevent immediate cleanup
-      setTimeout(() => {
-        if (!isSubscribed) {
-          unsubscribeFromChannel('user-profile-points');
-          unsubscribeFromChannel('user-points-inserts');
-        }
-      }, 100);
+      unsubscribeProfile();
+      unsubscribePoints();
     };
-  }, [user]);
+  }, [user, subscribeToUserProfilePoints, subscribeToUserPoints, fetchUserPoints]);
+
+  // Initial data fetch
+  useEffect(() => {
+    if (user) {
+      fetchUserPoints();
+    }
+  }, [user, fetchUserPoints]);
+
+  // Calculate additional metrics
+  const averagePointsPerReading = userPoints.pointsHistory.length > 0 
+    ? userPoints.totalPoints / userPoints.pointsHistory.length 
+    : 0;
+
+  const totalReadings = userPoints.pointsHistory.length;
+  const currencyValue = (userPoints.totalPoints / 1000) * 0.1; // $0.1 per 1000 points
+  const canWithdraw = userPoints.totalPoints >= 500000;
 
   return {
-    totalPoints,
-    currencyRewards,
-    canWithdraw,
+    userPoints,
     isLoading,
     error,
-    refreshPoints
+    averagePointsPerReading,
+    totalReadings,
+    currencyValue,
+    canWithdraw,
+    fetchUserPoints
   };
 };

@@ -1,115 +1,96 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/components/ui/use-toast';
-import Header from "@/components/Header";
+import { useToast } from "@/components/ui/use-toast";
 import { 
   User, 
-  LogOut,
-  Download,
-  Award,
-  Edit3,
-  Save,
+  Mail, 
+  Calendar, 
+  MapPin, 
+  Award, 
+  Download, 
+  Trash2, 
+  Edit3, 
+  Save, 
   X,
-  Shield,
-  Calendar,
-  MapPin,
-  Activity,
-  Zap,
-  Loader2,
-  AlertTriangle,
   DollarSign,
   Gift,
-  CreditCard
+  Clock,
+  TrendingUp,
+  Shield,
+  Settings,
+  LogOut
 } from "lucide-react";
-
-interface Profile {
-  id: string;
-  user_id: string;
-  full_name: string;
-  email: string;
-  avatar_url?: string;
-  total_points: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface UserStats {
-  totalReadings: number;
-  totalPoints: number;
-  memberSince: string;
-  lastReading: string;
-  favoriteLocation: string;
-}
-
-interface WithdrawalRequest {
-  id: string;
-  user_id: string;
-  amount: number;
-  method: 'paypal' | 'mpesa';
-  status: 'pending' | 'approved' | 'rejected';
-  paypal_email?: string;
-  mpesa_phone?: string;
-  created_at: string;
-}
-
-interface GiftCard {
-  id: string;
-  name: string;
-  value: number;
-  points_required: number;
-  image_url?: string;
-  available: boolean;
-}
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRealtime } from "@/contexts/RealtimeContext";
+import { useUserPoints } from "@/hooks/useUserPoints";
+import { useWithdrawalRequests } from "@/hooks/useWithdrawalRequests";
+import { useAchievements } from "@/hooks/useAchievements";
+import Header from "@/components/Header";
 
 interface ProfileViewProps {
   showMobileMenu?: boolean;
   onMobileMenuToggle?: () => void;
 }
 
+interface Profile {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string;
+  avatar_url?: string;
+  total_points: number;
+  created_at: string;
+}
+
+interface ProfileStats {
+  totalReadings: number;
+  totalPoints: number;
+  memberSince: string;
+}
+
 export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: ProfileViewProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [userStats, setUserStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [editForm, setEditForm] = useState({ full_name: '', email: '' });
-  const [exporting, setExporting] = useState(false);
-  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
-  const [giftCards, setGiftCards] = useState<GiftCard[]>([]);
-  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
-  const [withdrawalForm, setWithdrawalForm] = useState({
-    amount: 0,
-    method: 'paypal' as 'paypal' | 'mpesa',
-    paypal_email: '',
-    mpesa_phone: ''
+  const [stats, setStats] = useState<ProfileStats>({
+    totalReadings: 0,
+    totalPoints: 0,
+    memberSince: ''
   });
-
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ full_name: '' });
   const { user, signOut } = useAuth();
+  const { subscribeToUserProfilePoints } = useRealtime();
+  const { userPoints, isLoading: pointsLoading } = useUserPoints();
+  const { withdrawalRequests, isLoading: withdrawalLoading } = useWithdrawalRequests();
+  const { achievements, isLoading: achievementsLoading } = useAchievements();
   const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
       fetchProfile();
-      fetchWithdrawalRequests();
-      fetchGiftCards();
+      fetchUserStats();
     }
   }, [user]);
 
-  // Fetch user stats after profile is loaded
+  // Subscribe to profile points updates
   useEffect(() => {
-    if (profile) {
+    if (!user) return;
+
+    const unsubscribe = subscribeToUserProfilePoints((payload) => {
+      console.log('Profile points updated:', payload);
+      // Refresh profile data when points are updated
+      fetchProfile();
       fetchUserStats();
-    }
-  }, [profile]);
+    });
+
+    return unsubscribe;
+  }, [user, subscribeToUserProfilePoints]);
 
   const fetchProfile = async () => {
     try {
@@ -128,7 +109,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
       }
       
       setProfile(data);
-      setEditForm({ full_name: data.full_name || '', email: data.email || '' });
+      setEditForm({ full_name: data.full_name || '' });
     } catch (error: any) {
       console.error('Error fetching profile:', error);
       toast({
@@ -158,10 +139,11 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
       // Only try to fetch last reading if user has readings
       let lastReading = null;
       let locationStats = null;
-      
+
       if (readingsCount && readingsCount > 0) {
         try {
-          const { data: lastReadingData } = await supabase
+          // Get last reading
+          const { data: lastReadingData, error: lastReadingError } = await supabase
             .from('air_quality_readings')
             .select('timestamp, location_name')
             .eq('user_id', user?.id)
@@ -169,312 +151,152 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
             .limit(1)
             .single();
 
-          lastReading = lastReadingData;
+          if (!lastReadingError && lastReadingData) {
+            lastReading = lastReadingData;
+          }
+        } catch (error) {
+          console.log('Error fetching last reading:', error);
+        }
 
-          const { data: locationStatsData } = await supabase
+        // Get location stats
+        try {
+          const { data: locationData, error: locationError } = await supabase
             .from('air_quality_readings')
             .select('location_name')
-            .eq('user_id', user?.id);
+            .eq('user_id', user?.id)
+            .not('location_name', 'is', null);
 
-          locationStats = locationStatsData;
-        } catch (readingError: any) {
-          console.log('Error fetching reading details:', readingError.message);
+          if (!locationError && locationData && locationData.length > 0) {
+            const locationCounts = locationData.reduce((acc: any, reading: any) => {
+              acc[reading.location_name] = (acc[reading.location_name] || 0) + 1;
+              return acc;
+            }, {});
+
+            const favoriteLocation = Object.entries(locationCounts)
+              .sort(([,a]: any, [,b]: any) => b - a)[0];
+
+            if (favoriteLocation) {
+              locationStats = {
+                name: favoriteLocation[0],
+                count: favoriteLocation[1]
+              };
+            }
+          }
+        } catch (error) {
+          console.log('Error fetching location stats:', error);
         }
       }
 
-      const locationCounts = locationStats?.reduce((acc, record) => {
-        acc[record.location_name] = (acc[record.location_name] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>) || {};
-
-      const favoriteLocation = Object.entries(locationCounts)
-        .sort(([,a], [,b]) => (b || 0) - (a || 0))[0]?.[0] || 'No readings yet';
-
-      setUserStats({
+      setStats({
         totalReadings: readingsCount || 0,
         totalPoints,
-        memberSince: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { 
-          month: 'short', 
-          year: 'numeric' 
-        }) : 'Unknown',
-        lastReading: lastReading?.timestamp ? new Date(lastReading.timestamp).toLocaleDateString() : 'Never',
-        favoriteLocation
+        memberSince: profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'
       });
     } catch (error: any) {
       console.error('Error fetching user stats:', error);
-      // Set default stats for new users
-      setUserStats({
-        totalReadings: 0,
-        totalPoints: profile?.total_points || 0,
-        memberSince: profile?.created_at ? new Date(profile.created_at).toLocaleDateString('en-US', { 
-          month: 'short', 
-          year: 'numeric' 
-        }) : 'Unknown',
-        lastReading: 'Never',
-        favoriteLocation: 'No readings yet'
-      });
     }
   };
 
-  const fetchWithdrawalRequests = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('withdrawal_requests')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        if (error.code === 'PGRST205') {
-          console.log('Withdrawal requests table not yet created - this is normal during setup');
-          setWithdrawalRequests([]);
-          return;
-        }
-        throw error;
-      }
-      
-      const typedData: WithdrawalRequest[] = (data || []).map(item => ({
-        id: item.id,
-        user_id: item.user_id,
-        amount: item.amount,
-        method: item.method as 'paypal' | 'mpesa',
-        status: item.status as 'pending' | 'approved' | 'rejected',
-        paypal_email: item.paypal_email || undefined,
-        mpesa_phone: item.mpesa_phone || undefined,
-        created_at: item.created_at
-      }));
-      
-      setWithdrawalRequests(typedData);
-    } catch (error: any) {
-      console.error('Error fetching withdrawal requests:', error);
-      setWithdrawalRequests([]);
-    }
-  };
-
-  const fetchGiftCards = async () => {
-    try {
-      const mockGiftCards: GiftCard[] = [
-        {
-          id: '1',
-          name: 'Carrefour Kenya',
-          value: 1000,
-          points_required: 10000,
-          available: true
-        },
-        {
-          id: '2',
-          name: 'Carrefour Kenya',
-          value: 2000,
-          points_required: 20000,
-          available: true
-        },
-        {
-          id: '3',
-          name: 'Carrefour Kenya',
-          value: 5000,
-          points_required: 50000,
-          available: true
-        }
-      ];
-      setGiftCards(mockGiftCards);
-    } catch (error: any) {
-      console.error('Error fetching gift cards:', error);
-    }
-  };
-
-  const handleWithdrawal = async () => {
-    if (!user || !profile) return;
-
-    const requiredPoints = withdrawalForm.amount * 10000;
-    
-    if (profile.total_points < requiredPoints) {
-      toast({
-        title: "Insufficient Points",
-        description: `You need ${requiredPoints.toLocaleString()} points to withdraw $${withdrawalForm.amount}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (profile.total_points < 500000) {
-      toast({
-        title: "Minimum Points Required",
-        description: "You need at least 500,000 points to withdraw funds",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('withdrawal_requests')
-        .insert({
-          user_id: user.id,
-          amount: withdrawalForm.amount,
-          method: withdrawalForm.method,
-          paypal_email: withdrawalForm.method === 'paypal' ? withdrawalForm.paypal_email : null,
-          mpesa_phone: withdrawalForm.method === 'mpesa' ? withdrawalForm.mpesa_phone : null,
-          status: 'pending'
-        });
-
-      if (error) {
-        if (error.code === 'PGRST205') {
-          toast({
-            title: "Database Setup Required",
-            description: "The withdrawal system is not yet set up. Please contact support.",
-            variant: "destructive",
-          });
-          return;
-        }
-        throw error;
-      }
-
-      // Deduct points from user profile
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ total_points: profile.total_points - requiredPoints })
-        .eq('user_id', user.id);
-
-      if (updateError) throw updateError;
-
-      toast({
-        title: "Withdrawal Request Submitted",
-        description: "Your withdrawal request has been submitted and is pending approval",
-      });
-
-      setShowWithdrawalModal(false);
-      setWithdrawalForm({ amount: 0, method: 'paypal', paypal_email: '', mpesa_phone: '' });
-      fetchProfile();
-      fetchWithdrawalRequests();
-    } catch (error: any) {
-      console.error('Error submitting withdrawal request:', error);
-      toast({
-        title: "Error",
-        description: "Failed to submit withdrawal request",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const redeemGiftCard = async (giftCard: GiftCard) => {
-    if (!user || !profile) return;
-
-    if (profile.total_points < giftCard.points_required) {
-      toast({
-        title: "Insufficient Points",
-        description: `You need ${giftCard.points_required.toLocaleString()} points to redeem this gift card`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ total_points: profile.total_points - giftCard.points_required })
-        .eq('user_id', user.id);
-
-      if (updateError) throw updateError;
-
-      toast({
-        title: "Gift Card Redeemed!",
-        description: `You've successfully redeemed a ${giftCard.name} gift card worth ${giftCard.value} KES`,
-      });
-
-      fetchProfile();
-    } catch (error: any) {
-      console.error('Error redeeming gift card:', error);
-      toast({
-        title: "Error",
-        description: "Failed to redeem gift card",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const saveProfile = async () => {
-    if (!profile) return;
-    
-    setSaving(true);
+  const handleSaveProfile = async () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ 
-          full_name: editForm.full_name,
-          updated_at: new Date().toISOString()
-        })
+        .update({ full_name: editForm.full_name })
         .eq('user_id', user?.id);
 
       if (error) throw error;
 
-      setProfile({ ...profile, full_name: editForm.full_name });
-      setEditingProfile(false);
+      setProfile(prev => prev ? { ...prev, full_name: editForm.full_name } : null);
+      setEditing(false);
+      
       toast({
         title: "Success",
         description: "Profile updated successfully",
       });
     } catch (error: any) {
+      console.error('Error updating profile:', error);
       toast({
         title: "Error",
         description: "Failed to update profile",
         variant: "destructive",
       });
-    } finally {
-      setSaving(false);
     }
   };
 
-  const exportUserData = async () => {
-    setExporting(true);
+  const handleExportData = async () => {
     try {
-      const { data: readings } = await supabase
+      // Export user's air quality readings
+      const { data: readings, error } = await supabase
         .from('air_quality_readings')
         .select('*')
         .eq('user_id', user?.id)
         .order('timestamp', { ascending: false });
 
-      const exportData = {
-        profile: profile,
-        readings: readings || [],
-        exportDate: new Date().toISOString()
-      };
+      if (error) throw error;
 
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      const csvContent = [
+        ['Timestamp', 'Location', 'AQI', 'PM2.5', 'PM10', 'NO2', 'SO2', 'CO', 'O3'],
+        ...readings.map(reading => [
+          reading.timestamp,
+          reading.location_name || 'Unknown',
+          reading.aqi,
+          reading.pm25,
+          reading.pm10,
+          reading.no2,
+          reading.so2,
+          reading.co,
+          reading.o3
+        ])
+      ].map(row => row.join(',')).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `breath-safe-data-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
+      a.download = `air-quality-data-${user?.id}-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(url);
 
       toast({
-        title: "Export Complete",
-        description: "Your data has been exported successfully",
+        title: "Success",
+        description: "Data exported successfully",
       });
     } catch (error: any) {
+      console.error('Error exporting data:', error);
       toast({
-        title: "Export Failed",
+        title: "Error",
         description: "Failed to export data",
         variant: "destructive",
       });
-    } finally {
-      setExporting(false);
     }
   };
 
-  const handleSignOut = async () => {
+  const handleDeleteAccount = async () => {
+    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      return;
+    }
+
     try {
+      // Delete user's data
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      // Sign out
       await signOut();
+      
       toast({
-        title: "Signed out",
-        description: "You have been signed out successfully.",
+        title: "Account Deleted",
+        description: "Your account has been deleted successfully",
       });
     } catch (error: any) {
+      console.error('Error deleting account:', error);
       toast({
         title: "Error",
-        description: "Failed to sign out",
+        description: "Failed to delete account",
         variant: "destructive",
       });
     }
@@ -482,465 +304,308 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-4 space-y-6 pb-24">
-        <div className="animate-pulse space-y-4">
-          <div className="h-24 bg-card rounded-lg"></div>
-          <div className="h-32 bg-card rounded-lg"></div>
-          <div className="h-48 bg-card rounded-lg"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
-          <h3 className="text-lg font-semibold">Profile Not Found</h3>
-          <p className="text-muted-foreground">Unable to load your profile</p>
-          <Button onClick={fetchProfile} variant="outline">
-            Try Again
-          </Button>
+      <div className="space-y-6 lg:space-y-8">
+        <Header
+          title="Profile"
+          subtitle="Loading your profile..."
+          showMobileMenu={showMobileMenu}
+          onMobileMenuToggle={onMobileMenuToggle}
+        />
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading profile...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header 
+    <div className="space-y-6 lg:space-y-8">
+      <Header
         title="Profile"
-        subtitle="Manage your account, view progress, and redeem rewards"
+        subtitle="Manage your account and view progress"
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
-      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Profile
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your account and view your progress
-          </p>
-        </div>
 
-        {/* User Info */}
-        <Card className="bg-gradient-card shadow-card border-0">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={profile.avatar_url} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                    {profile.full_name?.charAt(0) || profile.email?.charAt(0) || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-1">
-                  {editingProfile ? (
-                    <div className="space-y-2">
-                      <Input
-                        value={editForm.full_name}
-                        onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                        placeholder="Full Name"
-                        className="w-48"
-                      />
-                      <Input
-                        value={editForm.email}
-                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        placeholder="Email"
-                        className="w-48"
-                        disabled
-                      />
-                    </div>
+      <Tabs defaultValue="profile" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="rewards">Rewards</TabsTrigger>
+          <TabsTrigger value="achievements">Achievements</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+
+        {/* Profile Tab */}
+        <TabsContent value="profile" className="space-y-4">
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Personal Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Full Name</label>
+                  {editing ? (
+                    <Input
+                      value={editForm.full_name}
+                      onChange={(e) => setEditForm({ full_name: e.target.value })}
+                      placeholder="Enter your full name"
+                    />
                   ) : (
-                    <>
-                      <h2 className="text-xl font-semibold">{profile.full_name || 'User'}</h2>
-                      <p className="text-sm text-muted-foreground">{profile.email}</p>
-                    </>
+                    <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span>{profile?.full_name || 'Not set'}</span>
+                    </div>
                   )}
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-0">
-                      <Award className="h-3 w-3 mr-1" />
-                      {profile.total_points || 0} Points
-                    </Badge>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Email</label>
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span>{profile?.email || 'Not set'}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Member Since</label>
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>{stats.memberSince}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Total Points</label>
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                    <Award className="h-4 w-4 text-muted-foreground" />
+                    <span>{stats.totalPoints.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
-                {editingProfile ? (
+                {editing ? (
                   <>
-                    <Button size="sm" onClick={saveProfile} disabled={saving}>
-                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      Save
+                    <Button onClick={handleSaveProfile} size="sm">
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setEditingProfile(false)}>
-                      <X className="h-4 w-4" />
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setEditing(false)} 
+                      size="sm"
+                    >
+                      <X className="h-4 w-4 mr-2" />
                       Cancel
                     </Button>
                   </>
                 ) : (
-                  <Button size="sm" variant="outline" onClick={() => setEditingProfile(true)}>
-                    <Edit3 className="h-4 w-4" />
-                    Edit
+                  <Button onClick={() => setEditing(true)} size="sm">
+                    <Edit3 className="h-4 w-4 mr-2" />
+                    Edit Profile
                   </Button>
                 )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-gradient-card shadow-card border-0">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Total Readings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-2xl font-bold">{userStats?.totalReadings || 0}</div>
-              <p className="text-xs text-muted-foreground">Since joining</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                Total Points
+          {/* Statistics Card */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                Your Statistics
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-2xl font-bold">{userStats?.totalPoints || 0}</div>
-              <p className="text-xs text-muted-foreground">Earned</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-card shadow-card border-0">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Member Since
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-2xl font-bold">{userStats?.memberSince || 'Unknown'}</div>
-              <p className="text-xs text-muted-foreground">Joined</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-card shadow-card border-0">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Favorite Location
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-lg font-bold truncate">{userStats?.favoriteLocation || 'Unknown'}</div>
-              <p className="text-xs text-muted-foreground">Most visited</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Profile Tabs */}
-        <Tabs defaultValue="rewards" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="rewards">Rewards</TabsTrigger>
-            <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
-            <TabsTrigger value="account">Account</TabsTrigger>
-          </TabsList>
-
-          {/* Account Tab */}
-          <TabsContent value="account" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Account Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Data Export & Deletion</Label>
-                  <p className="text-sm text-muted-foreground">Manage your data and account</p>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="flex-1 gap-2"
-                      onClick={exportUserData}
-                      disabled={exporting}
-                    >
-                      {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                      Export Data
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      className="flex-1 gap-2"
-                      onClick={() => {
-                        if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-                          toast({
-                            title: "Account Deletion",
-                            description: "Account deletion feature coming soon",
-                          });
-                        }
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                      Delete Account
-                    </Button>
-                  </div>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-muted/30 rounded-lg">
+                  <div className="text-2xl font-bold text-primary">{stats.totalReadings}</div>
+                  <div className="text-sm text-muted-foreground">Total Readings</div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Rewards Tab */}
-          <TabsContent value="rewards" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-500" />
-                  Currency Rewards
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center space-y-4">
-                  <div className="text-4xl font-bold text-green-500">
-                    ${((profile?.total_points || 0) / 1000 * 0.1).toFixed(2)}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    $0.1 per 1000 points • Withdrawable at 500,000 points
-                  </p>
-                  {profile && profile.total_points >= 500000 ? (
-                    <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
-                      🎉 Ready to withdraw!
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300">
-                      {500000 - (profile?.total_points || 0)} points needed to withdraw
-                    </Badge>
-                  )}
+                <div className="text-center p-4 bg-muted/30 rounded-lg">
+                  <div className="text-2xl font-bold text-yellow-600">{stats.totalPoints.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">Total Points</div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-card shadow-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Gift className="h-5 w-5 text-purple-500" />
-                  Gift Cards
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {giftCards.map((giftCard) => (
-                    <Card key={giftCard.id} className="border-2 hover:border-primary transition-colors">
-                      <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold text-purple-500 mb-2">
-                          {giftCard.name}
-                        </div>
-                        <div className="text-lg font-semibold mb-2">
-                          {giftCard.value} KES
-                        </div>
-                        <div className="text-sm text-muted-foreground mb-3">
-                          {giftCard.points_required.toLocaleString()} points
-                        </div>
-                        <Button
-                          onClick={() => redeemGiftCard(giftCard)}
-                          disabled={!giftCard.available || (profile?.total_points || 0) < giftCard.points_required}
-                          className="w-full"
-                          variant={giftCard.available && (profile?.total_points || 0) >= giftCard.points_required ? "default" : "outline"}
-                        >
-                          {giftCard.available && (profile?.total_points || 0) >= giftCard.points_required ? "Redeem" : "Insufficient Points"}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="text-center p-4 bg-muted/30 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{stats.memberSince}</div>
+                  <div className="text-sm text-muted-foreground">Member Since</div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Withdrawals Tab */}
-          <TabsContent value="withdrawals" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-blue-500" />
-                  Withdrawal Requests
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {profile && profile.total_points >= 500000 ? (
-                  <div className="space-y-4">
-                    <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                      <p className="text-sm text-green-700">
-                        You have enough points to withdraw! Click the button below to request a withdrawal.
-                      </p>
-                    </div>
-                    
-                    <Button 
-                      onClick={() => setShowWithdrawalModal(true)}
-                      className="w-full"
-                      size="lg"
-                    >
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      Request Withdrawal
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <p className="text-sm text-yellow-700">
-                      You need at least 500,000 points to withdraw funds. 
-                      Current points: {profile?.total_points?.toLocaleString() || 0}
-                    </p>
-                  </div>
-                )}
-
-                {withdrawalRequests.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="font-semibold">Recent Withdrawal Requests</h4>
-                    {withdrawalRequests.map((request) => (
-                      <Card key={request.id} className="border">
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium">${request.amount}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {request.method === 'paypal' ? 'PayPal' : 'M-Pesa'} • {new Date(request.created_at).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <Badge 
-                              variant={request.status === 'approved' ? 'default' : request.status === 'pending' ? 'secondary' : 'destructive'}
-                            >
-                              {request.status}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          <Button variant="destructive" className="w-full gap-3" onClick={handleSignOut}>
-            <LogOut className="h-5 w-5" />
-            Sign Out
-          </Button>
-        </div>
-
-        {/* Withdrawal Modal */}
-        {showWithdrawalModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-background p-6 rounded-lg max-w-md w-full mx-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Request Withdrawal</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowWithdrawalModal(false)}
+          {/* Account Management Card */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-orange-600" />
+                Account Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleExportData}
+                  className="flex-1"
                 >
-                  <X className="h-4 w-4" />
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Data
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDeleteAccount}
+                  className="flex-1"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Account
                 </Button>
               </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="withdrawal-amount">Amount (USD)</Label>
-                  <Input
-                    id="withdrawal-amount"
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    value={withdrawalForm.amount}
-                    onChange={(e) => setWithdrawalForm({ ...withdrawalForm, amount: parseFloat(e.target.value) || 0 })}
-                    placeholder="Enter amount"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Points required: {(withdrawalForm.amount * 10000).toLocaleString()}
-                  </p>
-                </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                <div>
-                  <Label htmlFor="withdrawal-method">Payment Method</Label>
-                  <Select
-                    value={withdrawalForm.method}
-                    onValueChange={(value: 'paypal' | 'mpesa') => 
-                      setWithdrawalForm({ ...withdrawalForm, method: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="paypal">PayPal</SelectItem>
-                      <SelectItem value="mpesa">M-Pesa</SelectItem>
-                    </SelectContent>
-                  </Select>
+        {/* Rewards Tab */}
+        <TabsContent value="rewards" className="space-y-4">
+          <Card className="bg-gradient-card shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-green-500" />
+                Currency Rewards
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center space-y-4">
+                <div className="text-4xl font-bold text-green-500">
+                  ${((profile?.total_points || 0) / 1000 * 0.1).toFixed(2)}
                 </div>
-
-                {withdrawalForm.method === 'paypal' && (
-                  <div>
-                    <Label htmlFor="paypal-email">PayPal Email</Label>
-                    <Input
-                      id="paypal-email"
-                      type="email"
-                      value={withdrawalForm.paypal_email}
-                      onChange={(e) => setWithdrawalForm({ ...withdrawalForm, paypal_email: e.target.value })}
-                      placeholder="your@email.com"
-                    />
-                  </div>
+                <p className="text-sm text-muted-foreground">
+                  $0.1 per 1000 points • Withdrawable at 500,000 points
+                </p>
+                {profile && profile.total_points >= 500000 ? (
+                  <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                    🎉 Ready to withdraw!
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300">
+                    {500000 - (profile?.total_points || 0)} points needed to withdraw
+                  </Badge>
                 )}
-
-                {withdrawalForm.method === 'mpesa' && (
-                  <div>
-                    <Label htmlFor="mpesa-phone">M-Pesa Phone Number</Label>
-                    <Input
-                      id="mpesa-phone"
-                      type="tel"
-                      value={withdrawalForm.mpesa_phone}
-                      onChange={(e) => setWithdrawalForm({ ...withdrawalForm, mpesa_phone: e.target.value })}
-                      placeholder="+254700000000"
-                    />
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleWithdrawal}
-                    className="flex-1"
-                    disabled={!withdrawalForm.amount || 
-                      (withdrawalForm.method === 'paypal' && !withdrawalForm.paypal_email) ||
-                      (withdrawalForm.method === 'mpesa' && !withdrawalForm.mpesa_phone)
-                    }
-                  >
-                    Submit Request
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowWithdrawalModal(false)}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                </div>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
+            </CardContent>
+          </Card>
+
+          {/* Withdrawal Requests */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-purple-600" />
+                Withdrawal Requests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {withdrawalLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                </div>
+              ) : withdrawalRequests && withdrawalRequests.length > 0 ? (
+                <div className="space-y-3">
+                  {withdrawalRequests.map((request) => (
+                    <div key={request.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div>
+                        <div className="font-medium">${request.amount}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {new Date(request.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <Badge 
+                        variant={request.status === 'pending' ? 'outline' : 
+                                request.status === 'approved' ? 'default' : 'destructive'}
+                      >
+                        {request.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Gift className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No withdrawal requests yet</p>
+                  <p className="text-sm">Earn more points to make your first withdrawal</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Achievements Tab */}
+        <TabsContent value="achievements" className="space-y-4">
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-yellow-600" />
+                Your Achievements
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {achievementsLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                </div>
+              ) : achievements && achievements.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {achievements.map((achievement) => (
+                    <div key={achievement.id} className="text-center p-4 bg-muted/30 rounded-lg">
+                      <div className="text-3xl mb-2">{achievement.icon}</div>
+                      <div className="font-medium">{achievement.name}</div>
+                      <div className="text-sm text-muted-foreground mb-2">
+                        {achievement.description}
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        +{achievement.points_reward} points
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No achievements unlocked yet</p>
+                  <p className="text-sm">Keep monitoring air quality to earn achievements</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="space-y-4">
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-blue-600" />
+                Account Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button 
+                variant="outline" 
+                onClick={signOut}
+                className="w-full"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

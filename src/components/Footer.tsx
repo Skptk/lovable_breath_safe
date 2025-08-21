@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Heart, Shield, FileText, ShoppingBag, Map, BarChart3, User, Home, Settings } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 
 export default function Footer() {

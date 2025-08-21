@@ -1,10 +1,10 @@
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store";
-
 import { usePerformanceMonitor, useThrottle } from "@/hooks/usePerformance";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "@/contexts/LocationContext";
 
 export interface AirQualityData {
   aqi: number;
@@ -42,16 +42,8 @@ export interface AirQualityData {
 
 export const useAirQuality = () => {
   const { setCurrentAQI, setCurrentLocation, setLoading, setError } = useAppStore();
-
   const { user } = useAuth();
-  const [hasUserConsent, setHasUserConsent] = useState(false);
-  const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
-  const [isRequestingLocation, setIsRequestingLocation] = useState(false); // Prevent multiple simultaneous requests
-  
-  // Use refs to prevent multiple permission checks
-  const permissionCheckedRef = useRef(false);
-  const permissionCheckInProgressRef = useRef(false);
-  const hookInstanceRef = useRef<string>(''); // Track hook instance
+  const { hasUserConsent, hasRequestedPermission, getCurrentLocation } = useLocation();
   
   // Performance monitoring
   usePerformanceMonitor("useAirQuality");
@@ -60,77 +52,6 @@ export const useAirQuality = () => {
   const throttledLocationUpdate = useThrottle((location: string) => {
     setCurrentLocation(location);
   }, 5000);
-
-  // Check and restore location permission on mount
-  useEffect(() => {
-    // Generate unique instance ID for this hook call
-    if (!hookInstanceRef.current) {
-      hookInstanceRef.current = `hook_${Date.now()}_${Math.random()}`;
-      console.log('useAirQuality: Hook instance created:', hookInstanceRef.current);
-    }
-    
-    // Prevent multiple permission checks
-    if (permissionCheckedRef.current || permissionCheckInProgressRef.current) {
-      console.log('useAirQuality: Permission check already completed or in progress, skipping');
-      return;
-    }
-    
-    permissionCheckInProgressRef.current = true;
-    console.log('useAirQuality: Starting permission check for instance:', hookInstanceRef.current);
-    
-    const checkLocationPermission = async () => {
-      try {
-        // Check if we have stored permission
-        const storedPermission = localStorage.getItem('breath-safe-location-permission');
-        
-        if (storedPermission === 'granted') {
-          // Check if browser still has permission
-          if (navigator.permissions && navigator.permissions.query) {
-            try {
-              const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-              if (permissionStatus.state === 'granted') {
-                setHasUserConsent(true);
-                setHasRequestedPermission(true);
-                permissionCheckedRef.current = true;
-                console.log('useAirQuality: Permission check completed - user has consent');
-                return;
-              } else if (permissionStatus.state === 'denied') {
-                setHasUserConsent(false);
-                setHasRequestedPermission(true);
-                localStorage.removeItem('breath-safe-location-permission');
-                permissionCheckedRef.current = true;
-                console.log('useAirQuality: Permission check completed - user denied consent');
-                return;
-              }
-            } catch (error) {
-              console.log('Permission API not supported, using stored permission');
-            }
-          }
-          
-          // If permission API not supported, trust stored permission
-          setHasUserConsent(true);
-          setHasRequestedPermission(true);
-          permissionCheckedRef.current = true;
-          console.log('useAirQuality: Permission check completed - using stored permission');
-        } else if (storedPermission === 'denied') {
-          setHasUserConsent(false);
-          setHasRequestedPermission(true);
-          permissionCheckedRef.current = true;
-          console.log('useAirQuality: Permission check completed - stored permission denied');
-        } else {
-          // No stored permission, mark as checked but not consented
-          setHasUserConsent(false);
-          setHasRequestedPermission(true);
-          permissionCheckedRef.current = true;
-          console.log('useAirQuality: Permission check completed - no stored permission');
-        }
-      } finally {
-        permissionCheckInProgressRef.current = false;
-      }
-    };
-
-    checkLocationPermission();
-  }, []);
 
   // Function to save air quality reading to database
   const saveReadingToDatabase = useCallback(async (data: AirQualityData) => {
@@ -213,41 +134,20 @@ export const useAirQuality = () => {
       throw new Error('Geolocation not supported by your browser');
     }
 
-    // Only proceed if user has given consent or if we're using cached coordinates
+    // Only proceed if user has given consent
     if (!hasUserConsent) {
       console.log('useAirQuality: Skipping geolocation - user consent not granted yet');
       throw new Error('Location access not yet granted. Please click the location button to enable.');
     }
 
-    // Prevent multiple simultaneous location requests
-    if (isRequestingLocation) {
-      console.log('useAirQuality: Location request already in progress, skipping duplicate request');
-      throw new Error('Location request already in progress. Please wait.');
-    }
-
     try {
-      setIsRequestingLocation(true);
       setLoading(true);
       setError(null);
 
       console.log('useAirQuality: Starting geolocation request with user consent');
 
-      // Add timeout to prevent infinite loading
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timed out after 45 seconds')), 45000);
-      });
-
-      // Simple, reliable location detection that works on mobile
-      const positionPromise = new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 30000, // 30 seconds - mobile devices need more time
-          enableHighAccuracy: false, // Disable high accuracy for mobile compatibility
-          maximumAge: 10 * 60 * 1000 // Allow 10-minute old data for mobile
-        });
-      });
-
-      // Race between timeout and geolocation
-      const position = await Promise.race([positionPromise, timeoutPromise]);
+      // Get current location using the centralized location context
+      const position = await getCurrentLocation();
 
       console.log('useAirQuality: Geolocation successful, coordinates:', position.coords.latitude, position.coords.longitude);
 
@@ -408,74 +308,11 @@ export const useAirQuality = () => {
       throw error; // Re-throw to be caught by useQuery
     } finally {
       setLoading(false);
-      setIsRequestingLocation(false);
     }
-  }, [setLoading, setError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase, isRequestingLocation]);
-
-  // Function to request location permission (should be called on user gesture)
-  const requestLocationPermission = useCallback(async (): Promise<boolean> => {
-    if (!navigator.geolocation) {
-      console.log('useAirQuality: Geolocation not supported by browser');
-      return false;
-    }
-
-    // Prevent multiple simultaneous permission requests
-    if (isRequestingLocation) {
-      console.log('useAirQuality: Location permission request already in progress, skipping duplicate request');
-      return false;
-    }
-
-    try {
-      setIsRequestingLocation(true);
-      console.log('useAirQuality: Starting location permission request for instance:', hookInstanceRef.current);
-      
-      // Request location permission
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 30000,
-          enableHighAccuracy: false,
-          maximumAge: 10 * 60 * 1000
-        });
-      });
-
-      if (position) {
-        console.log('useAirQuality: Location permission granted successfully for instance:', hookInstanceRef.current);
-        setHasUserConsent(true);
-        // Store permission in localStorage
-        localStorage.setItem('breath-safe-location-permission', 'granted');
-        return true;
-      }
-      return false;
-    } catch (error) {
-      // Only log specific error types, reduce console noise
-      if (error instanceof GeolocationPositionError) {
-        switch (error.code) {
-          case 1: // PERMISSION_DENIED
-            console.log('useAirQuality: Location permission denied by user for instance:', hookInstanceRef.current);
-            break;
-          case 2: // POSITION_UNAVAILABLE
-            console.log('useAirQuality: Location position unavailable for instance:', hookInstanceRef.current);
-            break;
-          case 3: // TIMEOUT
-            console.log('useAirQuality: Location request timed out for instance:', hookInstanceRef.current);
-            break;
-          default:
-            console.log('useAirQuality: Location permission error for instance:', hookInstanceRef.current, error.message);
-        }
-      } else {
-        console.log('useAirQuality: Location permission request failed for instance:', hookInstanceRef.current, error);
-      }
-      
-      // Store denied permission to avoid repeated prompts
-      localStorage.setItem('breath-safe-location-permission', 'denied');
-      return false;
-    } finally {
-      setIsRequestingLocation(false);
-    }
-  }, [isRequestingLocation]);
+  }, [setLoading, setError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase, getCurrentLocation]);
 
   const query = useQuery({
-    queryKey: ['airQuality', hasUserConsent, permissionCheckedRef.current, hookInstanceRef.current],
+    queryKey: ['airQuality', hasUserConsent, hasRequestedPermission],
     queryFn: fetchAirQualityData,
     gcTime: 5 * 60 * 1000, // Cache for 5 minutes
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
@@ -486,7 +323,7 @@ export const useAirQuality = () => {
     refetchIntervalInBackground: false, // Disable background refresh to save battery
     retry: 1, // Reduce retries to prevent loops
     retryDelay: 1000, // Increase retry delay
-    enabled: hasUserConsent && hasRequestedPermission && permissionCheckedRef.current && hookInstanceRef.current !== '', // Only run when everything is ready
+    enabled: hasUserConsent && hasRequestedPermission, // Only run when everything is ready
   });
 
   // Debug logging for permission states and refresh behavior
@@ -517,10 +354,9 @@ export const useAirQuality = () => {
     data: query.data,
     hasUserConsent,
     hasRequestedPermission,
-    requestLocationPermission,
     // Add manual refresh function for user control
     manualRefresh: () => {
-      if (hasUserConsent && permissionCheckedRef.current) {
+      if (hasUserConsent && hasRequestedPermission) {
         console.log('Manual refresh requested by user');
         return query.refetch();
       } else {

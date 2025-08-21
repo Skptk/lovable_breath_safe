@@ -19,31 +19,48 @@ function validateSupabaseConfig(url: string | undefined, key: string | undefined
   if (!url.startsWith('https://') || !url.includes('.supabase.co')) {
     throw new Error('Invalid Supabase URL format. Expected: https://your-project.supabase.co');
   }
-
-  // Basic key validation
-  if (!key.startsWith('eyJ')) {
-    throw new Error('Invalid Supabase anon key format. Expected JWT format starting with "eyJ"');
-  }
 }
 
-// Validate configuration and fail fast
-try {
-  validateSupabaseConfig(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-} catch (error) {
-  console.error('Supabase configuration error:', error);
-  // Fail fast in all environments - no fallbacks
-  throw new Error(`Supabase configuration failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+// Validate configuration before creating client
+validateSupabaseConfig(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Create singleton Supabase client
+let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
+
+export function getSupabaseClient() {
+  if (!supabaseInstance) {
+    console.log('🔧 Creating Supabase client instance...');
+    supabaseInstance = createClient<Database>(
+      SUPABASE_URL!,
+      SUPABASE_PUBLISHABLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true
+        },
+        realtime: {
+          params: {
+            eventsPerSecond: 10
+          }
+        }
+      }
+    );
+    console.log('✅ Supabase client instance created');
+  }
+  return supabaseInstance;
 }
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+// Export the singleton instance
+export const supabase = getSupabaseClient();
 
-export const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: false,
-    flowType: 'pkce'
+// Prevent modification of the exported instance
+Object.freeze(supabase);
+
+// Export a function to reset the instance (useful for testing)
+export function resetSupabaseClient() {
+  if (supabaseInstance) {
+    console.log('🔄 Resetting Supabase client instance...');
+    supabaseInstance = null;
   }
-});
+}

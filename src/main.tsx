@@ -3,6 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
 import './index.css'
 import Profiler from './devtools/Profiler'
+import { AuthProvider } from './contexts/AuthContext'
+import { RealtimeProvider } from './contexts/RealtimeContext'
+import { LocationProvider } from './contexts/LocationContext'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -23,7 +26,13 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
-    {import.meta.env.DEV && <Profiler />}
-    <App />
+    <AuthProvider>
+      <RealtimeProvider>
+        <LocationProvider>
+          {import.meta.env.DEV && <Profiler />}
+          <App />
+        </LocationProvider>
+      </RealtimeProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );

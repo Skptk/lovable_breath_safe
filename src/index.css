@@ -1,3 +1,6 @@
+/* Font family import - must come first */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 /* Leaflet CSS imports */
 @import 'leaflet/dist/leaflet.css';
 
@@ -6,8 +9,6 @@
 @tailwind utilities;
 
 /* Breath Safe Design System - Based on Modern Minimal JSON Design System */
-/* Font family import */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {

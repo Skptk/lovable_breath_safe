@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "./hooks/useAuth";
+import { useAuth } from "./contexts/AuthContext";
 import { ErrorBoundary, RealtimeStatusBanner } from "@/components";
 import { usePerformanceMonitor, usePreload } from "@/hooks/usePerformance";
 import { useAppStore } from "@/store";
