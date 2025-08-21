@@ -84,7 +84,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
 
   // Use real achievements and streaks from the database
   const { achievements, streaks, isLoading: achievementsLoading, error: achievementsError, refreshAchievements, initializeUserAchievements } = useAchievements();
-  const { totalPoints, currencyRewards, canWithdraw } = useUserPoints();
+  const { userPoints, currencyValue, canWithdraw } = useUserPoints();
 
   // Debug logging
   useEffect(() => {
@@ -205,7 +205,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
 
     const requiredPoints = withdrawalForm.amount * 10000; // $0.1 per 1000 points = 10000 points per $1
     
-    if (totalPoints < requiredPoints) {
+    if ((userPoints?.totalPoints || 0) < requiredPoints) {
       toast({
         title: "Insufficient Points",
         description: `You need ${requiredPoints.toLocaleString()} points to withdraw $${withdrawalForm.amount}`,
@@ -214,7 +214,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
       return;
     }
 
-    if (totalPoints < 500000) {
+    if ((userPoints?.totalPoints || 0) < 500000) {
       toast({
         title: "Minimum Points Required",
         description: "You need at least 500,000 points to withdraw funds",
@@ -240,7 +240,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
       // Deduct points from user profile
               const { error: updateError } = await supabase
           .from('profiles')
-          .update({ total_points: totalPoints - requiredPoints })
+          .update({ total_points: (userPoints?.totalPoints || 0) - requiredPoints })
           .eq('user_id', user.id);
 
       if (updateError) throw updateError;
@@ -280,7 +280,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
       // Deduct points from user profile
               const { error: updateError } = await supabase
           .from('profiles')
-          .update({ total_points: totalPoints - giftCard.points_required })
+          .update({ total_points: (userPoints?.totalPoints || 0) - giftCard.points_required })
           .eq('user_id', user.id);
 
       if (updateError) throw updateError;
@@ -301,7 +301,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
     }
   };
 
-  if (loading) {
+  if (loading || !userPoints) {
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -383,7 +383,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
           <CardContent className="p-4 text-center">
             <div className="text-3xl font-bold text-primary mb-2">
               <Trophy className="w-8 h-8 mx-auto mb-2" />
-              {profile.total_points.toLocaleString()}
+              {(userPoints?.totalPoints || 0).toLocaleString()}
             </div>
             <p className="text-sm text-muted-foreground">Total Points</p>
           </CardContent>
@@ -391,10 +391,10 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
 
         <Card className="bg-gradient-card shadow-card border-0">
           <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-green-500 mb-2">
-              <DollarSign className="w-8 h-8 mx-auto mb-2" />
-              ${currencyRewards.toFixed(2)}
-            </div>
+                          <div className="text-3xl font-bold text-green-500 mb-2">
+                <DollarSign className="w-8 h-8 mx-auto mb-2" />
+                ${(currencyValue || 0).toFixed(2)}
+              </div>
             <p className="text-sm text-muted-foreground">Currency Rewards</p>
           </CardContent>
         </Card>
@@ -655,9 +655,9 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-center space-y-4">
-                <div className="text-6xl font-bold text-green-500">
-                  ${currencyRewards.toFixed(2)}
-                </div>
+                              <div className="text-6xl font-bold text-green-500">
+                ${(currencyValue || 0).toFixed(2)}
+              </div>
                 <p className="text-sm text-muted-foreground">
                   $0.1 per 1000 points • Withdrawable at 500,000 points
                 </p>
@@ -667,7 +667,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="bg-yellow-100 text-yellow-700 border-yellow-300">
-                    {500000 - totalPoints} points needed to withdraw
+                    {500000 - (userPoints?.totalPoints || 0)} points needed to withdraw
                   </Badge>
                 )}
               </div>
@@ -698,11 +698,11 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                       </div>
                       <Button
                         onClick={() => redeemGiftCard(giftCard)}
-                        disabled={!giftCard.available || totalPoints < giftCard.points_required}
+                        disabled={!giftCard.available || (userPoints?.totalPoints || 0) < giftCard.points_required}
                         className="w-full"
-                        variant={giftCard.available && totalPoints >= giftCard.points_required ? "default" : "outline"}
+                        variant={giftCard.available && (userPoints?.totalPoints || 0) >= giftCard.points_required ? "default" : "outline"}
                       >
-                        {giftCard.available && totalPoints >= giftCard.points_required ? "Redeem" : "Insufficient Points"}
+                        {giftCard.available && (userPoints?.totalPoints || 0) >= giftCard.points_required ? "Redeem" : "Insufficient Points"}
                       </Button>
                     </CardContent>
                   </Card>
