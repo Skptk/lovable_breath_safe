@@ -27,7 +27,7 @@ export default function AirQualityDashboard({
   onMobileMenuToggle 
 }: AirQualityDashboardProps) {
   const { user } = useAuth();
-  const { data, isRefetching: isRefreshing, refetch, hasUserConsent, hasRequestedPermission, requestLocationPermission, isLoading, error } = useAirQuality();
+  const { data, isRefetching: isRefreshing, refetch, hasUserConsent, hasRequestedPermission, requestLocationPermission, isLoading, error, manualRefresh } = useAirQuality();
   const { totalPoints, currencyRewards } = useUserPoints();
   const [showPollutantModal, setShowPollutantModal] = useState(false);
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
@@ -43,16 +43,33 @@ export default function AirQualityDashboard({
 
   const handleRefresh = () => {
     if (hasUserConsent) {
-      refetch();
+      console.log('User requested manual refresh');
+      manualRefresh();
+    } else {
+      console.log('Refresh skipped - user consent not granted');
     }
   };
 
   const handleRequestLocationPermission = async () => {
+    if (isRequestingPermission) {
+      console.log('Location permission request already in progress, skipping duplicate request');
+      return;
+    }
+    
     setIsRequestingPermission(true);
     try {
+      console.log('Starting location permission request...');
       const granted = await requestLocationPermission();
       if (granted) {
-        refetch();
+        console.log('Location permission granted, refreshing data...');
+        // Wait a moment for the state to update, then refresh
+        setTimeout(() => {
+          if (hasUserConsent) {
+            manualRefresh();
+          }
+        }, 100);
+      } else {
+        console.log('Location permission denied by user');
       }
     } catch (error) {
       console.error('Failed to request location permission:', error);

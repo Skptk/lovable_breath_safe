@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store";
@@ -48,6 +48,10 @@ export const useAirQuality = () => {
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
   const [isRequestingLocation, setIsRequestingLocation] = useState(false); // Prevent multiple simultaneous requests
   
+  // Use refs to prevent multiple permission checks
+  const permissionCheckedRef = useRef(false);
+  const permissionCheckInProgressRef = useRef(false);
+  
   // Performance monitoring
   usePerformanceMonitor("useAirQuality");
   
@@ -58,40 +62,56 @@ export const useAirQuality = () => {
 
   // Check and restore location permission on mount
   useEffect(() => {
+    // Prevent multiple permission checks
+    if (permissionCheckedRef.current || permissionCheckInProgressRef.current) {
+      return;
+    }
+    
+    permissionCheckInProgressRef.current = true;
+    
     const checkLocationPermission = async () => {
-      // Check if we have stored permission
-      const storedPermission = localStorage.getItem('breath-safe-location-permission');
-      
-      if (storedPermission === 'granted') {
-        // Check if browser still has permission
-        if (navigator.permissions && navigator.permissions.query) {
-          try {
-            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-            if (permissionStatus.state === 'granted') {
-              setHasUserConsent(true);
-              setHasRequestedPermission(true);
-              return;
-            } else if (permissionStatus.state === 'denied') {
-              setHasUserConsent(false);
-              setHasRequestedPermission(true);
-              localStorage.removeItem('breath-safe-location-permission');
-              return;
-            }
-          } catch (error) {
-            console.log('Permission API not supported, using stored permission');
-          }
-        }
+      try {
+        // Check if we have stored permission
+        const storedPermission = localStorage.getItem('breath-safe-location-permission');
         
-        // If permission API not supported, trust stored permission
-        setHasUserConsent(true);
-        setHasRequestedPermission(true);
-      } else if (storedPermission === 'denied') {
-        setHasUserConsent(false);
-        setHasRequestedPermission(true);
-      } else {
-        // No stored permission, mark as checked but not consented
-        setHasUserConsent(false);
-        setHasRequestedPermission(true);
+        if (storedPermission === 'granted') {
+          // Check if browser still has permission
+          if (navigator.permissions && navigator.permissions.query) {
+            try {
+              const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+              if (permissionStatus.state === 'granted') {
+                setHasUserConsent(true);
+                setHasRequestedPermission(true);
+                permissionCheckedRef.current = true;
+                return;
+              } else if (permissionStatus.state === 'denied') {
+                setHasUserConsent(false);
+                setHasRequestedPermission(true);
+                localStorage.removeItem('breath-safe-location-permission');
+                permissionCheckedRef.current = true;
+                return;
+              }
+            } catch (error) {
+              console.log('Permission API not supported, using stored permission');
+            }
+          }
+          
+          // If permission API not supported, trust stored permission
+          setHasUserConsent(true);
+          setHasRequestedPermission(true);
+          permissionCheckedRef.current = true;
+        } else if (storedPermission === 'denied') {
+          setHasUserConsent(false);
+          setHasRequestedPermission(true);
+          permissionCheckedRef.current = true;
+        } else {
+          // No stored permission, mark as checked but not consented
+          setHasUserConsent(false);
+          setHasRequestedPermission(true);
+          permissionCheckedRef.current = true;
+        }
+      } finally {
+        permissionCheckInProgressRef.current = false;
       }
     };
 
@@ -384,7 +404,16 @@ export const useAirQuality = () => {
       return false;
     }
 
+    // Prevent multiple simultaneous permission requests
+    if (isRequestingLocation) {
+      console.log('Location permission request already in progress, skipping duplicate request');
+      return false;
+    }
+
     try {
+      setIsRequestingLocation(true);
+      console.log('Starting location permission request...');
+      
       // Request location permission
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -395,6 +424,7 @@ export const useAirQuality = () => {
       });
 
       if (position) {
+        console.log('Location permission granted successfully');
         setHasUserConsent(true);
         // Store permission in localStorage
         localStorage.setItem('breath-safe-location-permission', 'granted');
@@ -424,22 +454,24 @@ export const useAirQuality = () => {
       // Store denied permission to avoid repeated prompts
       localStorage.setItem('breath-safe-location-permission', 'denied');
       return false;
+    } finally {
+      setIsRequestingLocation(false);
     }
-  }, []);
+  }, [isRequestingLocation]);
 
   const query = useQuery({
-    queryKey: ['airQuality', hasUserConsent],
+    queryKey: ['airQuality', hasUserConsent, permissionCheckedRef.current],
     queryFn: fetchAirQualityData,
     gcTime: 5 * 60 * 1000, // Cache for 5 minutes
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    refetchOnWindowFocus: true, // Enable auto-refresh when user returns to tab
-    refetchOnMount: true, // Auto-fetch on mount when user has consent
-    refetchOnReconnect: true, // Auto-fetch on reconnect
-    refetchInterval: hasUserConsent ? 15 * 60 * 1000 : false, // Refresh every 15 minutes when user has consent
+    refetchOnWindowFocus: false, // Disable auto-refresh when user returns to tab to prevent loops
+    refetchOnMount: false, // Disable auto-fetch on mount to prevent loops
+    refetchOnReconnect: false, // Disable auto-fetch on reconnect to prevent loops
+    refetchInterval: false, // Disable automatic refresh to prevent loops
     refetchIntervalInBackground: false, // Disable background refresh to save battery
-    retry: 2, // Reduce retries for faster failure detection
-    retryDelay: 500, // Faster retry delay
-    enabled: hasUserConsent && hasRequestedPermission, // Only run when user has consented and we've checked permissions
+    retry: 1, // Reduce retries to prevent loops
+    retryDelay: 1000, // Increase retry delay
+    enabled: hasUserConsent && hasRequestedPermission && permissionCheckedRef.current, // Only run when everything is ready
   });
 
   // Debug logging for permission states and refresh behavior
@@ -470,6 +502,16 @@ export const useAirQuality = () => {
     data: query.data,
     hasUserConsent,
     hasRequestedPermission,
-    requestLocationPermission
+    requestLocationPermission,
+    // Add manual refresh function for user control
+    manualRefresh: () => {
+      if (hasUserConsent && permissionCheckedRef.current) {
+        console.log('Manual refresh requested by user');
+        return query.refetch();
+      } else {
+        console.log('Manual refresh skipped - user consent or permission check not ready');
+        return Promise.resolve({ data: undefined, error: null });
+      }
+    }
   };
 };
