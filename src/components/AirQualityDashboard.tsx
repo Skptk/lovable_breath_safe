@@ -218,6 +218,13 @@ export default function AirQualityDashboard({
              data.aqi <= 100 ? "text-warning" : "text-destructive"
     };
 
+    // Debug: Log coordinates being passed to WeatherStatsCard
+    console.log('AirQualityDashboard: Passing coordinates to WeatherStatsCard:', {
+      coordinates: data.coordinates,
+      lat: data.coordinates.lat,
+      lon: data.coordinates.lon
+    });
+
     return (
       <div className="space-y-6 lg:space-y-8">
         <Header
@@ -256,8 +263,7 @@ export default function AirQualityDashboard({
                 </div>
                 
                 <ProgressGauge 
-                  value={data.aqi} 
-                  max={500} 
+                  value={Math.min((data.aqi / 500) * 100, 100)} 
                   size={120}
                   strokeWidth={8}
                 />
@@ -344,7 +350,10 @@ export default function AirQualityDashboard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
         >
-          <WeatherStatsCard />
+          <WeatherStatsCard 
+            latitude={data.coordinates.lat} 
+            longitude={data.coordinates.lon} 
+          />
         </motion.div>
 
         {/* User Stats and Rewards */}

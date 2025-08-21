@@ -38,14 +38,28 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
     setError(null);
 
     try {
+      // Validate coordinates before making API call
+      if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+        throw new Error('Invalid coordinates provided');
+      }
+
+      console.log('WeatherStatsCard: Fetching weather data for coordinates:', { latitude, longitude });
+
       const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
       if (!apiKey) {
+        console.error('WeatherStatsCard: OpenWeatherMap API key not configured');
         throw new Error('OpenWeatherMap API key not configured');
       }
+
+      console.log('WeatherStatsCard: API key configured, making request to OpenWeatherMap');
+      console.log('WeatherStatsCard: API key length:', apiKey.length);
+      console.log('WeatherStatsCard: API key starts with:', apiKey.substring(0, 4) + '...');
 
       const response = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`
       );
+
+      console.log('WeatherStatsCard: API response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
@@ -79,7 +93,18 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
           description: "Successfully fetched current weather data",
         });
       } else {
-        throw new Error(`API request failed: ${response.status}`);
+        // Provide more specific error messages based on status code
+        let errorMessage = `API request failed: ${response.status}`;
+        if (response.status === 400) {
+          errorMessage = 'Invalid coordinates or API key';
+        } else if (response.status === 401) {
+          errorMessage = 'Invalid API key';
+        } else if (response.status === 429) {
+          errorMessage = 'API rate limit exceeded';
+        } else if (response.status >= 500) {
+          errorMessage = 'Weather service temporarily unavailable';
+        }
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Error fetching weather data:', error);
@@ -122,13 +147,43 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
     return 'text-red-600';
   };
 
+  // Fetch weather data when coordinates change
   useEffect(() => {
-    fetchWeatherData();
-    
-    // Refresh every 15 minutes
+    if (latitude && longitude && !isNaN(latitude) && !isNaN(longitude)) {
+      fetchWeatherData();
+    }
+  }, [latitude, longitude]);
+
+  // Auto-refresh every 15 minutes
+  useEffect(() => {
+    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+      return; // Don't set up auto-refresh if coordinates are invalid
+    }
+
     const interval = setInterval(fetchWeatherData, 15 * 60 * 1000);
     return () => clearInterval(interval);
   }, [latitude, longitude]);
+
+  // Show message if coordinates are not available
+  if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+    return (
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Thermometer className="h-5 w-5 text-blue-600" />
+            Weather Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+            <p>Weather data unavailable</p>
+            <p className="text-sm">Location coordinates not available</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading && !weatherData) {
     return (
