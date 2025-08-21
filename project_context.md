@@ -99,6 +99,8 @@ src/
 - **Database Integration** - Full CRUD operations with RLS
 
 ### 🔧 Recently Fixed Issues
+- **View Switching Loop Fix** - ✅ COMPLETED: Fixed rapid view switching between dashboard and map views by removing problematic useEffect dependencies in Index component, preventing view switching loops and improving navigation stability
+- **Multiple Hook Calls Prevention** - ✅ COMPLETED: Added hook instance tracking to prevent multiple useAirQuality hook calls, improving permission check guards with better logging and instance tracking, and preventing React Query from running multiple times
 - **Location Permission Loop Fix** - ✅ COMPLETED: Fixed multiple 'Location permission denied by user' console messages by adding refs to prevent multiple permission checks, improving requestLocationPermission function with duplicate request prevention, disabling React Query auto-refresh to prevent permission loops, and adding manual refresh function for user control
 - **Location Permission Error Handling** - ✅ COMPLETED: Enhanced error handling in useAirQuality and WeatherStats components with specific error type logging, reduced console noise for common geolocation errors, and better user feedback for location permission issues
 - **Multiple Auth State Changes** - ✅ COMPLETED: Fixed duplicate INITIAL_SESSION auth state changes by adding event deduplication logic in useAuth hook, preventing unnecessary realtime channel reconnections and improving authentication stability
@@ -169,6 +171,8 @@ src/
 - **Automatic Data Refresh Fix** - Resolved issue where air quality data was only stored on manual refresh, now automatically refreshes every 15 minutes
 
 ### 🆕 Current User Experience Improvements
+- **Navigation Stability** - Fixed rapid view switching between dashboard and map views, providing stable and predictable navigation between app sections
+- **Hook Call Optimization** - Prevented multiple useAirQuality hook calls with instance tracking, improving performance and reducing unnecessary re-renders
 - **Location Permission Loop Prevention** - Fixed multiple 'Location permission denied by user' console messages by preventing duplicate permission checks and requests, providing smooth location permission flow
 - **Location Permission UX** - Enhanced error handling with specific error type logging, reduced console noise for common geolocation errors, and improved user feedback for location permission issues
 - **Authentication Stability** - Significantly reduced duplicate auth state changes and unnecessary realtime reconnections, improving overall app performance and reducing console noise
