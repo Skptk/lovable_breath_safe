@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import LeafletMap from "./LeafletMap";
 import Header from "@/components/Header";
+import AQIDataCharts from "./AQIDataCharts";
 
 
 interface NearbyLocation {
@@ -27,6 +28,12 @@ interface UserLocation {
 
 interface AirQualityData {
   aqi: number;
+  pm25?: number;
+  pm10?: number;
+  no2?: number;
+  so2?: number;
+  co?: number;
+  o3?: number;
   location: string;
   timestamp: string;
 }
@@ -44,6 +51,39 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
   const [locationRequested, setLocationRequested] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const { toast } = useToast();
+
+  // Fetch air quality data when user location is available
+  const fetchAirQualityData = async (lat: number, lon: number): Promise<void> => {
+    try {
+      const response = await supabase.functions.invoke('get-air-quality', {
+        body: { latitude: lat, longitude: lon }
+      });
+
+      if (response.error) {
+        console.error('Error fetching air quality data:', response.error);
+        setError('Failed to fetch air quality data');
+        return;
+      }
+
+      if (response.data) {
+        const data = response.data;
+        setAirQualityData({
+          aqi: data.aqi || 0,
+          pm25: data.pollutants?.pm25 || 0,
+          pm10: data.pollutants?.pm10 || 0,
+          no2: data.pollutants?.no2 || 0,
+          so2: data.pollutants?.so2 || 0,
+          co: data.pollutants?.co || 0,
+          o3: data.pollutants?.o3 || 0,
+          location: data.location || 'Your Location',
+          timestamp: data.timestamp || new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching air quality data:', error);
+      setError('Failed to fetch air quality data');
+    }
+  };
 
   // Mock nearby locations - in a real app, these would come from an API
   const nearbyLocations: NearbyLocation[] = [
@@ -186,28 +226,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
     }
   };
 
-  const fetchAirQualityData = async (lat: number, lon: number): Promise<void> => {
-    try {
-      const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
-        body: { lat, lon }
-      });
 
-      if (error) {
-        console.error('Error fetching air quality data:', error);
-        return;
-      }
-
-      if (response) {
-        setAirQualityData({
-          aqi: response.aqi,
-          location: response.location,
-          timestamp: response.timestamp
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching air quality data:', err);
-    }
-  };
 
   const getCityFromCoordinates = async (lat: number, lon: number): Promise<{city: string, state: string, country: string}> => {
     try {
@@ -535,6 +554,36 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
           </div>
         </div>
       </div>
+
+      {/* AQI Data Charts Section */}
+      {airQualityData ? (
+        <div className="mt-8">
+          <AQIDataCharts
+            aqi={airQualityData.aqi}
+            pm25={airQualityData.pm25 || 0}
+            pm10={airQualityData.pm10 || 0}
+            no2={airQualityData.no2 || 0}
+            so2={airQualityData.so2 || 0}
+            co={airQualityData.co || 0}
+            o3={airQualityData.o3 || 0}
+            timestamp={airQualityData.timestamp}
+          />
+        </div>
+      ) : (
+        // Show demo data for testing when no real data is available
+        <div className="mt-8">
+          <AQIDataCharts
+            aqi={75}
+            pm25={15.2}
+            pm10={28.5}
+            no2={45.8}
+            so2={12.3}
+            co={2.1}
+            o3={62.4}
+            timestamp={new Date().toISOString()}
+          />
+        </div>
+      )}
     </div>
   );
 }
