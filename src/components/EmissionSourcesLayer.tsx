@@ -282,7 +282,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
             <div className="text-center space-y-2">
               <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
               <p className="text-muted-foreground">Loading air quality data...</p>
-            </div>
+          </div>
           </div>
         </CardContent>
       </Card>

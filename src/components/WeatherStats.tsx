@@ -743,12 +743,12 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
 
 
 
-      {/* Map Container - Google Maps Style with Stable Panels */}
+      {/* Map Container - Google Maps Style */}
       <Card className="relative h-[calc(100vh-200px)] min-h-[600px] shadow-card overflow-hidden">
         <CardContent className="p-0 h-full relative">
-          {/* Map Header - Fixed at top with higher z-index and pointer-events-none for map */}
-          <div className="absolute top-0 left-0 right-0 z-40 bg-gradient-to-r from-card/95 via-card/90 to-card/95 backdrop-blur-md border-b border-border/50 pointer-events-none">
-            <div className="p-4 pointer-events-auto">
+          {/* Map Header - Fixed at top */}
+          <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-r from-card/95 via-card/90 to-card/95 backdrop-blur-md border-b border-border/50">
+            <div className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div>
@@ -787,118 +787,119 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
             </div>
           </div>
 
-          {/* Leaflet Map Integration - Full width/height within card with pointer-events-auto */}
-          <div className="w-full h-full pt-20 pointer-events-auto">
+          {/* Leaflet Map Integration - Full width/height within card */}
+          <div className="w-full h-full pt-20">
             <LeafletMap
               userLocation={userLocation}
               airQualityData={airQualityData}
             />
           </div>
-
-          {/* Location Info Panel - Bottom Right with stable positioning and pointer-events-none */}
-          {userLocation && (
-            <div className="fixed bottom-4 right-4 z-30 max-w-sm pointer-events-none" style={{ pointerEvents: 'none' }}>
-              <Card className="bg-card/95 backdrop-blur-md border-border/50 shadow-xl pointer-events-auto" style={{ pointerEvents: 'auto' }}>
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      <h3 className="font-semibold text-foreground">Current Location</h3>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">City:</span>
-                        <span className="text-sm font-medium">{userLocation.city}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">State:</span>
-                        <span className="text-sm font-medium">{userLocation.state}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Country:</span>
-                        <span className="text-sm font-medium">{userLocation.country}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Coordinates:</span>
-                        <span className="text-sm font-medium">
-                          {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Weather Summary Panel - Bottom Left with stable positioning and pointer-events-none */}
-          {weatherData.currentWeather && (
-            <div className="fixed bottom-4 left-4 z-30 max-w-sm pointer-events-none" style={{ pointerEvents: 'none' }}>
-              <Card className="bg-card/95 backdrop-blur-md border-border/50 shadow-xl pointer-events-auto" style={{ pointerEvents: 'auto' }}>
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Cloud className="h-4 w-4 text-blue-500" />
-                      <h3 className="font-semibold text-foreground">Weather Summary</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Thermometer className="h-3 w-3 text-red-500" />
-                        <span className="text-muted-foreground">Temp:</span>
-                        <span className="font-medium">{weatherData.currentWeather.temperature}°C</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Droplets className="h-3 w-3 text-blue-500" />
-                        <span className="text-muted-foreground">Humidity:</span>
-                        <span className="font-medium">{weatherData.currentWeather.humidity}%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Wind className="h-3 w-3 text-green-500" />
-                        <span className="text-muted-foreground">Wind:</span>
-                        <span className="font-medium">{weatherData.currentWeather.windSpeed} km/h</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Eye className="h-3 w-3 text-purple-500" />
-                        <span className="text-muted-foreground">Visibility:</span>
-                        <span className="font-medium">{weatherData.currentWeather.visibility || 'N/A'} km</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Map Legend - Top Right with stable positioning and pointer-events-none */}
-          <div className="fixed top-20 right-4 z-30 pointer-events-none" style={{ pointerEvents: 'none' }}>
-            <Card className="bg-card/95 backdrop-blur-md border-border/50 shadow-xl pointer-events-auto" style={{ pointerEvents: 'auto' }}>
-              <CardContent className="p-3">
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-foreground">Map Legend</h4>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                      <span className="text-xs text-muted-foreground">Your Location</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                      <span className="text-xs text-muted-foreground">Good Air Quality</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                      <span className="text-xs text-muted-foreground">Moderate Air Quality</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                      <span className="text-xs text-muted-foreground">Poor Air Quality</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Information Grid Beneath Map */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Location Information Card */}
+        {userLocation && (
+          <Card>
+            <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+              <MapPin className="h-4 w-4 text-primary mr-2" />
+              <CardTitle className="text-sm font-medium">Location Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">City:</span>
+                  <span className="text-sm font-medium">{userLocation.city}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">State:</span>
+                  <span className="text-sm font-medium">{userLocation.state}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Country:</span>
+                  <span className="text-sm font-medium">{userLocation.country}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Coordinates:</span>
+                  <span className="text-sm font-medium">
+                    {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Weather Summary Card */}
+        {weatherData.currentWeather && (
+          <Card>
+            <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+              <Cloud className="h-4 w-4 text-blue-500 mr-2" />
+              <CardTitle className="text-sm font-medium">Weather Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Thermometer className="h-3 w-3 text-red-500" />
+                  <span className="text-muted-foreground">Temp:</span>
+                  <span className="font-medium">{weatherData.currentWeather.temperature}°C</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Droplets className="h-3 w-3 text-blue-500" />
+                  <span className="text-muted-foreground">Humidity:</span>
+                  <span className="font-medium">{weatherData.currentWeather.humidity}%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Wind className="h-3 w-3 text-green-500" />
+                  <span className="text-muted-foreground">Wind:</span>
+                  <span className="font-medium">{weatherData.currentWeather.windSpeed} km/h</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Eye className="h-3 w-3 text-purple-500" />
+                  <span className="text-muted-foreground">Visibility:</span>
+                  <span className="font-medium">{weatherData.currentWeather.visibility || 'N/A'} km</span>
+                </div>
+              </div>
+              {weatherData.currentWeather.feelsLikeTemperature && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Thermometer className="h-3 w-3 text-orange-500" />
+                  <span className="text-muted-foreground">Feels like:</span>
+                  <span className="font-medium">{weatherData.currentWeather.feelsLikeTemperature}°C</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Map Legend Card */}
+        <Card>
+          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+            <Layers className="h-4 w-4 text-muted-foreground mr-2" />
+            <CardTitle className="text-sm font-medium">Map Legend</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                <span className="text-xs text-muted-foreground">Your Location</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span className="text-xs text-muted-foreground">Good Air Quality</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <span className="text-xs text-muted-foreground">Moderate Air Quality</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <span className="text-xs text-muted-foreground">Poor Air Quality</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
