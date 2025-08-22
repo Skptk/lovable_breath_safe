@@ -744,10 +744,10 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
 
 
       {/* Map Container */}
-      <Card className="relative h-[calc(100vh-200px)] min-h-[600px] shadow-card">
-        <CardContent className="p-0 h-full">
+      <Card className="relative h-[calc(100vh-200px)] min-h-[600px] shadow-card overflow-hidden">
+        <CardContent className="p-0 h-full relative">
           {/* Leaflet Map Integration - Full width/height within card */}
-          <div className="w-full h-full rounded-lg overflow-hidden">
+          <div className="w-full h-full">
             <LeafletMap
               userLocation={userLocation}
               airQualityData={airQualityData}
@@ -755,8 +755,8 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
           </div>
 
           {/* Floating Header */}
-          <div className="absolute top-4 left-4 right-4 z-10">
-            <Card className="bg-card/90 backdrop-blur-sm border-border shadow-lg">
+          <div className="absolute top-4 left-4 right-4 z-20">
+            <Card className="bg-card/95 backdrop-blur-md border-border/50 shadow-xl">
               <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div>

@@ -100,6 +100,7 @@ src/
 - **Database Integration** - Full CRUD operations with RLS
 
 ### 🔧 Recently Fixed Issues
+- **WeatherStats Map Layering Fix** - ✅ COMPLETED: Fixed visual layering issues in WeatherStats map interface by improving floating header card positioning, increased z-index from z-10 to z-20, enhanced backdrop blur and shadow effects, improved map container overflow handling for cleaner visual hierarchy
 - **LeafletMap Component Error Fix** - ✅ COMPLETED: Fixed "Cannot read properties of undefined (reading 'forEach')" error in LeafletMap component by making nearbyLocations prop optional and adding proper null safety checks, resolved map initialization issues caused by removing placeholder data from WeatherStats component
 - **WeatherStats Map Placeholder Data Removal** - ✅ COMPLETED: Removed all placeholder nearby monitoring stations data from WeatherStats component, eliminated fake locations like "Downtown Area", "City Park", and "Industrial District", cleaned up map functionality by removing bottom sheet with mock AQI values, map now shows only real user location and air quality data
 - **AQI Card Layout Reorganization** - ✅ COMPLETED: Reorganized homepage AQI card layout to move location information, data source, and action buttons beneath the AQI value on the left side, creating cleaner organization with pollutant grid remaining on the right, improved visual hierarchy and information flow
