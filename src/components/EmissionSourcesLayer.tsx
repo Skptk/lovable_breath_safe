@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Cloud, MapPin, AlertTriangle, RefreshCw, Info } from "lucide-react";
+import { Cloud, MapPin, AlertTriangle, RefreshCw, Info, Shield, TrendingUp, Globe, Wind, Thermometer, Droplets } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Carousel,
@@ -48,95 +48,65 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
     setError(null);
 
     try {
-      // Try OpenAQ API for emission data
+      // Use OpenWeatherMap Air Pollution API instead of OpenAQ
       const response = await fetch(
-        `https://api.openaq.org/v2/measurements?coordinates=${latitude},${longitude}&radius=50000&limit=100&order_by=datetime&sort=desc`
+        `https://api.openweathermap.org/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=56ab74b487631610f9b44a6e51fe72f0`
       );
 
       if (response.ok) {
         const data = await response.json();
         
-        if (data.results && data.results.length > 0) {
-          // Process and cluster emission sources
-          const sources = processEmissionData(data.results);
+        if (data.list && data.list.length > 0) {
+          // Process OpenWeatherMap air pollution data
+          const sources = processOpenWeatherMapData(data.list[0], latitude, longitude);
           setEmissionSources(sources);
           setLastUpdated(new Date().toISOString());
           
           toast({
-            title: "Emission Data Updated",
-            description: `Found ${sources.length} emission sources in your area`,
+            title: "Air Quality Data Updated",
+            description: `Updated air quality information for your area`,
           });
         } else {
-          // No data available from OpenAQ - set empty array
+          // No data available
           setEmissionSources([]);
           setLastUpdated(new Date().toISOString());
-          
-          toast({
-            title: "No Emission Data",
-            description: "OpenAQ has no coverage in this area",
-          });
+          setError("No air quality data available for this area");
         }
       } else {
-        throw new Error(`OpenAQ API request failed: ${response.status}`);
+        throw new Error(`OpenWeatherMap API request failed: ${response.status}`);
       }
     } catch (error) {
-      // OpenAQ API failed - set empty array instead of mock data
+      // API failed - show informational content instead of error
       setEmissionSources([]);
-      setError("Unable to fetch emission data at this time");
+      setError("Air quality data temporarily unavailable");
       setLastUpdated(new Date().toISOString());
-      
-      toast({
-        title: "Emission Data Unavailable",
-        description: "Unable to fetch emission data due to API limitations",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const processEmissionData = (measurements: any[]): EmissionSource[] => {
-    // Group measurements by location and parameter
-    const locationMap = new Map();
-    
-    measurements.forEach(measurement => {
-      const locationKey = `${measurement.location}-${measurement.coordinates.latitude}-${measurement.coordinates.longitude}`;
-      
-      if (!locationMap.has(locationKey)) {
-        locationMap.set(locationKey, {
-          id: locationKey,
-          name: measurement.location,
-          type: 'Monitoring Station',
-          latitude: measurement.coordinates.latitude,
-          longitude: measurement.coordinates.longitude,
-          emissions: {},
-          lastUpdated: measurement.date.utc,
-          distance: calculateDistance(latitude, longitude, measurement.coordinates.latitude, measurement.coordinates.longitude)
-        });
-      }
-      
-      const source = locationMap.get(locationKey);
-      source.emissions[measurement.parameter] = measurement.value;
-      
-      if (new Date(measurement.date.utc) > new Date(source.lastUpdated)) {
-        source.lastUpdated = measurement.date.utc;
-      }
-    });
-    
-    return Array.from(locationMap.values())
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, 20); // Limit to 20 closest sources
-  };
+  const processOpenWeatherMapData = (airQualityData: any, userLat: number, userLon: number): EmissionSource[] => {
+    // Create a virtual emission source based on OpenWeatherMap data
+    // This represents the air quality in the user's area
+    const source: EmissionSource = {
+      id: 'local-air-quality',
+      name: 'Local Air Quality Station',
+      type: 'OpenWeatherMap Monitoring',
+      latitude: userLat,
+      longitude: userLon,
+      emissions: {
+        pm25: airQualityData.components.pm2_5,
+        pm10: airQualityData.components.pm10,
+        no2: airQualityData.components.no2,
+        so2: airQualityData.components.so2,
+        co: airQualityData.components.co,
+        o3: airQualityData.components.o3
+      },
+      lastUpdated: new Date().toISOString(),
+      distance: 0
+    };
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Earth's radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
+    return [source];
   };
 
   const getEmissionLevel = (value: number, parameter: string): { level: string; color: string } => {
@@ -193,20 +163,104 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
     return () => clearInterval(interval);
   }, [latitude, longitude]);
 
-  if (loading && emissionSources.length === 0) {
+  // Show informational content when no emission data is available
+  if (emissionSources.length === 0 && !loading) {
     return (
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
-            Emission Sources
+            Air Quality Monitoring
+            <Badge variant="secondary">OpenWeatherMap</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center space-y-2">
-              <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
-              <p className="text-muted-foreground">Loading emission data...</p>
+          <div className="space-y-6">
+            {/* Informational Carousel */}
+            <div className="relative">
+              <Carousel
+                opts={{
+                  align: "start",
+                  loop: true,
+                }}
+                className="w-full"
+              >
+                <CarouselContent className="-ml-2 md:-ml-4">
+                  <CarouselItem className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3">
+                    <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 rounded-lg border h-full">
+                      <div className="text-center space-y-3">
+                        <Shield className="h-12 w-12 text-blue-600 mx-auto" />
+                        <h4 className="font-semibold text-lg">Real-Time Air Quality</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Get accurate air quality data from OpenWeatherMap's global monitoring network.
+                        </p>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                  
+                  <CarouselItem className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3">
+                    <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/30 rounded-lg border h-full">
+                      <div className="text-center space-y-3">
+                        <TrendingUp className="h-12 w-12 text-green-600 mx-auto" />
+                        <h4 className="font-semibold text-lg">Comprehensive Monitoring</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Track PM2.5, PM10, NO2, SO2, CO, and O3 levels with precision.
+                        </p>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                  
+                  <CarouselItem className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3">
+                    <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/30 rounded-lg border h-full">
+                      <div className="text-center space-y-3">
+                        <Globe className="h-12 w-12 text-purple-600 mx-auto" />
+                        <h4 className="font-semibold text-lg">Global Coverage</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Access air quality data from OpenWeatherMap's worldwide network.
+                        </p>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
+            </div>
+
+            {/* Status Information */}
+            <div className="text-center space-y-4">
+              {error && (
+                <div className="p-4 bg-muted/50 rounded-lg border">
+                  <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">{error}</p>
+                  <Button 
+                    onClick={fetchEmissionData} 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-3"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                </div>
+              )}
+              
+              <div className="text-xs text-muted-foreground">
+                <p>Air quality data powered by OpenWeatherMap</p>
+                <p className="mt-1">Real-time monitoring with 30-minute refresh intervals</p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-center gap-3">
+              <Button variant="outline" size="sm">
+                <Info className="h-4 w-4 mr-2" />
+                Learn More
+              </Button>
+              <Button variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Check Later
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -214,43 +268,21 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
     );
   }
 
-  if (error && emissionSources.length === 0) {
+  if (loading && emissionSources.length === 0) {
     return (
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
-            Emission Sources
+            Air Quality Monitoring
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 space-y-4">
-            <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
-            <p className="text-muted-foreground">{error}</p>
-            <Button onClick={fetchEmissionData} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (emissionSources.length === 0) {
-    return (
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Cloud className="h-5 w-5" />
-            Emission Sources
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <Cloud className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No emission sources found in your area</p>
-            <p className="text-sm mt-2">Try refreshing or check back later for updated data</p>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center space-y-2">
+              <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
+              <p className="text-muted-foreground">Loading air quality data...</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -263,8 +295,8 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
-            Emission Sources
-            <Badge variant="secondary">{emissionSources.length} sources</Badge>
+            Air Quality Monitoring
+            <Badge variant="secondary">OpenWeatherMap</Badge>
           </CardTitle>
           <div className="flex items-center gap-2">
             <Button
@@ -285,7 +317,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
       <CardContent>
         {emissionSources.length > 0 && (
           <div className="space-y-6">
-            {/* Emission Sources Carousel */}
+            {/* Air Quality Data Carousel */}
             <div className="relative">
               <Carousel
                 opts={{
@@ -306,7 +338,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
                             <div className="flex items-center gap-1 mt-1">
                               <MapPin className="h-3 w-3 text-muted-foreground" />
                               <span className="text-xs text-muted-foreground">
-                                {source.distance.toFixed(1)} km away
+                                Your location
                               </span>
                             </div>
                           </div>
@@ -315,7 +347,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
                           </Badge>
                         </div>
 
-                        {/* Emissions Summary */}
+                        {/* Air Quality Summary */}
                         <div className="space-y-2">
                           {Object.entries(source.emissions).map(([parameter, value]) => {
                             const { level, color } = getEmissionLevel(value, parameter);
@@ -338,6 +370,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
                             <div className="text-xs text-muted-foreground">
                               <div>Coordinates: {source.latitude.toFixed(4)}, {source.longitude.toFixed(4)}</div>
                               <div>Last Updated: {new Date(source.lastUpdated).toLocaleString()}</div>
+                              <div>Data Source: OpenWeatherMap Air Pollution API</div>
                             </div>
                           </div>
                         )}
@@ -354,25 +387,29 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
               <div className="p-3 bg-muted/30 rounded-lg text-center">
                 <div className="text-2xl font-bold text-primary">{emissionSources.length}</div>
-                <div className="text-xs text-muted-foreground">Total Sources</div>
+                <div className="text-xs text-muted-foreground">Monitoring Points</div>
               </div>
               <div className="p-3 bg-muted/30 rounded-lg text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  {emissionSources.filter(s => s.distance < 5).length}
+                  {emissionSources.filter(s => 
+                    Object.values(s.emissions).every(val => val <= 50)
+                  ).length}
                 </div>
-                <div className="text-xs text-muted-foreground">Within 5km</div>
+                <div className="text-xs text-muted-foreground">Good Quality</div>
               </div>
               <div className="p-3 bg-muted/30 rounded-lg text-center">
                 <div className="text-2xl font-bold text-yellow-600">
-                  {emissionSources.filter(s => s.distance < 10).length}
+                  {emissionSources.filter(s => 
+                    Object.values(s.emissions).some(val => val > 50 && val <= 100)
+                  ).length}
                 </div>
-                <div className="text-xs text-muted-foreground">Within 10km</div>
+                <div className="text-xs text-muted-foreground">Moderate</div>
               </div>
               <div className="p-3 bg-muted/30 rounded-lg text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {emissionSources.filter(s => s.type === 'Monitoring Station').length}
+                  {emissionSources.filter(s => s.type === 'OpenWeatherMap Monitoring').length}
                 </div>
-                <div className="text-xs text-muted-foreground">Monitoring Stations</div>
+                <div className="text-xs text-muted-foreground">Data Sources</div>
               </div>
             </div>
 
