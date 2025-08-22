@@ -68,7 +68,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   const { subscribeToUserProfilePoints } = useRealtime();
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { withdrawalRequests, isLoading: withdrawalLoading } = useWithdrawalRequests();
-  const { achievements, isLoading: achievementsLoading } = useAchievements();
+  const { achievements, userAchievements, isLoading: achievementsLoading } = useAchievements();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -410,6 +410,94 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                     Edit Profile
                   </Button>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Badge Display Card */}
+          <Card className="shadow-card bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="h-5 w-5 text-yellow-500" />
+                Badge Collection
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                    {profile?.full_name?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      {profile?.full_name || 'User'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Level {Math.floor((profile?.total_points || 0) / 10000) + 1} • {profile?.total_points?.toLocaleString() || 0} points
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-3">
+                {userAchievements?.filter(ua => ua.unlocked)?.map((userAchievement) => {
+                  const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
+                  if (!achievement) return null;
+                  
+                  return (
+                    <div
+                      key={userAchievement.id}
+                      className="group relative"
+                    >
+                      <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 cursor-pointer border-2 border-yellow-300">
+                        {achievement.icon || '🏆'}
+                      </div>
+                      {/* Hover Tooltip */}
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                        <div className="font-semibold">{achievement.name}</div>
+                        <div className="text-xs text-gray-300">{achievement.description}</div>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Show locked badges as placeholder */}
+                {userAchievements?.filter(ua => !ua.unlocked)?.slice(0, 3)?.map((userAchievement) => {
+                  const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
+                  if (!achievement) return null;
+                  
+                  return (
+                    <div
+                      key={userAchievement.id}
+                      className="group relative"
+                    >
+                      <div className="w-16 h-16 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center text-gray-600 text-2xl shadow-lg border-2 border-gray-200 dark:from-gray-700 dark:to-gray-800 dark:text-gray-400 dark:border-gray-600">
+                        🔒
+                      </div>
+                      {/* Hover Tooltip */}
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                        <div className="font-semibold">{achievement.name}</div>
+                        <div className="text-xs text-gray-300">{achievement.description}</div>
+                        <div className="text-xs text-yellow-300 mt-1">🔒 Locked</div>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Show more badges indicator if there are many locked ones */}
+                {userAchievements?.filter(ua => !ua.unlocked)?.length > 3 && (
+                  <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full border-2 border-dashed border-gray-400 dark:from-gray-800 dark:to-gray-700 dark:border-gray-600">
+                    <span className="text-gray-500 text-sm font-medium">+{userAchievements.filter(ua => !ua.unlocked).length - 3}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  {userAchievements?.filter(ua => ua.unlocked)?.length || 0} of {userAchievements?.length || 0} badges unlocked
+                </p>
               </div>
             </CardContent>
           </Card>
