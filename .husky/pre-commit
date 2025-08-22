@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔒 Running pre-commit security scan..."
+
+# Run custom secret scanner
+echo "📡 Running custom secret scanner..."
+node scripts/secret-scan.js --staged
+if [ $? -ne 0 ]; then
+    echo "❌ Secret scan failed! Please fix any detected secrets before committing."
+    exit 1
+fi
+echo "✅ Secret scan passed"
+
+# Run linting
+echo "🔍 Running ESLint..."
+npm run lint
+if [ $? -ne 0 ]; then
+    echo "❌ Linting failed! Please fix any linting issues before committing."
+    exit 1
+fi
+echo "✅ Linting passed"
+
+echo "🎉 Pre-commit checks passed!"

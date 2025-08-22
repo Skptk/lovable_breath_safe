@@ -1,0 +1,61 @@
+# GitGuardian CLI Configuration
+# This file configures the secret scanning behavior
+
+# Scan configuration
+scan:
+  # Enable verbose output for debugging
+  verbose: false
+  
+  # Exit with error code if secrets are found
+  exit-code: true
+  
+  # Show only secrets (no other output)
+  show-secrets: false
+  
+  # Include files that are typically ignored by git
+  all-files: false
+  
+  # Maximum file size to scan (in bytes)
+  max-file-size: 1048576  # 1MB
+  
+  # Scan patterns
+  patterns:
+    - "**/*.{js,jsx,ts,tsx,json,yaml,yml,toml,md,txt}"
+    - "**/*.env*"
+    - "**/*.config.*"
+    - "**/package*.json"
+    - "**/netlify.toml"
+    - "**/vercel.json"
+    - "**/*.sql"
+    - "**/*.md"
+  
+  # Exclude patterns
+  exclude:
+    - "node_modules/**"
+    - "dist/**"
+    - ".git/**"
+    - "*.log"
+    - "*.lock"
+    - "public/**"
+    - "supabase/migrations/**"
+    - "docs/**"
+    - "scripts/**"
+
+# API configuration (optional - uses environment variables)
+api:
+  # GitGuardian API URL (default: https://api.gitguardian.com)
+  url: "https://api.gitguardian.com"
+  
+  # API key (set via GG_TOKEN environment variable)
+  key: "${GG_TOKEN}"
+
+# Output configuration
+output:
+  # Output format: text, json, sarif
+  format: "text"
+  
+  # Show progress bar
+  progress: true
+  
+  # Show scan summary
+  summary: true
