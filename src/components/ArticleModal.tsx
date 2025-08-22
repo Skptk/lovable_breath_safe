@@ -100,6 +100,7 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
                 <img 
                   src={article.imageUrl} 
                   alt={article.title || 'Article'}
+                  loading="lazy"
                   className="w-full h-full object-cover opacity-60"
                 />
               )}

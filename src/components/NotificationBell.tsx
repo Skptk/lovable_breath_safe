@@ -87,6 +87,7 @@ export default function NotificationBell({ onOpenSettings }: NotificationBellPro
           variant="outline"
           size="icon"
           className="h-9 w-9 rounded-full border-border relative"
+          aria-label={`Notifications (${unreadCount} unread)`}
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (

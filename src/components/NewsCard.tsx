@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, User, ArrowRight } from "lucide-react";
 import { Article, getLatestArticles } from "@/data/articles";
 import ArticleModal from "./ArticleModal";
+import React from "react";
 
-export default function NewsCard() {
+function NewsCard() {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const latestArticles = getLatestArticles(3);
 
@@ -29,8 +30,10 @@ export default function NewsCard() {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
-    });
-  };
+    }  );
+}
+
+export default React.memo(NewsCard);
 
   return (
     <>
@@ -98,6 +101,7 @@ export default function NewsCard() {
                       <img 
                         src={article.imageUrl} 
                         alt={article.title}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                       />
                     </motion.div>

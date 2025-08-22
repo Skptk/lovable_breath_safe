@@ -345,6 +345,7 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
                 <img
                   src={product.image}
                   alt={product.name}
+                  loading="lazy"
                   className="w-full h-48 object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
                 />
                 {product.bestSeller && (

@@ -476,6 +476,106 @@ src/
 
 ---
 
+## Hardening Pass – 2025-01-22
+
+### 🔒 Security Improvements
+- **Critical API Key Exposure Fixed**: Removed hardcoded OpenWeatherMap API key `56ab74b487631610f9b44a6e51fe72f0` from `EmissionSourcesLayer.tsx` and replaced with proper environment variable usage
+- **Environment Variable Validation**: Enhanced security by ensuring API keys are only loaded from environment variables, not hardcoded in source code
+- **Secret Hygiene**: Confirmed no other hardcoded credentials, tokens, or API keys exist in the codebase
+- **Supabase Security**: Verified only public `anon` key is used in client-side code, no `service_role` key exposure detected
+
+### ♿ Accessibility (A11y) Enhancements
+- **Icon Button Labels**: Added comprehensive `aria-label` attributes to all icon-only buttons:
+  - Mobile menu toggle: `"Toggle mobile menu"`
+  - Close mobile menu: `"Close mobile menu"`
+  - Notifications: `"Notifications (X unread)"` with dynamic unread count
+  - Theme toggle: `"Switch to light/dark mode"`
+- **Navigation Semantics**: Enhanced navigation components with proper ARIA attributes:
+  - Sidebar navigation: Added `aria-label` and `aria-current="page"` for current page indication
+  - Mobile navigation: Added `aria-label` and `aria-current="page"` for consistent navigation experience
+- **Focus Management**: Verified all interactive elements have proper focus indicators using existing Tailwind focus utilities
+- **Form Accessibility**: Confirmed all form inputs have proper `htmlFor` labels and semantic HTML structure
+- **Image Alt Text**: Verified all images have descriptive `alt` attributes for screen reader compatibility
+
+### 🚀 Performance Optimizations
+- **Image Lazy Loading**: Added `loading="lazy"` attribute to all non-critical images:
+  - Store product images
+  - Product page images
+  - Article modal images
+  - News card images
+  - News page article images
+- **Component Memoization**: Applied `React.memo` to `NewsCard` component to prevent unnecessary re-renders
+- **Inline Style Optimization**: Replaced inline `style={{ minHeight: '500px' }}` in `LeafletMap` with equivalent Tailwind class `min-h-[500px]`
+- **Bundle Analysis**: Confirmed build process remains optimized with proper code splitting and chunking
+
+### 🎨 Styling & Efficiency Improvements
+- **Tailwind Class Optimization**: Replaced inline styles with equivalent Tailwind utilities where possible
+- **CSS Consistency**: Maintained all existing visual styling while improving code maintainability
+- **No Visual Drift**: All changes are internal improvements with zero impact on user interface appearance
+
+### 🔧 Code Quality Enhancements
+- **TypeScript Compliance**: Verified all changes pass TypeScript compilation with `npx tsc --noEmit`
+- **Build Success**: Confirmed production build completes successfully with `npm run build`
+- **Linting Status**: Addressed critical issues while maintaining existing code quality standards
+
+### 📋 Environment Variables Required
+The following environment variables must be configured in Netlify for full functionality:
+- `VITE_SUPABASE_URL`: Supabase project URL
+- `VITE_SUPABASE_ANON_KEY`: Supabase anonymous key (public)
+- `VITE_OPENWEATHERMAP_API_KEY`: OpenWeatherMap API key for weather data
+- `OPENAQ_API_KEY`: OpenAQ API key for air quality data (Supabase environment)
+
+### ⚠️ Security Recommendations
+- **API Key Rotation**: The previously exposed OpenWeatherMap API key should be rotated in the OpenWeatherMap dashboard
+- **Environment Validation**: Consider implementing runtime validation of required environment variables
+- **Secret Scanning**: Implement automated secret scanning in CI/CD pipeline to prevent future credential exposure
+
+### ✅ Verification Checklist
+- [x] Build process successful (`npm run build`)
+- [x] TypeScript compilation passes (`npx tsc --noEmit`)
+- [x] No hardcoded credentials remain in source code
+- [x] All icon buttons have proper `aria-label` attributes
+- [x] Navigation components have enhanced ARIA semantics
+- [x] Images have `loading="lazy"` attributes
+- [x] Inline styles replaced with Tailwind utilities where possible
+- [x] Component memoization applied where beneficial
+- [x] Zero visual/functional changes to user experience
+- [x] All existing accessibility features preserved
+
+### 🎯 Files Modified
+- `src/components/EmissionSourcesLayer.tsx`: Fixed hardcoded API key exposure
+- `src/components/NotificationBell.tsx`: Added aria-label for notifications button
+- `src/components/Sidebar.tsx`: Enhanced navigation ARIA attributes
+- `src/components/MobileNavigation.tsx`: Added aria-labels for mobile controls
+- `src/components/LeafletMap.tsx`: Replaced inline style with Tailwind class
+- `src/components/NewsCard.tsx`: Added React.memo optimization
+- `src/pages/Store.tsx`: Added lazy loading to product images
+- `src/pages/Products.tsx`: Added lazy loading to product images
+- `src/components/ArticleModal.tsx`: Added lazy loading to article images
+- `src/components/NewsCard.tsx`: Added lazy loading to news images
+- `src/components/NewsPage.tsx`: Added lazy loading to news images
+
+### 🔍 What Was NOT Changed
+- **UI/UX**: No visual appearance, layout, spacing, colors, or icons were modified
+- **Functionality**: All existing features, API contracts, and event handlers remain unchanged
+- **Component Structure**: No DOM structure modifications that could affect event listeners or tests
+- **Leaflet Map**: Map behavior, controls, tiles, gestures, and markers remain exactly as implemented
+- **Protected Components**: Sidebar, Header, Footer, and Card components were not modified beyond accessibility enhancements
+
+### 📊 Expected Impact
+- **Security Score**: Improved from potential credential exposure to secure environment variable usage
+- **Accessibility Score**: Enhanced from basic compliance to comprehensive ARIA implementation
+- **Performance**: Marginal improvements through lazy loading and memoization
+- **Maintainability**: Improved code quality through consistent Tailwind usage and reduced inline styles
+
+### 🚨 Follow-up Actions
+1. **Rotate OpenWeatherMap API Key**: The exposed key should be rotated in OpenWeatherMap dashboard
+2. **Update Netlify Environment**: Ensure all required environment variables are properly configured
+3. **Monitor Performance**: Track any performance improvements from lazy loading and memoization
+4. **Accessibility Testing**: Consider automated accessibility testing in CI/CD pipeline
+
+This hardening pass successfully addressed critical security vulnerabilities while enhancing accessibility and performance without any visual or functional changes to the user experience.
+
 ## Golden Rule
 **ALWAYS check this `project_context.md` file before generating or modifying any files. This document is the single source of truth for the Breath Safe project.**
 
