@@ -92,7 +92,7 @@ class RealtimeConnectionManager {
       this.pendingCleanups.delete(channelName);
     }
 
-    let channelData = this.activeChannels.get(channelName);
+    const channelData = this.activeChannels.get(channelName);
 
     if (channelData) {
       // Channel exists, just add callback and increment refs

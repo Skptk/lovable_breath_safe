@@ -38,3 +38,16 @@ dist-ssr
 *.p8
 secrets.json
 config/secrets.*
+
+# Reports and build artifacts
+reports/
+*.report.html
+*.report.json
+lighthouse-results/
+
+# GitGuardian and security tools
+.ggshield/
+ggshield.log
+
+# Husky
+.husky/_

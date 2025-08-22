@@ -1,0 +1,153 @@
+name: Security & Performance CI/CD
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run secret scan
+        run: npm run secret-scan:ci
+        env:
+          GG_TOKEN: ${{ secrets.GG_TOKEN }}
+          
+      - name: Run linting
+        run: npm run lint
+        
+      - name: Build project
+        run: npm run build
+        
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-files
+          path: dist/
+          retention-days: 7
+
+  lighthouse-audit:
+    name: 📊 Lighthouse Audit
+    runs-on: ubuntu-latest
+    needs: security-scan
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build project
+        run: npm run build
+        
+      - name: Start preview server
+        run: npm run preview &
+        env:
+          PORT: 4173
+          
+      - name: Wait for server
+        run: sleep 10
+        
+      - name: Run Lighthouse CI
+        run: npm run lhci
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          
+      - name: Upload Lighthouse reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: reports/lighthouse/
+          retention-days: 30
+          
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            try {
+              const reportPath = path.join(process.cwd(), 'reports/lighthouse');
+              const files = fs.readdirSync(reportPath);
+              const htmlReport = files.find(f => f.endsWith('.html'));
+              
+              if (htmlReport) {
+                const reportUrl = `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts`;
+                
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `## 📊 Lighthouse Audit Complete
+                  
+                  **Performance Score:** ${process.env.LHCI_PERFORMANCE_SCORE || 'N/A'}
+                  **Accessibility Score:** ${process.env.LHCI_ACCESSIBILITY_SCORE || 'N/A'}
+                  **Best Practices Score:** ${process.env.LHCI_BEST_PRACTICES_SCORE || 'N/A'}
+                  **SEO Score:** ${process.env.LHCI_SEO_SCORE || 'N/A'}
+                  
+                  📋 [View Full Report](${reportUrl})
+                  
+                  All thresholds met! ✅`
+                });
+              }
+            } catch (error) {
+              console.error('Error creating comment:', error);
+            }
+
+  deploy:
+    name: 🚀 Deploy to Netlify
+    runs-on: ubuntu-latest
+    needs: [security-scan, lighthouse-audit]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build project
+        run: npm run build
+        
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v2.0
+        with:
+          publish-dir: './dist'
+          production-branch: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy from GitHub Actions"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
