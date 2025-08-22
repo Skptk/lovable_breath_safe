@@ -25,7 +25,7 @@ interface UserAchievement {
   max_progress: number;
   unlocked: boolean;
   unlocked_at: string | null;
-  achievement: Achievement;
+  achievement?: Achievement;
 }
 
 interface Badge {
@@ -152,10 +152,7 @@ export const useAchievements = () => {
       // Get user's earned achievements
       const { data: userAchievementsData, error: userAchievementsError } = await supabase
         .from('user_achievements')
-        .select(`
-          *,
-          achievement:achievements(*)
-        `)
+        .select('*')
         .eq('user_id', user.id);
 
       if (userAchievementsError) throw userAchievementsError;
@@ -171,18 +168,39 @@ export const useAchievements = () => {
   }, [user]);
 
   const initializeUserAchievements = useCallback(async () => {
-    if (!user) return;
+    if (!user) return { success: false, error: 'No user found' };
 
     try {
       setIsLoading(true);
       setError(null);
 
-      // Call the initialize_user_achievements function
-      const { error } = await supabase.rpc('initialize_user_achievements', {
-        p_user_id: user.id
-      });
+      // Get all available achievements
+      const { data: allAchievementsData, error: achievementsError } = await supabase
+        .from('achievements')
+        .select('*')
+        .eq('is_active', true);
 
-      if (error) throw error;
+      if (achievementsError) throw achievementsError;
+
+      // Create user achievement records for each achievement
+      const userAchievementRecords = allAchievementsData.map(achievement => ({
+        user_id: user.id,
+        achievement_id: achievement.id,
+        progress: 0,
+        max_progress: achievement.criteria_value,
+        unlocked: false,
+        unlocked_at: null
+      }));
+
+      // Insert user achievements
+      const { error: insertError } = await supabase
+        .from('user_achievements')
+        .upsert(userAchievementRecords, { 
+          onConflict: 'user_id,achievement_id',
+          ignoreDuplicates: true 
+        });
+
+      if (insertError) throw insertError;
 
       // Refresh achievements after initialization
       await fetchAchievements();
@@ -197,26 +215,113 @@ export const useAchievements = () => {
     }
   }, [user, fetchAchievements]);
 
+  // Check and update achievements manually
   const checkAchievements = useCallback(async () => {
-    if (!user) return;
-
+    if (!user) return { success: false, error: 'No user found' };
+    
     try {
-      // Call the check_achievements function
-      const { error } = await supabase.rpc('check_achievements', {
-        p_user_id: user.id
-      });
-
-      if (error) throw error;
-
-      // Refresh achievements after checking
+      setIsLoading(true);
+      setError(null);
+      
+      // Get user's current data
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('total_points')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (profileError) throw profileError;
+      
+      const totalPoints = profileData?.total_points || 0;
+      
+      // Get total readings count
+      const { count: totalReadings, error: readingsError } = await supabase
+        .from('air_quality_readings')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      
+      if (readingsError) throw readingsError;
+      
+      // Get good air quality days count (AQI <= 50)
+      const { count: goodAirDays, error: goodAirError } = await supabase
+        .from('air_quality_readings')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .lte('aqi', 50);
+      
+      if (goodAirError) throw goodAirError;
+      
+      // Get current streaks
+      const { data: streaksData, error: streaksError } = await supabase
+        .from('user_streaks')
+        .select('streak_type, current_streak')
+        .eq('user_id', user.id);
+      
+      if (streaksError) throw streaksError;
+      
+      const dailyStreak = streaksData?.find(s => s.streak_type === 'daily_reading')?.current_streak || 0;
+      const goodAirStreak = streaksData?.find(s => s.streak_type === 'good_air_quality')?.current_streak || 0;
+      const weeklyStreak = streaksData?.find(s => s.streak_type === 'weekly_activity')?.current_streak || 0;
+      
+      // Update reading count achievements
+      await supabase
+        .from('user_achievements')
+        .update({ progress: totalReadings || 0 })
+        .eq('user_id', user.id)
+        .in('achievement_id', 
+          achievements.filter(a => a.criteria_type === 'count' && a.category === 'reading').map(a => a.id)
+        );
+      
+      // Update good air quality achievements
+      await supabase
+        .from('user_achievements')
+        .update({ progress: goodAirDays || 0 })
+        .eq('user_id', user.id)
+        .in('achievement_id', 
+          achievements.filter(a => a.criteria_type === 'quality').map(a => a.id)
+        );
+      
+      // Update streak-based achievements
+      await supabase
+        .from('user_achievements')
+        .update({ progress: dailyStreak })
+        .eq('user_id', user.id)
+        .in('achievement_id', 
+          achievements.filter(a => a.criteria_type === 'streak' && a.category === 'streak').map(a => a.id)
+        );
+      
+      // Update points-based achievements
+      await supabase
+        .from('user_achievements')
+        .update({ progress: totalPoints })
+        .eq('user_id', user.id)
+        .in('achievement_id', 
+          achievements.filter(a => a.criteria_type === 'points').map(a => a.id)
+        );
+      
+      // Check and unlock achievements
+      await supabase
+        .from('user_achievements')
+        .update({ 
+          unlocked: true,
+          unlocked_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .lt('progress', 'max_progress')
+        .gte('progress', 'max_progress');
+      
+      // Refresh achievements data
       await fetchAchievements();
       
       return { success: true };
     } catch (err: any) {
       console.error('Error checking achievements:', err);
+      setError(err.message || 'Failed to check achievements');
       return { success: false, error: err.message };
+    } finally {
+      setIsLoading(false);
     }
-  }, [user, fetchAchievements]);
+  }, [user, achievements, fetchAchievements]);
 
   const refreshAchievements = useCallback(async () => {
     if (!user) return;
@@ -264,7 +369,7 @@ export const useAchievements = () => {
   }, [user, fetchAchievements]);
 
   // Calculate progress and earned achievements
-  const earnedAchievements = userAchievements.filter(ua => ua.unlocked).map(ua => ua.achievement);
+  const earnedAchievements = userAchievements.filter(ua => ua.unlocked);
   const totalAchievements = achievements.length;
   const earnedCount = earnedAchievements.length;
   const progress = totalAchievements > 0 ? (earnedCount / totalAchievements) * 100 : 0;
@@ -275,21 +380,14 @@ export const useAchievements = () => {
   const badgeProgress = totalBadges > 0 ? (unlockedBadges.length / totalBadges) * 100 : 0;
 
   return {
-    achievements: earnedAchievements, // Return only earned achievements for ProfileView
-    allAchievements: achievements,
+    achievements,
     userAchievements,
     badges,
     isLoading,
     error,
-    totalAchievements,
-    earnedCount,
-    progress,
-    totalBadges,
-    unlockedBadges,
-    badgeProgress,
-    checkAchievements,
     fetchAchievements,
     initializeUserAchievements,
+    checkAchievements,
     refreshAchievements,
     updateBadges
   };

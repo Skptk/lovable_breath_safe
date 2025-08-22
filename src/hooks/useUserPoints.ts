@@ -10,6 +10,11 @@ interface UserPoints {
   monthlyReadings: number;
   pointsHistory: PointRecord[];
   recentEarnings: PointRecord[];
+  streaks?: {
+    daily_reading: number;
+    good_air_quality: number;
+    weekly_activity: number;
+  };
 }
 
 interface PointRecord {
@@ -86,13 +91,31 @@ export const useUserPoints = () => {
       // Get recent earnings (last 10)
       const recentEarnings = pointsData?.slice(0, 10) || [];
 
+      // Get user streaks
+      const { data: streaksData, error: streaksError } = await supabase
+        .from('user_streaks')
+        .select('streak_type, current_streak')
+        .eq('user_id', user.id);
+
+      if (streaksError) {
+        console.warn('Error fetching streaks:', streaksError);
+      }
+
+      // Process streaks data
+      const streaks = streaksData ? {
+        daily_reading: streaksData.find(s => s.streak_type === 'daily_reading')?.current_streak || 0,
+        good_air_quality: streaksData.find(s => s.streak_type === 'good_air_quality')?.current_streak || 0,
+        weekly_activity: streaksData.find(s => s.streak_type === 'weekly_activity')?.current_streak || 0
+      } : undefined;
+
       setUserPoints({
         totalPoints,
         todayReadings,
         weeklyReadings,
         monthlyReadings,
         pointsHistory: pointsData || [],
-        recentEarnings
+        recentEarnings,
+        streaks
       });
 
     } catch (err: any) {
@@ -208,6 +231,7 @@ export const useUserPoints = () => {
     fetchUserPoints,
     currentBadge,
     nextBadge,
-    pointsToNextBadge
+    pointsToNextBadge,
+    streaks: userPoints.streaks
   };
 };

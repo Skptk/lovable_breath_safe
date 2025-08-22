@@ -88,7 +88,8 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
     canWithdraw, 
     currentBadge, 
     nextBadge, 
-    pointsToNextBadge 
+    pointsToNextBadge,
+    streaks
   } = useUserPoints();
 
   // Update badges when user points change
@@ -105,7 +106,8 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
     console.log('Rewards page - Loading:', achievementsLoading);
     console.log('Rewards page - Error:', achievementsError);
     console.log('Rewards page - User Points:', userPoints);
-  }, [achievements, badges, achievementsLoading, achievementsError, userPoints]);
+    console.log('Rewards page - Streaks:', streaks);
+  }, [achievements, badges, achievementsLoading, achievementsError, userPoints, streaks]);
 
   useEffect(() => {
     if (user) {
