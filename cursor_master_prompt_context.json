@@ -1,7 +1,7 @@
 {
-    "version": "1.0",
+    "version": "1.1",
     "name": "Breath-safe Optimization Context",
-    "description": "This context provides the full master prompt for optimizing the Breath-safe webapp, ensuring Cursor follows performance, memory, and security best practices. Cursor must adhere to the instructions in `project_context.md` for global context, record all changes there, and avoid breaking any existing functionality.",
+    "description": "This context provides the full master prompt for optimizing the Breath-safe webapp, ensuring Cursor follows performance, memory, security, and Netlify CI/CD best practices. Cursor must adhere to the instructions in `project_context.md` for global context, record all changes there, and avoid breaking any existing functionality.",
     "instructions": {
         "master_prompt": "cursor_master_prompt_full.txt",
         "project_context": "project_context.md",
@@ -12,7 +12,16 @@
             "Prioritize reducing page load times, Chrome RAM usage, and improving overall security.",
             "Use lazy loading, code splitting, and optimize assets where applicable.",
             "Apply secure coding practices, sanitize all inputs, and harden authentication flows.",
-            "Ensure optimized Netlify deployment configurations are respected."
+            "Ensure optimized Netlify deployment configurations are respected.",
+            "Integrate automated secret scanning using GitGuardian CLI or Gitleaks.",
+            "Add Husky pre-commit hooks to run secret scans locally before any commit.",
+            "Block Netlify builds if secrets are detected and log a clear remediation message.",
+            "Integrate Lighthouse CI for automated performance, accessibility, SEO, and best-practices checks.",
+            "Set minimum Lighthouse thresholds: Performance ≥ 85, Accessibility ≥ 90, Best Practices ≥ 90, SEO ≥ 90.",
+            "Fail Netlify builds if Lighthouse scores do not meet thresholds.",
+            "Store Lighthouse HTML reports in `/reports/lighthouse/` and document how to access them in project_context.md.",
+            "Add instructions in project_context.md for running secret scans and Lighthouse audits locally.",
+            "Always verify local builds and Netlify builds succeed before finalizing changes."
         ]
     }
 }

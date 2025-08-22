@@ -69,7 +69,7 @@ export const useUserPoints = () => {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const monthAgo = new Date(today.getFullYear(), now.getMonth() - 1, now.getDate());
+      const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
 
       const todayReadings = pointsData?.filter(record => 
         new Date(record.created_at) >= today
@@ -162,6 +162,41 @@ export const useUserPoints = () => {
   const currencyValue = (userPoints.totalPoints / 1000) * 0.1; // $0.1 per 1000 points
   const canWithdraw = userPoints.totalPoints >= 500000;
 
+  // Calculate badge progress
+  const getCurrentBadge = () => {
+    const totalPoints = userPoints.totalPoints;
+    if (totalPoints >= 100000) return { name: 'Crystal Legend', icon: '✨', color: 'from-purple-500 to-pink-500' };
+    if (totalPoints >= 90000) return { name: 'Obsidian Elite', icon: '⚫', color: 'bg-gray-800' };
+    if (totalPoints >= 80000) return { name: 'Sapphire Legend', icon: '🔵', color: 'bg-indigo-500' };
+    if (totalPoints >= 70000) return { name: 'Ruby Champion', icon: '🔴', color: 'bg-red-500' };
+    if (totalPoints >= 60000) return { name: 'Emerald Expert', icon: '🟢', color: 'bg-green-500' };
+    if (totalPoints >= 50000) return { name: 'Diamond Master', icon: '💠', color: 'bg-purple-500' };
+    if (totalPoints >= 40000) return { name: 'Platinum Guardian', icon: '💎', color: 'bg-blue-400' };
+    if (totalPoints >= 30000) return { name: 'Gold Enthusiast', icon: '🥇', color: 'bg-yellow-500' };
+    if (totalPoints >= 20000) return { name: 'Silver Explorer', icon: '🥈', color: 'bg-gray-400' };
+    if (totalPoints >= 10000) return { name: 'Bronze Starter', icon: '🥉', color: 'bg-amber-500' };
+    return { name: 'Newcomer', icon: '🌱', color: 'bg-green-400' };
+  };
+
+  const getNextBadge = () => {
+    const totalPoints = userPoints.totalPoints;
+    if (totalPoints < 10000) return { name: 'Bronze Starter', pointsRequired: 10000, icon: '🥉' };
+    if (totalPoints < 20000) return { name: 'Silver Explorer', pointsRequired: 20000, icon: '🥈' };
+    if (totalPoints < 30000) return { name: 'Gold Enthusiast', pointsRequired: 30000, icon: '🥇' };
+    if (totalPoints < 40000) return { name: 'Platinum Guardian', pointsRequired: 40000, icon: '💎' };
+    if (totalPoints < 50000) return { name: 'Diamond Master', pointsRequired: 50000, icon: '💠' };
+    if (totalPoints < 60000) return { name: 'Emerald Expert', pointsRequired: 60000, icon: '🟢' };
+    if (totalPoints < 70000) return { name: 'Ruby Champion', pointsRequired: 70000, icon: '🔴' };
+    if (totalPoints < 80000) return { name: 'Sapphire Legend', pointsRequired: 80000, icon: '🔵' };
+    if (totalPoints < 90000) return { name: 'Obsidian Elite', pointsRequired: 90000, icon: '⚫' };
+    if (totalPoints < 100000) return { name: 'Crystal Legend', pointsRequired: 100000, icon: '✨' };
+    return null; // All badges unlocked
+  };
+
+  const currentBadge = getCurrentBadge();
+  const nextBadge = getNextBadge();
+  const pointsToNextBadge = nextBadge ? nextBadge.pointsRequired - userPoints.totalPoints : 0;
+
   return {
     userPoints,
     isLoading,
@@ -170,6 +205,9 @@ export const useUserPoints = () => {
     totalReadings,
     currencyValue,
     canWithdraw,
-    fetchUserPoints
+    fetchUserPoints,
+    currentBadge,
+    nextBadge,
+    pointsToNextBadge
   };
 };
