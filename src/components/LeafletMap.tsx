@@ -21,7 +21,7 @@ interface LeafletMapProps {
     location: string;
     timestamp: string;
   } | null;
-  nearbyLocations: Array<{
+  nearbyLocations?: Array<{
     id: string;
     name: string;
     distance: string;
@@ -30,7 +30,7 @@ interface LeafletMapProps {
   }>;
 }
 
-export default function LeafletMap({ userLocation, airQualityData, nearbyLocations }: LeafletMapProps) {
+export default function LeafletMap({ userLocation, airQualityData, nearbyLocations = [] }: LeafletMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -148,7 +148,8 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
 
       // Add nearby monitoring stations
       const newMarkers: any[] = [];
-      nearbyLocations.forEach((location) => {
+      if (nearbyLocations && nearbyLocations.length > 0) {
+        nearbyLocations.forEach((location) => {
         if (location.coordinates[0] !== 0 && location.coordinates[1] !== 0) {
           const marker = L.marker([location.coordinates[0], location.coordinates[1]], {
             icon: L.divIcon({
@@ -186,6 +187,7 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
           newMarkers.push(marker);
         }
       });
+      }
 
       setMarkers(newMarkers);
 
