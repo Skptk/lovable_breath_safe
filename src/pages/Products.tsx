@@ -154,6 +154,7 @@ export default function Products() {
                 <img 
                   src={product.image_url} 
                   alt={product.name}
+                  loading="lazy"
                   className="w-16 h-16 object-cover rounded-lg bg-muted"
                 />
               </div>

@@ -49,8 +49,13 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
 
     try {
       // Use OpenWeatherMap Air Pollution API instead of OpenAQ
+      const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
+      if (!apiKey) {
+        throw new Error('OpenWeatherMap API key not configured');
+      }
+      
       const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=56ab74b487631610f9b44a6e51fe72f0`
+        `https://api.openweathermap.org/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=${apiKey}`
       );
 
       if (response.ok) {

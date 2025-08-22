@@ -71,6 +71,8 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                   }`}
                   title={item.label}
+                  aria-label={`${item.label}${isActive ? ' (current page)' : ''}`}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   <Icon className="h-5 w-5" />
                 </Button>

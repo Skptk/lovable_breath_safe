@@ -145,6 +145,7 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
                     size="icon"
                     onClick={toggleMobileMenu}
                     className="h-8 w-8 rounded-full hover:bg-accent"
+                    aria-label="Close mobile menu"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -176,6 +177,8 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
                               : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                           }`}
                           onClick={() => handleViewChange(item.id)}
+                          aria-label={`${item.label}${isActive ? ' (current page)' : ''}`}
+                          aria-current={isActive ? 'page' : undefined}
                         >
                           <Icon className="h-5 w-5" />
                           <span className="font-medium">{item.label}</span>
@@ -203,6 +206,7 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
                       variant="ghost"
                       className="w-full justify-start gap-3 h-12 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
                       onClick={toggleTheme}
+                      aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
                     >
                       {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                       <span className="font-medium">
