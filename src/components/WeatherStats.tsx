@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Layers, Loader2, AlertTriangle, Wind, Cloud, Sun, CloudRain, Thermometer, Droplets, Eye, Gauge, Compass } from "lucide-react";
+import { MapPin, Layers, Loader2, AlertTriangle, Wind, Cloud, Sun, CloudRain, Thermometer, Droplets, Eye, Gauge, Compass } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import LeafletMap from "./LeafletMap";
@@ -14,13 +14,7 @@ import WeatherForecast from "./WeatherForecast";
 import { useWeatherData } from "@/hooks/useWeatherData";
 
 
-interface NearbyLocation {
-  id: string;
-  name: string;
-  distance: string;
-  aqi: number;
-  coordinates: [number, number];
-}
+
 
 interface UserLocation {
   latitude: number;
@@ -152,37 +146,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
     return directions[index];
   };
 
-  // Mock nearby locations - in a real app, these would come from an API
-  const nearbyLocations: NearbyLocation[] = [
-    {
-      id: "1",
-      name: "Downtown Area",
-      distance: "2.1 km",
-      aqi: 45,
-      coordinates: [0, 0], // Will be updated with real coordinates
-    },
-    {
-      id: "2",
-      name: "City Park",
-      distance: "3.8 km",
-      aqi: 38,
-      coordinates: [0, 0], // Will be updated with real coordinates
-    },
-    {
-      id: "3",
-      name: "Industrial District",
-      distance: "4.2 km",
-      aqi: 52,
-      coordinates: [0, 0], // Will be updated with real coordinates
-    },
-    {
-      id: "4",
-      name: "Residential Area",
-      distance: "5.1 km",
-      aqi: 35,
-      coordinates: [0, 0], // Will be updated with real coordinates
-    },
-  ];
+
 
   const getUserLocation = async (): Promise<void> => {
     console.log('WeatherStats: getUserLocation called - checking permissions first');
@@ -260,8 +224,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       // Fetch real air quality data
       await fetchAirQualityData(latitude, longitude);
 
-      // Update nearby locations with real coordinates
-      updateNearbyLocations(latitude, longitude);
+
       
     } catch (err: any) {
       // Reduce console noise for location errors
@@ -391,14 +354,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
     }
   };
 
-  const updateNearbyLocations = (userLat: number, userLon: number): void => {
-    // TODO: In a real app, you would fetch nearby monitoring stations from an API
-    // For now, we'll use the user's actual coordinates
-    if (nearbyLocations.length > 0) {
-      nearbyLocations[0].coordinates = [userLat, userLon];
-      nearbyLocations[0].name = "Your Location";
-    }
-  };
+
 
   const getAQIColor = (aqi: number): string => {
     if (aqi <= 50) return "bg-green-500";
@@ -795,7 +751,6 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
             <LeafletMap
               userLocation={userLocation}
               airQualityData={airQualityData}
-              nearbyLocations={nearbyLocations}
             />
           </div>
 
@@ -823,69 +778,8 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
             </Card>
           </div>
 
-          {/* Bottom Sheet for Stations */}
-          <div className="absolute bottom-0 left-0 right-0 z-10">
-            <div className="bg-card/95 backdrop-blur-sm border-t border-border rounded-t-2xl shadow-2xl">
-              {/* Drag Handle */}
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="w-12 h-1 bg-muted-foreground/30 rounded-full"></div>
-              </div>
-              
-              {/* Current Location Summary */}
-              {userLocation && (
-                <div className="px-4 pb-3 border-b border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Navigation className="h-4 w-4 text-primary" />
-                      <div>
-                        <div className="font-medium text-sm">
-                          {userLocation.city}
-                          {userLocation.state && `, ${userLocation.state}`}
-                          {userLocation.country && `, ${userLocation.country}`}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
-                        </div>
-                      </div>
-                    </div>
-                    <Badge 
-                      variant="secondary"
-                      className={`${getAQIColor(airQualityData?.aqi || 0)} text-white border-0`}
-                    >
-                      AQI {airQualityData?.aqi || 'Loading...'}
-                    </Badge>
-                  </div>
-                </div>
-              )}
 
-              {/* Stations List */}
-              <div className="px-4 py-3 max-h-64 overflow-y-auto">
-                <h3 className="text-sm font-semibold text-foreground mb-3">
-                  Nearby Monitoring Stations
-                </h3>
-                
-                <div className="space-y-2">
-                  {nearbyLocations.map((location) => (
-                    <div key={location.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${getAQIColor(location.aqi)}`} />
-                        <div>
-                          <div className="font-medium text-sm">{location.name}</div>
-                          <div className="text-xs text-muted-foreground">{location.distance}</div>
-                        </div>
-                      </div>
-                      <Badge 
-                        variant="secondary"
-                        className={`${getAQIColor(location.aqi)} text-white border-0 text-xs`}
-                      >
-                        AQI {location.aqi}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+
         </CardContent>
       </Card>
     </div>
