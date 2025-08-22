@@ -13,11 +13,6 @@ interface ArticleModalProps {
 export default function ArticleModal({ article, onClose }: ArticleModalProps) {
   const [isVisible, setIsVisible] = useState(false);
 
-  // Early return if no article
-  if (!article) {
-    return null;
-  }
-
   useEffect(() => {
     setIsVisible(true);
     // Prevent body scroll when modal is open
@@ -27,6 +22,11 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
       document.body.style.overflow = 'unset';
     };
   }, []);
+
+  // Early return if no article (after hooks)
+  if (!article) {
+    return null;
+  }
 
   const handleClose = () => {
     setIsVisible(false);
