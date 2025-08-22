@@ -240,6 +240,25 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
     return categoryData ? categoryData.icon : ShoppingBag;
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'active': return 'bg-green-100 text-green-800 border-green-300';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'completed': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-300';
+      default: return 'bg-slate-100 text-slate-800 border-slate-300';
+    }
+  };
+
+  const getStoreColor = (store: string) => {
+    switch (store.toLowerCase()) {
+      case 'amazon': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'aliexpress': return 'bg-red-100 text-red-800 border-red-300';
+      case 'alibaba': return 'bg-blue-100 text-blue-800 border-blue-300';
+      default: return 'bg-slate-100 text-slate-800 border-slate-300';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header 
@@ -437,12 +456,10 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
 
       {/* No Results */}
       {sortedProducts.length === 0 && (
-        <div className="text-center py-12">
-          <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No products found</h3>
-          <p className="text-muted-foreground">
-            Try adjusting your search terms or filters to find what you're looking for.
-          </p>
+        <div className="text-center py-8">
+          <div className="text-4xl mb-4">🛍️</div>
+          <p className="text-muted-foreground">No products available at the moment.</p>
+          <p className="text-muted-foreground">Check back later for new rewards and products!</p>
         </div>
       )}
 

@@ -384,10 +384,10 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
                   {entry.visibility && (
                     <div className="text-center p-3 bg-muted/30 rounded-lg">
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <Eye className="h-4 w-4 text-gray-500" />
+                        <Eye className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-medium">Visibility</span>
                       </div>
-                      <div className="text-lg font-semibold text-gray-600">
+                      <div className="text-lg font-semibold text-muted-foreground">
                         {entry.visibility} km
                       </div>
                     </div>

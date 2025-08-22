@@ -625,9 +625,12 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
                     <Droplets className="h-3 w-3 text-blue-500" />
                     Humidity: {weatherData.currentWeather.humidity}%
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Wind className="h-3 w-3 text-gray-500" />
-                    Wind: {weatherData.currentWeather.windSpeed} km/h
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Wind className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                    <span>Wind Speed</span>
+                  </div>
+                  <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+                    {weatherData.currentWeather.windSpeed} km/h
                   </div>
                   {weatherData.currentWeather.feelsLikeTemperature && (
                     <div className="flex items-center gap-2">
@@ -690,13 +693,13 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
           </Card>
 
           {/* Wind Information */}
-          <Card className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-950/30 dark:to-slate-950/30">
+          <Card className="bg-gradient-to-br from-slate-50 to-slate-50 dark:from-slate-950/30 dark:to-slate-950/30">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Wind className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                <Wind className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                 <span className="text-sm font-medium">Wind</span>
               </div>
-              <div className="text-2xl font-bold text-gray-700 dark:text-gray-300">
+              <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
                 {weatherData.currentWeather.windSpeed} km/h
               </div>
               <div className="text-sm text-muted-foreground">

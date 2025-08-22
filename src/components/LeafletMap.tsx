@@ -178,7 +178,7 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
               <div class="space-y-1 text-sm">
                 <p><strong>Distance:</strong> ${location.distance}</p>
                 <p><strong>AQI:</strong> <span class="font-medium">${location.aqi}</span></p>
-                <p class="text-xs text-gray-500">${getAQILabel(location.aqi)}</p>
+                <p class="text-xs text-slate-500">${getAQILabel(location.aqi)}</p>
               </div>
             </div>
           `);

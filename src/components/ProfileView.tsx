@@ -472,15 +472,14 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                       key={userAchievement.id}
                       className="group relative"
                     >
-                      <div className="w-16 h-16 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center text-gray-600 text-2xl shadow-lg border-2 border-gray-200 dark:from-gray-700 dark:to-gray-800 dark:text-gray-400 dark:border-gray-600">
+                      <div className="w-16 h-16 bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-400 text-2xl shadow-lg border-2 border-slate-200 dark:border-slate-600">
                         🔒
                       </div>
                       {/* Hover Tooltip */}
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
                         <div className="font-semibold">{achievement.name}</div>
-                        <div className="text-xs text-gray-300">{achievement.description}</div>
-                        <div className="text-xs text-yellow-300 mt-1">🔒 Locked</div>
-                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                        <div className="text-xs text-slate-300">{achievement.description}</div>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-900"></div>
                       </div>
                     </div>
                   );
@@ -488,8 +487,8 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                 
                 {/* Show more badges indicator if there are many locked ones */}
                 {userAchievements?.filter(ua => !ua.unlocked)?.length > 3 && (
-                  <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full border-2 border-dashed border-gray-400 dark:from-gray-800 dark:to-gray-700 dark:border-gray-600">
-                    <span className="text-gray-500 text-sm font-medium">+{userAchievements.filter(ua => !ua.unlocked).length - 3}</span>
+                  <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-700 rounded-full border-2 border-dashed border-slate-400 dark:border-slate-600">
+                    <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">+{userAchievements.filter(ua => !ua.unlocked).length - 3}</span>
                   </div>
                 )}
               </div>

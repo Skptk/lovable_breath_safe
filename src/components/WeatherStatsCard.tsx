@@ -119,17 +119,16 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
     }
   };
 
-  const getWeatherIcon = (weatherCode: number): JSX.Element => {
-    // OpenWeatherMap weather condition codes
-    if (weatherCode >= 200 && weatherCode < 300) return <CloudRain className="h-6 w-6 text-purple-500" />; // Thunderstorm
+  // Weather icon mapping function
+  const getWeatherIcon = (weatherCode: number) => {
+    if (weatherCode >= 200 && weatherCode < 300) return <Cloud className="h-6 w-6 text-yellow-500" />; // Thunderstorm
     if (weatherCode >= 300 && weatherCode < 400) return <CloudRain className="h-6 w-6 text-blue-500" />; // Drizzle
     if (weatherCode >= 500 && weatherCode < 600) return <CloudRain className="h-6 w-6 text-blue-600" />; // Rain
-    if (weatherCode >= 600 && weatherCode < 700) return <Cloud className="h-6 w-6 text-gray-400" />; // Snow
-    if (weatherCode >= 700 && weatherCode < 800) return <Cloud className="h-6 w-6 text-gray-600" />; // Atmosphere (fog, mist)
+    if (weatherCode >= 600 && weatherCode < 700) return <Cloud className="h-6 w-6 text-blue-400" />; // Snow
+    if (weatherCode >= 700 && weatherCode < 800) return <Cloud className="h-6 w-6 text-slate-500" />; // Atmosphere (fog, mist)
     if (weatherCode === 800) return <Sun className="h-6 w-6 text-yellow-500" />; // Clear
-    if (weatherCode >= 801 && weatherCode < 900) return <Cloud className="h-6 w-6 text-gray-500" />; // Clouds
-    
-    return <Cloud className="h-6 w-6 text-gray-500" />; // Default
+    if (weatherCode >= 801 && weatherCode < 900) return <Cloud className="h-6 w-6 text-slate-400" />; // Clouds
+    return <Cloud className="h-6 w-6 text-slate-500" />; // Default
   };
 
   // Helper function to convert wind direction degrees to cardinal directions
@@ -293,10 +292,10 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
                 {weatherData.windSpeed && (
                   <div className="text-center p-3 bg-muted/30 rounded-lg border border-border modern-card">
                     <div className="flex items-center justify-center gap-2 mb-2">
-                      <Wind className="h-4 w-4 text-gray-500" />
+                      <Wind className="h-4 w-4 text-slate-500" />
                       <span className="text-sm font-semibold">Wind</span>
                     </div>
-                    <div className="text-lg font-semibold text-gray-600">
+                    <div className="text-lg font-semibold text-slate-600">
                       {weatherData.windSpeed.toFixed(1)} km/h
                     </div>
                     {weatherData.windDirection && (

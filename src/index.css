@@ -101,6 +101,53 @@
     --grid-gutter: 16px;
   }
 
+  .light {
+    /* Light mode - Proper contrast for readability */
+    --background: 0 0% 100%;  /* #FFFFFF - Pure white */
+    --foreground: 0 0% 13%;  /* #222222 - Dark text */
+
+    --card: 0 0% 100%;  /* #FFFFFF - White cards */
+    --card-foreground: 0 0% 13%;
+
+    --popover: 0 0% 100%;  /* #FFFFFF - White popovers */
+    --popover-foreground: 0 0% 13%;
+
+    --primary: 139 35% 14%;  /* #1B3A2E - Green primary */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 42 14% 82%;  /* #D9D5C5 - Light beige */
+    --secondary-foreground: 0 0% 13%;
+
+    --muted: 0 0% 90%;  /* #E5E5E5 - Light gray */
+    --muted-foreground: 0 0% 42%;  /* #6B6B6B - Dark gray text */
+
+    --accent: 136 4% 88%;  /* #E0E6E0 - Light green */
+    --accent-foreground: 0 0% 13%;
+
+    --destructive: 0 58% 46%;  /* #B33A3A - Keep existing red */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;  /* #E5E5E5 - Light borders */
+    --input: 0 0% 90%;  /* #E5E5E5 - Light input backgrounds */
+    --ring: 139 35% 14%;  /* #1B3A2E - Green focus rings */
+
+    /* Sidebar light mode */
+    --sidebar-background: 0 0% 100%;  /* #FFFFFF - White sidebar */
+    --sidebar-foreground: 0 0% 13%;
+    --sidebar-primary: 139 35% 14%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 136 4% 88%;
+    --sidebar-accent-foreground: 0 0% 13%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 139 35% 14%;
+
+    /* Shadows for light mode */
+    --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.05);
+    --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --shadow-glass-hover: 0 12px 40px rgba(0, 0, 0, 0.18);
+  }
+
   .dark {
     /* Dark mode - Now the default theme matching reference image */
     --background: 220 13% 12%;  /* #1E2127 - Very dark gray */
@@ -236,7 +283,7 @@
     gap: var(--card-spacing);
   }
 
-  /* Glass morphism effects - Updated for modern dark theme */
+  /* Glass morphism effects - Updated for both light and dark themes */
   .glass-card {
     background: rgba(38, 42, 50, 0.8);
     backdrop-filter: blur(20px);
@@ -261,6 +308,26 @@
     background: rgba(38, 42, 50, 0.95);
     backdrop-filter: blur(24px);
     border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  /* Light mode glass effects */
+  .light .glass-card {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .light .glass-card:hover {
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .light .glass-surface {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .light .glass-overlay {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.15);
   }
 
   /* Dark mode glass effects - Now the default */
@@ -452,13 +519,93 @@
     }
   }
 
-  /* Leaflet Dark Theme Styling - Updated for modern aesthetic */
-  .leaflet-container {
+
+}
+
+  /* Leaflet Map Styling - Updated for both light and dark themes */
+  
+  /* Light mode map styling */
+  .light .leaflet-container {
+    background: #ffffff !important;
+    font-family: inherit;
+  }
+
+  .light .leaflet-control-zoom a {
+    background-color: #ffffff !important;
+    color: #222222 !important;
+    border-color: #e5e5e5 !important;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .light .leaflet-control-zoom a:hover {
+    background-color: #f5f5f5 !important;
+    color: #222222 !important;
+    transform: scale(1.05);
+  }
+
+  .light .leaflet-control-attribution {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    color: #6b6b6b !important;
+    font-size: 11px;
+    border-top: 1px solid #e5e5e5;
+  }
+
+  .light .leaflet-control-attribution a {
+    color: #1b3a2e !important;
+  }
+
+  .light .leaflet-popup-content-wrapper {
+    background: #ffffff !important;
+    color: #222222 !important;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e5e5;
+  }
+
+  .light .leaflet-popup-tip {
+    background: #ffffff !important;
+  }
+
+  .light .leaflet-popup-close-button {
+    color: #6b6b6b !important;
+    font-size: 18px;
+    padding: 4px 8px;
+    transition: all 0.2s ease;
+  }
+
+  .light .leaflet-popup-close-button:hover {
+    color: #222222 !important;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+  }
+
+  .light .leaflet-control-layers {
+    background: #ffffff !important;
+    border: 1px solid #e5e5e5 !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  .light .leaflet-control-layers-toggle {
+    background: #ffffff !important;
+    border: 1px solid #e5e5e5 !important;
+    color: #222222 !important;
+  }
+
+  .light .leaflet-control-layers-expanded {
+    background: #ffffff !important;
+    border: 1px solid #e5e5e5 !important;
+    color: #222222 !important;
+  }
+
+  /* Dark mode map styling - Now the default */
+  .dark .leaflet-container {
     background: #1E2127 !important;
     font-family: inherit;
   }
 
-  .leaflet-control-zoom a {
+  .dark .leaflet-control-zoom a {
     background-color: #2A2D34 !important;
     color: #ffffff !important;
     border-color: #32363E !important;
@@ -466,24 +613,24 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
-  .leaflet-control-zoom a:hover {
+  .dark .leaflet-control-zoom a:hover {
     background-color: #3A3F4A !important;
     color: #ffffff !important;
     transform: scale(1.05);
   }
 
-  .leaflet-control-attribution {
+  .dark .leaflet-control-attribution {
     background-color: rgba(30, 33, 39, 0.9) !important;
     color: #cccccc !important;
     font-size: 11px;
     border-top: 1px solid #32363E;
   }
 
-  .leaflet-control-attribution a {
+  .dark .leaflet-control-attribution a {
     color: #4A4F5A !important;
   }
 
-  .leaflet-popup-content-wrapper {
+  .dark .leaflet-popup-content-wrapper {
     background: #2A2D34 !important;
     color: #ffffff !important;
     border-radius: 12px;
@@ -491,21 +638,40 @@
     border: 1px solid #32363E;
   }
 
-  .leaflet-popup-tip {
+  .dark .leaflet-popup-tip {
     background: #2A2D34 !important;
   }
 
-  .leaflet-popup-close-button {
+  .dark .leaflet-popup-close-button {
     color: #cccccc !important;
     font-size: 18px;
     padding: 4px 8px;
     transition: all 0.2s ease;
   }
 
-  .leaflet-popup-close-button:hover {
+  .dark .leaflet-popup-close-button:hover {
     color: #ffffff !important;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
+  }
+
+  .dark .leaflet-control-layers {
+    background: #2A2D34 !important;
+    border: 1px solid #32363E !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark .leaflet-control-layers-toggle {
+    background: #2A2D34 !important;
+    border: 1px solid #32363E !important;
+    color: #ffffff !important;
+  }
+
+  .dark .leaflet-control-layers-expanded {
+    background: #2A2D34 !important;
+    border: 1px solid #32363E !important;
+    color: #ffffff !important;
   }
 
   /* Custom marker styling */
@@ -514,33 +680,20 @@
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
   }
 
-  /* Map container dark theme */
-  .leaflet-map-pane {
+  /* Map container themes */
+  .light .leaflet-map-pane {
+    background: #ffffff !important;
+  }
+
+  .dark .leaflet-map-pane {
     background: #1E2127 !important;
   }
 
-  /* Ensure map tiles are properly loaded with dark theme */
-  .leaflet-tile {
+  /* Ensure map tiles are properly loaded with theme compatibility */
+  .light .leaflet-tile {
+    filter: brightness(1.0) contrast(1.0) saturate(1.0);
+  }
+
+  .dark .leaflet-tile {
     filter: brightness(0.7) contrast(1.3) saturate(0.8);
   }
-
-  /* Enhanced map controls */
-  .leaflet-control-layers {
-    background: #2A2D34 !important;
-    border: 1px solid #32363E !important;
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  }
-
-  .leaflet-control-layers-toggle {
-    background: #2A2D34 !important;
-    border: 1px solid #32363E !important;
-    color: #ffffff !important;
-  }
-
-  .leaflet-control-layers-expanded {
-    background: #2A2D34 !important;
-    border: 1px solid #32363E !important;
-    color: #ffffff !important;
-  }
-}

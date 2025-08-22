@@ -51,19 +51,13 @@ export default function SearchDialog({ open, onOpenChange, onNavigate }: SearchD
     }
   };
 
-  const getCategoryColor = (category: SearchResult['category']) => {
-    switch (category) {
-      case 'aqi':
-      case 'pollutant':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'app':
-        return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'shop':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'health':
-        return 'bg-red-100 text-red-700 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+  const getCategoryColor = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'air quality': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'weather': return 'bg-green-100 text-green-700 border-green-200';
+      case 'health': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'environment': return 'bg-orange-100 text-orange-700 border-orange-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
 

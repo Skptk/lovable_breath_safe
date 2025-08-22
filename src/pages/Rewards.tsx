@@ -489,7 +489,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                               <span className="text-sm font-medium">Unlocked!</span>
                             </div>
                           ) : (
-                            <div className="flex items-center justify-center gap-2 text-gray-500">
+                            <div className="flex items-center justify-center gap-2 text-muted-foreground">
                               <Lock className="h-4 w-4" />
                               <span className="text-sm font-medium">Locked</span>
                             </div>

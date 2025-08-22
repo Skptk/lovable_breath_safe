@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, RefreshCw, Menu, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import SearchDialog from "./SearchDialog";
 import NotificationBell from "./NotificationBell";
 
@@ -31,6 +32,7 @@ function Header({
 }: HeaderProps): JSX.Element {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="flex items-center justify-between mb-6">
@@ -123,7 +125,7 @@ function Header({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => document.documentElement.classList.toggle('dark')}
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="h-9 w-9 rounded-full border-border hover:bg-accent hover:border-accent transition-all duration-200"
               aria-label="Switch to light/dark mode"
             >

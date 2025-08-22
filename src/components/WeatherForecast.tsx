@@ -72,18 +72,17 @@ export default function WeatherForecast({ latitude, longitude }: WeatherForecast
     }
   };
 
-  const getWeatherIcon = (weatherCode: number): JSX.Element => {
-    // WMO Weather interpretation codes: https://open-meteo.com/en/docs
-    if (weatherCode === 0) return <Sun className="h-6 w-6 text-yellow-500" />; // Clear sky
-    if (weatherCode >= 1 && weatherCode <= 3) return <Cloud className="h-6 w-6 text-gray-500" />; // Partly cloudy
-    if (weatherCode >= 45 && weatherCode <= 48) return <Cloud className="h-6 w-6 text-gray-600" />; // Foggy
-    if (weatherCode >= 51 && weatherCode <= 67) return <CloudRain className="h-6 w-6 text-blue-500" />; // Rain
-    if (weatherCode >= 71 && weatherCode <= 77) return <Cloud className="h-6 w-6 text-gray-400" />; // Snow
-    if (weatherCode >= 80 && weatherCode <= 82) return <CloudRain className="h-6 w-6 text-blue-600" />; // Rain showers
-    if (weatherCode >= 85 && weatherCode <= 86) return <Cloud className="h-6 w-6 text-gray-400" />; // Snow showers
-    if (weatherCode >= 95 && weatherCode <= 99) return <CloudRain className="h-6 w-6 text-purple-500" />; // Thunderstorm
-    
-    return <Cloud className="h-6 w-6 text-gray-500" />; // Default
+  // Weather icon mapping function
+  const getWeatherIcon = (weatherCode: number) => {
+    if (weatherCode >= 1 && weatherCode <= 3) return <Cloud className="h-6 w-6 text-slate-500" />; // Partly cloudy
+    if (weatherCode >= 45 && weatherCode <= 48) return <Cloud className="h-6 w-6 text-slate-600" />; // Foggy
+    if (weatherCode >= 51 && weatherCode <= 55) return <CloudRain className="h-6 w-6 text-blue-500" />; // Drizzle
+    if (weatherCode >= 61 && weatherCode <= 65) return <CloudRain className="h-6 w-6 text-blue-600" />; // Rain
+    if (weatherCode >= 71 && weatherCode <= 77) return <Cloud className="h-6 w-6 text-blue-400" />; // Snow
+    if (weatherCode >= 80 && weatherCode <= 82) return <CloudRain className="h-6 w-6 text-blue-500" />; // Rain showers
+    if (weatherCode >= 85 && weatherCode <= 86) return <Cloud className="h-6 w-6 text-blue-400" />; // Snow showers
+    if (weatherCode === 95) return <Cloud className="h-6 w-6 text-purple-500" />; // Thunderstorm
+    return <Cloud className="h-6 w-6 text-slate-500" />; // Default
   };
 
   const getWeatherDescription = (weatherCode: number): string => {

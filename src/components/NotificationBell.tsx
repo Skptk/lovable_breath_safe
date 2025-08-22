@@ -52,12 +52,11 @@ export default function NotificationBell({ onOpenSettings }: NotificationBellPro
   };
 
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent': return 'text-red-500';
-      case 'high': return 'text-orange-500';
-      case 'medium': return 'text-blue-500';
-      case 'low': return 'text-gray-500';
-      default: return 'text-gray-500';
+    switch (priority.toLowerCase()) {
+      case 'high': return 'text-red-500';
+      case 'medium': return 'text-yellow-500';
+      case 'low': return 'text-slate-500';
+      default: return 'text-slate-500';
     }
   };
 

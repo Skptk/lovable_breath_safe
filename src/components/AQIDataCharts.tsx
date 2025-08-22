@@ -211,47 +211,38 @@ export default function AQIDataCharts({
     }
   ];
 
-  const getPollutantStatus = (pollutant: PollutantData): { status: string; color: string; severity: 'low' | 'moderate' | 'high' } => {
-    const { name, value } = pollutant;
-    
-    // EPA standards for different pollutants
-    if (name === 'PM2.5') {
-      if (value <= 12) return { status: 'Good', color: 'text-green-600', severity: 'low' };
-      if (value <= 35.4) return { status: 'Moderate', color: 'text-yellow-600', severity: 'moderate' };
-      return { status: 'Unhealthy', color: 'text-red-600', severity: 'high' };
+  const getPollutantStatus = (value: number, pollutant: string) => {
+    switch (pollutant.toLowerCase()) {
+      case 'pm2.5':
+        if (value <= 12) return { status: 'Good', color: 'text-green-600', severity: 'low' };
+        if (value <= 35.4) return { status: 'Moderate', color: 'text-yellow-600', severity: 'medium' };
+        if (value <= 55.4) return { status: 'Unhealthy for Sensitive Groups', color: 'text-orange-600', severity: 'high' };
+        if (value <= 150.4) return { status: 'Unhealthy', color: 'text-red-600', severity: 'very-high' };
+        if (value <= 250.4) return { status: 'Very Unhealthy', color: 'text-purple-600', severity: 'hazardous' };
+        return { status: 'Hazardous', color: 'text-red-800', severity: 'extreme' };
+      case 'pm10':
+        if (value <= 54) return { status: 'Good', color: 'text-green-600', severity: 'low' };
+        if (value <= 154) return { status: 'Moderate', color: 'text-yellow-600', severity: 'medium' };
+        if (value <= 254) return { status: 'Unhealthy for Sensitive Groups', color: 'text-orange-600', severity: 'high' };
+        if (value <= 354) return { status: 'Unhealthy', color: 'text-red-600', severity: 'very-high' };
+        if (value <= 424) return { status: 'Very Unhealthy', color: 'text-purple-600', severity: 'hazardous' };
+        return { status: 'Hazardous', color: 'text-red-800', severity: 'extreme' };
+      case 'no2':
+        if (value <= 53) return { status: 'Good', color: 'text-green-600', severity: 'low' };
+        if (value <= 100) return { status: 'Moderate', color: 'text-yellow-600', severity: 'medium' };
+        if (value <= 360) return { status: 'Unhealthy for Sensitive Groups', color: 'text-orange-600', severity: 'high' };
+        if (value <= 649) return { status: 'Unhealthy', color: 'text-red-600', severity: 'very-high' };
+        if (value <= 1249) return { status: 'Very Unhealthy', color: 'text-purple-600', severity: 'hazardous' };
+        return { status: 'Hazardous', color: 'text-red-800', severity: 'extreme' };
+      case 'o3':
+        if (value <= 54) return { status: 'Good', color: 'text-green-600', severity: 'low' };
+        if (value <= 70) return { status: 'Moderate', color: 'text-yellow-600', severity: 'medium' };
+        if (value <= 85) return { status: 'Unhealthy for Sensitive Groups', color: 'text-orange-600', severity: 'high' };
+        if (value <= 105) return { status: 'Unhealthy', color: 'text-red-600', severity: 'very-high' };
+        if (value <= 200) return { status: 'Very Unhealthy', color: 'text-purple-600', severity: 'hazardous' };
+        return { status: 'Hazardous', color: 'text-red-800', severity: 'extreme' };
+      default: return { status: 'Unknown', color: 'text-slate-600', severity: 'low' };
     }
-    
-    if (name === 'PM10') {
-      if (value <= 54) return { status: 'Good', color: 'text-green-600', severity: 'low' };
-      if (value <= 154) return { status: 'Moderate', color: 'text-yellow-600', severity: 'moderate' };
-      return { status: 'Unhealthy', color: 'text-red-600', severity: 'high' };
-    }
-    
-    if (name === 'NO₂') {
-      if (value <= 53) return { status: 'Good', color: 'text-green-600', severity: 'low' };
-      if (value <= 100) return { status: 'Moderate', color: 'text-yellow-600', severity: 'moderate' };
-      return { status: 'Unhealthy', color: 'text-red-600', severity: 'high' };
-    }
-    
-    if (name === 'SO₂') {
-      if (value <= 35) return { status: 'Good', color: 'text-green-600', severity: 'low' };
-      if (value <= 75) return { status: 'Moderate', color: 'text-yellow-600', severity: 'moderate' };
-      return { status: 'Unhealthy', color: 'text-red-600', severity: 'high' };
-    }
-    
-    if (name === 'CO') {
-      if (value <= 4.4) return { status: 'Good', color: 'text-green-600', severity: 'low' };
-      if (value <= 9.4) return { status: 'Moderate', color: 'text-yellow-600', severity: 'moderate' };
-      return { status: 'Unhealthy', color: 'text-red-600', severity: 'high' };
-    }
-    
-    if (name === 'O₃') {
-      if (value <= 54) return { status: 'Good', color: 'text-green-600', severity: 'low' };
-      if (value <= 70) return { status: 'Moderate', color: 'text-yellow-600', severity: 'moderate' };
-      return { status: 'Unhealthy', color: 'text-red-600', severity: 'high' };
-    }
-    
-    return { status: 'Unknown', color: 'text-gray-600', severity: 'low' };
   };
 
   const handlePollutantClick = (pollutant: PollutantData) => {
@@ -305,7 +296,7 @@ export default function AQIDataCharts({
       {/* Pollutant Charts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {pollutants.map((pollutant) => {
-          const status = getPollutantStatus(pollutant);
+          const status = getPollutantStatus(pollutant.value, pollutant.name);
           const historicalData = generateHistoricalData(pollutant.value, pollutant.name);
           
           return (
@@ -392,10 +383,10 @@ export default function AQIDataCharts({
                 </div>
                 <Badge 
                   variant="outline" 
-                  className={getPollutantStatus(selectedPollutant).color}
-                  style={{ borderColor: getPollutantStatus(selectedPollutant).color }}
+                  className={getPollutantStatus(selectedPollutant.value, selectedPollutant.name).color}
+                  style={{ borderColor: getPollutantStatus(selectedPollutant.value, selectedPollutant.name).color }}
                 >
-                  {getPollutantStatus(selectedPollutant).status}
+                  {getPollutantStatus(selectedPollutant.value, selectedPollutant.name).status}
                 </Badge>
               </div>
 
