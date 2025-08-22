@@ -9,7 +9,7 @@ import LeafletMap from "./LeafletMap";
 import Header from "@/components/Header";
 import WindDashboard from "./WindDashboard";
 import WeatherForecast from "./WeatherForecast";
-import EmissionSourcesLayer from "./EmissionSourcesLayer";
+
 
 import { useWeatherData } from "@/hooks/useWeatherData";
 
@@ -785,13 +785,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
         />
       )}
 
-      {/* Emission Sources */}
-      {userLocation && (
-        <EmissionSourcesLayer 
-          latitude={userLocation.latitude} 
-          longitude={userLocation.longitude} 
-        />
-      )}
+
 
       {/* Map Container */}
       <Card className="relative h-[calc(100vh-200px)] min-h-[600px] shadow-card">

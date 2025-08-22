@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -257,8 +257,9 @@ export default function AirQualityDashboard({
               </p>
             </CardHeader>
             <CardContent className="text-center space-y-6">
-               {/* AQI Display */}
-               <div className="flex items-center justify-center gap-8">
+               {/* AQI Display with Emission Data Side by Side */}
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                 {/* Left Side - AQI Value */}
                  <div className="text-center">
                    <div 
                      className="text-6xl font-bold mb-2"
@@ -278,6 +279,31 @@ export default function AirQualityDashboard({
                      {aqiLabel}
                    </Badge>
                  </div>
+
+                 {/* Right Side - Emission Data Breakdown */}
+                 <div className="space-y-3">
+                   <h4 className="text-sm font-semibold text-muted-foreground mb-3">Pollutant Breakdown</h4>
+                   <div className="grid grid-cols-2 gap-3">
+                     {[
+                       { name: 'PM2.5', value: data.pm25, unit: 'μg/m³', color: 'text-blue-600' },
+                       { name: 'PM10', value: data.pm10, unit: 'μg/m³', color: 'text-green-600' },
+                       { name: 'NO₂', value: data.no2, unit: 'ppb', color: 'text-orange-600' },
+                       { name: 'O₃', value: data.o3, unit: 'ppb', color: 'text-purple-600' }
+                     ].map((pollutant) => (
+                       <div
+                         key={pollutant.name}
+                         className="text-center p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                         onClick={() => setSelectedPollutant(pollutant)}
+                       >
+                         <div className={`text-lg font-semibold ${pollutant.color}`}>
+                           {pollutant.value}
+                         </div>
+                         <div className="text-xs text-muted-foreground">{pollutant.name}</div>
+                         <div className="text-xs text-muted-foreground">{pollutant.unit}</div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
                </div>
 
               {/* Location Info with Source */}
@@ -285,7 +311,7 @@ export default function AirQualityDashboard({
                 <MapPin className="w-4 h-4" />
                 <span>{data.location}</span>
                 <Badge variant="secondary" className="ml-2 text-xs">
-                  <locationIcon className="w-3 h-3 mr-1" />
+                  {React.createElement(locationIcon, { className: "w-3 h-3 mr-1" })}
                   {locationSource}
                 </Badge>
               </div>
@@ -329,40 +355,7 @@ export default function AirQualityDashboard({
           </Card>
         </motion.div>
 
-        {/* Pollutant Details */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-        >
-          <Card className="shadow-card">
-            <CardHeader>
-              <h3 className="text-lg font-bold">Pollutant Levels</h3>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { name: 'PM2.5', value: data.pm25, unit: 'μg/m³', color: 'text-blue-600' },
-                  { name: 'PM10', value: data.pm10, unit: 'μg/m³', color: 'text-green-600' },
-                  { name: 'NO₂', value: data.no2, unit: 'ppb', color: 'text-orange-600' },
-                  { name: 'O₃', value: data.o3, unit: 'ppb', color: 'text-purple-600' }
-                ].map((pollutant) => (
-                  <div
-                    key={pollutant.name}
-                    className="text-center p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => setSelectedPollutant(pollutant)}
-                  >
-                    <div className={`text-lg font-semibold ${pollutant.color}`}>
-                      {pollutant.value}
-                    </div>
-                    <div className="text-sm text-muted-foreground">{pollutant.name}</div>
-                    <div className="text-xs text-muted-foreground">{pollutant.unit}</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+
 
         {/* Weather Stats Card */}
         <motion.div
