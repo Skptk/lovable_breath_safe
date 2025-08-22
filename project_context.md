@@ -100,7 +100,7 @@ src/
 - **Database Integration** - Full CRUD operations with RLS
 
 ### 🔧 Recently Fixed Issues
-- **AQI Card Pollutant Information Enhancement** - ✅ COMPLETED: Enhanced homepage AQI card with interactive pollutant information display, added informational card below pollutant grid for desktop users showing detailed descriptions, implemented mobile modal functionality for pollutant details, maintained all existing functionality and UX patterns
+- **AQI Card Pollutant Information Enhancement** - ✅ COMPLETED: Enhanced homepage AQI card with interactive pollutant information display, added informational card below pollutant grid for desktop users showing detailed descriptions, implemented mobile-only modal functionality for pollutant details, desktop users see information inline without popups, maintained all existing functionality and UX patterns
 - **Homepage AQI Card Enhancement** - ✅ COMPLETED: Enhanced homepage AQI card to display emission data breakdown side by side with AQI value, removed separate pollutant details card, integrated all air quality information into single comprehensive card for better user experience
 - **OpenAQ to OpenWeatherMap Migration** - ✅ COMPLETED: Completely removed all OpenAQ API connections from emission sources component, replaced with OpenWeatherMap Air Pollution API integration, updated component title from "Emission Sources" to "Air Quality Monitoring", implemented reliable air quality data display using existing OpenWeatherMap infrastructure
 - **Emission Sources API Error Handling** - ✅ COMPLETED: Fixed emission sources component to handle OpenAQ API limitations gracefully, replaced error popups with informative carousel content, implemented rate limiting protection and reduced API calls from 30 to 60 minutes, added fallback informational content when API data is unavailable
@@ -186,7 +186,7 @@ src/
 - **Automatic Data Refresh Fix** - Resolved issue where air quality data was only stored on manual refresh, now automatically refreshes every 15 minutes
 
 ### 🆕 Current User Experience Improvements
-- **Interactive Pollutant Information** - Enhanced AQI card with detailed pollutant descriptions and health impact information, added informational card below pollutant grid for desktop users, implemented mobile modal functionality for better cross-device experience
+- **Interactive Pollutant Information** - Enhanced AQI card with detailed pollutant descriptions and health impact information, added informational card below pollutant grid for desktop users, implemented mobile-only modal functionality for better cross-device experience, desktop users see information inline without popups
 - **Integrated Air Quality Display** - Enhanced homepage AQI card to show comprehensive air quality data in single view, displaying AQI value on left and pollutant breakdown on right, creating cleaner and more informative user experience
 - **OpenWeatherMap Air Quality Integration** - Successfully migrated from OpenAQ to OpenWeatherMap Air Pollution API, providing reliable air quality monitoring without API limitations, updated component branding and functionality to reflect new data source
 - **Emission Sources Error Handling** - Replaced error popups with informative carousel content when OpenAQ API is unavailable, implemented graceful fallback strategy with educational content about air quality monitoring, added rate limiting protection to prevent API abuse

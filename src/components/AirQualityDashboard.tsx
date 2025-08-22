@@ -292,11 +292,15 @@ export default function AirQualityDashboard({
                        { name: 'NO₂', value: data.no2, unit: 'ppb', color: 'text-orange-600', description: 'Nitrogen dioxide, a gas that can cause airway inflammation and increase susceptibility to respiratory infections.' },
                        { name: 'O₃', value: data.o3, unit: 'ppb', color: 'text-purple-600', description: 'Ground-level ozone that can cause breathing difficulties, especially for people with asthma or other respiratory conditions.' }
                      ].map((pollutant) => (
-                       <div
-                         key={pollutant.name}
-                         className="text-center p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-                         onClick={() => setSelectedPollutant(pollutant)}
-                       >
+                                               <div
+                          key={pollutant.name}
+                          className="text-center p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => {
+                            // On desktop, update the informational card
+                            // On mobile, this will trigger the modal
+                            setSelectedPollutant(pollutant);
+                          }}
+                        >
                          <div className={`text-lg font-semibold ${pollutant.color}`}>
                            {pollutant.value}
                          </div>
@@ -474,12 +478,14 @@ export default function AirQualityDashboard({
           </Card>
         </motion.div>
 
-        {/* Pollutant Modal */}
+        {/* Pollutant Modal - Mobile Only */}
         {selectedPollutant && (
-          <PollutantModal
-            pollutant={selectedPollutant}
-            onClose={() => setSelectedPollutant(null)}
-          />
+          <div className="lg:hidden">
+            <PollutantModal
+              pollutant={selectedPollutant}
+              onClose={() => setSelectedPollutant(null)}
+            />
+          </div>
         )}
       </div>
     );
