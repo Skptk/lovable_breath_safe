@@ -743,12 +743,12 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
 
 
 
-      {/* Map Container - Google Maps Style */}
+      {/* Map Container - Google Maps Style with Stable Panels */}
       <Card className="relative h-[calc(100vh-200px)] min-h-[600px] shadow-card overflow-hidden">
         <CardContent className="p-0 h-full relative">
-          {/* Map Header - Fixed at top */}
-          <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-r from-card/95 via-card/90 to-card/95 backdrop-blur-md border-b border-border/50">
-            <div className="p-4">
+          {/* Map Header - Fixed at top with higher z-index and pointer-events-none for map */}
+          <div className="absolute top-0 left-0 right-0 z-40 bg-gradient-to-r from-card/95 via-card/90 to-card/95 backdrop-blur-md border-b border-border/50 pointer-events-none">
+            <div className="p-4 pointer-events-auto">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div>
@@ -787,18 +787,18 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
             </div>
           </div>
 
-          {/* Leaflet Map Integration - Full width/height within card */}
-          <div className="w-full h-full pt-20">
+          {/* Leaflet Map Integration - Full width/height within card with pointer-events-auto */}
+          <div className="w-full h-full pt-20 pointer-events-auto">
             <LeafletMap
               userLocation={userLocation}
               airQualityData={airQualityData}
             />
           </div>
 
-          {/* Location Info Panel - Bottom Right */}
+          {/* Location Info Panel - Bottom Right with stable positioning and pointer-events-none */}
           {userLocation && (
-            <div className="absolute bottom-4 right-4 z-20 max-w-sm">
-              <Card className="bg-card/95 backdrop-blur-md border-border/50 shadow-xl">
+            <div className="fixed bottom-4 right-4 z-30 max-w-sm pointer-events-none" style={{ pointerEvents: 'none' }}>
+              <Card className="bg-card/95 backdrop-blur-md border-border/50 shadow-xl pointer-events-auto" style={{ pointerEvents: 'auto' }}>
                 <CardContent className="p-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
@@ -831,10 +831,10 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
             </div>
           )}
 
-          {/* Weather Summary Panel - Bottom Left */}
+          {/* Weather Summary Panel - Bottom Left with stable positioning and pointer-events-none */}
           {weatherData.currentWeather && (
-            <div className="absolute bottom-4 left-4 z-20 max-w-sm">
-              <Card className="bg-card/95 backdrop-blur-md border-border/50 shadow-xl">
+            <div className="fixed bottom-4 left-4 z-30 max-w-sm pointer-events-none" style={{ pointerEvents: 'none' }}>
+              <Card className="bg-card/95 backdrop-blur-md border-border/50 shadow-xl pointer-events-auto" style={{ pointerEvents: 'auto' }}>
                 <CardContent className="p-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
@@ -869,9 +869,9 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
             </div>
           )}
 
-          {/* Map Legend - Top Right */}
-          <div className="absolute top-20 right-4 z-20">
-            <Card className="bg-card/95 backdrop-blur-md border-border/50 shadow-xl">
+          {/* Map Legend - Top Right with stable positioning and pointer-events-none */}
+          <div className="fixed top-20 right-4 z-30 pointer-events-none" style={{ pointerEvents: 'none' }}>
+            <Card className="bg-card/95 backdrop-blur-md border-border/50 shadow-xl pointer-events-auto" style={{ pointerEvents: 'auto' }}>
               <CardContent className="p-3">
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-foreground">Map Legend</h4>
