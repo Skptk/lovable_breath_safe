@@ -187,7 +187,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
 
   if (loading && !weatherData) {
     return (
-      <Card>
+      <Card className="modern-card glass-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5" />
@@ -195,11 +195,9 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center space-y-2">
-              <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
-              <p className="text-muted-foreground">Loading weather data...</p>
-            </div>
+          <div className="text-center py-8 space-y-4">
+            <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
+            <p className="text-muted-foreground">Loading weather data...</p>
           </div>
         </CardContent>
       </Card>
@@ -208,7 +206,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
 
   if (error && !weatherData) {
     return (
-      <Card>
+      <Card className="modern-card glass-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5" />
@@ -219,7 +217,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
           <div className="text-center py-8 space-y-4">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
             <p className="text-muted-foreground">{error}</p>
-            <Button onClick={fetchWeatherData} variant="outline">
+            <Button onClick={fetchWeatherData} variant="outline" className="btn-modern">
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry
             </Button>
@@ -230,14 +228,14 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
   }
 
   return (
-    <Card>
+    <Card className="modern-card glass-card">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5" />
             <span className="font-bold">Current Weather</span>
           </CardTitle>
-          <Button onClick={fetchWeatherData} size="sm" variant="outline">
+          <Button onClick={fetchWeatherData} size="sm" variant="outline" className="btn-modern">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -268,7 +266,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
 
             {/* Weather Stats Grid */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
+              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border modern-card">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Droplets className="h-4 w-4 text-blue-500" />
                   <span className="text-sm font-semibold">Humidity</span>
@@ -278,7 +276,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
                 </div>
               </div>
 
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
+              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border modern-card">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <CloudRain className="h-4 w-4 text-blue-500" />
                   <span className="text-sm font-semibold">Rain Chance</span>
@@ -293,7 +291,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
             {(weatherData.windSpeed || weatherData.airPressure || weatherData.visibility) && (
               <div className="grid grid-cols-2 gap-4">
                 {weatherData.windSpeed && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg">
+                  <div className="text-center p-3 bg-muted/30 rounded-lg border border-border modern-card">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Wind className="h-4 w-4 text-gray-500" />
                       <span className="text-sm font-semibold">Wind</span>
@@ -310,7 +308,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
                 )}
 
                 {weatherData.airPressure && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg">
+                  <div className="text-center p-3 bg-muted/30 rounded-lg border border-border modern-card">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Gauge className="h-4 w-4 text-purple-500" />
                       <span className="text-sm font-semibold">Pressure</span>
@@ -322,7 +320,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
                 )}
 
                 {weatherData.visibility && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg">
+                  <div className="text-center p-3 bg-muted/30 rounded-lg border border-border modern-card">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Eye className="h-4 w-4 text-indigo-500" />
                       <span className="text-sm font-semibold">Visibility</span>
@@ -337,7 +335,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
 
             {/* Sunrise/Sunset */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
+              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border modern-card">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Sun className="h-4 w-4 text-yellow-500" />
                   <span className="text-sm font-semibold">Sunrise</span>
@@ -347,7 +345,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
                 </div>
               </div>
 
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
+              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border modern-card">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Sun className="h-4 w-4 text-orange-500" />
                   <span className="text-sm font-semibold">Sunset</span>

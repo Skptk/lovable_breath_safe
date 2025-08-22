@@ -85,7 +85,7 @@ function Header({
               type="text"
               placeholder="Search AQI, features, products..."
               onClick={() => setIsSearchOpen(true)}
-              className="pl-10 w-48 lg:w-64 bg-background border-border rounded-full h-9 cursor-pointer"
+              className="pl-10 w-48 lg:w-64 bg-card border-border rounded-full h-9 cursor-pointer input-modern"
               readOnly
             />
           </motion.div>
@@ -98,42 +98,56 @@ function Header({
             whileTap={{ scale: 0.95 }}
           >
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="h-9 w-9 rounded-full border-border"
+              className="h-9 w-9 rounded-full border-border hover:bg-accent hover:border-accent transition-all duration-200"
+              aria-label="Refresh data"
             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
           </motion.div>
         )}
 
-        {/* Notifications */}
+        {/* Notification Bell */}
         <NotificationBell />
 
-        {/* User Profile */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Profile Section */}
+        <div className="flex items-center gap-2">
+          {/* Theme Toggle */}
           <motion.div
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user?.user_metadata?.avatar_url} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                {user?.email?.charAt(0).toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => document.documentElement.classList.toggle('dark')}
+              className="h-9 w-9 rounded-full border-border hover:bg-accent hover:border-accent transition-all duration-200"
+              aria-label="Switch to light/dark mode"
+            >
+              <div className="h-4 w-4">
+                <div className="dark:hidden">🌙</div>
+                <div className="hidden dark:block">☀️</div>
+              </div>
+            </Button>
           </motion.div>
-          
-          <div className="hidden lg:block">
-            <p className="body-sm font-medium text-foreground">
-              {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'}
-            </p>
-            <p className="body-sm text-muted-foreground">
-              {user?.email}
-            </p>
-          </div>
+
+          {/* User Avatar */}
+          {user && (
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Avatar className="h-9 w-9 border-2 border-border hover:border-accent transition-all duration-200 cursor-pointer">
+                <AvatarImage src={user.user_metadata?.avatar_url} alt={user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'} />
+                <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                  {user?.user_metadata?.full_name?.charAt(0).toUpperCase() || user?.email?.split('@')[0]?.charAt(0).toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </motion.div>
+          )}
         </div>
       </div>
 

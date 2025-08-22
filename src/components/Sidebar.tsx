@@ -21,7 +21,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
 
   return (
     <motion.aside 
-      className="fixed left-0 top-0 h-full w-16 bg-card border-r border-border z-50 hidden md:flex flex-col items-center py-6 space-y-4"
+      className="fixed left-0 top-0 h-full w-16 bg-card border-r border-border z-50 hidden md:flex flex-col items-center py-6 space-y-4 backdrop-blur-xl"
       initial={{ x: -64 }}
       animate={{ x: 0 }}
       transition={{ 
@@ -33,7 +33,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
     >
       {/* App Logo */}
       <motion.div 
-        className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center mb-8"
+        className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center mb-8 shadow-lg"
         whileHover={{ scale: 1.1, rotate: 5 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -67,9 +67,9 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
                   onClick={() => onViewChange(item.id)}
                   className={`h-12 w-12 rounded-xl transition-all duration-200 ${
                     isActive 
-                      ? 'bg-primary text-primary-foreground shadow-lg' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                  }`}
+                      ? 'bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-lg border-accent' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent hover:border-accent border-transparent'
+                  } border`}
                   title={item.label}
                   aria-label={`${item.label}${isActive ? ' (current page)' : ''}`}
                   aria-current={isActive ? 'page' : undefined}

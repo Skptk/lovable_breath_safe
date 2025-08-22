@@ -8,56 +8,56 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Breath Safe Design System - Based on Modern Minimal JSON Design System */
+/* Breath Safe Design System - Updated to Match Reference Image Aesthetic */
 
 @layer base {
   :root {
-    /* Core Colors from Design System */
-    --primary: 139 35% 14%;  /* #1B3A2E */
+    /* Core Colors - Updated to match reference image dark theme */
+    --primary: 220 13% 18%;  /* #2A2D34 - Dark gray */
     --primary-foreground: 0 0% 100%;  /* #FFFFFF */
 
-    --secondary: 42 14% 82%;  /* #D9D5C5 */
-    --secondary-foreground: 0 0% 13%;  /* #222222 */
+    --secondary: 220 13% 25%;  /* #3A3F4A - Medium gray */
+    --secondary-foreground: 0 0% 100%;  /* #FFFFFF */
 
-    --accent: 136 4% 88%;  /* #E0E6E0 */
-    --accent-foreground: 0 0% 13%;  /* #222222 */
+    --accent: 220 13% 30%;  /* #4A4F5A - Light gray */
+    --accent-foreground: 0 0% 100%;  /* #FFFFFF */
 
-    --success: 155 68% 27%;  /* #2E8B57 */
+    --success: 155 68% 27%;  /* #2E8B57 - Keep existing green */
     --success-foreground: 0 0% 100%;
 
-    --warning: 44 77% 42%;  /* #DDAA33 */
+    --warning: 44 77% 42%;  /* #DDAA33 - Keep existing yellow */
     --warning-foreground: 0 0% 13%;
 
-    --error: 0 58% 46%;  /* #B33A3A */
+    --error: 0 58% 46%;  /* #B33A3A - Keep existing red */
     --error-foreground: 0 0% 100%;
 
-    /* Background and Card Colors */
-    --background: 44 23% 95%;  /* #F4F3EF */
-    --foreground: 0 0% 13%;  /* #222222 */
+    /* Background and Card Colors - Dark theme matching reference */
+    --background: 220 13% 12%;  /* #1E2127 - Very dark gray */
+    --foreground: 0 0% 100%;  /* #FFFFFF */
 
-    --card: 0 0% 100%;  /* #FFFFFF */
-    --card-foreground: 0 0% 13%;
+    --card: 220 13% 16%;  /* #262A32 - Dark card background */
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 13%;
+    --popover: 220 13% 18%;  /* #2A2D34 - Dark popover */
+    --popover-foreground: 0 0% 100%;
 
     /* Muted Colors */
-    --muted: 0 0% 90%;  /* #E5E5E5 */
-    --muted-foreground: 0 0% 42%;  /* #6B6B6B */
+    --muted: 220 13% 22%;  /* #2E3238 - Muted dark */
+    --muted-foreground: 0 0% 70%;  /* #B3B3B3 */
 
     /* Destructive Colors */
-    --destructive: 0 58% 46%;  /* #B33A3A */
+    --destructive: 0 58% 46%;  /* #B33A3A - Keep existing red */
     --destructive-foreground: 0 0% 100%;
 
     /* Border and Input */
-    --border: 0 0% 90%;  /* #E5E5E5 */
-    --input: 0 0% 90%;
-    --ring: 139 35% 14%;  /* #1B3A2E */
+    --border: 220 13% 24%;  /* #32363E - Subtle borders */
+    --input: 220 13% 20%;  /* #2A2E36 - Input backgrounds */
+    --ring: 220 13% 30%;  /* #4A4F5A - Focus rings */
 
     /* Border Radius */
     --radius: 12px;  /* medium from design system */
 
-    /* Air Quality Index Colors */
+    /* Air Quality Index Colors - Keep existing for functionality */
     --aqi-good: 155 68% 27%;  /* #2E8B57 */
     --aqi-moderate: 44 77% 42%;  /* #DDAA33 */
     --aqi-unhealthy-sensitive: 32 95% 44%;
@@ -65,31 +65,31 @@
     --aqi-very-unhealthy: 271 91% 65%;
     --aqi-hazardous: 0 65% 35%;
 
-    /* Gradients */
+    /* Gradients - Updated for dark theme */
     --gradient-aqi: linear-gradient(135deg, hsl(var(--aqi-good)), hsl(var(--aqi-moderate)));
     --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(var(--accent)));
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(155 68% 27%));
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(220 13% 25%));
 
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-      /* Shadows */
-  --shadow-card: 0 2px 6px rgba(0,0,0,0.05);
-  --shadow-hover: 0 4px 12px rgba(0,0,0,0.1);
-  --shadow-glow: 0 0 20px hsl(var(--primary) / 0.3);
-  --shadow-glass: 0 8px 32px rgba(0,0,0,0.12);
-  --shadow-glass-hover: 0 12px 40px rgba(0,0,0,0.18);
+    /* Shadows - Enhanced for dark theme */
+    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px hsl(var(--primary) / 0.3);
+    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --shadow-glass-hover: 0 12px 40px rgba(0, 0, 0, 0.5);
 
-    /* Sidebar */
-    --sidebar-background: 0 0% 100%;  /* #FFFFFF */
-    --sidebar-foreground: 0 0% 13%;
-    --sidebar-primary: 139 35% 14%;
+    /* Sidebar - Updated for dark theme */
+    --sidebar-background: 220 13% 14%;  /* #22262C - Dark sidebar */
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 220 13% 18%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 136 4% 88%;
-    --sidebar-accent-foreground: 0 0% 13%;
-    --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 139 35% 14%;
+    --sidebar-accent: 220 13% 22%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 13% 20%;
+    --sidebar-ring: 220 13% 30%;
 
     /* Component Specific Variables */
     --navbar-height: 60px;
@@ -102,50 +102,50 @@
   }
 
   .dark {
-    /* Keep same color scheme for dark mode for now - can be adjusted later if needed */
-    --background: 139 35% 8%;
-    --foreground: 0 0% 100%;
+    /* Dark mode - Now the default theme matching reference image */
+    --background: 220 13% 12%;  /* #1E2127 - Very dark gray */
+    --foreground: 0 0% 100%;  /* #FFFFFF */
 
-    --card: 139 35% 12%;
+    --card: 220 13% 16%;  /* #262A32 - Dark card background */
     --card-foreground: 0 0% 100%;
 
-    --popover: 139 35% 12%;
+    --popover: 220 13% 18%;  /* #2A2D34 - Dark popover */
     --popover-foreground: 0 0% 100%;
 
-    --primary: 155 68% 45%;
+    --primary: 220 13% 18%;  /* #2A2D34 - Dark gray */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 42 14% 30%;
+    --secondary: 220 13% 25%;  /* #3A3F4A - Medium gray */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 139 35% 20%;
+    --muted: 220 13% 22%;  /* #2E3238 - Muted dark */
     --muted-foreground: 0 0% 70%;
 
-    --accent: 136 4% 25%;
+    --accent: 220 13% 30%;  /* #4A4F5A - Light gray */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 58% 46%;
+    --destructive: 0 58% 46%;  /* #B33A3A - Keep existing red */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 139 35% 20%;
-    --input: 139 35% 20%;
-    --ring: 155 68% 45%;
+    --border: 220 13% 24%;  /* #32363E - Subtle borders */
+    --input: 220 13% 20%;  /* #2A2E36 - Input backgrounds */
+    --ring: 220 13% 30%;  /* #4A4F5A - Focus rings */
 
     /* Sidebar dark mode */
-    --sidebar-background: 139 35% 10%;
+    --sidebar-background: 220 13% 14%;  /* #22262C - Dark sidebar */
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 155 68% 45%;
+    --sidebar-primary: 220 13% 18%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 139 35% 20%;
+    --sidebar-accent: 220 13% 22%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 139 35% 20%;
-    --sidebar-ring: 155 68% 45%;
+    --sidebar-border: 220 13% 20%;
+    --sidebar-ring: 220 13% 30%;
 
     /* Shadows for dark mode */
-    --shadow-card: 0 2px 6px rgba(0,0,0,0.3);
-    --shadow-hover: 0 4px 12px rgba(0,0,0,0.4);
-    --shadow-glass: 0 8px 32px rgba(0,0,0,0.24);
-    --shadow-glass-hover: 0 12px 40px rgba(0,0,0,0.32);
+    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-glass-hover: 0 12px 40px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -236,51 +236,137 @@
     gap: var(--card-spacing);
   }
 
-  /* Glass morphism effects */
+  /* Glass morphism effects - Updated for modern dark theme */
   .glass-card {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(38, 42, 50, 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: var(--shadow-glass);
     transition: var(--transition-smooth);
   }
 
   .glass-card:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(42, 47, 56, 0.9);
     box-shadow: var(--shadow-glass-hover);
     transform: translateY(-2px);
   }
 
   .glass-surface {
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(38, 42, 50, 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .glass-overlay {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(38, 42, 50, 0.95);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
   }
 
-  /* Dark mode glass effects */
+  /* Dark mode glass effects - Now the default */
   .dark .glass-card {
-    background: rgba(27, 58, 46, 0.8);
+    background: rgba(38, 42, 50, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .dark .glass-card:hover {
-    background: rgba(27, 58, 46, 0.9);
+    background: rgba(42, 47, 56, 0.9);
   }
 
   .dark .glass-surface {
-    background: rgba(27, 58, 46, 0.6);
+    background: rgba(38, 42, 50, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .dark .glass-overlay {
-    background: rgba(27, 58, 46, 0.95);
+    background: rgba(38, 42, 50, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  /* Enhanced card styling for modern aesthetic */
+  .modern-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .modern-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--accent)), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .modern-card:hover::before {
+    opacity: 1;
+  }
+
+  .modern-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+    border-color: hsl(var(--accent));
+  }
+
+  /* Enhanced button styling */
+  .btn-modern {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--primary-foreground));
+    border-radius: var(--radius);
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-modern::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .btn-modern:hover::before {
+    left: 100%;
+  }
+
+  .btn-modern:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-hover);
+  }
+
+  /* Enhanced input styling */
+  .input-modern {
+    background: hsl(var(--input));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    color: hsl(var(--foreground));
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+  }
+
+  .input-modern:focus {
+    outline: none;
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.1);
+  }
+
+  .input-modern:hover {
+    border-color: hsl(var(--accent));
   }
 
   /* Article content styling */
@@ -366,49 +452,54 @@
     }
   }
 
-  /* Leaflet Dark Theme Styling */
+  /* Leaflet Dark Theme Styling - Updated for modern aesthetic */
   .leaflet-container {
-    background: #1a1a1a !important;
+    background: #1E2127 !important;
     font-family: inherit;
   }
 
   .leaflet-control-zoom a {
-    background-color: #2a2a2a !important;
+    background-color: #2A2D34 !important;
     color: #ffffff !important;
-    border-color: #404040 !important;
+    border-color: #32363E !important;
     transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
   .leaflet-control-zoom a:hover {
-    background-color: #404040 !important;
+    background-color: #3A3F4A !important;
     color: #ffffff !important;
+    transform: scale(1.05);
   }
 
   .leaflet-control-attribution {
-    background-color: rgba(26, 26, 26, 0.9) !important;
+    background-color: rgba(30, 33, 39, 0.9) !important;
     color: #cccccc !important;
     font-size: 11px;
+    border-top: 1px solid #32363E;
   }
 
   .leaflet-control-attribution a {
-    color: #3B82F6 !important;
+    color: #4A4F5A !important;
   }
 
   .leaflet-popup-content-wrapper {
-    background: #2a2a2a !important;
+    background: #2A2D34 !important;
     color: #ffffff !important;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    border: 1px solid #32363E;
   }
 
   .leaflet-popup-tip {
-    background: #2a2a2a !important;
+    background: #2A2D34 !important;
   }
 
   .leaflet-popup-close-button {
     color: #cccccc !important;
     font-size: 18px;
     padding: 4px 8px;
+    transition: all 0.2s ease;
   }
 
   .leaflet-popup-close-button:hover {
@@ -420,16 +511,36 @@
   /* Custom marker styling */
   .custom-user-marker,
   .custom-station-marker {
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
   }
 
   /* Map container dark theme */
   .leaflet-map-pane {
-    background: #1a1a1a !important;
+    background: #1E2127 !important;
   }
 
-  /* Ensure map tiles are properly loaded */
+  /* Ensure map tiles are properly loaded with dark theme */
   .leaflet-tile {
-    filter: brightness(0.8) contrast(1.2);
+    filter: brightness(0.7) contrast(1.3) saturate(0.8);
+  }
+
+  /* Enhanced map controls */
+  .leaflet-control-layers {
+    background: #2A2D34 !important;
+    border: 1px solid #32363E !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .leaflet-control-layers-toggle {
+    background: #2A2D34 !important;
+    border: 1px solid #32363E !important;
+    color: #ffffff !important;
+  }
+
+  .leaflet-control-layers-expanded {
+    background: #2A2D34 !important;
+    border: 1px solid #32363E !important;
+    color: #ffffff !important;
   }
 }

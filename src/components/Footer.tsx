@@ -19,7 +19,7 @@ export default function Footer() {
   if (!user) {
     return (
       <motion.footer 
-        className="bg-card border-t border-border mt-auto"
+        className="bg-card border-t border-border mt-auto backdrop-blur-xl"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
@@ -32,7 +32,7 @@ export default function Footer() {
                 className="flex items-center justify-center md:justify-start gap-3 mb-4"
                 whileHover={{ scale: 1.02 }}
               >
-                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
                   <span className="text-primary-foreground font-bold text-lg">B</span>
                 </div>
                 <div>
@@ -85,7 +85,7 @@ export default function Footer() {
   // Full footer for authenticated users
   return (
     <motion.footer 
-      className="bg-card border-t border-border mt-auto"
+      className="bg-card border-t border-border mt-auto backdrop-blur-xl"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
@@ -98,7 +98,7 @@ export default function Footer() {
               className="flex items-center justify-center sm:justify-start gap-3 mb-4"
               whileHover={{ scale: 1.02 }}
             >
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-primary-foreground font-bold text-lg">B</span>
               </div>
               <div>
