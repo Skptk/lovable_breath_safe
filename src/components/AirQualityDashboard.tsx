@@ -13,7 +13,6 @@ import { StatCard } from "@/components/ui/StatCard";
 import { getAQIColor, getAQILabel } from "@/config/maps";
 
 import Header from "@/components/Header";
-import PollutantModal from "./PollutantModal";
 import WeatherStatsCard from "./WeatherStatsCard";
 
 interface AirQualityDashboardProps {
@@ -341,11 +340,7 @@ export default function AirQualityDashboard({
                                                 <div
                           key={pollutant.name}
                           className="text-center p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => {
-                            // On desktop, update the informational card
-                            // On mobile, this will trigger the modal
-                            setSelectedPollutant(pollutant);
-                          }}
+                          onClick={() => setSelectedPollutant(pollutant)}
                         >
                           <div className={`text-lg font-semibold ${pollutant.color}`}>
                             {pollutant.value}
@@ -356,8 +351,8 @@ export default function AirQualityDashboard({
                       ))}
                     </div>
                     
-                    {/* Informational Card - Desktop Only */}
-                    <div className="hidden lg:block mt-4">
+                                         {/* Informational Card */}
+                     <div className="mt-4">
                       <div className="p-3 bg-muted/30 rounded-lg border min-h-[120px]">
                         {selectedPollutant ? (
                           <div className="space-y-2">
@@ -478,15 +473,7 @@ export default function AirQualityDashboard({
           </Card>
         </motion.div>
 
-        {/* Pollutant Modal - Mobile Only */}
-        {selectedPollutant && (
-          <div className="lg:hidden">
-            <PollutantModal
-              pollutant={selectedPollutant}
-              onClose={() => setSelectedPollutant(null)}
-            />
-          </div>
-        )}
+
       </div>
     );
   }
