@@ -259,40 +259,86 @@ export default function AirQualityDashboard({
               </p>
             </CardHeader>
             <CardContent className="text-center space-y-6">
-               {/* AQI Display with Emission Data Side by Side */}
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                 {/* Left Side - AQI Value */}
-                 <div className="text-center">
-                   <div 
-                     className="text-6xl font-bold mb-2"
-                     style={{ color: aqiColor }}
-                   >
-                     {data.aqi}
-                   </div>
-                   <Badge 
-                     variant="outline" 
-                     className="px-4 py-2 text-sm font-semibold"
-                     style={{ 
-                       borderColor: aqiColor, 
-                       color: aqiColor,
-                       backgroundColor: `${aqiColor}10`
-                     }}
-                   >
-                     {aqiLabel}
-                   </Badge>
-                 </div>
+                               {/* AQI Display with Emission Data Side by Side */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                  {/* Left Side - AQI Value with Info Beneath */}
+                  <div className="text-center space-y-4">
+                    <div 
+                      className="text-6xl font-bold mb-2"
+                      style={{ color: aqiColor }}
+                    >
+                      {data.aqi}
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className="px-4 py-2 text-sm font-semibold"
+                      style={{ 
+                        borderColor: aqiColor, 
+                        color: aqiColor,
+                        backgroundColor: `${aqiColor}10`
+                      }}
+                    >
+                      {aqiLabel}
+                    </Badge>
+                    
+                    {/* Location Info with Source */}
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                      <MapPin className="w-4 h-4" />
+                      <span>{data.location}</span>
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {React.createElement(locationIcon, { className: "w-3 h-3 mr-1" })}
+                        {locationSource}
+                      </Badge>
+                    </div>
 
-                 {/* Right Side - Emission Data Breakdown */}
-                 <div className="space-y-3">
-                   <h4 className="text-sm font-semibold text-muted-foreground mb-3">Pollutant Breakdown</h4>
-                   <div className="grid grid-cols-2 gap-3">
-                     {[
-                       { name: 'PM2.5', value: data.pm25, unit: 'μg/m³', color: 'text-blue-600', description: 'Fine particulate matter that can penetrate deep into the lungs and bloodstream, causing respiratory and cardiovascular health issues.' },
-                       { name: 'PM10', value: data.pm10, unit: 'μg/m³', color: 'text-green-600', description: 'Coarse particulate matter that can irritate the eyes, nose, and throat, affecting respiratory health.' },
-                       { name: 'NO₂', value: data.no2, unit: 'ppb', color: 'text-orange-600', description: 'Nitrogen dioxide, a gas that can cause airway inflammation and increase susceptibility to respiratory infections.' },
-                       { name: 'O₃', value: data.o3, unit: 'ppb', color: 'text-purple-600', description: 'Ground-level ozone that can cause breathing difficulties, especially for people with asthma or other respiratory conditions.' }
-                     ].map((pollutant) => (
-                                               <div
+                    {/* Data Source Info */}
+                    <div className="text-xs text-muted-foreground">
+                      Data source: {data.dataSource}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 justify-center">
+                      <Button 
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {isRefreshing ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                            Refreshing...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Refresh
+                          </>
+                        )}
+                      </Button>
+                      
+                      <Button 
+                        onClick={() => onNavigate?.('map')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <MapPin className="w-4 h-4 mr-2" />
+                        View Map
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Right Side - Emission Data Breakdown */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-muted-foreground mb-3">Pollutant Breakdown</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { name: 'PM2.5', value: data.pm25, unit: 'μg/m³', color: 'text-blue-600', description: 'Fine particulate matter that can penetrate deep into the lungs and bloodstream, causing respiratory and cardiovascular health issues.' },
+                        { name: 'PM10', value: data.pm10, unit: 'μg/m³', color: 'text-green-600', description: 'Coarse particulate matter that can irritate the eyes, nose, and throat, affecting respiratory health.' },
+                        { name: 'NO₂', value: data.no2, unit: 'ppb', color: 'text-orange-600', description: 'Nitrogen dioxide, a gas that can cause airway inflammation and increase susceptibility to respiratory infections.' },
+                        { name: 'O₃', value: data.o3, unit: 'ppb', color: 'text-purple-600', description: 'Ground-level ozone that can cause breathing difficulties, especially for people with asthma or other respiratory conditions.' }
+                      ].map((pollutant) => (
+                                                <div
                           key={pollutant.name}
                           className="text-center p-2 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
                           onClick={() => {
@@ -301,87 +347,41 @@ export default function AirQualityDashboard({
                             setSelectedPollutant(pollutant);
                           }}
                         >
-                         <div className={`text-lg font-semibold ${pollutant.color}`}>
-                           {pollutant.value}
-                         </div>
-                         <div className="text-xs text-muted-foreground">{pollutant.name}</div>
-                         <div className="text-xs text-muted-foreground">{pollutant.unit}</div>
-                       </div>
-                     ))}
-                   </div>
-                   
-                   {/* Informational Card - Desktop Only */}
-                   <div className="hidden lg:block mt-4">
-                     <div className="p-3 bg-muted/30 rounded-lg border min-h-[120px]">
-                       {selectedPollutant ? (
-                         <div className="space-y-2">
-                           <h5 className="font-semibold text-sm text-foreground">
-                             {selectedPollutant.name} Information
-                           </h5>
-                           <p className="text-xs text-muted-foreground leading-relaxed">
-                             {selectedPollutant.description}
-                           </p>
-                           <div className="text-xs text-muted-foreground">
-                             Current level: <span className="font-medium">{selectedPollutant.value} {selectedPollutant.unit}</span>
+                          <div className={`text-lg font-semibold ${pollutant.color}`}>
+                            {pollutant.value}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{pollutant.name}</div>
+                          <div className="text-xs text-muted-foreground">{pollutant.unit}</div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Informational Card - Desktop Only */}
+                    <div className="hidden lg:block mt-4">
+                      <div className="p-3 bg-muted/30 rounded-lg border min-h-[120px]">
+                        {selectedPollutant ? (
+                          <div className="space-y-2">
+                            <h5 className="font-semibold text-sm text-foreground">
+                              {selectedPollutant.name} Information
+                            </h5>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {selectedPollutant.description}
+                            </p>
+                            <div className="text-xs text-muted-foreground">
+                              Current level: <span className="font-medium">{selectedPollutant.value} {selectedPollutant.unit}</span>
+                            </div>
+                          </div>
+                                                 ) : (
+                           <div className="flex items-center justify-center h-full">
+                             <p className="text-xs text-muted-foreground text-center">
+                               Click on any pollutant level above to see detailed information
+                             </p>
                            </div>
-                         </div>
-                       ) : (
-                         <div className="flex items-center justify-center h-full">
-                           <p className="text-xs text-muted-foreground text-center">
-                             Click on any pollutant level above to see detailed information
-                           </p>
-                         </div>
-                       )}
-                     </div>
-                   </div>
-                 </div>
-               </div>
-
-               {/* Location Info with Source */}
-               <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                 <MapPin className="w-4 h-4" />
-                 <span>{data.location}</span>
-                 <Badge variant="secondary" className="ml-2 text-xs">
-                   {React.createElement(locationIcon, { className: "w-3 h-3 mr-1" })}
-                   {locationSource}
-                 </Badge>
-               </div>
-
-               {/* Data Source Info */}
-               <div className="text-xs text-muted-foreground">
-                 Data source: {data.dataSource}
-               </div>
-
-               {/* Action Buttons */}
-               <div className="flex gap-3 justify-center">
-                 <Button 
-                   onClick={handleRefresh}
-                   disabled={isRefreshing}
-                   variant="outline"
-                   size="sm"
-                 >
-                   {isRefreshing ? (
-                     <>
-                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                       Refreshing...
-                     </>
-                   ) : (
-                     <>
-                       <RefreshCw className="w-4 h-4 mr-2" />
-                       Refresh
-                     </>
-                   )}
-                 </Button>
-                 
-                 <Button 
-                   onClick={() => onNavigate?.('map')}
-                   variant="outline"
-                   size="sm"
-                 >
-                   <MapPin className="w-4 h-4 mr-2" />
-                   View Map
-                 </Button>
-               </div>
+                         )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
             </CardContent>
           </Card>
         </motion.div>
