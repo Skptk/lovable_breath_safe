@@ -118,7 +118,7 @@ export default function Products() {
         </div>
 
       {/* Local Retailers Notice */}
-      <Card className="bg-gradient-card border-0">
+      <Card className="floating-card border-0">
         <CardContent>
           <div className="flex items-center gap-2 mb-2">
             <MapPin className="h-5 w-5 text-primary" />
@@ -132,56 +132,69 @@ export default function Products() {
 
       {/* Products Grid */}
       <div className="space-y-card-gap">
-        {products.map((product) => (
-          <Card key={product.id} className="bg-gradient-card border-0">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start gap-4">
-                <div className="flex-1">
-                  <CardTitle className="text-lg mb-2">{product.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {product.description}
-                  </p>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm font-medium">{product.rating}</span>
-                    </div>
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-0">
-                      {product.retailer}
-                    </Badge>
-                  </div>
-                </div>
-                <img 
-                  src={product.image_url} 
-                  alt={product.name}
-                  loading="lazy"
-                  className="w-16 h-16 object-cover rounded-lg bg-muted"
-                />
-              </div>
+        {products.length === 0 ? (
+          <Card className="floating-card border-0">
+            <CardHeader>
+              <CardTitle className="text-lg">No Products Available</CardTitle>
             </CardHeader>
-            
-            <CardContent className="pt-0">
-              <div className="flex justify-between items-center mb-3">
-                <div className="text-sm text-muted-foreground">
-                  <div>Coverage: {product.coverage_area}</div>
-                  <div className="font-semibold text-foreground">{product.price_range}</div>
-                </div>
-              </div>
-              
-              <Button
-                onClick={() => handleProductClick(product.affiliate_url)}
-                className="w-full bg-primary hover:bg-primary/90 gap-2"
-              >
-                View on {product.retailer}
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+            <CardContent>
+              <p className="text-muted-foreground">
+                We're currently updating our product recommendations. Please check back soon!
+              </p>
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          products.map((product) => (
+            <Card key={product.id} className="floating-card border-0">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg mb-2">{product.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {product.description}
+                    </p>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span className="text-sm font-medium">{product.rating}</span>
+                      </div>
+                      <Badge variant="secondary" className="bg-primary/10 text-primary border-0">
+                        {product.retailer}
+                      </Badge>
+                    </div>
+                  </div>
+                  <img 
+                    src={product.image_url} 
+                    alt={product.name}
+                    loading="lazy"
+                    className="w-16 h-16 object-cover rounded-lg bg-muted"
+                  />
+                </div>
+              </CardHeader>
+              
+              <CardContent className="pt-0">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="text-sm text-muted-foreground">
+                    <div>Coverage: {product.coverage_area}</div>
+                    <div className="font-semibold text-foreground">{product.price_range}</div>
+                  </div>
+                </div>
+                
+                <Button
+                  onClick={() => handleProductClick(product.affiliate_url)}
+                  className="w-full bg-primary hover:bg-primary/90 gap-2"
+                >
+                  View on {product.retailer}
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
         {/* Disclaimer */}
-        <Card className="bg-gradient-card border-0">
+        <Card className="floating-card border-0">
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">
               * Prices and availability may vary. We may earn a commission from purchases made through affiliate links. 

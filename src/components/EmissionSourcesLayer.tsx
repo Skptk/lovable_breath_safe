@@ -171,7 +171,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
   // Show informational content when no emission data is available
   if (emissionSources.length === 0 && !loading) {
     return (
-      <Card className="mt-4">
+      <Card className="floating-card mt-4">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
@@ -275,7 +275,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
 
   if (loading && emissionSources.length === 0) {
     return (
-      <Card className="mt-4">
+      <Card className="floating-card mt-4">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
@@ -295,7 +295,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
   }
 
   return (
-    <Card className="mt-4">
+    <Card className="floating-card mt-4">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">

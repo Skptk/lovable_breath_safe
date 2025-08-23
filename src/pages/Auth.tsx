@@ -532,7 +532,7 @@ export default function Auth(): JSX.Element {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <div className="flex-1 flex items-center justify-center page-padding">
-        <Card className="w-full max-w-md bg-gradient-card border-0">
+        <Card className="w-full max-w-md floating-card">
         <CardHeader className="text-center">
           <CardTitle className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
             {isSignUp ? 'Create Account' : 'Welcome Back'}

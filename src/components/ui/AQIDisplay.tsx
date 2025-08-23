@@ -7,7 +7,7 @@ interface AQIDisplayProps {
 }
 
 export const AQIDisplay = ({ aqi, timestamp }: AQIDisplayProps): JSX.Element => (
-  <Card className="bg-gradient-card shadow-card border-0">
+  <Card className="floating-card shadow-card border-0">
     <CardContent className="p-6">
       <div className="text-center space-y-4">
         <div className={`text-8xl font-bold ${getAQIColor(aqi)}`}>

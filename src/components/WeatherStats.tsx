@@ -657,48 +657,50 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       {userLocation && weatherData.currentWeather && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Temperature & Feels Like */}
-          <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Thermometer className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                <span className="text-sm font-medium">Temperature</span>
-              </div>
-              <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
+          <Card className="floating-card bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Thermometer className="h-4 w-4" />
+                Temperature
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                 {weatherData.currentWeather.temperature}°C
               </div>
-              {weatherData.currentWeather.feelsLikeTemperature && (
-                <div className="text-sm text-muted-foreground">
-                  Feels like {weatherData.currentWeather.feelsLikeTemperature}°C
-                </div>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Feels like {weatherData.currentWeather.feelsLikeTemperature || weatherData.currentWeather.temperature}°C
+              </p>
             </CardContent>
           </Card>
 
           {/* Humidity & Pressure */}
-          <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Droplets className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium">Humidity</span>
-              </div>
-              <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+          <Card className="floating-card bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Droplets className="h-4 w-4" />
+                Humidity
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {weatherData.currentWeather.humidity}%
               </div>
-              {weatherData.currentWeather.airPressure && (
-                <div className="text-sm text-muted-foreground">
-                  {weatherData.currentWeather.airPressure} hPa
-                </div>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Dew point {weatherData.currentWeather.airPressure || 'N/A'} hPa
+              </p>
             </CardContent>
           </Card>
 
           {/* Wind Information */}
-          <Card className="bg-gradient-to-br from-slate-50 to-slate-50 dark:from-slate-950/30 dark:to-slate-950/30">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Wind className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                <span className="text-sm font-medium">Wind</span>
-              </div>
+          <Card className="floating-card bg-gradient-to-br from-slate-50 to-slate-50 dark:from-slate-950/30 dark:to-slate-950/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Wind className="h-4 w-4" />
+                Wind
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
               <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
                 {weatherData.currentWeather.windSpeed} km/h
               </div>
@@ -709,20 +711,20 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
           </Card>
 
           {/* Visibility & UV */}
-          <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Eye className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                <span className="text-sm font-medium">Visibility</span>
-              </div>
-              <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+          <Card className="floating-card bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Visibility
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {weatherData.currentWeather.visibility || 'N/A'} km
               </div>
-              {weatherData.currentWeather.uvIndex && (
-                <div className="text-sm text-muted-foreground">
-                  UV Index: {weatherData.currentWeather.uvIndex}
-                </div>
-              )}
+              <p className="text-xs text-muted-foreground">
+                UV index {weatherData.currentWeather.uvIndex || 'N/A'}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -747,7 +749,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
 
 
       {/* Map Container - Google Maps Style */}
-      <Card className="relative h-[calc(100vh-200px)] min-h-[600px] shadow-card overflow-hidden">
+      <Card className="floating-card relative h-[calc(100vh-200px)] min-h-[600px] shadow-card overflow-hidden">
         <CardContent className="p-0 h-full relative">
           {/* Map Header - Fixed at top */}
           <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-r from-card/95 via-card/90 to-card/95 backdrop-blur-md border-b border-border/50">

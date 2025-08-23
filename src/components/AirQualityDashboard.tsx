@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, RefreshCw, Award, Zap, Clock, MapPin, ArrowRight, User, Satellite } from "lucide-react";
@@ -405,7 +405,7 @@ export default function AirQualityDashboard({
           className="grid grid-cols-1 md:grid-cols-2 gap-6"
         >
           {/* Points and Rewards */}
-          <Card className="shadow-card">
+          <Card className="floating-card shadow-card">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-yellow-600" />
@@ -448,7 +448,7 @@ export default function AirQualityDashboard({
           </Card>
 
           {/* Refresh Countdown */}
-          <Card className="shadow-card">
+          <Card className="floating-card shadow-card">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-blue-600" />

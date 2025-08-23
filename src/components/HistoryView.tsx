@@ -726,7 +726,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           history.map((entry) => (
             <Card 
               key={entry.id} 
-              className="bg-gradient-card shadow-card border-0 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] group"
+              className="floating-card shadow-card border-0 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] group"
               onClick={() => openEntryModal(entry)}
             >
               <CardContent className="p-4">

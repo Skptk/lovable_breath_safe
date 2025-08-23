@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sun, Cloud, CloudRain, Thermometer, Droplets, Eye, RefreshCw, AlertTriangle, Wind, Gauge, Compass } from "lucide-react";
+import { Sun, Cloud, CloudRain, Thermometer, Droplets, Eye, RefreshCw, AlertTriangle, Wind, Gauge, Compass, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useWeatherData } from "@/hooks/useWeatherData";
 
@@ -186,17 +186,16 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
 
   if (loading && !weatherData) {
     return (
-      <Card className="modern-card glass-card">
+      <Card className="floating-card modern-card glass-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Thermometer className="h-5 w-5" />
-            <span className="font-bold">Current Weather</span>
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading Weather Data...
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 space-y-4">
-            <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
-            <p className="text-muted-foreground">Loading weather data...</p>
+        <CardContent className="pt-0">
+          <div className="text-center py-4">
+            <p className="text-sm text-muted-foreground">Fetching current weather conditions...</p>
           </div>
         </CardContent>
       </Card>
@@ -205,7 +204,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
 
   if (error && !weatherData) {
     return (
-      <Card className="modern-card glass-card">
+      <Card className="floating-card modern-card glass-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5" />

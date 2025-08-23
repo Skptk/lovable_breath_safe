@@ -15,7 +15,7 @@ export default function Privacy() {
         </div>
 
         <div className="space-y-4">
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="floating-card shadow-card border-0">
             <CardHeader>
               <CardTitle className="text-lg">Information We Collect</CardTitle>
             </CardHeader>
@@ -41,7 +41,7 @@ export default function Privacy() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="floating-card shadow-card border-0">
             <CardHeader>
               <CardTitle className="text-lg">How We Use Your Information</CardTitle>
             </CardHeader>
@@ -54,7 +54,7 @@ export default function Privacy() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="floating-card shadow-card border-0">
             <CardHeader>
               <CardTitle className="text-lg">Information Sharing</CardTitle>
             </CardHeader>
@@ -80,7 +80,7 @@ export default function Privacy() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="floating-card shadow-card border-0">
             <CardHeader>
               <CardTitle className="text-lg">Data Security</CardTitle>
             </CardHeader>
@@ -91,26 +91,31 @@ export default function Privacy() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="floating-card shadow-card border-0">
             <CardHeader>
               <CardTitle className="text-lg">Your Rights</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>• Access and review your personal information</p>
               <p>• Request correction of inaccurate data</p>
-              <p>• Request deletion of your account and data</p>
+              <p>• Request deletion of your data</p>
+              <p>• Opt out of marketing communications</p>
               <p>• Export your data in a portable format</p>
-              <p>• Opt out of location tracking (this will limit app functionality)</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="floating-card shadow-card border-0">
             <CardHeader>
               <CardTitle className="text-lg">Contact Us</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               <p>
-                If you have questions about this Privacy Policy or how we handle your data, please contact us at privacy@airqualitytracker.com
+                If you have any questions about this Privacy Policy or our data practices, please contact us at:
+              </p>
+              <p className="mt-2">
+                <strong>Email:</strong> privacy@breathsafe.com<br />
+                <strong>Address:</strong> [Your Company Address]<br />
+                <strong>Last Updated:</strong> {new Date().toLocaleDateString()}
               </p>
             </CardContent>
           </Card>

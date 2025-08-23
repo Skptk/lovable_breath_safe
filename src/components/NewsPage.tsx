@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -181,26 +181,27 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="space-y-4"
           >
-            <Card className="bg-gradient-to-r from-card/80 to-card/60 backdrop-blur-sm border border-border/20">
-              <CardContent className="p-6">
+            <Card className="floating-card bg-gradient-to-r from-card/80 to-card/60 backdrop-blur-sm border border-border/20">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold">Search & Filter</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Search Input */}
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       placeholder="Search articles..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-background/50 border-border/30"
+                      className="pl-10"
                     />
                   </div>
-
-                  {/* Category Filter */}
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="bg-background/50 border-border/30">
-                      <SelectValue placeholder="Select category" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Categories" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category.value} value={category.value}>
                           {category.label}
@@ -208,10 +209,8 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
                       ))}
                     </SelectContent>
                   </Select>
-
-                  {/* Sort Options */}
                   <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="bg-background/50 border-border/30">
+                    <SelectTrigger>
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
@@ -280,7 +279,7 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
                     transition: { duration: 0.2 }
                   }}
                 >
-                  <Card className="relative overflow-hidden h-full bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300 group-hover:border-primary/30">
+                  <Card className="floating-card relative overflow-hidden h-full bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300 group-hover:border-primary/30">
                     {/* Glowing border effect */}
                     <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
                     

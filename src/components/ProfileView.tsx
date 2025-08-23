@@ -23,7 +23,9 @@ import {
   TrendingUp,
   Shield,
   Settings,
-  LogOut
+  LogOut,
+  HelpCircle,
+  FileText
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +34,7 @@ import { useUserPoints } from "@/hooks/useUserPoints";
 import { useWithdrawalRequests } from "@/hooks/useWithdrawalRequests";
 import { useAchievements } from "@/hooks/useAchievements";
 import Header from "@/components/Header";
+import { useNavigate } from "react-router-dom";
 
 interface ProfileViewProps {
   showMobileMenu?: boolean;
@@ -70,6 +73,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   const { withdrawalRequests, isLoading: withdrawalLoading } = useWithdrawalRequests();
   const { achievements, userAchievements, isLoading: achievementsLoading } = useAchievements();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
@@ -338,189 +342,154 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
 
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-4">
-          <Card className="shadow-card">
+          <Card className="floating-card shadow-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <User className="h-5 w-5" />
                 Personal Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div>
                   <label className="text-sm font-medium">Full Name</label>
-                  {editing ? (
-                    <Input
-                      value={editForm.full_name}
-                      onChange={(e) => setEditForm({ full_name: e.target.value })}
-                      placeholder="Enter your full name"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span>{profile?.full_name || 'Not set'}</span>
-                    </div>
-                  )}
+                  <Input
+                    value={profile?.full_name || ''}
+                    onChange={(e) => setProfile(prev => ({ ...prev, full_name: e.target.value }))}
+                    placeholder="Enter your full name"
+                    className="mt-1"
+                  />
                 </div>
-
-                <div className="space-y-2">
+                <div>
                   <label className="text-sm font-medium">Email</label>
-                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{profile?.email || 'Not set'}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Member Since</label>
-                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>{stats.memberSince}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Total Points</label>
-                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-                    <Award className="h-4 w-4 text-muted-foreground" />
-                    <span>{stats.totalPoints.toLocaleString()}</span>
-                  </div>
+                  <Input
+                    value={user?.email || ''}
+                    disabled
+                    className="mt-1 bg-muted"
+                  />
                 </div>
               </div>
-
-              <div className="flex gap-2">
-                {editing ? (
-                  <>
-                    <Button onClick={handleSaveProfile} size="sm">
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Changes
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setEditing(false)} 
-                      size="sm"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Cancel
-                    </Button>
-                  </>
-                ) : (
-                  <Button onClick={() => setEditing(true)} size="sm">
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                )}
+              <div className="flex justify-end">
+                <Button onClick={handleSaveProfile}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* Badge Display Card */}
-          <Card className="shadow-card bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
+          <Card className="floating-card shadow-card bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-yellow-500" />
-                Badge Collection
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Award className="h-5 w-5" />
+                Your Badges
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                    {profile?.full_name?.charAt(0)?.toUpperCase() || 'U'}
+                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    {profile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">
-                      {profile?.full_name || 'User'}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Level {Math.floor((profile?.total_points || 0) / 10000) + 1} • {profile?.total_points?.toLocaleString() || 0} points
-                    </p>
+                    <div className="font-semibold text-foreground">
+                      {profile?.full_name || user?.email || 'User'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Level {Math.floor((userPoints?.totalPoints || 0) / 10000) + 1} • {userPoints?.totalPoints || 0} points
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-3">
-                {userAchievements?.filter(ua => ua.unlocked)?.map((userAchievement) => {
-                  const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
-                  if (!achievement) return null;
+                <div className="flex gap-2">
+                  {userAchievements?.filter(ua => ua.unlocked)?.map((userAchievement) => {
+                    const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
+                    if (!achievement) return null;
+                    
+                    return (
+                      <div
+                        key={userAchievement.id}
+                        className="group relative"
+                      >
+                        <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 cursor-pointer border-2 border-yellow-300">
+                          {achievement.icon || '🏆'}
+                        </div>
+                        {/* Hover Tooltip */}
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          <div className="font-semibold">{achievement.name}</div>
+                          <div className="text-xs text-gray-300">{achievement.description}</div>
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                      </div>
+                    );
+                  })}
                   
-                  return (
-                    <div
-                      key={userAchievement.id}
-                      className="group relative"
-                    >
-                      <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 cursor-pointer border-2 border-yellow-300">
-                        {achievement.icon || '🏆'}
+                  {/* Show locked badges as placeholder */}
+                  {userAchievements?.filter(ua => !ua.unlocked)?.slice(0, 3)?.map((userAchievement) => {
+                    const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
+                    if (!achievement) return null;
+                    
+                    return (
+                      <div
+                        key={userAchievement.id}
+                        className="group relative"
+                      >
+                        <div className="w-16 h-16 bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-400 text-2xl shadow-lg border-2 border-slate-200 dark:border-slate-600">
+                          🔒
+                        </div>
+                        {/* Hover Tooltip */}
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                          <div className="font-semibold">{achievement.name}</div>
+                          <div className="text-xs text-slate-300">{achievement.description}</div>
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-900"></div>
+                        </div>
                       </div>
-                      {/* Hover Tooltip */}
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                        <div className="font-semibold">{achievement.name}</div>
-                        <div className="text-xs text-gray-300">{achievement.description}</div>
-                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                      </div>
-                    </div>
-                  );
-                })}
-                
-                {/* Show locked badges as placeholder */}
-                {userAchievements?.filter(ua => !ua.unlocked)?.slice(0, 3)?.map((userAchievement) => {
-                  const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
-                  if (!achievement) return null;
+                    );
+                  })}
                   
-                  return (
-                    <div
-                      key={userAchievement.id}
-                      className="group relative"
-                    >
-                      <div className="w-16 h-16 bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-400 text-2xl shadow-lg border-2 border-slate-200 dark:border-slate-600">
-                        🔒
-                      </div>
-                      {/* Hover Tooltip */}
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                        <div className="font-semibold">{achievement.name}</div>
-                        <div className="text-xs text-slate-300">{achievement.description}</div>
-                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-900"></div>
-                      </div>
+                  {/* Show more badges indicator if there are many locked ones */}
+                  {userAchievements?.filter(ua => !ua.unlocked)?.length > 3 && (
+                    <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-700 rounded-full border-2 border-dashed border-slate-400 dark:border-slate-600">
+                      <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">+{userAchievements.filter(ua => !ua.unlocked).length - 3}</span>
                     </div>
-                  );
-                })}
+                  )}
+                </div>
                 
-                {/* Show more badges indicator if there are many locked ones */}
-                {userAchievements?.filter(ua => !ua.unlocked)?.length > 3 && (
-                  <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-700 rounded-full border-2 border-dashed border-slate-400 dark:border-slate-600">
-                    <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">+{userAchievements.filter(ua => !ua.unlocked).length - 3}</span>
-                  </div>
-                )}
-              </div>
-              
-              <div className="mt-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                  {userAchievements?.filter(ua => ua.unlocked)?.length || 0} of {userAchievements?.length || 0} badges unlocked
-                </p>
+                <div className="mt-4 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    {userAchievements?.filter(ua => ua.unlocked)?.length || 0} of {userAchievements?.length || 0} badges unlocked
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Statistics Card */}
-          <Card className="shadow-card">
+          <Card className="floating-card shadow-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
-                Your Statistics
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Statistics
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-muted/30 rounded-lg">
-                  <div className="text-2xl font-bold text-primary">{stats.totalReadings}</div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">
+                    {userPoints?.totalReadings || 0}
+                  </div>
                   <div className="text-sm text-muted-foreground">Total Readings</div>
                 </div>
-                <div className="text-center p-4 bg-muted/30 rounded-lg">
-                  <div className="text-2xl font-bold text-yellow-600">{stats.totalPoints.toLocaleString()}</div>
-                  <div className="text-sm text-muted-foreground">Total Points</div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">
+                    {userPoints?.totalPoints || 0}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Points Earned</div>
                 </div>
-                <div className="text-center p-4 bg-muted/30 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{stats.memberSince}</div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">
+                    {userPoints?.memberSince ? new Date(userPoints.memberSince).getFullYear() : 'N/A'}
+                  </div>
                   <div className="text-sm text-muted-foreground">Member Since</div>
                 </div>
               </div>
@@ -528,31 +497,26 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
           </Card>
 
           {/* Account Management Card */}
-          <Card className="shadow-card">
+          <Card className="floating-card shadow-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-orange-600" />
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Shield className="h-5 w-5" />
                 Account Management
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={handleExportData}
-                  className="flex-1"
-                >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button variant="outline" onClick={handleExportData}>
                   <Download className="h-4 w-4 mr-2" />
                   Export Data
                 </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={handleDeleteAccount}
-                  className="flex-1"
-                >
+                <Button variant="outline" onClick={handleDeleteAccount}>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete Account
                 </Button>
+              </div>
+              <div className="text-sm text-muted-foreground text-center">
+                Export your data before deleting your account
               </div>
             </CardContent>
           </Card>
@@ -689,6 +653,48 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="floating-card shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Preferences
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button variant="outline" onClick={() => navigate('/dashboard?view=settings')}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  App Settings
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/dashboard?view=rewards')}>
+                  <Award className="h-4 w-4 mr-2" />
+                  Rewards
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="floating-card shadow-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5" />
+                Support & Help
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button variant="outline" onClick={() => window.open('/privacy', '_blank')}>
+                  <Shield className="h-4 w-4 mr-2" />
+                  Privacy Policy
+                </Button>
+                <Button variant="outline" onClick={() => window.open('/terms', '_blank')}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Terms of Service
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

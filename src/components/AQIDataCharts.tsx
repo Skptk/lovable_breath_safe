@@ -258,7 +258,7 @@ export default function AQIDataCharts({
   return (
     <>
       {/* Main AQI Card */}
-      <Card className="bg-gradient-card shadow-card border-0 mb-6">
+      <Card className="floating-card shadow-card border-0 mb-6">
         <CardHeader className="text-center pb-4">
           <div className="flex items-center justify-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5 text-primary" />

@@ -182,7 +182,7 @@ export default function Landing(): JSX.Element {
               return (
                 <Card 
                   key={index}
-                  className={`relative overflow-hidden transition-all duration-300 cursor-pointer group ${
+                  className={`floating-card relative overflow-hidden transition-all duration-300 cursor-pointer group ${
                     isHovered === feature.title 
                       ? 'shadow-2xl transform scale-105' 
                       : 'shadow-lg hover:shadow-xl'

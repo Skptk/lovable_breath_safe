@@ -156,36 +156,36 @@ export default function Onboarding(): JSX.Element {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-              <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <TrendingUp className="w-6 h-6 text-blue-600" />
+              <Card className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="font-semibold text-foreground mb-2">Real-time Monitoring</h3>
-                <p className="text-sm text-muted-foreground">Get instant air quality updates for your location</p>
+                <h3 className="text-lg font-semibold mb-2">Account Created</h3>
+                <p className="text-sm text-muted-foreground">Your account has been successfully created</p>
               </Card>
-              
-              <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Award className="w-6 h-6 text-green-600" />
+
+              <Card className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MapPin className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="font-semibold text-foreground mb-2">Earn Rewards</h3>
-                <p className="text-sm text-muted-foreground">Unlock achievements for healthy choices</p>
+                <h3 className="text-lg font-semibold mb-2">Location Set</h3>
+                <p className="text-sm text-muted-foreground">Your region and city preferences are configured</p>
               </Card>
-              
-              <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="w-6 h-6 text-purple-600" />
+
+              <Card className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Shield className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="font-semibold text-foreground mb-2">Smart Location</h3>
-                <p className="text-sm text-muted-foreground">Find the cleanest air in your area</p>
+                <h3 className="text-lg font-semibold mb-2">Privacy Protected</h3>
+                <p className="text-sm text-muted-foreground">Your data is secure and private</p>
               </Card>
-              
-              <Card className="p-6 text-center hover:shadow-lg transition-shadow">
-                <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-6 h-6 text-pink-600" />
+
+              <Card className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <TrendingUp className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="font-semibold text-foreground mb-2">Community</h3>
-                <p className="text-sm text-muted-foreground">Join health-conscious individuals</p>
+                <h3 className="text-lg font-semibold mb-2">Ready to Track</h3>
+                <p className="text-sm text-muted-foreground">Start monitoring your air quality journey</p>
               </Card>
             </div>
           </div>
@@ -366,7 +366,7 @@ export default function Onboarding(): JSX.Element {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl mx-auto">
+      <Card className="floating-card w-full max-w-4xl mx-auto">
         <CardHeader className="text-center pb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
