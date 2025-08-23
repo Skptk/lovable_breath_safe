@@ -4,6 +4,49 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
+// Refresh lock mechanism to prevent duplicate pulls on manual refresh
+const REFRESH_LOCK_KEY = 'breath_safe_weather_refresh_lock';
+const REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes (slightly less than 15 to ensure smooth operation)
+
+// Helper function to check if refresh is locked
+const isRefreshLocked = (): boolean => {
+  try {
+    const lockData = localStorage.getItem(REFRESH_LOCK_KEY);
+    if (!lockData) return false;
+    
+    const { timestamp } = JSON.parse(lockData);
+    const now = Date.now();
+    const timeSinceLastRefresh = now - timestamp;
+    
+    // If less than 14 minutes have passed, refresh is locked
+    return timeSinceLastRefresh < REFRESH_LOCK_DURATION;
+  } catch {
+    return false;
+  }
+};
+
+// Helper function to set refresh lock
+const setRefreshLock = (): void => {
+  try {
+    const lockData = {
+      timestamp: Date.now(),
+      userAgent: navigator.userAgent
+    };
+    localStorage.setItem(REFRESH_LOCK_KEY, JSON.stringify(lockData));
+  } catch (error) {
+    console.warn('Failed to set weather refresh lock:', error);
+  }
+};
+
+// Helper function to clear refresh lock (for manual refresh)
+const clearRefreshLock = (): void => {
+  try {
+    localStorage.removeItem(REFRESH_LOCK_KEY);
+  } catch (error) {
+    console.warn('Failed to clear weather refresh lock:', error);
+  }
+};
+
 export interface WeatherData {
   temperature: number;
   humidity: number;
@@ -246,6 +289,12 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
 
   // Main function to fetch all weather data
   const fetchAllWeatherData = useCallback(async (lat: number, lon: number) => {
+    // Check refresh lock to prevent duplicate pulls on manual refresh
+    if (isRefreshLocked()) {
+      console.log('useWeatherData: Refresh locked - preventing duplicate weather data pull on manual refresh');
+      throw new Error('Weather data was recently fetched. Please wait for the next automatic refresh in 15 minutes.');
+    }
+
     setLoading(true);
     setError(null);
 
@@ -268,6 +317,10 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
       setCurrentWeather(comprehensiveWeather);
       setForecast(forecastData);
 
+      // Set refresh lock to prevent duplicate pulls on manual refresh
+      setRefreshLock();
+      console.log('useWeatherData: Refresh lock set - preventing duplicate pulls for 14 minutes');
+
       return {
         weather: comprehensiveWeather,
         forecast: forecastData
@@ -285,6 +338,23 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
       setLoading(false);
     }
   }, [fetchCurrentWeather, fetchForecast, fetchWindData, toast]);
+
+  // Manual refresh function that clears the refresh lock
+  const manualRefresh = useCallback(async () => {
+    try {
+      // Clear refresh lock for manual refresh
+      clearRefreshLock();
+      console.log('useWeatherData: Manual refresh - cleared refresh lock');
+      
+      if (options.latitude && options.longitude) {
+        await fetchAllWeatherData(options.latitude, options.longitude);
+        console.log('useWeatherData: Manual refresh completed');
+      }
+    } catch (error) {
+      console.error('Manual weather refresh failed:', error);
+      throw error;
+    }
+  }, [options.latitude, options.longitude, fetchAllWeatherData]);
 
   // React Query for weather data
   const weatherQuery = useQuery({
@@ -310,14 +380,14 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
       if (!user) return [];
 
       const { data, error } = await supabase
-        .from('comprehensive_weather_readings')
+        .from('air_quality_readings')
         .select('*')
         .eq('user_id', user.id)
         .order('timestamp', { ascending: false })
         .limit(50);
 
       if (error) throw error;
-      return data as ComprehensiveReading[];
+      return data || [];
     },
     enabled: !!user,
     staleTime: 60000, // 1 minute
@@ -398,6 +468,7 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
     // Actions
     fetchAllWeatherData,
     saveReadingMutation,
+    manualRefresh, // Add manualRefresh to the return object
     
     // Computed values
     weatherSummary,

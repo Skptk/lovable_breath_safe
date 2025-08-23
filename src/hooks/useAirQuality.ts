@@ -1,10 +1,15 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store";
 import { usePerformanceMonitor, useThrottle } from "@/hooks/usePerformance";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "@/contexts/LocationContext";
+import { useToast } from "@/hooks/use-toast";
+
+// Refresh lock mechanism to prevent duplicate pulls on manual refresh
+const REFRESH_LOCK_KEY = 'breath_safe_refresh_lock';
+const REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes (slightly less than 15 to ensure smooth operation)
 
 export interface AirQualityData {
   aqi: number;
@@ -40,11 +45,84 @@ export interface AirQualityData {
   };
 }
 
-export const useAirQuality = () => {
-  const { setCurrentAQI, setCurrentLocation, setLoading, setError } = useAppStore();
+interface UseAirQualityReturn {
+  data: AirQualityData | null;
+  isLoading: boolean;
+  isRefetching: boolean;
+  error: Error | null;
+  refetch: () => void;
+  manualRefresh: () => void;
+  hasUserConsent: boolean;
+  hasRequestedPermission: boolean;
+}
+
+// Helper function to check if refresh is locked
+const isRefreshLocked = (): boolean => {
+  try {
+    const lockData = localStorage.getItem(REFRESH_LOCK_KEY);
+    if (!lockData) return false;
+    
+    const { timestamp } = JSON.parse(lockData);
+    const now = Date.now();
+    const timeSinceLastRefresh = now - timestamp;
+    
+    // If less than 14 minutes have passed, refresh is locked
+    return timeSinceLastRefresh < REFRESH_LOCK_DURATION;
+  } catch {
+    return false;
+  }
+};
+
+// Helper function to set refresh lock
+const setRefreshLock = (): void => {
+  try {
+    const lockData = {
+      timestamp: Date.now(),
+      userAgent: navigator.userAgent
+    };
+    localStorage.setItem(REFRESH_LOCK_KEY, JSON.stringify(lockData));
+  } catch (error) {
+    console.warn('Failed to set refresh lock:', error);
+  }
+};
+
+// Helper function to clear refresh lock (for manual refresh)
+const clearRefreshLock = (): void => {
+  try {
+    localStorage.removeItem(REFRESH_LOCK_KEY);
+  } catch (error) {
+    console.warn('Failed to clear refresh lock:', error);
+  }
+};
+
+export const useAirQuality = (): UseAirQualityReturn => {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { setCurrentAQI, setCurrentLocation, setLoading, setError } = useAppStore();
   const { hasUserConsent, hasRequestedPermission, getCurrentLocation } = useLocation();
+  const [lastManualRefresh, setLastManualRefresh] = useState<number>(0);
   
+  // Track if this is the first load after a page refresh
+  const isFirstLoad = useRef(true);
+  const instanceId = useRef<string>(`useAirQuality_${Date.now()}_${Math.random()}`);
+  
+  // Check if this is a page refresh or new session
+  useEffect(() => {
+    const checkPageRefresh = () => {
+      // Check if this is a page refresh by looking at performance navigation type
+      if (performance.navigation.type === 1) { // TYPE_RELOAD
+        console.log('useAirQuality: Page refresh detected - checking refresh lock');
+        if (isRefreshLocked()) {
+          console.log('useAirQuality: Refresh locked - preventing duplicate data pull');
+          return false; // Refresh is locked
+        }
+      }
+      return true; // Allow refresh
+    };
+    
+    isFirstLoad.current = checkPageRefresh();
+  }, []);
+
   // Performance monitoring
   usePerformanceMonitor("useAirQuality");
   
@@ -205,6 +283,10 @@ export const useAirQuality = () => {
       setLoading(true);
       setError(null);
       
+      // Clear refresh lock for manual refresh
+      clearRefreshLock();
+      console.log('useAirQuality: Manual refresh - cleared refresh lock');
+      
       const location = await getCurrentLocation();
       if (!location) {
         throw new Error('Unable to get current location');
@@ -221,11 +303,16 @@ export const useAirQuality = () => {
         
         // Save reading to database
         await saveReadingToDatabase(openWeatherMapData);
+        
+        // Set new refresh lock after successful manual refresh
+        setRefreshLock();
+        console.log('useAirQuality: Manual refresh completed - new refresh lock set');
+        
         return openWeatherMapData;
       }
 
-          // Use OpenWeatherMap as primary source
-    console.log('Manual refresh: Using OpenWeatherMap API');
+      // Use OpenWeatherMap as primary source
+      console.log('Manual refresh: Using OpenWeatherMap API');
       // We'll handle this in the main fetch function
       return null;
     } catch (error) {
@@ -249,6 +336,12 @@ export const useAirQuality = () => {
       throw new Error('Location access not yet granted. Please click the location button to enable.');
     }
 
+    // Check refresh lock to prevent duplicate pulls on manual refresh
+    if (isRefreshLocked()) {
+      console.log('useAirQuality: Refresh locked - preventing duplicate data pull on manual refresh');
+      throw new Error('Data was recently fetched. Please wait for the next automatic refresh in 15 minutes.');
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -266,8 +359,8 @@ export const useAirQuality = () => {
       const { data: { session } } = await supabase.auth.getSession();
       console.log('User session:', session ? 'Authenticated' : 'Not authenticated');
       
-          // Try OpenWeatherMap first
-    const openWeatherMapResponse = await supabase.functions.invoke('get-air-quality', {
+      // Try OpenWeatherMap first
+      const openWeatherMapResponse = await supabase.functions.invoke('get-air-quality', {
         body: { lat: latitude, lon: longitude }
       });
 
@@ -355,6 +448,10 @@ export const useAirQuality = () => {
         await saveReadingToDatabase(airQualityData);
         console.log('fetchAirQualityData: Reading saved to database (enhanced format)');
         
+        // Set refresh lock to prevent duplicate pulls on manual refresh
+        setRefreshLock();
+        console.log('useAirQuality: Refresh lock set - preventing duplicate pulls for 14 minutes');
+        
         return airQualityData;
       } else if (openWeatherMapResponse.data && typeof openWeatherMapResponse.data === 'object' && 'list' in openWeatherMapResponse.data && Array.isArray((openWeatherMapResponse.data as any).list)) {
         // Raw OpenWeatherMap format (fallback)
@@ -381,6 +478,10 @@ export const useAirQuality = () => {
         console.log('fetchAirQualityData: About to save reading to database (fallback format)');
         await saveReadingToDatabase(airQualityData);
         console.log('fetchAirQualityData: Reading saved to database (fallback format)');
+        
+        // Set refresh lock to prevent duplicate pulls on manual refresh
+        setRefreshLock();
+        console.log('useAirQuality: Refresh lock set - preventing duplicate pulls for 14 minutes');
         
         return airQualityData;
       } else {

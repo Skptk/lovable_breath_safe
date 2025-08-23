@@ -1,8 +1,41 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useWeatherData } from '@/hooks/useWeatherData';
-import { useAirQuality } from '@/hooks/useAirQuality';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useAirQuality } from '../hooks/useAirQuality';
+import { useWeatherData } from '../hooks/useWeatherData';
+import { useTheme } from '../contexts/ThemeContext';
 import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
-import { useTheme } from '@/contexts/ThemeContext';
+
+// Refresh lock mechanism for weather backgrounds
+const BACKGROUND_REFRESH_LOCK_KEY = 'breath_safe_background_refresh_lock';
+const BACKGROUND_REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes
+
+// Helper function to check if background refresh is locked
+const isBackgroundRefreshLocked = (): boolean => {
+  try {
+    const lockData = localStorage.getItem(BACKGROUND_REFRESH_LOCK_KEY);
+    if (!lockData) return false;
+    
+    const { timestamp } = JSON.parse(lockData);
+    const now = Date.now();
+    const timeSinceLastRefresh = now - timestamp;
+    
+    return timeSinceLastRefresh < BACKGROUND_REFRESH_LOCK_DURATION;
+  } catch {
+    return false;
+  }
+};
+
+// Helper function to set background refresh lock
+const setBackgroundRefreshLock = (): void => {
+  try {
+    const lockData = {
+      timestamp: Date.now(),
+      userAgent: navigator.userAgent
+    };
+    localStorage.setItem(BACKGROUND_REFRESH_LOCK_KEY, JSON.stringify(lockData));
+  } catch (error) {
+    console.warn('Failed to set background refresh lock:', error);
+  }
+};
 
 interface BackgroundManagerProps {
   children: React.ReactNode;
@@ -26,6 +59,12 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   const targetBackground = useMemo(() => {
     if (!currentWeather) {
       return '/weather-backgrounds/partly-cloudy.webp';
+    }
+
+    // Check if background refresh is locked to prevent duplicate updates
+    if (isBackgroundRefreshLocked()) {
+      console.log('BackgroundManager: Refresh locked - using current background');
+      return currentBackground;
     }
 
     // Check if it's within sunrise/sunset period (highest priority)
@@ -57,8 +96,16 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
       }
     }
 
-    return getBackgroundImage(conditionCode, nightTime, isSunriseSunset);
-  }, [currentWeather]);
+    const newBackground = getBackgroundImage(conditionCode, nightTime, isSunriseSunset);
+    
+    // Set refresh lock when background changes
+    if (newBackground !== currentBackground) {
+      setBackgroundRefreshLock();
+      console.log('BackgroundManager: Background changed - refresh lock set');
+    }
+
+    return newBackground;
+  }, [currentWeather, currentBackground]);
 
   // Handle background transitions
   useEffect(() => {
