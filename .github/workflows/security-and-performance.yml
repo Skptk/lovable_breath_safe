@@ -38,19 +38,19 @@ jobs:
 
     - name: Run security scan
       if: steps.check-token.outputs.token_available == 'true'
-      run: |
-        npm install -g @gitguardian/ggshield
-        ggshield scan path . --exit-zero
       env:
         GITGUARDIAN_API_KEY: ${{ secrets.GG_TOKEN }}
+      run: |
+        npm install -g @gitguardian/ggshield
+        ggshield scan path . --exit-zero --verbose
 
     - name: Skip security scan (no token)
       if: steps.check-token.outputs.token_available == 'false'
       run: |
-        echo "Skipping security scan - no GG_TOKEN available"
-        echo "This is normal for forks or when secrets are not available"
+        echo "⚠️  GitGuardian token not available, skipping security scan"
+        echo "This is normal for forks and PRs from external contributors"
 
-    - name: Build application
+    - name: Build project
       run: npm run build
 
     - name: Start preview server and wait
@@ -77,16 +77,11 @@ jobs:
         echo "Server is responding correctly"
 
     - name: Run Lighthouse CI
-      if: steps.check-token.outputs.token_available == 'true'
+      env:
+        LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
       run: |
         npm install -g @lhci/cli@0.12.x
         lhci autorun --upload.target=temporary-public-storage
-
-    - name: Skip Lighthouse CI (no token)
-      if: steps.check-token.outputs.token_available == 'false'
-      run: |
-        echo "Skipping Lighthouse CI - no GG_TOKEN available"
-        echo "This is normal for forks or when secrets are not available"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -95,14 +90,10 @@ jobs:
         path: dist/
         retention-days: 30
 
-    - name: Deploy to Netlify
-      if: steps.check-token.outputs.token_available == 'true' && github.ref == 'refs/heads/master'
-      uses: nwtgck/actions-netlify@v2.0
+    - name: Upload Lighthouse reports
+      uses: actions/upload-artifact@v4
+      if: always()
       with:
-        publish-dir: './dist'
-        production-branch: master
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        deploy-message: "Deploy from GitHub Actions"
-      env:
-        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        name: lighthouse-reports
+        path: .lighthouseci/
+        retention-days: 30
