@@ -3,7 +3,7 @@ module.exports = {
     collect: {
       // Collect from local build with better CI handling
       startServerCommand: 'npm run preview:ci',
-      url: ['http://localhost:4173'],
+      url: ['http://localhost:4174'],
       numberOfRuns: 3,
       // Wait longer for server to start
       startServerReadyPattern: 'Local:',

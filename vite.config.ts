@@ -12,8 +12,8 @@ export default defineConfig(({ mode }) => ({
   },
   preview: {
     host: "0.0.0.0",
-    port: 4173,
-    strictPort: true,
+    port: 4174, // Changed from 4173 to avoid conflicts
+    strictPort: false, // Allow fallback to other ports if 4174 is busy
     // Better CI support
     open: false,
     // Ensure proper headers for CI
