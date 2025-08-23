@@ -60,25 +60,65 @@ jobs:
         LATEST_VERSION=$(curl -s https://api.github.com/repos/GitGuardian/ggshield/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
         echo "Latest version: $LATEST_VERSION"
         
-        # Download the Linux x86_64 binary directly from GitHub releases
-        DOWNLOAD_URL="https://github.com/GitGuardian/ggshield/releases/download/$LATEST_VERSION/ggshield_${LATEST_VERSION#v}_Linux_x86_64.tar.gz"
-        echo "Download URL: $DOWNLOAD_URL"
+        # List available assets to find the correct filename
+        echo "🔍 Checking available assets..."
+        curl -s "https://api.github.com/repos/GitGuardian/ggshield/releases/latest" | grep -o '"name":"[^"]*"' | head -10
         
-        # Download with verification
-        curl -L -o ggshield.tar.gz "$DOWNLOAD_URL"
+        # Try multiple possible filename patterns
+        POSSIBLE_FILENAMES=(
+          "ggshield_${LATEST_VERSION#v}_Linux_x86_64.tar.gz"
+          "ggshield-${LATEST_VERSION#v}-x86_64-unknown-linux-gnu.tar.gz"
+          "ggshield-${LATEST_VERSION#v}-x86_64-unknown-linux-musl.tar.gz"
+          "ggshield-${LATEST_VERSION#v}-x86_64-unknown-linux-gnu"
+          "ggshield-${LATEST_VERSION#v}-x86_64-unknown-linux-musl"
+        )
         
-        # Verify download
-        if [ ! -f ggshield.tar.gz ] || [ ! -s ggshield.tar.gz ]; then
-          echo "❌ Failed to download GitGuardian CLI"
-          ls -la ggshield.tar.gz || echo "File not found"
+        DOWNLOAD_SUCCESS=false
+        
+        for filename in "${POSSIBLE_FILENAMES[@]}"; do
+          DOWNLOAD_URL="https://github.com/GitGuardian/ggshield/releases/download/$LATEST_VERSION/$filename"
+          echo "🔄 Trying: $DOWNLOAD_URL"
+          
+          # Download with verification
+          if curl -L -o ggshield.tar.gz "$DOWNLOAD_URL" --fail --silent --show-error; then
+            # Check if file is actually a tar.gz (not HTML error page)
+            if file ggshield.tar.gz | grep -q "gzip compressed data"; then
+              echo "✅ Download successful for: $filename"
+              echo "File size: $(du -h ggshield.tar.gz | cut -f1)"
+              DOWNLOAD_SUCCESS=true
+              break
+            else
+              echo "⚠️  Downloaded file is not a valid tar.gz (got: $(file ggshield.tar.gz))"
+              rm -f ggshield.tar.gz
+            fi
+          else
+            echo "❌ Failed to download: $filename"
+          fi
+        done
+        
+        if [ "$DOWNLOAD_SUCCESS" = false ]; then
+          echo "❌ All download attempts failed"
+          echo "Available assets:"
+          curl -s "https://api.github.com/repos/GitGuardian/ggshield/releases/latest" | grep -o '"name":"[^"]*"' | head -20
           exit 1
         fi
         
-        echo "✅ Download successful, file size: $(du -h ggshield.tar.gz | cut -f1)"
-        
         # Extract and install
+        echo "📦 Extracting GitGuardian CLI..."
         tar -xzf ggshield.tar.gz
-        sudo mv ggshield /usr/local/bin/
+        
+        # Find the ggshield binary (it might be in a subdirectory)
+        if [ -f "ggshield" ]; then
+          sudo mv ggshield /usr/local/bin/
+        elif [ -f "target/release/ggshield" ]; then
+          sudo mv target/release/ggshield /usr/local/bin/
+        else
+          echo "🔍 Looking for ggshield binary..."
+          find . -name "ggshield" -type f
+          echo "❌ Could not find ggshield binary"
+          exit 1
+        fi
+        
         chmod +x /usr/local/bin/ggshield
         
         # Verify installation
