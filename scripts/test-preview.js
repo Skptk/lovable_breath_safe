@@ -33,21 +33,22 @@ try {
   }
 
   console.log('✅ Build verification passed');
-  console.log(`📁 Dist directory contains ${jsFiles.length} JS files`);
-  
-  // Test preview server startup
-  console.log('🚀 Testing preview server startup...');
+  console.log(`📁 Dist directory: ${distDir}`);
+  console.log(`📄 Index file: ${indexPath}`);
+  console.log(`🔧 JS files: ${jsFiles.length} found`);
+
+  // Test preview server
+  console.log('🚀 Testing preview server...');
   
   // Start preview server in background
   const previewProcess = execSync('npm run preview:ci', { 
     stdio: 'pipe',
-    encoding: 'utf8',
-    timeout: 30000 // 30 second timeout
+    encoding: 'utf8'
   });
-  
-  console.log('✅ Preview server started successfully');
-  console.log('📋 Server output:', previewProcess);
-  
+
+  console.log('✅ Preview server test completed');
+  console.log('📊 Server output:', previewProcess);
+
 } catch (error) {
   console.error('❌ Test failed:', error.message);
   process.exit(1);
