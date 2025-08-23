@@ -10,8 +10,8 @@ module.exports = {
       waitForPageLoad: 120000, // 2 minutes for React app
       maxWaitForLoad: 180000, // 3 minutes maximum
       numberOfRuns: 1, // Reduce to 1 run for CI stability
-      // Specify the URL to test
-      url: ['http://localhost:4174/'],
+      // Let Lighthouse CI auto-detect the port instead of hardcoding
+      // url: ['http://localhost:4174/'], // Removed hardcoded port
       settings: {
         // Chrome flags optimized for React apps in CI environments
         chromeFlags: '--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-web-security --disable-extensions --disable-plugins --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-ipc-flooding-protection --disable-hang-monitor --disable-prompt-on-repost --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-default-apps --disable-sync --metrics-recording-only --no-first-run --safebrowsing-disable-auto-update --password-store=basic --use-mock-keychain --force-device-scale-factor=1 --disable-features=VizDisplayCompositor',
@@ -24,7 +24,7 @@ module.exports = {
           downloadThroughputKbps: 0,
           uploadThroughputKbps: 0
         },
-        // Additional settings to help with React apps
+        // Simplified React app waiting - remove complex waiting that might cause issues
         // Wait for network idle
         waitForNetworkIdle: true,
         // Wait for CPU idle
@@ -32,23 +32,17 @@ module.exports = {
         // Wait for multiple paint events to ensure content is rendered
         waitForPaint: true,
         // Wait for multiple frames to ensure stable rendering
-        waitForFrames: 10,
+        waitForFrames: 5, // Reduced from 10
         // Wait for specific elements that indicate React app is loaded
-        waitForSelector: 'div, #root, [data-testid], .app, .container',
-        // Additional timeout for React hydration
-        waitForHydration: true,
-        // Wait for specific content to appear
-        waitForContent: 'Breath Safe, Air Quality, Dashboard, Monitor',
-        // Wait for JavaScript execution to complete
-        waitForJavaScript: true,
-        // Wait for DOM to be stable
-        waitForDOMStable: true,
-        // Wait for images to load
-        waitForImages: true,
-        // Wait for fonts to load
-        waitForFonts: true,
-        // Wait for CSS to load
-        waitForCSS: true,
+        waitForSelector: '#root', // Simplified selector
+        // Remove complex waiting that might cause timeouts
+        // waitForHydration: true, // Removed
+        // waitForContent: 'Breath Safe, Air Quality, Dashboard, Monitor', // Removed
+        // waitForJavaScript: true, // Removed
+        // waitForDOMStable: true, // Removed
+        // waitForImages: true, // Removed
+        // waitForFonts: true, // Removed
+        // waitForCSS: true, // Removed
         // Disable flaky audits for CI stability
         onlyAudits: [
           'first-contentful-paint',
