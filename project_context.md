@@ -1633,20 +1633,11 @@ The `.github/workflows/security-and-performance.yml` workflow provides:
 - **Security Checklist**: Pre-commit and pre-deployment validation steps
 - **Remediation Procedures**: Immediate action steps for security incidents
 
-#### **Required Secrets**
-Configure these secrets in your GitHub repository for full functionality:
-
-```bash
-# GitGuardian API token
-GG_TOKEN=your_gitguardian_token
-
-# Lighthouse CI GitHub App token
-LHCI_GITHUB_APP_TOKEN=your_lhci_token
-
-# Netlify deployment
-NETLIFY_AUTH_TOKEN=your_netlify_token
-NETLIFY_SITE_ID=your_site_id
-```
+#### **Setup Instructions**
+- **Environment Variables**: Required secrets for GitGuardian and Lighthouse CI
+- **Local Development**: Commands for manual security and performance checks
+- **CI/CD Configuration**: GitHub Actions secrets and workflow setup
+- **Netlify Integration**: Deployment pipeline configuration and monitoring
 
 ### 🎯 **Security & Performance Impact**
 
@@ -2430,6 +2421,116 @@ Successfully implemented footer layout changes based on user's marked-up screens
 - **Better user experience** through logical element grouping
 - **Professional appearance** with balanced layout structure
 - **Maintained accessibility** and responsive design principles
+
+---
+
+## Golden Rule
+
+---
+
+## Footer Layout Refinements – 2025-01-22
+
+### **Footer Layout Adjustments Based on User Feedback**
+
+#### **Overview**
+Successfully implemented additional footer layout refinements based on user feedback to improve the visual hierarchy and positioning of key elements. These changes enhance the footer's professional appearance and user experience.
+
+#### **Layout Changes Implemented**
+
+##### **Copyright Text Repositioning**
+- **Previous Position**: Copyright text was positioned within the left branding section
+- **New Position**: Copyright text "© 2025 Breath Safe. All rights reserved." is now dead center and positioned low on the footer
+- **Visual Impact**: Creates better visual balance and follows standard footer design conventions
+
+##### **Social Media Icons Repositioning**
+- **Previous Position**: Social media icons were below the legal links
+- **New Position**: Social media icons are now positioned above the legal links
+- **Visual Hierarchy**: Improves the flow from branding → social media → legal links
+
+##### **Social Media Platform Update**
+- **Instagram (IG) → Twitter/X**: Changed from Instagram to Twitter/X platform
+- **Color Update**: Updated Twitter/X icon to use blue gradient (from-blue-400 to-blue-600)
+- **Platform Consistency**: Maintains TikTok (TT) and YouTube (YT) as requested
+
+#### **Layout Structure Details**
+
+##### **Desktop Layout (lg:flex-row)**
+```
+[Left Side - Branding]                    [Right Side - Social & Legal]
+- Logo + "Breath Safe"                    - Social Media Icons (X, TT, YT)
+- Tagline                                 - Legal Links (Privacy, Refund, Contact)
+- "Built by Alex with love"               
+
+[Center Bottom - Copyright]
+- © 2025 Breath Safe. All rights reserved.
+```
+
+##### **Mobile Layout (flex-col)**
+```
+[Centered Layout]
+- Logo + "Breath Safe"
+- Tagline
+- "Built by Alex with love"
+- Social Media Icons
+- Legal Links
+- Copyright (centered at bottom)
+```
+
+#### **Design Improvements**
+
+##### **Visual Balance**
+- **Centered copyright** creates better visual weight distribution
+- **Social media prominence** increases engagement potential
+- **Logical flow** from social interaction to legal information
+- **Professional appearance** follows modern footer design standards
+
+##### **User Experience**
+- **Clear hierarchy** makes footer easier to navigate
+- **Social media visibility** improves brand engagement opportunities
+- **Copyright prominence** ensures proper attribution visibility
+- **Mobile optimization** maintained for all device types
+
+#### **Files Modified**
+- `src/components/Footer.tsx`: Footer layout restructuring and social media platform update
+
+#### **Social Media Platform Details**
+
+##### **Twitter/X (Previously Instagram)**
+- **Icon**: "X" (replacing "IG")
+- **Color**: Blue gradient (from-blue-400 to-blue-600)
+- **Link**: https://twitter.com
+- **Purpose**: Professional social media presence
+
+##### **TikTok**
+- **Icon**: "TT"
+- **Color**: Purple to blue gradient (from-purple-500 to-blue-600)
+- **Link**: https://tiktok.com
+- **Purpose**: Video content and engagement
+
+##### **YouTube**
+- **Icon**: "YT"
+- **Color**: Red gradient (from-red-500 to-red-600)
+- **Link**: https://youtube.com
+- **Purpose**: Video content and tutorials
+
+#### **Verification Checklist**
+- [x] Copyright text moved to center bottom of footer
+- [x] Social media icons positioned above legal links
+- [x] Instagram changed to Twitter/X with appropriate styling
+- [x] TikTok and YouTube maintained as requested
+- [x] Two-column layout maintained for desktop screens
+- [x] Responsive mobile layout preserved
+- [x] All existing functionality maintained
+- [x] Visual hierarchy improved
+- [x] Build process successful
+- [x] No existing functionality broken
+
+#### **Design Impact**
+- **Improved visual hierarchy** with better element positioning
+- **Enhanced user experience** through logical information flow
+- **Professional appearance** with centered copyright and organized social media
+- **Maintained accessibility** and responsive design principles
+- **Better brand engagement** through prominent social media placement
 
 ---
 

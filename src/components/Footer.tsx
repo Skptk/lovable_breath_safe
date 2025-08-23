@@ -29,7 +29,6 @@ export default function Footer() {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground mb-2">Built by Alex with love</p>
-              <p className="text-xs text-muted-foreground">© 2025 Breath Safe. All rights reserved.</p>
             </div>
 
             {/* Right Side - Email Subscription */}
@@ -49,6 +48,11 @@ export default function Footer() {
                 </button>
               </div>
             </div>
+          </div>
+          
+          {/* Copyright - Centered at bottom */}
+          <div className="mt-8 text-center">
+            <p className="text-xs text-muted-foreground">© 2025 Breath Safe. All rights reserved.</p>
           </div>
         </div>
       </motion.footer>
@@ -77,33 +81,19 @@ export default function Footer() {
               </div>
             </div>
             <p className="text-sm text-muted-foreground mb-2">Built by Alex with love</p>
-            <p className="text-xs text-muted-foreground">© 2025 Breath Safe. All rights reserved.</p>
           </div>
 
-          {/* Right Side - Legal Links and Social Media */}
+          {/* Right Side - Social Media and Legal Links */}
           <div className="flex flex-col items-center lg:items-end text-center lg:text-right gap-4">
-            {/* Legal Links */}
-            <div className="flex flex-wrap justify-center lg:justify-end gap-6 text-sm">
-              <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
-                Privacy policy
-              </Link>
-              <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
-                Refund policy
-              </Link>
-              <Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
-                Contact information
-              </Link>
-            </div>
-
-            {/* Social Media Icons */}
+            {/* Social Media Icons - Above Legal Links */}
             <div className="flex gap-3">
               <a 
-                href="https://instagram.com" 
+                href="https://twitter.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-bold hover:scale-110 transition-transform"
+                className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold hover:scale-110 transition-transform"
               >
-                IG
+                X
               </a>
               <a 
                 href="https://tiktok.com" 
@@ -122,7 +112,25 @@ export default function Footer() {
                 YT
               </a>
             </div>
+
+            {/* Legal Links - Below Social Media */}
+            <div className="flex flex-wrap justify-center lg:justify-end gap-6 text-sm">
+              <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+                Privacy policy
+              </Link>
+              <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+                Refund policy
+              </Link>
+              <Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
+                Contact information
+              </Link>
+            </div>
           </div>
+        </div>
+        
+        {/* Copyright - Centered at bottom */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-muted-foreground">© 2025 Breath Safe. All rights reserved.</p>
         </div>
       </div>
     </motion.footer>
