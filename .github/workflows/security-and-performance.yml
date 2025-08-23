@@ -50,8 +50,10 @@ jobs:
         # Install GitGuardian CLI
         pip install ggshield
         
-        # Verify installation
+        # Verify installation and check available commands
         ggshield --version
+        echo "Available commands:"
+        ggshield --help
         
         # Store virtual environment path
         echo "GGSHIELD_ENV=$(pwd)/ggshield-env" >> $GITHUB_ENV
@@ -67,10 +69,26 @@ jobs:
         # Run GitGuardian scan with current command syntax
         echo "🔍 Running GitGuardian security scan..."
         
-        # Use the correct command for version 1.42.0
-        ggshield scan path . --exit-zero --verbose
+        # Try different command variations for version 1.42.0
+        echo "Attempting to scan with available commands..."
         
-        echo "✅ Security scan completed successfully"
+        # Method 1: Try the new command structure
+        if ggshield secret scan path . --exit-zero --verbose; then
+          echo "✅ Security scan completed successfully with 'secret scan'"
+        # Method 2: Try alternative command structure
+        elif ggshield scan-repo . --exit-zero --verbose; then
+          echo "✅ Security scan completed successfully with 'scan-repo'"
+        # Method 3: Try basic scan command
+        elif ggshield scan . --exit-zero --verbose; then
+          echo "✅ Security scan completed successfully with 'scan'"
+        # Method 4: Try directory scan
+        elif ggshield scan-dir . --exit-zero --verbose; then
+          echo "✅ Security scan completed successfully with 'scan-dir'"
+        else
+          echo "❌ All scan methods failed. Available commands:"
+          ggshield --help
+          exit 1
+        fi
 
     - name: Build project
       run: npm run build
