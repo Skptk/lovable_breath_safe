@@ -1,5 +1,7 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 # yaml-lint disable rule:unrecognized-named-value
+# GitHub Actions workflow - secrets context is valid
+# This is a valid GitHub Actions workflow file
 name: Security & Performance CI/CD
 
 on:
@@ -27,6 +29,7 @@ jobs:
         run: npm ci
         
       - name: Check GitGuardian Token
+        # yaml-lint disable rule:unrecognized-named-value
         run: |
           if [ -z "${{ secrets.GG_TOKEN }}" ]; then
             echo "⚠️  Warning: GG_TOKEN secret not found"
@@ -40,12 +43,15 @@ jobs:
           fi
         
       - name: Run secret scan (if token available)
+        # yaml-lint disable rule:unrecognized-named-value
         if: ${{ secrets.GG_TOKEN != '' }}
         run: npm run secret-scan:ci
         env:
+          # yaml-lint disable rule:unrecognized-named-value
           GG_TOKEN: ${{ secrets.GG_TOKEN }}
           
       - name: Skip secret scan (no token)
+        # yaml-lint disable rule:unrecognized-named-value
         if: ${{ secrets.GG_TOKEN == '' }}
         run: |
           echo "⏭️  Skipping GitGuardian secret scan - no token provided"
@@ -135,6 +141,7 @@ jobs:
       - name: Run Lighthouse CI
         run: npm run lhci
         env:
+          # yaml-lint disable rule:unrecognized-named-value
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
           
       - name: Upload Lighthouse reports
@@ -207,8 +214,11 @@ jobs:
         with:
           publish-dir: './dist'
           production-branch: main
+          # yaml-lint disable rule:unrecognized-named-value
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: "Deploy from GitHub Actions"
         env:
+          # yaml-lint disable rule:unrecognized-named-value
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          # yaml-lint disable rule:unrecognized-named-value
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}

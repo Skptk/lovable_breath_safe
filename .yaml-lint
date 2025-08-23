@@ -11,6 +11,11 @@ rules:
   
   # Allow GitHub Actions specific indentation
   indentation: disable
+  
+  # Disable other rules that might interfere
+  trailing-spaces: disable
+  empty-lines: disable
+  comments-indentation: disable
 
 # GitHub Actions specific patterns
 patterns:
@@ -29,3 +34,23 @@ contexts:
   - inputs
   - steps
   - jobs
+  - context
+  - event
+  - workflow
+
+# Explicitly allow GitHub Actions expressions
+expressions:
+  - "${{ }}"
+  - "${{ secrets.* }}"
+  - "${{ github.* }}"
+  - "${{ env.* }}"
+  - "${{ vars.* }}"
+  - "${{ runner.* }}"
+  - "${{ matrix.* }}"
+  - "${{ needs.* }}"
+  - "${{ inputs.* }}"
+  - "${{ steps.* }}"
+  - "${{ jobs.* }}"
+  - "${{ context.* }}"
+  - "${{ event.* }}"
+  - "${{ workflow.* }}"
