@@ -84,6 +84,10 @@ export default function Landing(): JSX.Element {
     navigate("/auth");
   };
 
+  const handleTryApp = () => {
+    navigate("/demo?view=dashboard");
+  };
+
   // Show loading while checking authentication
   if (loading) {
     return (
@@ -128,6 +132,15 @@ export default function Landing(): JSX.Element {
               >
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="lg" 
+                onClick={handleTryApp}
+                className="px-8 py-4 text-lg font-semibold border-2 hover:bg-accent transition-all duration-300"
+              >
+                Try the app
               </Button>
               
               <Button 

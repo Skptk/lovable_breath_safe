@@ -33,9 +33,10 @@ interface AirQualityData {
 interface WeatherStatsProps {
   showMobileMenu?: boolean;
   onMobileMenuToggle?: () => void;
+  isDemoMode?: boolean;
 }
 
-export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: WeatherStatsProps = {}): JSX.Element {
+export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDemoMode = false }: WeatherStatsProps = {}): JSX.Element {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [airQualityData, setAirQualityData] = useState<AirQualityData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -555,6 +556,35 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
+
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <motion.div
+          className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-sm">🎯</span>
+              </div>
+              <div>
+                <h3 className="font-semibold">Demo Mode</h3>
+                <p className="text-sm text-blue-100">You're viewing a limited preview. Create an account to unlock all features!</p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => window.location.href = "/onboarding"}
+              className="bg-white text-blue-600 hover:bg-blue-50"
+            >
+              Get Started
+            </Button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Weather Stats Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

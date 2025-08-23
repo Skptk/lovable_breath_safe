@@ -19,12 +19,14 @@ interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
   showMobileMenu?: boolean;
   onMobileMenuToggle?: () => void;
+  isDemoMode?: boolean;
 }
 
 export default function AirQualityDashboard({ 
   onNavigate, 
   showMobileMenu, 
-  onMobileMenuToggle 
+  onMobileMenuToggle,
+  isDemoMode = false
 }: AirQualityDashboardProps) {
   const { user } = useAuth();
   const { data, isRefetching: isRefreshing, refetch, hasUserConsent, hasRequestedPermission, isLoading, error, manualRefresh } = useAirQuality();
@@ -240,6 +242,35 @@ export default function AirQualityDashboard({
           showMobileMenu={showMobileMenu}
           onMobileMenuToggle={onMobileMenuToggle}
         />
+
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <motion.div
+            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">🎯</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Demo Mode</h3>
+                  <p className="text-sm text-blue-100">You're viewing a limited preview. Create an account to unlock all features!</p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => window.location.href = "/onboarding"}
+                className="bg-white text-blue-600 hover:bg-blue-50"
+              >
+                Get Started
+              </Button>
+            </div>
+          </motion.div>
+        )}
 
         {/* Main AQI Card */}
         <motion.div

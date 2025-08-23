@@ -35,6 +35,8 @@ const Products = lazy(() => retry(() => import("./pages/Products")));
 const Privacy = lazy(() => retry(() => import("./pages/Privacy")));
 const Terms = lazy(() => retry(() => import("./pages/Terms")));
 const NotFound = lazy(() => retry(() => import("./pages/NotFound")));
+const Demo = lazy(() => retry(() => import("./pages/Demo")));
+const Contact = lazy(() => retry(() => import("./pages/Contact")));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -179,6 +181,8 @@ const App = (): JSX.Element => {
                   <Route path="/products" element={<Products />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
+                  <Route path="/demo" element={<Demo />} />
+                  <Route path="/contact" element={<Contact />} />
                   <Route 
                     path="/dashboard" 
                     element={
