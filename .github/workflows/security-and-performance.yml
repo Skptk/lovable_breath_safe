@@ -108,30 +108,52 @@ jobs:
         tar -xzf ggshield.tar.gz
         
         # Find the ggshield binary (it might be in a subdirectory)
+        echo "🔍 Looking for ggshield binary..."
+        find . -name "ggshield" -type f
+        
+        # Try to find the binary in common locations
+        BINARY_PATH=""
         if [ -f "ggshield" ]; then
-          sudo mv ggshield /usr/local/bin/
+          BINARY_PATH="ggshield"
         elif [ -f "target/release/ggshield" ]; then
-          sudo mv target/release/ggshield /usr/local/bin/
+          BINARY_PATH="target/release/ggshield"
         else
-          echo "🔍 Looking for ggshield binary..."
-          find . -name "ggshield" -type f
-          echo "❌ Could not find ggshield binary"
-          exit 1
+          # Look for the binary in extracted directories
+          EXTRACTED_DIR=$(find . -maxdepth 1 -type d -name "ggshield-*" | head -1)
+          if [ -n "$EXTRACTED_DIR" ] && [ -f "$EXTRACTED_DIR/ggshield" ]; then
+            BINARY_PATH="$EXTRACTED_DIR/ggshield"
+            echo "✅ Found binary in: $BINARY_PATH"
+          else
+            echo "❌ Could not find ggshield binary"
+            echo "Current directory contents:"
+            ls -la
+            echo "Extracted directories:"
+            find . -maxdepth 1 -type d
+            exit 1
+          fi
         fi
         
-        chmod +x /usr/local/bin/ggshield
-        
-        # Verify installation
-        if command -v ggshield >/dev/null 2>&1; then
-          echo "✅ GitGuardian CLI installed successfully"
-          ggshield --version
+        if [ -n "$BINARY_PATH" ]; then
+          echo "📦 Installing ggshield from: $BINARY_PATH"
+          sudo mv "$BINARY_PATH" /usr/local/bin/
+          chmod +x /usr/local/bin/ggshield
+          
+          # Verify installation
+          if command -v ggshield >/dev/null 2>&1; then
+            echo "✅ GitGuardian CLI installed successfully"
+            ggshield --version
+          else
+            echo "❌ Failed to install GitGuardian CLI"
+            exit 1
+          fi
         else
-          echo "❌ Failed to install GitGuardian CLI"
+          echo "❌ Binary path not found"
           exit 1
         fi
         
         # Cleanup
         rm -f ggshield.tar.gz
+        rm -rf ggshield-*
 
     - name: Run security scan
       if: steps.check-token.outputs.token_available == 'true'
