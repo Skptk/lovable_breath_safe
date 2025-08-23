@@ -55,18 +55,28 @@ jobs:
         echo "🔍 Available GitGuardian CLI commands:"
         ggshield --help
         
+        # Configure GitGuardian with API key
+        echo "🔑 Configuring GitGuardian with API key..."
+        export GITGUARDIAN_API_KEY="${{ secrets.GG_TOKEN }}"
+        
+        # Migrate deprecated config if it exists
+        if [ -f ".gitguardian.yaml" ]; then
+          echo "🔄 Migrating deprecated .gitguardian.yaml configuration..."
+          ggshield config migrate || echo "⚠️ Config migration failed, continuing..."
+        fi
+        
         # Try multiple command variations
         echo "🔍 Running GitGuardian security scan..."
         
-        # Method 1: Try scan path command
-        if ggshield scan path . --exit-zero --verbose; then
-          echo "✅ GitGuardian scan completed successfully with scan path"
+        # Method 1: Try secret scan command
+        if ggshield secret scan path . --exit-zero --verbose; then
+          echo "✅ GitGuardian scan completed successfully with secret scan"
           exit 0
         fi
         
-        # Method 2: Try secret scan command
-        if ggshield secret scan path . --exit-zero --verbose; then
-          echo "✅ GitGuardian scan completed successfully with secret scan"
+        # Method 2: Try scan path command
+        if ggshield scan path . --exit-zero --verbose; then
+          echo "✅ GitGuardian scan completed successfully with scan path"
           exit 0
         fi
         
