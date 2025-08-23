@@ -11,8 +11,8 @@ module.exports = {
       // Wait longer for page to load
       waitForPageLoad: 30000, // 30 seconds
       settings: {
-        // Chrome flags optimized for CI environments
-        chromeFlags: '--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-web-security --disable-features=VizDisplayCompositor --disable-extensions --disable-plugins --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-ipc-flooding-protection --disable-hang-monitor --disable-prompt-on-repost --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-default-apps --disable-sync --metrics-recording-only --no-first-run --safebrowsing-disable-auto-update --password-store=basic --use-mock-keychain --force-device-scale-factor=1',
+        // Chrome flags optimized for CI environments (desktop)
+        chromeFlags: '--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-web-security --disable-features=VizDisplayCompositor --disable-extensions --disable-plugins --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-ipc-flooding-protection --disable-hang-monitor --disable-prompt-on-repost --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-default-apps --disable-sync --metrics-recording-only --no-first-run --safebrowsing-disable-auto-update --password-store=basic --use-mock-keychain',
         // Emulate desktop for consistent testing
         emulatedFormFactor: 'desktop',
         // Collect all categories
@@ -30,7 +30,6 @@ module.exports = {
         },
         // Disable some features that can cause issues in CI
         disableStorageReset: true,
-        formFactor: 'desktop',
         maxWaitForLoad: 45000, // 45 seconds
       },
     },
