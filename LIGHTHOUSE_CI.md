@@ -75,7 +75,7 @@ npx lhci collect --config=./custom-lighthouse.config.js
 ```javascript
 collect: {
   startServerCommand: 'npm run preview',  // Start local server
-  url: ['http://localhost:4173'],         // URLs to audit
+  url: ['http://localhost:4174'],         // URLs to audit
   numberOfRuns: 3,                        // Number of test runs
   settings: {
     chromeFlags: '--no-sandbox --disable-dev-shm-usage',
