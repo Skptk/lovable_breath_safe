@@ -36,11 +36,50 @@ jobs:
           echo "token_available=false" >> $GITHUB_OUTPUT
         fi
 
+    - name: Network diagnostics
+      if: steps.check-token.outputs.token_available == 'true'
+      run: |
+        echo "🔍 Checking network connectivity..."
+        echo "Testing DNS resolution:"
+        nslookup github.com || echo "❌ DNS resolution failed for github.com"
+        nslookup api.github.com || echo "❌ DNS resolution failed for api.github.com"
+        
+        echo "Testing HTTP connectivity:"
+        curl -I https://github.com || echo "❌ HTTPS connection failed to github.com"
+        curl -I https://api.github.com || echo "❌ HTTPS connection failed to api.github.com"
+        
+        echo "Testing ping (if available):"
+        ping -c 3 github.com || echo "⚠️  Ping not available or failed"
+
     - name: Install GitGuardian CLI
       if: steps.check-token.outputs.token_available == 'true'
       run: |
-        # Use official GitGuardian installation script
-        curl -sSf https://get.gitguardian.com | bash
+        echo "📥 Installing GitGuardian CLI..."
+        
+        # Get the latest version from GitHub API
+        LATEST_VERSION=$(curl -s https://api.github.com/repos/GitGuardian/ggshield/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+        echo "Latest version: $LATEST_VERSION"
+        
+        # Download the Linux x86_64 binary directly from GitHub releases
+        DOWNLOAD_URL="https://github.com/GitGuardian/ggshield/releases/download/$LATEST_VERSION/ggshield_${LATEST_VERSION#v}_Linux_x86_64.tar.gz"
+        echo "Download URL: $DOWNLOAD_URL"
+        
+        # Download with verification
+        curl -L -o ggshield.tar.gz "$DOWNLOAD_URL"
+        
+        # Verify download
+        if [ ! -f ggshield.tar.gz ] || [ ! -s ggshield.tar.gz ]; then
+          echo "❌ Failed to download GitGuardian CLI"
+          ls -la ggshield.tar.gz || echo "File not found"
+          exit 1
+        fi
+        
+        echo "✅ Download successful, file size: $(du -h ggshield.tar.gz | cut -f1)"
+        
+        # Extract and install
+        tar -xzf ggshield.tar.gz
+        sudo mv ggshield /usr/local/bin/
+        chmod +x /usr/local/bin/ggshield
         
         # Verify installation
         if command -v ggshield >/dev/null 2>&1; then
@@ -50,6 +89,9 @@ jobs:
           echo "❌ Failed to install GitGuardian CLI"
           exit 1
         fi
+        
+        # Cleanup
+        rm -f ggshield.tar.gz
 
     - name: Run security scan
       if: steps.check-token.outputs.token_available == 'true'
