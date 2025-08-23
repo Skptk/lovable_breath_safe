@@ -2341,3 +2341,96 @@ interface AirQualityDashboardProps {
 ---
 
 ## Golden Rule
+
+---
+
+## Footer Layout Rearrangement – 2025-01-22
+
+### **Footer Layout Optimization Based on User Design Direction**
+
+#### **Overview**
+Successfully implemented footer layout changes based on user's marked-up screenshot with blue arrows indicating the desired arrangement. The footer has been restructured to create better visual balance and organization following the user's specific design direction.
+
+#### **Layout Changes Implemented**
+
+##### **Left Side - Branding Section**
+- **Logo and Title**: "Breath Safe" branding moved to the left side as indicated by left arrows
+- **Tagline**: "Monitor air quality, earn rewards" positioned below the title
+- **Creator Credit**: "Built by Alex with love" maintained below tagline
+- **Copyright**: "© 2025 Breath Safe. All rights reserved." positioned at bottom left
+
+##### **Right Side - Legal & Social Section**
+- **Legal Links**: Privacy policy, Refund policy, Contact information moved to the right side as shown by right arrows
+- **Social Media Icons**: Instagram (IG), TikTok (TT), YouTube (YT) positioned below legal links on the right
+- **Proper Spacing**: Clean separation between left and right sections
+
+##### **Layout Structure**
+- **Two-column layout** on larger screens (lg:flex-row) for proper left-right separation
+- **Centered layout** on mobile devices (flex-col) for responsive design
+- **Balanced spacing** between left and right sections (justify-between)
+- **Visual hierarchy** following modern footer design principles
+
+#### **Design Improvements**
+
+##### **Visual Balance**
+- **Left-right alignment** creates better visual weight distribution
+- **Clean separation** between branding and functional elements
+- **Consistent spacing** maintains professional appearance
+- **Responsive behavior** adapts to different screen sizes
+
+##### **User Experience**
+- **Clear organization** makes footer easier to navigate
+- **Logical grouping** of related elements (branding vs. legal/social)
+- **Accessibility maintained** with proper link structure and hover states
+- **Mobile optimization** ensures usability on all devices
+
+#### **Files Modified**
+- `src/components/Footer.tsx`: Complete footer layout restructuring based on user's arrow sketch
+
+#### **Layout Structure Details**
+
+##### **Desktop Layout (lg:flex-row)**
+```
+[Left Side - Branding]                    [Right Side - Legal & Social]
+- Logo + "Breath Safe"                    - Privacy policy
+- Tagline                                 - Refund policy  
+- "Built by Alex with love"               - Contact information
+- Copyright                               - Social media icons (IG, TT, YT)
+```
+
+##### **Mobile Layout (flex-col)**
+```
+[Centered Layout]
+- Logo + "Breath Safe"
+- Tagline
+- "Built by Alex with love"
+- Copyright
+- Legal links
+- Social media icons
+```
+
+#### **Arrow Direction Implementation**
+- **Left arrows** → Branding section positioned on the left
+- **Right arrows** → Legal links and social media positioned on the right
+- **Center arrows** → Balanced, organized layout structure
+- **Visual flow** follows user's intended design direction
+
+#### **Verification Checklist**
+- [x] Footer branding moved to left side as indicated by left arrows
+- [x] Legal links and social media moved to right side as shown by right arrows
+- [x] Two-column layout implemented for desktop screens
+- [x] Responsive mobile layout maintained
+- [x] All existing functionality preserved
+- [x] Visual balance and spacing optimized
+- [x] Build process successful
+- [x] No existing functionality broken
+
+#### **Design Impact**
+- **Improved visual hierarchy** with clear left-right organization
+- **Better user experience** through logical element grouping
+- **Professional appearance** with balanced layout structure
+- **Maintained accessibility** and responsive design principles
+
+---
+
+## Golden Rule
