@@ -298,34 +298,7 @@
     border: 1px solid rgba(255, 255, 255, 0.15);
   }
 
-  /* Enhanced card styling for modern aesthetic */
-  .modern-card {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-card);
-    transition: var(--transition-smooth);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .modern-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, hsl(var(--accent)), transparent);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  .modern-card:hover::before {
-    opacity: 1;
-  }
-
-  /* Floating cards that float above background with glass effects */
+  /* Floating cards that float above background with glass effects - ALWAYS VISIBLE */
   .floating-card {
     background: rgba(38, 42, 50, 0.25);
     backdrop-filter: blur(16px);
