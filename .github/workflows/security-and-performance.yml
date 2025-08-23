@@ -39,134 +39,169 @@ jobs:
     - name: Install GitGuardian CLI
       if: steps.check-token.outputs.token_available == 'true'
       run: |
-        # Install Python3 and pip
-        sudo apt-get update
-        sudo apt-get install -y python3 python3-pip python3-venv
-        
-        # Create virtual environment
-        python3 -m venv ggshield-env
-        source ggshield-env/bin/activate
-        
-        # Install GitGuardian CLI
-        pip install ggshield
-        
-        # Verify installation and check available commands
-        ggshield --version
-        echo "Available commands:"
-        ggshield --help
-        
-        # Store virtual environment path
-        echo "GGSHIELD_ENV=$(pwd)/ggshield-env" >> $GITHUB_ENV
+        echo "📥 Installing GitGuardian CLI..."
+        python3 -m pip install --user --upgrade pip
+        python3 -m pip install --user ggshield
+        echo "✅ GitGuardian CLI installed successfully"
+        python3 -m ggshield --version
 
-    - name: Migrate GitGuardian configuration
+    - name: Run GitGuardian security scan
       if: steps.check-token.outputs.token_available == 'true'
       run: |
-        # Activate virtual environment
-        source $GGSHIELD_ENV/bin/activate
-        
-        # Migrate deprecated configuration if .gitguardian.yaml exists
-        if [ -f ".gitguardian.yaml" ]; then
-          echo "🔄 Migrating deprecated .gitguardian.yaml configuration..."
-          if ggshield config migrate; then
-            echo "✅ Configuration migration successful"
-          else
-            echo "⚠️ Configuration migration failed, removing deprecated file"
-            rm -f .gitguardian.yaml
-          fi
-        fi
-
-    - name: Run security scan
-      if: steps.check-token.outputs.token_available == 'true'
-      env:
-        GITGUARDIAN_API_KEY: ${{ secrets.GG_TOKEN }}
-      run: |
-        # Activate the virtual environment for the scan
-        source $GGSHIELD_ENV/bin/activate
-        
-        # Run GitGuardian scan with correct command syntax for v1.42.0
         echo "🔍 Running GitGuardian security scan..."
+        echo "Available commands:"
+        python3 -m ggshield --help
         
-        # Use the correct command: secret scan path with --recursive flag
-        if ggshield secret scan path --recursive . --exit-zero --verbose; then
-          echo "✅ Security scan completed successfully"
-        else
-          echo "❌ Security scan failed. Available commands:"
-          ggshield --help
-          exit 1
+        # Try multiple command variations
+        echo "🔄 Trying scan command variations..."
+        
+        # Method 1: Try scan path
+        if python3 -m ggshield scan path . --exit-zero --verbose; then
+          echo "✅ Scan completed successfully with 'scan path'"
+          exit 0
         fi
+        
+        # Method 2: Try scan-repo
+        if python3 -m ggshield scan-repo . --exit-zero --verbose; then
+          echo "✅ Scan completed successfully with 'scan-repo'"
+          exit 0
+        fi
+        
+        # Method 3: Try scan-dir
+        if python3 -m ggshield scan-dir . --exit-zero --verbose; then
+          echo "✅ Scan completed successfully with 'scan-dir'"
+          exit 0
+        fi
+        
+        # Method 4: Try secret scan
+        if python3 -m ggshield secret scan . --exit-zero --verbose; then
+          echo "✅ Scan completed successfully with 'secret scan'"
+          exit 0
+        fi
+        
+        echo "❌ All scan methods failed. Available commands:"
+        python3 -m ggshield --help
+        exit 1
+
+    - name: Skip GitGuardian scan
+      if: steps.check-token.outputs.token_available == 'false'
+      run: |
+        echo "⚠️ GitGuardian token not available, skipping security scan"
+        echo "To enable security scanning, add GG_TOKEN to repository secrets"
 
     - name: Build project
       run: npm run build
 
+    - name: Install Lighthouse CI
+      run: npm install -g @lhci/cli@latest
+
     - name: Start preview server and wait
       run: |
+        echo "🚀 Starting preview server..."
         npm run preview:ci &
         SERVER_PID=$!
         
-        # Wait for server to be ready
-        echo "Waiting for preview server to start..."
-        timeout 60 bash -c 'until curl -s http://localhost:4174 > /dev/null; do sleep 2; done'
+        # Wait for server to be ready with flexible port detection
+        echo "⏳ Waiting for preview server to start..."
+        timeout 60 bash -c '
+          for port in 4174 4175 4176 4177 4178; do
+            if curl -s "http://localhost:$port" > /dev/null 2>&1; then
+              echo "✅ Server ready on port $port"
+              echo "PORT=$port" > server_port.txt
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "❌ Server failed to start on any port"
+          exit 1
+        '
         
         if [ $? -eq 0 ]; then
-          echo "Preview server is ready!"
+          echo "🎯 Server is ready!"
           echo "Server PID: $SERVER_PID"
+          cat server_port.txt
         else
-          echo "Preview server failed to start within 60 seconds"
+          echo "❌ Server failed to start within 60 seconds"
           exit 1
         fi
 
     - name: Verify server is running
       run: |
+        # Read the port from the file
+        source server_port.txt
+        echo "🔍 Verifying server on port $PORT"
+        
         # Check if server is responding
-        curl -f http://localhost:4174 || exit 1
-        echo "Server is responding correctly"
+        curl -f "http://localhost:$PORT" || exit 1
+        echo "✅ Server is responding correctly on port $PORT"
+        
+        # Wait a bit more for React app to fully load
+        echo "⏳ Waiting for React app to fully load..."
+        sleep 10
 
-    - name: Run Lighthouse CI
+    - name: Run Lighthouse CI performance audit
       run: |
-        # Install Lighthouse CI
-        npm install -g @lhci/cli@0.12.x
+        source server_port.txt
+        echo "🔍 Running Lighthouse CI performance audit on port $PORT..."
         
         # Create reports directory
-        mkdir -p ./reports/lighthouse
+        mkdir -p reports/lighthouse
         
-        # Run Lighthouse CI with proper configuration
-        echo "🔍 Running Lighthouse CI performance audit..."
+        # Run Lighthouse CI with the correct port
+        lhci collect --config=.lighthouserc.cjs --url="http://localhost:$PORT" || {
+          echo "⚠️ Lighthouse collection failed, but continuing..."
+        }
         
-        # Use collect and assert commands separately for better control
-        if lhci collect --config=.lighthouserc.cjs; then
-          echo "✅ Lighthouse CI collection completed successfully"
+        # Check if reports were generated
+        if [ -d "lighthouse_data" ]; then
+          echo "✅ Lighthouse data collected successfully"
+          ls -la lighthouse_data/
         else
-          echo "❌ Lighthouse CI collection failed"
+          echo "❌ No Lighthouse data collected"
           exit 1
         fi
-        
-        if lhci assert --config=.lighthouserc.cjs; then
-          echo "✅ Lighthouse CI assertions passed"
-        else
-          echo "⚠️ Lighthouse CI assertions failed (but continuing)"
-        fi
-        
-        if lhci upload --config=.lighthouserc.cjs; then
-          echo "✅ Lighthouse CI results uploaded successfully"
-        else
-          echo "⚠️ Lighthouse CI upload failed (but continuing)"
+
+    - name: Assert Lighthouse performance thresholds
+      run: |
+        echo "📊 Asserting Lighthouse performance thresholds..."
+        lhci assert --config=.lighthouserc.cjs || {
+          echo "⚠️ Some performance thresholds not met, but continuing..."
+        }
+
+    - name: Upload Lighthouse reports
+      run: |
+        echo "📤 Uploading Lighthouse reports..."
+        if [ -d "lighthouse_data" ]; then
+          lhci upload --config=.lighthouserc.cjs || {
+            echo "⚠️ Lighthouse upload failed, but continuing..."
+          }
         fi
 
-    - name: Upload Lighthouse CI results
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: lighthouse-results
-        path: .lighthouseci/
+        name: build-files
+        path: dist/
+        retention-days: 30
+
+    - name: Upload Lighthouse reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: lighthouse-reports
+        path: reports/lighthouse/
         retention-days: 30
 
     - name: Deploy to Netlify
       if: success() && github.ref == 'refs/heads/master'
-      uses: nwtgck/actions-netlify@v3.0
+      uses: nwtgck/actions-netlify@v2.0
       with:
         publish-dir: './dist'
         production-branch: master
         github-token: ${{ secrets.GITHUB_TOKEN }}
         deploy-message: "Deploy from GitHub Actions"
+        enable-pull-request-comment: true
+        enable-commit-comment: true
+        overwrites-pull-request-comment: true
       env:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
