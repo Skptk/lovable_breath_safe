@@ -58,6 +58,23 @@ jobs:
         # Store virtual environment path
         echo "GGSHIELD_ENV=$(pwd)/ggshield-env" >> $GITHUB_ENV
 
+    - name: Migrate GitGuardian configuration
+      if: steps.check-token.outputs.token_available == 'true'
+      run: |
+        # Activate virtual environment
+        source $GGSHIELD_ENV/bin/activate
+        
+        # Migrate deprecated configuration if .gitguardian.yaml exists
+        if [ -f ".gitguardian.yaml" ]; then
+          echo "🔄 Migrating deprecated .gitguardian.yaml configuration..."
+          if ggshield config migrate; then
+            echo "✅ Configuration migration successful"
+          else
+            echo "⚠️ Configuration migration failed, removing deprecated file"
+            rm -f .gitguardian.yaml
+          fi
+        fi
+
     - name: Run security scan
       if: steps.check-token.outputs.token_available == 'true'
       env:
@@ -66,26 +83,14 @@ jobs:
         # Activate the virtual environment for the scan
         source $GGSHIELD_ENV/bin/activate
         
-        # Run GitGuardian scan with current command syntax
+        # Run GitGuardian scan with correct command syntax for v1.42.0
         echo "🔍 Running GitGuardian security scan..."
         
-        # Try different command variations for version 1.42.0
-        echo "Attempting to scan with available commands..."
-        
-        # Method 1: Try the new command structure
-        if ggshield secret scan path . --exit-zero --verbose; then
-          echo "✅ Security scan completed successfully with 'secret scan'"
-        # Method 2: Try alternative command structure
-        elif ggshield scan-repo . --exit-zero --verbose; then
-          echo "✅ Security scan completed successfully with 'scan-repo'"
-        # Method 3: Try basic scan command
-        elif ggshield scan . --exit-zero --verbose; then
-          echo "✅ Security scan completed successfully with 'scan'"
-        # Method 4: Try directory scan
-        elif ggshield scan-dir . --exit-zero --verbose; then
-          echo "✅ Security scan completed successfully with 'scan-dir'"
+        # Use the correct command: secret scan path with --recursive flag
+        if ggshield secret scan path --recursive . --exit-zero --verbose; then
+          echo "✅ Security scan completed successfully"
         else
-          echo "❌ All scan methods failed. Available commands:"
+          echo "❌ Security scan failed. Available commands:"
           ggshield --help
           exit 1
         fi
