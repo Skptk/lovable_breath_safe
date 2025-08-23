@@ -10,6 +10,8 @@ module.exports = {
       waitForPageLoad: 120000, // 2 minutes for React app
       maxWaitForLoad: 180000, // 3 minutes maximum
       numberOfRuns: 1, // Reduce to 1 run for CI stability
+      // Specify the URL to test
+      url: ['http://localhost:4174/'],
       settings: {
         // Chrome flags optimized for React apps in CI environments
         chromeFlags: '--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-web-security --disable-extensions --disable-plugins --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-ipc-flooding-protection --disable-hang-monitor --disable-prompt-on-repost --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-default-apps --disable-sync --metrics-recording-only --no-first-run --safebrowsing-disable-auto-update --password-store=basic --use-mock-keychain --disable-background-networking --disable-translate --hide-scrollbars --mute-audio --disable-features=VizDisplayCompositor --disable-features=site-per-process --disable-site-isolation-trials',
