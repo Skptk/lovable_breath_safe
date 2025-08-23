@@ -36,72 +36,25 @@ jobs:
           echo "token_available=false" >> $GITHUB_OUTPUT
         fi
 
-    - name: Network diagnostics
-      if: steps.check-token.outputs.token_available == 'true'
-      run: |
-        echo "🔍 Checking network connectivity..."
-        echo "Testing DNS resolution:"
-        nslookup github.com || echo "❌ DNS resolution failed for github.com"
-        nslookup api.github.com || echo "❌ DNS resolution failed for api.github.com"
-        
-        echo "Testing HTTP connectivity:"
-        curl -I https://github.com || echo "❌ HTTPS connection failed to github.com"
-        curl -I https://api.github.com || echo "❌ HTTPS connection failed to api.github.com"
-        
-        echo "Testing ping (if available):"
-        ping -c 3 github.com || echo "⚠️  Ping not available or failed"
-
     - name: Install GitGuardian CLI
       if: steps.check-token.outputs.token_available == 'true'
       run: |
-        echo "📥 Installing GitGuardian CLI..."
-        
-        # Install Python and pip first (required for GitGuardian)
-        echo "🐍 Installing Python dependencies..."
+        # Install Python3 and pip
         sudo apt-get update
         sudo apt-get install -y python3 python3-pip python3-venv
         
-        # Create a virtual environment for GitGuardian
-        python3 -m venv ggshield_env
-        source ggshield_env/bin/activate
+        # Create virtual environment
+        python3 -m venv ggshield-env
+        source ggshield-env/bin/activate
         
-        # Install GitGuardian using pip (official method)
-        echo "📦 Installing GitGuardian CLI via pip..."
-        pip install --upgrade pip
+        # Install GitGuardian CLI
         pip install ggshield
         
         # Verify installation
-        if command -v ggshield >/dev/null 2>&1; then
-          echo "✅ GitGuardian CLI installed successfully"
-          ggshield --version
-        else
-          echo "❌ Failed to install GitGuardian CLI via pip"
-          
-          # Fallback: Try alternative installation methods
-          echo "🔄 Trying alternative installation methods..."
-          
-          # Method 1: Install via pip3
-          pip3 install ggshield || echo "❌ pip3 installation failed"
-          
-          # Method 2: Install via python3 -m pip
-          python3 -m pip install ggshield || echo "❌ python3 -m pip installation failed"
-          
-          # Method 3: Try to find ggshield in PATH
-          if command -v ggshield >/dev/null 2>&1; then
-            echo "✅ GitGuardian CLI found in PATH"
-            ggshield --version
-          else
-            echo "❌ All installation methods failed"
-            echo "Available Python versions:"
-            python3 --version || echo "Python3 not available"
-            pip3 --version || echo "pip3 not available"
-            echo "PATH: $PATH"
-            exit 1
-          fi
-        fi
+        ggshield --version
         
-        # Deactivate virtual environment
-        deactivate
+        # Store virtual environment path
+        echo "GGSHIELD_ENV=$(pwd)/ggshield-env" >> $GITHUB_ENV
 
     - name: Run security scan
       if: steps.check-token.outputs.token_available == 'true'
@@ -109,14 +62,15 @@ jobs:
         GITGUARDIAN_API_KEY: ${{ secrets.GG_TOKEN }}
       run: |
         # Activate the virtual environment for the scan
-        source ggshield_env/bin/activate
+        source $GGSHIELD_ENV/bin/activate
+        
+        # Run GitGuardian scan with current command syntax
+        echo "🔍 Running GitGuardian security scan..."
+        
+        # Use the correct command for version 1.42.0
         ggshield scan path . --exit-zero --verbose
-
-    - name: Skip security scan (no token)
-      if: steps.check-token.outputs.token_available == 'false'
-      run: |
-        echo "⚠️  GitGuardian token not available, skipping security scan"
-        echo "This is normal for forks and PRs from external contributors"
+        
+        echo "✅ Security scan completed successfully"
 
     - name: Build project
       run: npm run build
@@ -145,23 +99,28 @@ jobs:
         echo "Server is responding correctly"
 
     - name: Run Lighthouse CI
-      env:
-        LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
       run: |
+        # Install Lighthouse CI
         npm install -g @lhci/cli@0.12.x
-        lhci autorun --upload.target=temporary-public-storage
+        
+        # Run Lighthouse CI
+        lhci autorun
 
-    - name: Upload build artifacts
+    - name: Upload Lighthouse CI results
       uses: actions/upload-artifact@v4
       with:
-        name: build-files
-        path: dist/
-        retention-days: 30
-
-    - name: Upload Lighthouse reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: lighthouse-reports
+        name: lighthouse-results
         path: .lighthouseci/
         retention-days: 30
+
+    - name: Deploy to Netlify
+      if: success() && github.ref == 'refs/heads/master'
+      uses: nwtgck/actions-netlify@v3.0
+      with:
+        publish-dir: './dist'
+        production-branch: master
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        deploy-message: "Deploy from GitHub Actions"
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
