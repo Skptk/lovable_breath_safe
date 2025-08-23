@@ -1,41 +1,65 @@
 # Weather Background Images
 
-This directory contains background images for different weather conditions in the Breath Safe webapp.
+This directory contains background images for the dynamic weather system in the Breath Safe webapp.
 
 ## Required Images
 
-The following high-quality background images should be added to this directory:
-
 ### Core Weather Conditions
-- `sunny.jpg` - Clear/sunny weather with bright sky
-- `partly-cloudy.jpg` - Partly cloudy sky with some sun
-- `overcast.jpg` - Overcast/foggy conditions
-- `rain.jpg` - Rainy weather with clouds and rain
-- `night.jpg` - Clear night sky with stars
-- `snow.jpg` - Snowy weather conditions
+- **`sunny.jpg`** - Clear, bright sky with visible sun
+- **`partly-cloudy.jpg`** - Mixed sky with sun and clouds
+- **`overcast.jpg`** - Gray, cloudy sky with no sun visible
+- **`fog.jpg`** - Misty, atmospheric fog with reduced visibility
+- **`rain.jpg`** - Rainy, wet atmosphere with visible rain drops
+- **`snow.jpg`** - Snowy, winter atmosphere with visible snow
+- **`night.jpg`** - Dark night sky with stars visible
 
-## Image Requirements
+### Time-Based Conditions
+- **`sunrise.jpg`** - Warm, golden-orange sky with sun rising
+- **`sunset.jpg`** - Deep orange-red sky with sun setting
 
-- **Format**: JPG/JPEG for optimal compression
-- **Resolution**: Minimum 1920x1080, recommended 2560x1440 or higher
-- **Quality**: High-quality, professional images
-- **Style**: Subtle, atmospheric backgrounds that don't interfere with card readability
-- **Theme**: Natural, outdoor scenes that complement the app's environmental focus
+## Image Specifications
 
-## Usage
+### Format
+- **File Format**: JPG/JPEG for optimal compression and compatibility
+- **Color Space**: sRGB for web compatibility
 
-These images are automatically selected based on:
-1. Current weather conditions from Open-Meteo API
-2. Time of day (night vs. day)
-3. User's current location
+### Resolution
+- **Minimum**: 1920x1080 (Full HD)
+- **Recommended**: 2560x1440 (2K) or 3840x2160 (4K)
+- **Aspect Ratio**: 16:9 (landscape) for optimal coverage
 
-## Fallback
+### Style Guidelines
+- **Atmospheric**: Images should create mood without interfering with readability
+- **Subtle**: Avoid overly bright or distracting elements
+- **Natural**: Outdoor scenes that complement the app's environmental focus
+- **Consistent**: Similar lighting and color temperature across all images
+- **Professional**: High-quality photography or artwork
 
-If images are missing, the app will use `partly-cloudy.jpg` as the default background.
+### File Naming
+- Use lowercase letters and hyphens
+- Include file extension (.jpg)
+- Match exactly with the filenames in the code
 
-## Notes
+## Priority System
 
-- Images should be optimized for web use (compressed but high quality)
-- Consider both light and dark theme compatibility
-- Ensure images work well with the glass morphism card overlay
-- Test on both desktop and mobile devices
+The background system uses a priority hierarchy:
+
+1. **Sunrise/Sunset** (highest priority) - When within 30 minutes of sunrise/sunset
+2. **Night Time** - When between sunset and sunrise
+3. **Weather Conditions** - Based on current weather data
+4. **Fallback** - Default to partly-cloudy if no other condition matches
+
+## Integration
+
+These images are automatically selected by the `BackgroundManager` component based on:
+- Current weather conditions from Open-Meteo API
+- Sunrise/sunset times from weather data
+- Time of day calculations
+- User's current location
+
+## Performance Notes
+
+- Images are loaded on-demand when weather conditions change
+- Smooth 500ms opacity transitions between background changes
+- Responsive scaling for mobile and desktop devices
+- Theme-aware overlay adjustments for light/dark modes

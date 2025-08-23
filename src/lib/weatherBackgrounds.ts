@@ -1,6 +1,7 @@
 /**
  * Weather background mapping utility
  * Maps Open-Meteo weather condition codes to background image filenames
+ * Includes sunset/sunrise logic and separates fog from overcast
  */
 
 export interface WeatherBackgroundMapping {
@@ -10,36 +11,97 @@ export interface WeatherBackgroundMapping {
 }
 
 /**
+ * Determines if it's currently within sunrise/sunset period
+ * @param sunriseTime - Sunrise time string (HH:MM format)
+ * @param sunsetTime - Sunset time string (HH:MM format)
+ * @returns Whether it's currently sunrise/sunset period
+ */
+export function isSunriseSunsetPeriod(sunriseTime?: string, sunsetTime?: string): boolean {
+  if (!sunriseTime || !sunsetTime) {
+    return false;
+  }
+
+  try {
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // Convert to minutes
+    
+    // Parse sunrise and sunset times
+    const [sunriseHour, sunriseMinute] = sunriseTime.split(':').map(Number);
+    const [sunsetHour, sunsetMinute] = sunsetTime.split(':').map(Number);
+    
+    const sunriseMinutes = sunriseHour * 60 + sunriseMinute;
+    const sunsetMinutes = sunsetHour * 60 + sunsetMinute;
+    
+    // Define sunrise/sunset period (30 minutes before and after)
+    const sunrisePeriodStart = sunriseMinutes - 30;
+    const sunrisePeriodEnd = sunriseMinutes + 30;
+    const sunsetPeriodStart = sunsetMinutes - 30;
+    const sunsetPeriodEnd = sunsetMinutes + 30;
+    
+    // Check if current time is within sunrise or sunset period
+    const isSunrisePeriod = currentTime >= sunrisePeriodStart && currentTime <= sunrisePeriodEnd;
+    const isSunsetPeriod = currentTime >= sunsetPeriodStart && currentTime <= sunsetPeriodEnd;
+    
+    return isSunrisePeriod || isSunsetPeriod;
+  } catch (error) {
+    console.warn('Error parsing sunrise/sunset times:', error);
+    return false;
+  }
+}
+
+/**
  * Maps Open-Meteo weather condition codes to background image filenames
  * @param conditionCode - Open-Meteo weather condition code
  * @param isNight - Whether it's currently night time
+ * @param isSunriseSunset - Whether it's currently sunrise/sunset period
  * @returns Background image path
  */
-export function getBackgroundImage(conditionCode: number, isNight: boolean = false): string {
-  // Night backgrounds take priority
+export function getBackgroundImage(
+  conditionCode: number, 
+  isNight: boolean = false, 
+  isSunriseSunset: boolean = false
+): string {
+  // Sunrise/sunset backgrounds take priority
+  if (isSunriseSunset) {
+    // Determine if it's closer to sunrise or sunset
+    const now = new Date();
+    const currentHour = now.getHours();
+    
+    // Morning hours (5-9 AM) are more likely sunrise, evening hours (5-9 PM) are more likely sunset
+    if (currentHour >= 5 && currentHour <= 9) {
+      return "/weather-backgrounds/sunrise.jpg";
+    } else if (currentHour >= 17 && currentHour <= 21) {
+      return "/weather-backgrounds/sunset.jpg";
+    } else {
+      // Default to sunset for other times
+      return "/weather-backgrounds/sunset.jpg";
+    }
+  }
+
+  // Night backgrounds take priority over weather conditions
   if (isNight) {
-    return "/weather-backgrounds/partly-cloudy.svg"; // Placeholder for night
+    return "/weather-backgrounds/night.jpg";
   }
 
   // Map weather codes to background images
   switch (conditionCode) {
     // Clear sky
     case 0:
-      return "/weather-backgrounds/sunny.svg";
+      return "/weather-backgrounds/sunny.jpg";
     
     // Mainly clear / Partly cloudy
     case 1:
     case 2:
-      return "/weather-backgrounds/partly-cloudy.svg";
+      return "/weather-backgrounds/partly-cloudy.jpg";
     
-    // Overcast
+    // Overcast (separate from fog)
     case 3:
-      return "/weather-backgrounds/partly-cloudy.svg"; // Placeholder for overcast
+      return "/weather-backgrounds/overcast.jpg";
     
-    // Fog / Depositing rime fog
+    // Fog (separate from overcast)
     case 45:
     case 48:
-      return "/weather-backgrounds/partly-cloudy.svg"; // Placeholder for overcast
+      return "/weather-backgrounds/fog.jpg";
     
     // Rain / Showers
     case 51: // Light drizzle
@@ -51,7 +113,7 @@ export function getBackgroundImage(conditionCode: number, isNight: boolean = fal
     case 80: // Slight rain showers
     case 81: // Moderate rain showers
     case 82: // Violent rain showers
-      return "/weather-backgrounds/partly-cloudy.svg"; // Placeholder for rain
+      return "/weather-backgrounds/rain.jpg";
     
     // Snow
     case 71: // Slight snow fall
@@ -59,17 +121,17 @@ export function getBackgroundImage(conditionCode: number, isNight: boolean = fal
     case 75: // Heavy snow fall
     case 85: // Slight snow showers
     case 86: // Heavy snow showers
-      return "/weather-backgrounds/partly-cloudy.svg"; // Placeholder for snow
+      return "/weather-backgrounds/snow.jpg";
     
     // Thunderstorm
     case 95: // Thunderstorm
     case 96: // Thunderstorm with slight hail
     case 99: // Thunderstorm with heavy hail
-      return "/weather-backgrounds/partly-cloudy.svg"; // Placeholder for rain
+      return "/weather-backgrounds/rain.jpg";
     
     // Default fallback
     default:
-      return "/weather-backgrounds/partly-cloudy.svg";
+      return "/weather-backgrounds/partly-cloudy.jpg";
   }
 }
 
@@ -123,8 +185,8 @@ export function getWeatherBackgroundMappings(): WeatherBackgroundMapping[] {
     { conditionCode: 1, imagePath: "/weather-backgrounds/partly-cloudy.jpg", description: "Mainly clear" },
     { conditionCode: 2, imagePath: "/weather-backgrounds/partly-cloudy.jpg", description: "Partly cloudy" },
     { conditionCode: 3, imagePath: "/weather-backgrounds/overcast.jpg", description: "Overcast" },
-    { conditionCode: 45, imagePath: "/weather-backgrounds/overcast.jpg", description: "Foggy" },
-    { conditionCode: 48, imagePath: "/weather-backgrounds/overcast.jpg", description: "Depositing rime fog" },
+    { conditionCode: 45, imagePath: "/weather-backgrounds/fog.jpg", description: "Foggy" },
+    { conditionCode: 48, imagePath: "/weather-backgrounds/fog.jpg", description: "Depositing rime fog" },
     { conditionCode: 51, imagePath: "/weather-backgrounds/rain.jpg", description: "Light drizzle" },
     { conditionCode: 53, imagePath: "/weather-backgrounds/rain.jpg", description: "Moderate drizzle" },
     { conditionCode: 55, imagePath: "/weather-backgrounds/rain.jpg", description: "Dense drizzle" },

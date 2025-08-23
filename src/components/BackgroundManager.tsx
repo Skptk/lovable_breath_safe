@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useWeatherData } from '@/hooks/useWeatherData';
 import { useAirQuality } from '@/hooks/useAirQuality';
-import { getBackgroundImage, isNightTime } from '@/lib/weatherBackgrounds';
+import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface BackgroundManagerProps {
@@ -11,7 +11,7 @@ interface BackgroundManagerProps {
 export default function BackgroundManager({ children }: BackgroundManagerProps) {
   const { data: airQualityData } = useAirQuality();
   const { theme } = useTheme();
-  const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.svg');
+  const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.jpg');
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Get weather data when coordinates are available
@@ -25,9 +25,12 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   // Determine the appropriate background image based on weather and time
   const targetBackground = useMemo(() => {
     if (!currentWeather) {
-      return '/weather-backgrounds/partly-cloudy.svg';
+      return '/weather-backgrounds/partly-cloudy.jpg';
     }
 
+    // Check if it's within sunrise/sunset period (highest priority)
+    const isSunriseSunset = isSunriseSunsetPeriod(currentWeather.sunriseTime, currentWeather.sunsetTime);
+    
     // Check if it's night time
     const nightTime = isNightTime(currentWeather.sunriseTime, currentWeather.sunsetTime);
     
@@ -39,7 +42,7 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     if (weatherCondition) {
       if (weatherCondition.includes('clear') || weatherCondition.includes('sun')) {
         conditionCode = 0; // Clear sky
-      } else if (weatherCondition.includes('cloud')) {
+      } else if (weatherCondition.includes('cloud') && !weatherCondition.includes('overcast')) {
         conditionCode = 2; // Partly cloudy
       } else if (weatherCondition.includes('overcast')) {
         conditionCode = 3; // Overcast
@@ -50,11 +53,11 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
       } else if (weatherCondition.includes('thunder') || weatherCondition.includes('storm')) {
         conditionCode = 95; // Thunderstorm
       } else if (weatherCondition.includes('fog') || weatherCondition.includes('mist')) {
-        conditionCode = 45; // Fog
+        conditionCode = 45; // Fog (separate from overcast)
       }
     }
 
-    return getBackgroundImage(conditionCode, nightTime);
+    return getBackgroundImage(conditionCode, nightTime, isSunriseSunset);
   }, [currentWeather]);
 
   // Handle background transitions
