@@ -185,9 +185,26 @@ jobs:
         curl -f http://localhost:$SERVER_PORT || exit 1
         echo "✅ Server is responding correctly on port $SERVER_PORT"
         
-        # Wait for React app to fully load
+        # Wait for React app to fully load with multiple checks
         echo "⏳ Waiting for React app to fully load..."
+        
+        # Wait for initial page load
         sleep 30
+        
+        # Check if React app is rendering content
+        echo "🔍 Checking if React app is rendering content..."
+        for i in {1..10}; do
+          if curl -s "http://localhost:$SERVER_PORT" | grep -q "Breath Safe\|React\|root"; then
+            echo "✅ React app is rendering content (attempt $i)"
+            break
+          fi
+          echo "⏳ Waiting for React app to render content... (attempt $i/10)"
+          sleep 10
+        done
+        
+        # Final wait for React hydration
+        echo "⏳ Final wait for React hydration..."
+        sleep 20
 
     - name: Run Lighthouse CI performance audit
       run: |

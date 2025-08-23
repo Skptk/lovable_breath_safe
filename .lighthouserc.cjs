@@ -1,18 +1,18 @@
 module.exports = {
   ci: {
     collect: {
-      // Collect from local build with better CI handling
-      startServerCommand: 'npm run preview:ci',
-      url: ['http://localhost:4174'],
+      // Server is started manually in workflow, don't start another one
+      // startServerCommand: 'npm run preview:ci',
+      url: ['http://localhost:4174'], // Will be overridden by workflow
       numberOfRuns: 3,
-      // Wait longer for server to start
-      startServerReadyPattern: 'Local:',
-      startServerReadyTimeout: 60000, // 60 seconds
+      // No server startup needed since it's handled manually
+      // startServerReadyPattern: 'Local:',
+      // startServerReadyTimeout: 60000, // 60 seconds
       // Wait longer for page to load
-      waitForPageLoad: 60000, // 60 seconds - increased for React apps
+      waitForPageLoad: 90000, // 90 seconds - increased for React apps
       settings: {
-        // Chrome flags optimized for CI environments (desktop) - more robust
-        chromeFlags: '--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-web-security --disable-features=VizDisplayCompositor --disable-extensions --disable-plugins --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-ipc-flooding-protection --disable-hang-monitor --disable-prompt-on-repost --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-default-apps --disable-sync --metrics-recording-only --no-first-run --safebrowsing-disable-auto-update --password-store=basic --use-mock-keychain --disable-background-networking --disable-translate --hide-scrollbars --mute-audio --disable-features=TranslateUI',
+        // Chrome flags optimized for React apps in CI environments
+        chromeFlags: '--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-web-security --disable-features=VizDisplayCompositor --disable-extensions --disable-plugins --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-ipc-flooding-protection --disable-hang-monitor --disable-prompt-on-repost --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-default-apps --disable-sync --metrics-recording-only --no-first-run --safebrowsing-disable-auto-update --password-store=basic --use-mock-keychain --disable-background-networking --disable-translate --hide-scrollbars --mute-audio --disable-features=TranslateUI --disable-features=site-per-process --disable-site-isolation-trials --disable-features=TranslateUI --disable-features=site-per-process --disable-site-isolation-trials --disable-features=TranslateUI --disable-features=site-per-process --disable-site-isolation-trials',
         // Emulate desktop for consistent testing
         emulatedFormFactor: 'desktop',
         // Collect all categories
