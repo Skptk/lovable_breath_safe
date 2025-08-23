@@ -75,6 +75,25 @@ jobs:
         
         echo "✅ GitGuardian configured successfully"
 
+    - name: Migrate GitGuardian configuration
+      if: steps.check-token.outputs.token_available == 'true'
+      run: |
+        echo "🔄 Migrating deprecated .gitguardian.yaml configuration..."
+        
+        # Activate virtual environment
+        source ggshield_env/bin/activate
+        
+        # Set API key environment variable
+        export GITGUARDIAN_API_KEY="${{ secrets.GG_TOKEN }}"
+        
+        # Migrate deprecated configuration if it exists
+        if [ -f ".gitguardian.yaml" ]; then
+          ggshield config migrate
+          echo "✅ Configuration migrated successfully"
+        else
+          echo "ℹ️ No deprecated configuration found"
+        fi
+
     - name: Run GitGuardian security scan
       if: steps.check-token.outputs.token_available == 'true'
       run: |
@@ -86,9 +105,9 @@ jobs:
         # Set API key environment variable
         export GITGUARDIAN_API_KEY="${{ secrets.GG_TOKEN }}"
         
-        # Run security scan
+        # Run security scan with correct syntax
         echo "🔍 Scanning repository for secrets..."
-        ggshield secret scan path . --exit-zero --verbose
+        ggshield secret scan path . --recursive --exit-zero --verbose
         
         echo "✅ GitGuardian security scan completed"
 
