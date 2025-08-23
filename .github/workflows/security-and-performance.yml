@@ -38,13 +38,13 @@ jobs:
           fi
         
       - name: Run secret scan (if token available)
-        if: contains(secrets.GG_TOKEN, '')
+        if: ${{ secrets.GG_TOKEN != '' }}
         run: npm run secret-scan:ci
         env:
           GG_TOKEN: ${{ secrets.GG_TOKEN }}
           
       - name: Skip secret scan (no token)
-        if: contains(secrets.GG_TOKEN, '') == false
+        if: ${{ secrets.GG_TOKEN == '' }}
         run: |
           echo "⏭️  Skipping GitGuardian secret scan - no token provided"
           echo "📋 This is not a security risk, just means automated scanning is disabled"
