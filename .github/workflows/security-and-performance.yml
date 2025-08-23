@@ -63,14 +63,31 @@ jobs:
       - name: Build project
         run: npm run build
         
-      - name: Start preview server
-        run: npm run preview &
+      - name: Start preview server and wait
+        run: |
+          npm run preview &
+          SERVER_PID=$!
+          
+          # Wait for server to be ready
+          echo "Waiting for preview server to start..."
+          timeout 60 bash -c 'until curl -s http://localhost:4173 > /dev/null; do sleep 2; done'
+          
+          if [ $? -eq 0 ]; then
+            echo "Preview server is ready!"
+            echo "Server PID: $SERVER_PID"
+          else
+            echo "Preview server failed to start within 60 seconds"
+            exit 1
+          fi
         env:
           PORT: 4173
           
-      - name: Wait for server
-        run: sleep 10
-        
+      - name: Verify server is running
+        run: |
+          # Check if server is responding
+          curl -f http://localhost:4173 || exit 1
+          echo "Server is responding correctly"
+          
       - name: Run Lighthouse CI
         run: npm run lhci
         env:

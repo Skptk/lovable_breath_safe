@@ -1,0 +1,1 @@
+{"chromeFlags":"--no-sandbox --disable-dev-shm-usage --disable-gpu --headless","emulatedFormFactor":"desktop","onlyCategories":["performance","accessibility","best-practices","seo"],"skipAudits":["uses-http2","uses-long-cache-ttl"]}
