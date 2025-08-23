@@ -92,9 +92,9 @@ jobs:
         source ggshield_env/bin/activate
         
         # Use the correct command structure for version 1.42.0
-        # Based on available commands: secret scan with --recursive flag
+        # Based on available commands: secret scan with proper syntax
         echo "🔍 Scanning repository for secrets..."
-        ggshield secret scan --recursive . --exit-zero --verbose
+        ggshield secret scan path . --exit-zero --verbose
 
     - name: Skip GitGuardian scan
       if: steps.check-token.outputs.token_available == 'false'
