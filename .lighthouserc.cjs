@@ -1,13 +1,8 @@
 module.exports = {
   ci: {
     collect: {
-      // Server is started manually in workflow, don't start another one
-      // startServerCommand: 'npm run preview:ci',
-      url: ['http://localhost:4174'], // Will be overridden by workflow
+      // Server is started manually in workflow - NO server configuration here
       numberOfRuns: 3,
-      // No server startup needed since it's handled manually
-      // startServerReadyPattern: 'Local:',
-      // startServerReadyTimeout: 60000, // 60 seconds
       // Wait longer for page to load
       waitForPageLoad: 90000, // 90 seconds - increased for React apps
       settings: {

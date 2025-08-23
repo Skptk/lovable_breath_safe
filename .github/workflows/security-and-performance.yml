@@ -212,10 +212,16 @@ jobs:
         SERVER_PORT=$(cat server_port.txt)
         echo "🔍 Running Lighthouse CI performance audit on port $SERVER_PORT..."
         
+        # Verify server is still running on detected port
+        echo "🔍 Verifying server is still running on port $SERVER_PORT..."
+        curl -f http://localhost:$SERVER_PORT || exit 1
+        echo "✅ Server is still responding on port $SERVER_PORT"
+        
         # Create reports directory
         mkdir -p reports/lighthouse
         
         # Run Lighthouse CI with proper configuration
+        echo "🚀 Starting Lighthouse CI collection..."
         npx @lhci/cli@latest collect \
           --config=.lighthouserc.cjs \
           --url=http://localhost:$SERVER_PORT \
