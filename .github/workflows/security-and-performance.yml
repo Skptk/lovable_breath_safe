@@ -112,26 +112,26 @@ jobs:
         # Try multiple command variations
         echo "🔍 Attempting GitGuardian security scan..."
         
-        # Method 1: Try the standard scan command
-        if ggshield scan path . --exit-zero --verbose 2>/dev/null; then
+        # Method 1: Try the secret scan command (correct for v1.42.0)
+        if ggshield secret scan path . --exit-zero --verbose 2>/dev/null; then
           echo "✅ GitGuardian security scan completed successfully"
           exit 0
         fi
         
         # Method 2: Try with different syntax
-        if ggshield scan . --exit-zero --verbose 2>/dev/null; then
+        if ggshield secret scan . --exit-zero --verbose 2>/dev/null; then
           echo "✅ GitGuardian security scan completed successfully"
           exit 0
         fi
         
         # Method 3: Try with recursive flag
-        if ggshield scan path . --recursive --exit-zero --verbose 2>/dev/null; then
+        if ggshield secret scan path . --recursive --exit-zero --verbose 2>/dev/null; then
           echo "✅ GitGuardian security scan completed successfully"
           exit 0
         fi
         
         # Method 4: Try with different command structure
-        if ggshield scan --path . --exit-zero --verbose 2>/dev/null; then
+        if ggshield secret scan --path . --exit-zero --verbose 2>/dev/null; then
           echo "✅ GitGuardian security scan completed successfully"
           exit 0
         fi
