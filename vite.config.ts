@@ -10,6 +10,19 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  preview: {
+    host: "0.0.0.0",
+    port: 4173,
+    strictPort: true,
+    // Better CI support
+    open: false,
+    // Ensure proper headers for CI
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  },
   plugins: [
     react(),
     mode === 'development' && componentTagger(),

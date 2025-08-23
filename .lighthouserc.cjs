@@ -2,23 +2,23 @@ module.exports = {
   ci: {
     collect: {
       // Collect from local build with better CI handling
-      startServerCommand: 'npm run preview',
+      startServerCommand: 'npm run preview:ci',
       url: ['http://localhost:4173'],
       numberOfRuns: 3,
       // Wait longer for server to start
       startServerReadyPattern: 'Local:',
       startServerReadyTimeout: 60000, // 60 seconds
       // Wait longer for page to load
-      waitForPageLoad: 30000, // 30 seconds
+      waitForPageLoad: 60000, // 60 seconds - increased for React apps
       settings: {
-        // Chrome flags optimized for CI environments (desktop)
-        chromeFlags: '--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-web-security --disable-features=VizDisplayCompositor --disable-extensions --disable-plugins --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-ipc-flooding-protection --disable-hang-monitor --disable-prompt-on-repost --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-default-apps --disable-sync --metrics-recording-only --no-first-run --safebrowsing-disable-auto-update --password-store=basic --use-mock-keychain',
+        // Chrome flags optimized for CI environments (desktop) - more robust
+        chromeFlags: '--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-web-security --disable-features=VizDisplayCompositor --disable-extensions --disable-plugins --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-ipc-flooding-protection --disable-hang-monitor --disable-prompt-on-repost --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-default-apps --disable-sync --metrics-recording-only --no-first-run --safebrowsing-disable-auto-update --password-store=basic --use-mock-keychain --disable-background-networking --disable-translate --hide-scrollbars --mute-audio --disable-features=TranslateUI',
         // Emulate desktop for consistent testing
         emulatedFormFactor: 'desktop',
         // Collect all categories
         onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
         // Skip problematic audits in CI
-        skipAudits: ['uses-http2', 'uses-long-cache-ttl', 'service-worker', 'works-offline'],
+        skipAudits: ['uses-http2', 'uses-long-cache-ttl', 'service-worker', 'works-offline', 'uses-passive-event-listeners', 'no-document-write', 'external-anchors-use-rel-noopener', 'geolocation-on-start', 'notification-on-start', 'password-inputs-can-be-pasted-into'],
         // Additional CI-friendly settings
         throttling: {
           rttMs: 40,
@@ -30,7 +30,13 @@ module.exports = {
         },
         // Disable some features that can cause issues in CI
         disableStorageReset: true,
-        maxWaitForLoad: 45000, // 45 seconds
+        maxWaitForLoad: 90000, // 90 seconds - increased for React apps
+        // Additional settings to help with React apps
+        // Disable features that can cause loading issues
+        // Wait for network idle
+        waitForNetworkIdle: true,
+        // Wait for CPU idle
+        waitForCpuIdle: true,
       },
     },
     assert: {

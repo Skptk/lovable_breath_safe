@@ -10,6 +10,7 @@
     "analyze": "vite build --mode production && npx rollup-plugin-visualizer --template treemap --open dist/stats.html",
     "lint": "eslint .",
     "preview": "vite preview",
+    "preview:ci": "vite preview --host 0.0.0.0 --port 4173",
     "secret-scan": "node scripts/secret-scan.js",
     "secret-scan:pre-commit": "node scripts/secret-scan.js --staged",
     "secret-scan:ci": "node scripts/secret-scan.js --ci",
