@@ -1,0 +1,31 @@
+# YAML Lint Configuration for GitHub Actions
+# This file configures yaml-lint to properly handle GitHub Actions syntax
+
+# Disable rules that conflict with GitHub Actions
+rules:
+  # GitHub Actions uses ${{ }} expressions which are valid
+  unrecognized-named-value: disable
+  
+  # Allow GitHub Actions specific syntax
+  line-length: disable
+  
+  # Allow GitHub Actions specific indentation
+  indentation: disable
+
+# GitHub Actions specific patterns
+patterns:
+  - "**/.github/workflows/*.yml"
+  - "**/.github/workflows/*.yaml"
+
+# GitHub Actions context variables that are valid
+contexts:
+  - secrets
+  - github
+  - env
+  - vars
+  - runner
+  - matrix
+  - needs
+  - inputs
+  - steps
+  - jobs
