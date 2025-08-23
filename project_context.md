@@ -1304,6 +1304,83 @@ Successfully transformed the Breath Safe webapp's UI aesthetic across all pages 
 
 ---
 
+## Dynamic Weather Backgrounds – 2025-01-22
+
+### **Feature Overview**
+Enhanced the dynamic weather background system to include sunrise/sunset periods and separate fog from overcast conditions, providing more atmospheric and accurate background transitions.
+
+### **New Features**
+
+#### **Sunrise/Sunset Background System**
+- **Period Detection**: Automatically detects when within 30 minutes of sunrise/sunset
+- **Priority System**: Sunrise/sunset backgrounds take highest priority over weather conditions
+- **Time-Based Logic**: Uses current hour to determine if closer to sunrise (5-9 AM) or sunset (5-9 PM)
+- **Smooth Transitions**: Maintains 500ms opacity fade transitions for seamless background changes
+
+#### **Enhanced Weather Condition Mapping**
+- **Fog Separation**: Fog conditions (codes 45, 48) now use dedicated `fog.jpg` background
+- **Overcast Distinction**: Overcast conditions (code 3) use separate `overcast.jpg` background
+- **Improved Accuracy**: Better weather condition detection and mapping to appropriate backgrounds
+- **Fallback System**: Robust fallback to `partly-cloudy.jpg` for unknown conditions
+
+#### **Background Image Requirements**
+- **Format**: JPG/JPEG for optimal compression and compatibility
+- **Resolution**: Minimum 1920x1080, recommended 2560x1440 or higher
+- **Style**: Subtle, atmospheric backgrounds that complement the app's environmental focus
+- **Consistency**: Similar lighting and color temperature across all images
+
+### **Technical Implementation**
+
+#### **Priority Hierarchy**
+1. **Sunrise/Sunset** (highest priority) - When within 30 minutes of sunrise/sunset
+2. **Night Time** - When between sunset and sunrise
+3. **Weather Conditions** - Based on current weather data from Open-Meteo API
+4. **Fallback** - Default to partly-cloudy if no other condition matches
+
+#### **Enhanced Utility Functions**
+- **`isSunriseSunsetPeriod()`**: Detects 30-minute windows around sunrise/sunset
+- **`getBackgroundImage()`**: Updated to handle sunrise/sunset priority and fog separation
+- **`isNightTime()`**: Maintains existing night detection logic
+- **Weather Mapping**: Improved OpenWeatherMap to Open-Meteo code conversion
+
+#### **BackgroundManager Component Updates**
+- **Sunrise/Sunset Detection**: Integrates new period detection logic
+- **Enhanced Weather Mapping**: Better separation of fog vs. overcast conditions
+- **Priority System**: Implements the new background priority hierarchy
+- **Performance**: Maintains efficient background transitions and updates
+
+### **User Experience Features**
+- **Atmospheric Transitions**: More accurate background changes based on time and weather
+- **Visual Consistency**: Separate backgrounds for distinct weather conditions
+- **Smooth Animations**: Maintains existing 500ms opacity transitions
+- **Theme Compatibility**: Works seamlessly with light/dark theme system
+- **Mobile Responsiveness**: Optimized for all device sizes
+
+### **Files Modified**
+- `src/lib/weatherBackgrounds.ts`: Enhanced utility functions for sunrise/sunset and fog separation
+- `src/components/BackgroundManager.tsx`: Updated to use new priority system and enhanced logic
+- `public/weather-backgrounds/`: New background images for all weather conditions
+- `public/weather-backgrounds/README.md`: Updated documentation with new image requirements
+
+### **Background Images Created**
+- `sunrise.jpg` - Warm, golden-orange sky with sun rising
+- `sunset.jpg` - Deep orange-red sky with sun setting
+- `fog.jpg` - Misty, atmospheric fog with reduced visibility
+- `overcast.jpg` - Gray, cloudy sky with no sun visible
+- `rain.jpg` - Rainy, wet atmosphere with visible rain drops
+- `snow.jpg` - Snowy, winter atmosphere with visible snow
+- `night.jpg` - Dark night sky with stars visible
+- `sunny.jpg` - Bright, clear blue sky with visible sun
+- `partly-cloudy.jpg` - Mixed sky with sun and clouds
+
+### **Performance & Compatibility**
+- **Efficient Updates**: Backgrounds change only when necessary
+- **Memory Management**: Optimized image loading and transitions
+- **Browser Support**: Full compatibility with modern browsers
+- **Mobile Optimization**: Responsive scaling and cropping for all devices
+
+---
+
 ## Golden Rule
 **ALWAYS check this `project_context.md` file before generating or modifying any files. This document is the single source of truth for the Breath Safe project.**
 
