@@ -36,12 +36,21 @@ jobs:
           echo "token_available=false" >> $GITHUB_OUTPUT
         fi
 
+    - name: Install GitGuardian CLI
+      if: steps.check-token.outputs.token_available == 'true'
+      run: |
+        # Download and install GitGuardian CLI
+        curl -L -o ggshield.tar.gz "https://github.com/GitGuardian/ggshield/releases/latest/download/ggshield-x86_64-unknown-linux-gnu.tar.gz"
+        tar -xzf ggshield.tar.gz
+        sudo mv ggshield /usr/local/bin/
+        chmod +x /usr/local/bin/ggshield
+        rm ggshield.tar.gz
+
     - name: Run security scan
       if: steps.check-token.outputs.token_available == 'true'
       env:
         GITGUARDIAN_API_KEY: ${{ secrets.GG_TOKEN }}
       run: |
-        npm install -g @gitguardian/ggshield
         ggshield scan path . --exit-zero --verbose
 
     - name: Skip security scan (no token)
