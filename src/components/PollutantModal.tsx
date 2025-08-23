@@ -103,7 +103,7 @@ export default function PollutantModal({
   if (loading) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="bg-gradient-card border-0">
+        <DialogContent className="floating-card border-0">
           <DialogHeader>
             <DialogTitle>Loading Pollutant Information</DialogTitle>
             <DialogDescription>
@@ -122,7 +122,7 @@ export default function PollutantModal({
   if (!details) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="bg-gradient-card border-0 max-w-md">
+        <DialogContent className="floating-card border-0 max-w-md">
           <DialogHeader>
             <DialogTitle>{pollutant.name} Information</DialogTitle>
             <DialogDescription>
@@ -147,7 +147,7 @@ export default function PollutantModal({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="bg-gradient-card border-0 max-w-md">
+      <DialogContent className="floating-card border-0 max-w-md">
         <DialogHeader>
           <DialogTitle>{pollutant.name} Information</DialogTitle>
           <DialogDescription>

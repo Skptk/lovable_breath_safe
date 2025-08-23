@@ -127,7 +127,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-card rounded-lg shadow-lg border border-border p-6 text-center">
+        <div className="max-w-md w-full floating-card p-6 text-center">
           {/* Error Icon */}
           <div className="flex justify-center mb-4">
             {isModuleError || isNetworkError ? (

@@ -559,7 +559,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
       {/* Weather Stats Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Air Quality Card */}
-        <Card>
+        <Card className="floating-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Air Quality Index</CardTitle>
             <Badge variant={airQualityData?.aqi && airQualityData.aqi <= 50 ? "default" : "destructive"}>
@@ -583,7 +583,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
         </Card>
 
         {/* Location Card */}
-        <Card>
+        <Card className="floating-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Current Location</CardTitle>
             <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -600,7 +600,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle }: Wea
         </Card>
 
         {/* Weather Conditions Card */}
-        <Card>
+        <Card className="floating-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Weather Conditions</CardTitle>
             {weatherData.currentWeather?.weatherCondition === 'Rain' ? (

@@ -166,7 +166,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
   // Show message if coordinates are not available
   if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
     return (
-      <Card className="shadow-card">
+      <Card className="floating-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5 text-blue-600" />
@@ -226,7 +226,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
   }
 
   return (
-    <Card className="modern-card glass-card">
+    <Card className="floating-card">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
@@ -264,7 +264,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
 
             {/* Weather Stats Grid */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border modern-card">
+              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border floating-card">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Droplets className="h-4 w-4 text-blue-500" />
                   <span className="text-sm font-semibold">Humidity</span>
@@ -274,7 +274,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
                 </div>
               </div>
 
-              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border modern-card">
+              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border floating-card">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <CloudRain className="h-4 w-4 text-blue-500" />
                   <span className="text-sm font-semibold">Rain Chance</span>

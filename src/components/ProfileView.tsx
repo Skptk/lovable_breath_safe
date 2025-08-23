@@ -524,7 +524,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
 
         {/* Rewards Tab */}
         <TabsContent value="rewards" className="space-y-4">
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="floating-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-green-500" />
@@ -553,7 +553,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
           </Card>
 
           {/* Withdrawal Requests */}
-          <Card className="shadow-card">
+          <Card className="floating-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Gift className="h-5 w-5 text-purple-600" />
@@ -597,7 +597,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
 
         {/* Achievements Tab */}
         <TabsContent value="achievements" className="space-y-4">
-          <Card className="shadow-card">
+          <Card className="floating-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Award className="h-5 w-5 text-yellow-600" />
@@ -637,7 +637,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-4">
-          <Card className="shadow-card">
+          <Card className="floating-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-blue-600" />

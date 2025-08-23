@@ -42,7 +42,7 @@ export default React.memo(NewsCard);
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <Card className="relative overflow-hidden h-full min-h-[500px] bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+        <Card className="relative overflow-hidden h-full min-h-[500px] floating-card hover:shadow-2xl transition-all duration-300">
           {/* Glowing border effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
           

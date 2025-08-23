@@ -223,7 +223,7 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
 
   if (mapError) {
     return (
-      <Card className="relative overflow-hidden bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl">
+      <Card className="floating-card">
         <CardContent className="p-6">
           <div className="text-center space-y-3">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
@@ -240,7 +240,7 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
 
   if (!userLocation) {
     return (
-      <Card className="relative overflow-hidden bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl">
+      <Card className="floating-card">
         <CardContent className="p-6">
           <div className="text-center space-y-3">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
@@ -251,9 +251,9 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
     );
   }
 
-  return (
-    <Card className="relative overflow-hidden bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl">
-      <CardContent className="p-0">
+      return (
+      <Card className="floating-card">
+        <CardContent className="p-0">
         <div className="p-4 border-b border-border/50">
           <div className="flex items-center justify-between">
             <div>

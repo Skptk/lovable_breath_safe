@@ -469,7 +469,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
 
         {/* Floating Header */}
         <div className="absolute top-4 left-4 right-4 z-10">
-          <Card className="bg-card/90 backdrop-blur-sm border-border shadow-lg">
+          <Card className="floating-card">
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
                 <div>

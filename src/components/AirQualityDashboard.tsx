@@ -247,7 +247,7 @@ export default function AirQualityDashboard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <Card className="modern-card glass-card">
+          <Card className="floating-card">
             <CardHeader className="text-center pb-4">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
@@ -341,7 +341,7 @@ export default function AirQualityDashboard({
                     ].map((pollutant) => (
                       <div
                         key={pollutant.name}
-                        className="text-center p-2 rounded-lg border border-border cursor-pointer hover:bg-accent/50 transition-colors modern-card"
+                        className="text-center p-2 rounded-lg border border-border cursor-pointer hover:bg-accent/50 transition-colors floating-card"
                         onClick={() => setSelectedPollutant(pollutant)}
                       >
                         <div className={`text-lg font-semibold ${pollutant.color}`}>
@@ -355,7 +355,7 @@ export default function AirQualityDashboard({
                   
                   {/* Informational Card */}
                   <div className="mt-4">
-                    <div className="p-3 bg-muted/30 rounded-lg border border-border min-h-[120px] modern-card">
+                    <div className="p-3 bg-muted/30 rounded-lg border border-border min-h-[120px] floating-card">
                       {selectedPollutant ? (
                         <div className="space-y-2">
                           <h5 className="font-semibold text-sm text-foreground">

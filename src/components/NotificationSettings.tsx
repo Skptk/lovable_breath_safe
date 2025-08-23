@@ -80,7 +80,7 @@ export default function NotificationSettings({ className }: NotificationSettings
 
   if (isLoading) {
     return (
-      <Card className={cn("glass-card border-0", className)}>
+      <Card className={cn("floating-card border-0", className)}>
         <CardContent className="flex items-center justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </CardContent>
@@ -90,7 +90,7 @@ export default function NotificationSettings({ className }: NotificationSettings
 
   if (!localPreferences) {
     return (
-      <Card className={cn("glass-card border-0", className)}>
+      <Card className={cn("floating-card border-0", className)}>
         <CardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
           <Settings className="h-8 w-8 text-muted-foreground" />
           <div>
@@ -169,7 +169,7 @@ export default function NotificationSettings({ className }: NotificationSettings
   ];
 
   return (
-    <Card className={cn("glass-card border-0", className)}>
+    <Card className={cn("floating-card border-0", className)}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bell className="h-5 w-5" />
