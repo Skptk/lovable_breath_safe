@@ -1,0 +1,38 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B0E0E6;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFA500;stop-opacity:0.9" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Sky background -->
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  
+  <!-- Sun -->
+  <circle cx="300" cy="200" r="100" fill="url(#sun)"/>
+  
+  <!-- Sun rays -->
+  <g stroke="#FFD700" stroke-width="8" opacity="0.8">
+    <line x1="300" y1="80" x2="300" y2="40"/>
+    <line x1="300" y1="320" x2="300" y2="360"/>
+    <line x1="180" y1="200" x2="140" y2="200"/>
+    <line x1="420" y1="200" x2="460" y2="200"/>
+    <line x1="220" y1="120" x2="190" y2="90"/>
+    <line x1="380" y1="280" x2="410" y2="310"/>
+    <line x1="220" y1="280" x2="190" y2="310"/>
+    <line x1="380" y1="120" x2="410" y2="90"/>
+  </g>
+  
+  <!-- Text label -->
+  <text x="960" y="900" font-family="Arial, sans-serif" font-size="48" text-anchor="middle" fill="#2A2D34" opacity="0.7">
+    Sunny Background
+  </text>
+  <text x="960" y="950" font-family="Arial, sans-serif" font-size="24" text-anchor="middle" fill="#2A2D34" opacity="0.5">
+    Placeholder - Replace with high-quality photo
+  </text>
+</svg>

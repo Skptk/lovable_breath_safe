@@ -11,6 +11,7 @@ export { default as EmissionSourcesLayer } from './EmissionSourcesLayer';
 export { default as WeatherStatsCard } from './WeatherStatsCard';
 export { default as NewsPage } from './NewsPage';
 export { default as PollutantModal } from './PollutantModal';
+export { default as BackgroundManager } from './BackgroundManager';
 export { Header } from './Header';
 export { default as LazyHeader } from './LazyHeader';
 export { RealtimeStatusBanner } from './RealtimeStatusBanner';

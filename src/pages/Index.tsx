@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
+import BackgroundManager from "@/components/BackgroundManager";
 import { cleanupAllChannels } from "@/lib/realtimeClient";
 
 // Lazy load heavy components
@@ -180,40 +181,42 @@ export default function Index(): JSX.Element {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex flex-col">
-      {/* Sidebar Navigation */}
-      <Sidebar currentView={currentView} onViewChange={handleViewChange} />
-      
-      {/* Mobile Navigation */}
-      <MobileNavigation 
-        currentView={currentView} 
-        onViewChange={handleViewChange}
-        isOpen={showMobileMenu}
-        onClose={() => setShowMobileMenu(false)}
-      />
-      
-      {/* Main Content Area */}
-      <div className="flex-1 md:ml-16 ml-0">
-        <div className="p-4 sm:p-6 lg:p-8 w-full">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentView}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ 
-                duration: 0.3, 
-                ease: "easeInOut"
-              }}
-            >
-              {renderView()}
-            </motion.div>
-          </AnimatePresence>
+    <BackgroundManager>
+      <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex flex-col">
+        {/* Sidebar Navigation */}
+        <Sidebar currentView={currentView} onViewChange={handleViewChange} />
+        
+        {/* Mobile Navigation */}
+        <MobileNavigation 
+          currentView={currentView} 
+          onViewChange={handleViewChange}
+          isOpen={showMobileMenu}
+          onClose={() => setShowMobileMenu(false)}
+        />
+        
+        {/* Main Content Area */}
+        <div className="flex-1 md:ml-16 ml-0">
+          <div className="p-4 sm:p-6 lg:p-8 w-full">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentView}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ 
+                  duration: 0.3, 
+                  ease: "easeInOut"
+                }}
+              >
+                {renderView()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
-      </div>
 
-      {/* Footer */}
-      <Footer />
-    </div>
+        {/* Footer */}
+        <Footer />
+      </div>
+    </BackgroundManager>
   );
 }
