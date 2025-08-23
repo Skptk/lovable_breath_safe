@@ -11,7 +11,7 @@ interface BackgroundManagerProps {
 export default function BackgroundManager({ children }: BackgroundManagerProps) {
   const { data: airQualityData } = useAirQuality();
   const { theme } = useTheme();
-  const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.jpg');
+  const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.webp');
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Get weather data when coordinates are available
@@ -25,7 +25,7 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   // Determine the appropriate background image based on weather and time
   const targetBackground = useMemo(() => {
     if (!currentWeather) {
-      return '/weather-backgrounds/partly-cloudy.jpg';
+      return '/weather-backgrounds/partly-cloudy.webp';
     }
 
     // Check if it's within sunrise/sunset period (highest priority)

@@ -69,39 +69,39 @@ export function getBackgroundImage(
     
     // Morning hours (5-9 AM) are more likely sunrise, evening hours (5-9 PM) are more likely sunset
     if (currentHour >= 5 && currentHour <= 9) {
-      return "/weather-backgrounds/sunrise.jpg";
+      return "/weather-backgrounds/sunrise.webp";
     } else if (currentHour >= 17 && currentHour <= 21) {
-      return "/weather-backgrounds/sunset.jpg";
+      return "/weather-backgrounds/sunset.webp";
     } else {
       // Default to sunset for other times
-      return "/weather-backgrounds/sunset.jpg";
+      return "/weather-backgrounds/sunset.webp";
     }
   }
 
   // Night backgrounds take priority over weather conditions
   if (isNight) {
-    return "/weather-backgrounds/night.jpg";
+    return "/weather-backgrounds/night.webp";
   }
 
   // Map weather codes to background images
   switch (conditionCode) {
     // Clear sky
     case 0:
-      return "/weather-backgrounds/sunny.jpg";
+      return "/weather-backgrounds/sunny.webp";
     
     // Mainly clear / Partly cloudy
     case 1:
     case 2:
-      return "/weather-backgrounds/partly-cloudy.jpg";
+      return "/weather-backgrounds/partly-cloudy.webp";
     
     // Overcast (separate from fog)
     case 3:
-      return "/weather-backgrounds/overcast.jpg";
+      return "/weather-backgrounds/overcast.webp";
     
     // Fog (separate from overcast)
     case 45:
     case 48:
-      return "/weather-backgrounds/fog.jpg";
+      return "/weather-backgrounds/fog.webp";
     
     // Rain / Showers
     case 51: // Light drizzle
@@ -113,7 +113,7 @@ export function getBackgroundImage(
     case 80: // Slight rain showers
     case 81: // Moderate rain showers
     case 82: // Violent rain showers
-      return "/weather-backgrounds/rain.jpg";
+      return "/weather-backgrounds/rain.webp";
     
     // Snow
     case 71: // Slight snow fall
@@ -121,17 +121,17 @@ export function getBackgroundImage(
     case 75: // Heavy snow fall
     case 85: // Slight snow showers
     case 86: // Heavy snow showers
-      return "/weather-backgrounds/snow.jpg";
+      return "/weather-backgrounds/snow.webp";
     
     // Thunderstorm
     case 95: // Thunderstorm
     case 96: // Thunderstorm with slight hail
     case 99: // Thunderstorm with heavy hail
-      return "/weather-backgrounds/rain.jpg";
+      return "/weather-backgrounds/rain.webp";
     
     // Default fallback
     default:
-      return "/weather-backgrounds/partly-cloudy.jpg";
+      return "/weather-backgrounds/partly-cloudy.webp";
   }
 }
 
@@ -181,28 +181,28 @@ export function isNightTime(sunriseTime?: string, sunsetTime?: string): boolean 
  */
 export function getWeatherBackgroundMappings(): WeatherBackgroundMapping[] {
   return [
-    { conditionCode: 0, imagePath: "/weather-backgrounds/sunny.jpg", description: "Clear sky" },
-    { conditionCode: 1, imagePath: "/weather-backgrounds/partly-cloudy.jpg", description: "Mainly clear" },
-    { conditionCode: 2, imagePath: "/weather-backgrounds/partly-cloudy.jpg", description: "Partly cloudy" },
-    { conditionCode: 3, imagePath: "/weather-backgrounds/overcast.jpg", description: "Overcast" },
-    { conditionCode: 45, imagePath: "/weather-backgrounds/fog.jpg", description: "Foggy" },
-    { conditionCode: 48, imagePath: "/weather-backgrounds/fog.jpg", description: "Depositing rime fog" },
-    { conditionCode: 51, imagePath: "/weather-backgrounds/rain.jpg", description: "Light drizzle" },
-    { conditionCode: 53, imagePath: "/weather-backgrounds/rain.jpg", description: "Moderate drizzle" },
-    { conditionCode: 55, imagePath: "/weather-backgrounds/rain.jpg", description: "Dense drizzle" },
-    { conditionCode: 61, imagePath: "/weather-backgrounds/rain.jpg", description: "Slight rain" },
-    { conditionCode: 63, imagePath: "/weather-backgrounds/rain.jpg", description: "Moderate rain" },
-    { conditionCode: 65, imagePath: "/weather-backgrounds/rain.jpg", description: "Heavy rain" },
-    { conditionCode: 71, imagePath: "/weather-backgrounds/snow.jpg", description: "Slight snow" },
-    { conditionCode: 73, imagePath: "/weather-backgrounds/snow.jpg", description: "Moderate snow" },
-    { conditionCode: 75, imagePath: "/weather-backgrounds/snow.jpg", description: "Heavy snow" },
-    { conditionCode: 80, imagePath: "/weather-backgrounds/rain.jpg", description: "Slight rain showers" },
-    { conditionCode: 81, imagePath: "/weather-backgrounds/rain.jpg", description: "Moderate rain showers" },
-    { conditionCode: 82, imagePath: "/weather-backgrounds/rain.jpg", description: "Violent rain showers" },
-    { conditionCode: 85, imagePath: "/weather-backgrounds/snow.jpg", description: "Slight snow showers" },
-    { conditionCode: 86, imagePath: "/weather-backgrounds/snow.jpg", description: "Heavy snow showers" },
-    { conditionCode: 95, imagePath: "/weather-backgrounds/rain.jpg", description: "Thunderstorm" },
-    { conditionCode: 96, imagePath: "/weather-backgrounds/rain.jpg", description: "Thunderstorm with slight hail" },
-    { conditionCode: 99, imagePath: "/weather-backgrounds/rain.jpg", description: "Thunderstorm with heavy hail" }
+    { conditionCode: 0, imagePath: "/weather-backgrounds/sunny.webp", description: "Clear sky" },
+    { conditionCode: 1, imagePath: "/weather-backgrounds/partly-cloudy.webp", description: "Mainly clear" },
+    { conditionCode: 2, imagePath: "/weather-backgrounds/partly-cloudy.webp", description: "Partly cloudy" },
+    { conditionCode: 3, imagePath: "/weather-backgrounds/overcast.webp", description: "Overcast" },
+    { conditionCode: 45, imagePath: "/weather-backgrounds/fog.webp", description: "Foggy" },
+    { conditionCode: 48, imagePath: "/weather-backgrounds/fog.webp", description: "Depositing rime fog" },
+    { conditionCode: 51, imagePath: "/weather-backgrounds/rain.webp", description: "Light drizzle" },
+    { conditionCode: 53, imagePath: "/weather-backgrounds/rain.webp", description: "Moderate drizzle" },
+    { conditionCode: 55, imagePath: "/weather-backgrounds/rain.webp", description: "Dense drizzle" },
+    { conditionCode: 61, imagePath: "/weather-backgrounds/rain.webp", description: "Slight rain" },
+    { conditionCode: 63, imagePath: "/weather-backgrounds/rain.webp", description: "Moderate rain" },
+    { conditionCode: 65, imagePath: "/weather-backgrounds/rain.webp", description: "Heavy rain" },
+    { conditionCode: 71, imagePath: "/weather-backgrounds/snow.webp", description: "Slight snow" },
+    { conditionCode: 73, imagePath: "/weather-backgrounds/snow.webp", description: "Moderate snow" },
+    { conditionCode: 75, imagePath: "/weather-backgrounds/snow.webp", description: "Heavy snow" },
+    { conditionCode: 80, imagePath: "/weather-backgrounds/rain.webp", description: "Slight rain showers" },
+    { conditionCode: 81, imagePath: "/weather-backgrounds/rain.webp", description: "Moderate rain showers" },
+    { conditionCode: 82, imagePath: "/weather-backgrounds/rain.webp", description: "Violent rain showers" },
+    { conditionCode: 85, imagePath: "/weather-backgrounds/snow.webp", description: "Slight snow showers" },
+    { conditionCode: 86, imagePath: "/weather-backgrounds/snow.webp", description: "Heavy snow showers" },
+    { conditionCode: 95, imagePath: "/weather-backgrounds/rain.webp", description: "Thunderstorm" },
+    { conditionCode: 96, imagePath: "/weather-backgrounds/rain.webp", description: "Thunderstorm with slight hail" },
+    { conditionCode: 99, imagePath: "/weather-backgrounds/rain.webp", description: "Thunderstorm with heavy hail" }
   ];
 }

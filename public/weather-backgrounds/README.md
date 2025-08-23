@@ -5,22 +5,22 @@ This directory contains background images for the dynamic weather system in the 
 ## Required Images
 
 ### Core Weather Conditions
-- **`sunny.jpg`** - Clear, bright sky with visible sun
-- **`partly-cloudy.jpg`** - Mixed sky with sun and clouds
-- **`overcast.jpg`** - Gray, cloudy sky with no sun visible
-- **`fog.jpg`** - Misty, atmospheric fog with reduced visibility
-- **`rain.jpg`** - Rainy, wet atmosphere with visible rain drops
-- **`snow.jpg`** - Snowy, winter atmosphere with visible snow
-- **`night.jpg`** - Dark night sky with stars visible
+- **`sunny.webp`** - Clear, bright sky with visible sun
+- **`partly-cloudy.webp`** - Mixed sky with sun and clouds
+- **`overcast.webp`** - Gray, cloudy sky with no sun visible
+- **`fog.webp`** - Misty, atmospheric fog with reduced visibility
+- **`rain.webp`** - Rainy, wet atmosphere with visible rain drops
+- **`snow.webp`** - Snowy, winter atmosphere with visible snow
+- **`night.webp`** - Dark night sky with stars visible
 
 ### Time-Based Conditions
-- **`sunrise.jpg`** - Warm, golden-orange sky with sun rising
-- **`sunset.jpg`** - Deep orange-red sky with sun setting
+- **`sunrise.webp`** - Warm, golden-orange sky with sun rising
+- **`sunset.webp`** - Deep orange-red sky with sun setting
 
 ## Image Specifications
 
 ### Format
-- **File Format**: JPG/JPEG for optimal compression and compatibility
+- **File Format**: WebP for optimal compression and modern web compatibility
 - **Color Space**: sRGB for web compatibility
 
 ### Resolution
@@ -37,7 +37,7 @@ This directory contains background images for the dynamic weather system in the 
 
 ### File Naming
 - Use lowercase letters and hyphens
-- Include file extension (.jpg)
+- Include file extension (.webp)
 - Match exactly with the filenames in the code
 
 ## Priority System
