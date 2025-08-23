@@ -39,23 +39,8 @@ jobs:
     - name: Install GitGuardian CLI
       if: steps.check-token.outputs.token_available == 'true'
       run: |
-        # Get the latest version
-        LATEST_VERSION=$(curl -s https://api.github.com/repos/GitGuardian/ggshield/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-        echo "Installing GitGuardian CLI version: $LATEST_VERSION"
-        
-        # Download and install GitGuardian CLI
-        curl -L -o ggshield.tar.gz "https://github.com/GitGuardian/ggshield/releases/download/$LATEST_VERSION/ggshield-x86_64-unknown-linux-gnu.tar.gz"
-        
-        # Verify download
-        if [ ! -f ggshield.tar.gz ] || [ ! -s ggshield.tar.gz ]; then
-          echo "❌ Failed to download GitGuardian CLI"
-          exit 1
-        fi
-        
-        # Extract and install
-        tar -xzf ggshield.tar.gz
-        sudo mv ggshield /usr/local/bin/
-        chmod +x /usr/local/bin/ggshield
+        # Use official GitGuardian installation script
+        curl -sSf https://get.gitguardian.com | bash
         
         # Verify installation
         if command -v ggshield >/dev/null 2>&1; then
@@ -65,9 +50,6 @@ jobs:
           echo "❌ Failed to install GitGuardian CLI"
           exit 1
         fi
-        
-        # Cleanup
-        rm -f ggshield.tar.gz
 
     - name: Run security scan
       if: steps.check-token.outputs.token_available == 'true'
