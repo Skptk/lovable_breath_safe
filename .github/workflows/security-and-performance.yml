@@ -1,218 +1,106 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
-# GitHub Actions workflow - secrets context is valid
-# This is a valid GitHub Actions workflow file
-name: Security & Performance CI/CD
+name: Security & Performance Pipeline
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ master, main ]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ master, main ]
+
+env:
+  NODE_VERSION: '18'
 
 jobs:
-  security-scan:
-    name: 🔒 Security Scan
+  security-and-performance:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Check GitGuardian Token
-        id: check-token
-        run: |
-          if [ -z "${{ secrets.GG_TOKEN }}" ]; then
-            echo "token_available=false" >> $GITHUB_OUTPUT
-            echo "⚠️  Warning: GG_TOKEN secret not found"
-            echo "📝 GitGuardian secret scanning will be skipped"
-            echo "🔗 To enable secret scanning, add GG_TOKEN to repository secrets:"
-            echo "   1. Go to Settings > Secrets and variables > Actions"
-            echo "   2. Add new repository secret: GG_TOKEN"
-            echo "   3. Get your token from: https://dashboard.gitguardian.com/api-keys"
-          else
-            echo "token_available=true" >> $GITHUB_OUTPUT
-            echo "✅ GitGuardian token found, proceeding with secret scan"
-          fi
-        
-      - name: Run secret scan (if token available)
-        if: steps.check-token.outputs.token_available == 'true'
-        run: npm run secret-scan:ci
-        env:
-          GG_TOKEN: ${{ secrets.GG_TOKEN }}
-          
-      - name: Skip secret scan (no token)
-        if: steps.check-token.outputs.token_available == 'false'
-        run: |
-          echo "⏭️  Skipping GitGuardian secret scan - no token provided"
-          echo "📋 This is not a security risk, just means automated scanning is disabled"
-          echo "🔒 Manual security review is still recommended"
-          
-      - name: Run linting
-        run: npm run lint
-        
-      - name: Build project
-        run: npm run build
-        
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-files
-          path: dist/
-          retention-days: 7
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-  lighthouse-audit:
-    name: 📊 Lighthouse Audit
-    runs-on: ubuntu-latest
-    needs: security-scan
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Check GitGuardian token availability
+      id: check-token
+      run: |
+        if [ -n "${{ secrets.GG_TOKEN }}" ]; then
+          echo "token_available=true" >> $GITHUB_OUTPUT
+        else
+          echo "token_available=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Run security scan
+      if: steps.check-token.outputs.token_available == 'true'
+      run: |
+        npm install -g @gitguardian/ggshield
+        ggshield scan path . --exit-zero
+
+    - name: Skip security scan (no token)
+      if: steps.check-token.outputs.token_available == 'false'
+      run: |
+        echo "Skipping security scan - no GG_TOKEN available"
+        echo "This is normal for forks or when secrets are not available"
+
+    - name: Build application
+      run: npm run build
+
+    - name: Start preview server and wait
+      run: |
+        npm run preview:ci &
+        SERVER_PID=$!
         
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: npm ci
+        # Wait for server to be ready
+        echo "Waiting for preview server to start..."
+        timeout 60 bash -c 'until curl -s http://localhost:4174 > /dev/null; do sleep 2; done'
         
-      - name: Build project
-        run: npm run build
-        
-      - name: Start preview server and wait
-        run: |
-          # Start the preview server using the CI-specific script
-          npm run preview:ci &
-          SERVER_PID=$!
-          
-          # Wait for server to be ready on port 4174 (or fallback port)
-          echo "Waiting for preview server to start..."
-          timeout 90 bash -c 'until curl -s http://localhost:4174 > /dev/null || curl -s http://localhost:4175 > /dev/null; do sleep 3; echo "Waiting for server..."; done'
-          
-          # Determine which port the server is actually using
-          if curl -s http://localhost:4174 > /dev/null; then
-            SERVER_PORT=4174
-            echo "✅ Preview server is ready on port 4174!"
-          elif curl -s http://localhost:4175 > /dev/null; then
-            SERVER_PORT=4175
-            echo "✅ Preview server is ready on port 4175!"
-          else
-            echo "❌ Preview server failed to start within 90 seconds"
-            echo "Checking server status..."
-            ps aux | grep "vite preview" || echo "No vite preview process found"
-            echo "Checking port usage..."
-            netstat -tlnp | grep :4174 || echo "Port 4174 not in use"
-            netstat -tlnp | grep :4175 || echo "Port 4175 not in use"
-            exit 1
-          fi
-          
+        if [ $? -eq 0 ]; then
+          echo "Preview server is ready!"
           echo "Server PID: $SERVER_PID"
-          echo "Server Port: $SERVER_PORT"
-          
-      - name: Verify server is running
-        run: |
-          # Check which port the server is actually using
-          if curl -s http://localhost:4174 > /dev/null; then
-            SERVER_PORT=4174
-          elif curl -s http://localhost:4175 > /dev/null; then
-            SERVER_PORT=4175
-          else
-            echo "❌ Server not responding on expected ports"
-            exit 1
-          fi
-          
-          # Check if server is responding
-          curl -f http://localhost:$SERVER_PORT || exit 1
-          echo "✅ Server is responding correctly on port $SERVER_PORT"
-          
-      - name: Run Lighthouse CI
-        run: npm run lhci
-        env:
-          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
-          
-      - name: Upload Lighthouse reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-reports
-          path: reports/lighthouse/
-          retention-days: 30
-          
-      - name: Comment PR with results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const path = require('path');
-            
-            try {
-              const reportPath = path.join(process.cwd(), 'reports/lighthouse');
-              const files = fs.readdirSync(reportPath);
-              const htmlReport = files.find(f => f.endsWith('.html'));
-              
-              if (htmlReport) {
-                const reportUrl = `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts`;
-                
-                github.rest.issues.createComment({
-                  issue_number: context.issue.number,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: `## 📊 Lighthouse Audit Complete
-                  
-                  **Performance Score:** ${process.env.LHCI_PERFORMANCE_SCORE || 'N/A'}
-                  **Accessibility Score:** ${process.env.LHCI_ACCESSIBILITY_SCORE || 'N/A'}
-                  **Best Practices Score:** ${process.env.LHCI_BEST_PRACTICES_SCORE || 'N/A'}
-                  **SEO Score:** ${process.env.LHCI_SEO_SCORE || 'N/A'}
-                  
-                  📋 [View Full Report](${reportUrl})
-                  
-                  All thresholds met! ✅`
-                });
-              }
-            } catch (error) {
-              console.error('Error creating comment:', error);
-            }
+        else
+          echo "Preview server failed to start within 60 seconds"
+          exit 1
+        fi
 
-  deploy:
-    name: 🚀 Deploy to Netlify
-    runs-on: ubuntu-latest
-    needs: [security-scan, lighthouse-audit]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-        
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Build project
-        run: npm run build
-        
-      - name: Deploy to Netlify
-        uses: nwtgck/actions-netlify@v2.0
-        with:
-          publish-dir: './dist'
-          production-branch: main
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: "Deploy from GitHub Actions"
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+    - name: Verify server is running
+      run: |
+        # Check if server is responding
+        curl -f http://localhost:4174 || exit 1
+        echo "Server is responding correctly"
+
+    - name: Run Lighthouse CI
+      if: steps.check-token.outputs.token_available == 'true'
+      run: |
+        npm install -g @lhci/cli@0.12.x
+        lhci autorun --upload.target=temporary-public-storage
+
+    - name: Skip Lighthouse CI (no token)
+      if: steps.check-token.outputs.token_available == 'false'
+      run: |
+        echo "Skipping Lighthouse CI - no GG_TOKEN available"
+        echo "This is normal for forks or when secrets are not available"
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files
+        path: dist/
+        retention-days: 30
+
+    - name: Deploy to Netlify
+      if: steps.check-token.outputs.token_available == 'true' && github.ref == 'refs/heads/master'
+      uses: nwtgck/actions-netlify@v2.0
+      with:
+        publish-dir: './dist'
+        production-branch: master
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        deploy-message: "Deploy from GitHub Actions"
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}

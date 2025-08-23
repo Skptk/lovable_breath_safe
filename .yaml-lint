@@ -1,28 +1,20 @@
-# YAML Lint Configuration for GitHub Actions
-# This file configures yaml-lint to properly handle GitHub Actions syntax
+# .yaml-lint
+extends: default
 
-# Disable rules that conflict with GitHub Actions
 rules:
-  # GitHub Actions uses ${{ }} expressions which are valid
+  # Disable rules that conflict with GitHub Actions
   unrecognized-named-value: disable
-  
-  # Allow GitHub Actions specific syntax
   line-length: disable
-  
-  # Allow GitHub Actions specific indentation
   indentation: disable
-  
-  # Disable other rules that might interfere
   trailing-spaces: disable
   empty-lines: disable
   comments-indentation: disable
 
-# GitHub Actions specific patterns
-patterns:
-  - "**/.github/workflows/*.yml"
-  - "**/.github/workflows/*.yaml"
+  # Allow GitHub Actions specific patterns
+  no-trailing-spaces: disable
+  no-empty-lines: disable
 
-# GitHub Actions context variables that are valid
+# Define valid contexts for GitHub Actions
 contexts:
   - secrets
   - github
@@ -38,19 +30,24 @@ contexts:
   - event
   - workflow
 
-# Explicitly allow GitHub Actions expressions
+# Allow GitHub Actions expressions
 expressions:
-  - "${{ }}"
-  - "${{ secrets.* }}"
-  - "${{ github.* }}"
-  - "${{ env.* }}"
-  - "${{ vars.* }}"
-  - "${{ runner.* }}"
-  - "${{ matrix.* }}"
-  - "${{ needs.* }}"
-  - "${{ inputs.* }}"
-  - "${{ steps.* }}"
-  - "${{ jobs.* }}"
-  - "${{ context.* }}"
-  - "${{ event.* }}"
-  - "${{ workflow.* }}"
+  - '${{ }}'
+  - '${{ secrets.* }}'
+  - '${{ github.* }}'
+  - '${{ env.* }}'
+  - '${{ vars.* }}'
+  - '${{ runner.* }}'
+  - '${{ matrix.* }}'
+  - '${{ needs.* }}'
+  - '${{ inputs.* }}'
+  - '${{ steps.* }}'
+  - '${{ jobs.* }}'
+  - '${{ context.* }}'
+  - '${{ event.* }}'
+  - '${{ workflow.* }}'
+
+# Patterns for workflow files
+patterns:
+  - '**/.github/workflows/*.yml'
+  - '**/.github/workflows/*.yaml'
