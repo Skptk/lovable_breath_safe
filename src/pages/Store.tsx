@@ -260,14 +260,14 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="page-container">
       <Header 
         title="Air Quality Store"
         subtitle="Discover premium products to improve your indoor air quality"
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
-      <div className="flex-1 space-y-card-gap p-4 md:p-6">
+      <div className="page-content space-y-card-gap">
       {/* Header */}
       <div className="text-center space-y-4">
         <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
@@ -358,7 +358,7 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
       {/* Products Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         {sortedProducts.map((product) => (
-          <Card key={product.id} className="group hover:shadow-lg transition-all duration-300 cursor-pointer">
+          <Card key={product.id} className="floating-card group hover:shadow-lg transition-all duration-300 cursor-pointer">
             <CardHeader className="pb-2">
               <div className="relative">
                 <img
@@ -471,8 +471,6 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
         </p>
       </div>
       </div>
-      
-
     </div>
   );
 }

@@ -291,14 +291,14 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="page-container">
       <Header 
         title="Rewards & Achievements"
         subtitle="Track your progress and unlock badges"
         showMobileMenu={showMobileMenu || false} 
         onMobileMenuToggle={onMobileMenuToggle || (() => {})} 
       />
-      <div className="flex-1 space-y-card-gap p-4 md:p-6">
+      <div className="page-content space-y-card-gap">
         {/* Header */}
         <div className="text-center space-y-4">
           <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
@@ -313,6 +313,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
               size="sm"
               onClick={handleInitializeAchievements}
               disabled={achievementsLoading}
+              className="floating-card"
             >
               {achievementsLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -326,6 +327,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
               size="sm"
               onClick={handleRefreshAchievements}
               disabled={achievementsLoading}
+              className="floating-card"
             >
               {achievementsLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -338,7 +340,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
           
           {/* Error Display */}
           {achievementsError && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mt-4 p-3 floating-card border-red-200 rounded-lg">
               <p className="text-sm text-red-700">
                 <strong>Error loading achievements:</strong> {achievementsError}
               </p>
@@ -348,7 +350,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-gradient-card border-0">
+          <Card className="floating-card border-0">
             <CardContent className="p-4 text-center">
               <div className="text-3xl font-bold text-primary mb-2">
                 <Trophy className="w-8 h-8 mx-auto mb-2" />
@@ -358,7 +360,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="floating-card border-0">
             <CardContent className="p-4 text-center">
               <div className="text-3xl font-bold text-green-500 mb-2">
                 <DollarSign className="w-8 h-8 mx-auto mb-2" />
@@ -368,7 +370,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="floating-card border-0">
             <CardContent className="p-4 text-center">
               <div className="text-3xl font-bold text-purple-500 mb-2">
                 <Star className="w-8 h-8 mx-auto mb-2" />
@@ -378,7 +380,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-card shadow-card border-0">
+          <Card className="floating-card border-0">
             <CardContent className="p-4 text-center">
               <div className="text-3xl font-bold text-orange-500 mb-2">
                 <Crown className="w-8 h-8 mx-auto mb-2" />
@@ -390,7 +392,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
         </div>
 
         {/* Current Badge Display */}
-        <Card className="bg-gradient-card shadow-card border-0">
+        <Card className="floating-card border-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-yellow-500" />
@@ -434,7 +436,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
 
           {/* Badges Tab */}
           <TabsContent value="badges" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
+            <Card className="floating-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Medal className="h-5 w-5 text-yellow-500" />
@@ -449,7 +451,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                     <Button 
                       onClick={handleInitializeAchievements} 
                       variant="outline" 
-                      className="mt-4"
+                      className="mt-4 floating-card"
                       disabled={achievementsLoading}
                     >
                       {achievementsLoading ? (
@@ -465,7 +467,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                     {badges.map((badge) => (
                       <Card 
                         key={badge.id} 
-                        className={`border-2 transition-all duration-200 ${
+                        className={`floating-card border-2 transition-all duration-200 ${
                           badge.unlocked 
                             ? 'border-green-200 bg-green-50/50 shadow-lg scale-105' 
                             : 'border-gray-200 bg-gray-50/50 opacity-75'
@@ -518,7 +520,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
 
           {/* Achievements Tab */}
           <TabsContent value="achievements" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
+            <Card className="floating-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Target className="h-5 w-5 text-blue-500" />
@@ -533,7 +535,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                     <Button 
                       onClick={handleInitializeAchievements} 
                       variant="outline" 
-                      className="mt-4"
+                      className="mt-4 floating-card"
                       disabled={achievementsLoading}
                     >
                       {achievementsLoading ? (
@@ -547,7 +549,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                 ) : (
                   achievements.map((achievement) => {
                     return (
-                      <Card key={achievement.id} className="border-2 border-blue-200 bg-blue-50/50">
+                      <Card key={achievement.id} className="floating-card border-2 border-blue-200 bg-blue-50/50">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-4">
                             <div className="text-4xl">{achievement.icon}</div>
@@ -578,7 +580,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
           {/* Rewards Tab */}
           <TabsContent value="rewards" className="space-y-4">
             {/* Currency Rewards */}
-            <Card className="bg-gradient-card shadow-card border-0">
+            <Card className="floating-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <DollarSign className="h-5 w-5 text-green-500" />
@@ -607,7 +609,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
             </Card>
 
             {/* Badge Progress Summary */}
-            <Card className="bg-gradient-card shadow-card border-0">
+            <Card className="floating-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-yellow-500" />
@@ -647,7 +649,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
 
           {/* Withdrawals Tab */}
           <TabsContent value="withdrawals" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
+            <Card className="floating-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-blue-500" />

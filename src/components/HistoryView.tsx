@@ -514,10 +514,12 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Loading air quality history...</p>
+      <div className="page-container">
+        <div className="page-content flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-muted-foreground">Loading air quality history...</p>
+          </div>
         </div>
       </div>
     );
@@ -526,16 +528,18 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
-            <AlertTriangle className="w-8 h-8 text-destructive" />
+      <div className="page-container">
+        <div className="page-content flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-8 h-8 text-destructive" />
+            </div>
+            <h2 className="text-xl font-semibold">Failed to load history</h2>
+            <p className="text-muted-foreground">{error}</p>
+            <Button onClick={fetchHistory} variant="outline">
+              Try Again
+            </Button>
           </div>
-          <h2 className="text-xl font-semibold">Failed to load history</h2>
-          <p className="text-muted-foreground">{error}</p>
-          <Button onClick={fetchHistory} variant="outline">
-            Try Again
-          </Button>
         </div>
       </div>
     );
@@ -544,18 +548,20 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   // Show empty state
   if (!user) {
     return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <h2 className="text-xl font-semibold">Authentication Required</h2>
-          <p className="text-muted-foreground">Please sign in to view your air quality history.</p>
+      <div className="page-container">
+        <div className="page-content flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <h2 className="text-xl font-semibold">Authentication Required</h2>
+            <p className="text-muted-foreground">Please sign in to view your air quality history.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="page-container">
+      <div className="page-content space-y-4 md:space-y-6">
       {/* Header */}
       <Header
         title="Air Quality History"
@@ -606,7 +612,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
       {/* Fetch AQI Data Button - Only shown after clearing history */}
       {showFetchButton && (
-        <Card className="bg-gradient-card shadow-card border-0 border-2 border-primary/20">
+        <Card className="floating-card border-0 border-2 border-primary/20">
           <CardContent className="p-6 text-center">
             <div className="space-y-4">
               <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
@@ -643,7 +649,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-gradient-card shadow-card border-0">
+        <Card className="floating-card border-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
@@ -660,7 +666,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-card shadow-card border-0">
+        <Card className="floating-card border-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Calendar className="h-4 w-4" />
@@ -675,7 +681,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-card shadow-card border-0">
+        <Card className="floating-card border-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Clock className="h-4 w-4" />

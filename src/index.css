@@ -285,69 +285,69 @@
 
   /* Glass morphism effects - Updated for both light and dark themes */
   .glass-card {
-    background: rgba(38, 42, 50, 0.8);
+    background: rgba(38, 42, 50, 0.6);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: var(--shadow-glass);
     transition: var(--transition-smooth);
   }
 
   .glass-card:hover {
-    background: rgba(42, 47, 56, 0.9);
+    background: rgba(42, 47, 56, 0.75);
     box-shadow: var(--shadow-glass-hover);
     transform: translateY(-2px);
   }
 
   .glass-surface {
-    background: rgba(38, 42, 50, 0.6);
+    background: rgba(38, 42, 50, 0.4);
     backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
   }
 
   .glass-overlay {
-    background: rgba(38, 42, 50, 0.95);
+    background: rgba(38, 42, 50, 0.8);
     backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   /* Light mode glass effects */
   .light .glass-card {
-    background: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.15);
   }
 
   .light .glass-card:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.75);
   }
 
   .light .glass-surface {
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.12);
   }
 
   .light .glass-overlay {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.2);
   }
 
   /* Dark mode glass effects - Now the default */
   .dark .glass-card {
-    background: rgba(38, 42, 50, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(38, 42, 50, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
   }
 
   .dark .glass-card:hover {
-    background: rgba(42, 47, 56, 0.9);
+    background: rgba(42, 47, 56, 0.75);
   }
 
   .dark .glass-surface {
-    background: rgba(38, 42, 50, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(38, 42, 50, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
   }
 
   .dark .glass-overlay {
-    background: rgba(38, 42, 50, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(38, 42, 50, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   /* Enhanced card styling for modern aesthetic */
@@ -377,10 +377,31 @@
     opacity: 1;
   }
 
-  .modern-card:hover {
-    box-shadow: var(--shadow-hover);
-    transform: translateY(-2px);
-    border-color: hsl(var(--accent));
+  /* Floating cards that float above background with glass effects */
+  .floating-card {
+    background: rgba(38, 42, 50, 0.5);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 1;
+  }
+
+  .floating-card:hover {
+    background: rgba(42, 47, 56, 0.65);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Light mode floating cards */
+  .light .floating-card {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+  }
+
+  .light .floating-card:hover {
+    background: rgba(255, 255, 255, 0.65);
   }
 
   /* Enhanced button styling */
@@ -713,17 +734,17 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.25);
     transition: background-color 0.5s ease-in-out;
   }
 
-  /* Theme-specific overlay adjustments */
+  /* Theme-specific overlay adjustments - Made 15% brighter */
   .light .weather-background::after {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.15);
   }
 
   .dark .weather-background::after {
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.25);
   }
 
   /* Mobile responsiveness for weather backgrounds */
@@ -737,5 +758,27 @@
   @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
     .weather-background {
       background-size: cover;
+    }
+  }
+
+  /* Page container that allows background to show through */
+  .page-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 1;
+  }
+
+  .page-container .page-content {
+    flex: 1;
+    padding: 1rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (min-width: 768px) {
+    .page-container .page-content {
+      padding: 1.5rem;
     }
   }

@@ -136,14 +136,14 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="page-container">
       <Header 
         title="Settings"
         subtitle="Customize your app experience and preferences"
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
-      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="page-content space-y-4 md:space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
@@ -171,7 +171,7 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
 
           {/* Appearance Tab */}
           <TabsContent value="appearance" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
+            <Card className="floating-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Palette className="h-5 w-5" />
@@ -241,7 +241,7 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
 
           {/* Privacy Tab */}
           <TabsContent value="privacy" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
+            <Card className="floating-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
@@ -288,7 +288,7 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
             </Card>
 
             {/* Privacy Policy & Terms */}
-            <Card className="bg-gradient-card shadow-card border-0">
+            <Card className="floating-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <HelpCircle className="h-5 w-5" />
@@ -327,7 +327,7 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
 
           {/* Location Tab */}
           <TabsContent value="location" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
+            <Card className="floating-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="h-5 w-5" />
@@ -383,7 +383,7 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
 
           {/* Data Tab */}
           <TabsContent value="data" className="space-y-4">
-            <Card className="bg-gradient-card shadow-card border-0">
+            <Card className="floating-card border-0">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Database className="h-5 w-5" />
