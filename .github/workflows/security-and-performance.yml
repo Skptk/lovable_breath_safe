@@ -56,110 +56,60 @@ jobs:
       run: |
         echo "📥 Installing GitGuardian CLI..."
         
-        # Get the latest version from GitHub API
-        LATEST_VERSION=$(curl -s https://api.github.com/repos/GitGuardian/ggshield/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-        echo "Latest version: $LATEST_VERSION"
+        # Install Python and pip first (required for GitGuardian)
+        echo "🐍 Installing Python dependencies..."
+        sudo apt-get update
+        sudo apt-get install -y python3 python3-pip python3-venv
         
-        # List available assets to find the correct filename
-        echo "🔍 Checking available assets..."
-        curl -s "https://api.github.com/repos/GitGuardian/ggshield/releases/latest" | grep -o '"name":"[^"]*"' | head -10
+        # Create a virtual environment for GitGuardian
+        python3 -m venv ggshield_env
+        source ggshield_env/bin/activate
         
-        # Try multiple possible filename patterns
-        POSSIBLE_FILENAMES=(
-          "ggshield_${LATEST_VERSION#v}_Linux_x86_64.tar.gz"
-          "ggshield-${LATEST_VERSION#v}-x86_64-unknown-linux-gnu.tar.gz"
-          "ggshield-${LATEST_VERSION#v}-x86_64-unknown-linux-musl.tar.gz"
-          "ggshield-${LATEST_VERSION#v}-x86_64-unknown-linux-gnu"
-          "ggshield-${LATEST_VERSION#v}-x86_64-unknown-linux-musl"
-        )
+        # Install GitGuardian using pip (official method)
+        echo "📦 Installing GitGuardian CLI via pip..."
+        pip install --upgrade pip
+        pip install ggshield
         
-        DOWNLOAD_SUCCESS=false
-        
-        for filename in "${POSSIBLE_FILENAMES[@]}"; do
-          DOWNLOAD_URL="https://github.com/GitGuardian/ggshield/releases/download/$LATEST_VERSION/$filename"
-          echo "🔄 Trying: $DOWNLOAD_URL"
-          
-          # Download with verification
-          if curl -L -o ggshield.tar.gz "$DOWNLOAD_URL" --fail --silent --show-error; then
-            # Check if file is actually a tar.gz (not HTML error page)
-            if file ggshield.tar.gz | grep -q "gzip compressed data"; then
-              echo "✅ Download successful for: $filename"
-              echo "File size: $(du -h ggshield.tar.gz | cut -f1)"
-              DOWNLOAD_SUCCESS=true
-              break
-            else
-              echo "⚠️  Downloaded file is not a valid tar.gz (got: $(file ggshield.tar.gz))"
-              rm -f ggshield.tar.gz
-            fi
-          else
-            echo "❌ Failed to download: $filename"
-          fi
-        done
-        
-        if [ "$DOWNLOAD_SUCCESS" = false ]; then
-          echo "❌ All download attempts failed"
-          echo "Available assets:"
-          curl -s "https://api.github.com/repos/GitGuardian/ggshield/releases/latest" | grep -o '"name":"[^"]*"' | head -20
-          exit 1
-        fi
-        
-        # Extract and install
-        echo "📦 Extracting GitGuardian CLI..."
-        tar -xzf ggshield.tar.gz
-        
-        # Find the ggshield binary (it might be in a subdirectory)
-        echo "🔍 Looking for ggshield binary..."
-        find . -name "ggshield" -type f
-        
-        # Try to find the binary in common locations
-        BINARY_PATH=""
-        if [ -f "ggshield" ]; then
-          BINARY_PATH="ggshield"
-        elif [ -f "target/release/ggshield" ]; then
-          BINARY_PATH="target/release/ggshield"
+        # Verify installation
+        if command -v ggshield >/dev/null 2>&1; then
+          echo "✅ GitGuardian CLI installed successfully"
+          ggshield --version
         else
-          # Look for the binary in extracted directories
-          EXTRACTED_DIR=$(find . -maxdepth 1 -type d -name "ggshield-*" | head -1)
-          if [ -n "$EXTRACTED_DIR" ] && [ -f "$EXTRACTED_DIR/ggshield" ]; then
-            BINARY_PATH="$EXTRACTED_DIR/ggshield"
-            echo "✅ Found binary in: $BINARY_PATH"
-          else
-            echo "❌ Could not find ggshield binary"
-            echo "Current directory contents:"
-            ls -la
-            echo "Extracted directories:"
-            find . -maxdepth 1 -type d
-            exit 1
-          fi
-        fi
-        
-        if [ -n "$BINARY_PATH" ]; then
-          echo "📦 Installing ggshield from: $BINARY_PATH"
-          sudo mv "$BINARY_PATH" /usr/local/bin/
-          chmod +x /usr/local/bin/ggshield
+          echo "❌ Failed to install GitGuardian CLI via pip"
           
-          # Verify installation
+          # Fallback: Try alternative installation methods
+          echo "🔄 Trying alternative installation methods..."
+          
+          # Method 1: Install via pip3
+          pip3 install ggshield || echo "❌ pip3 installation failed"
+          
+          # Method 2: Install via python3 -m pip
+          python3 -m pip install ggshield || echo "❌ python3 -m pip installation failed"
+          
+          # Method 3: Try to find ggshield in PATH
           if command -v ggshield >/dev/null 2>&1; then
-            echo "✅ GitGuardian CLI installed successfully"
+            echo "✅ GitGuardian CLI found in PATH"
             ggshield --version
           else
-            echo "❌ Failed to install GitGuardian CLI"
+            echo "❌ All installation methods failed"
+            echo "Available Python versions:"
+            python3 --version || echo "Python3 not available"
+            pip3 --version || echo "pip3 not available"
+            echo "PATH: $PATH"
             exit 1
           fi
-        else
-          echo "❌ Binary path not found"
-          exit 1
         fi
         
-        # Cleanup
-        rm -f ggshield.tar.gz
-        rm -rf ggshield-*
+        # Deactivate virtual environment
+        deactivate
 
     - name: Run security scan
       if: steps.check-token.outputs.token_available == 'true'
       env:
         GITGUARDIAN_API_KEY: ${{ secrets.GG_TOKEN }}
       run: |
+        # Activate the virtual environment for the scan
+        source ggshield_env/bin/activate
         ggshield scan path . --exit-zero --verbose
 
     - name: Skip security scan (no token)
