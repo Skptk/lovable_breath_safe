@@ -207,20 +207,20 @@ jobs:
           fi
           
           # Generate simple performance report
-          cat > reports/performance/performance-report.md << EOF
-          # Performance Report (Alternative)
-          
-          ## Build Status
-          - ✅ Build successful
-          - Main bundle: ${MAIN_BUNDLE_SIZE}KB
-          - Total size: ${TOTAL_SIZE}KB
-          
-          ## Notes
-          - Lighthouse CI was unavailable, using build analysis instead
-          - Consider running Lighthouse locally for detailed performance insights
-          - Build size thresholds: Main < 300KB, Total < 2MB
-          EOF
-          
+          cat > reports/performance/performance-report.md << 'EOF'
+        # Performance Report (Alternative)
+        
+        ## Build Status
+        - ✅ Build successful
+        - Main bundle: ${MAIN_BUNDLE_SIZE}KB
+        - Total size: ${TOTAL_SIZE}KB
+        
+        ## Notes
+        - Lighthouse CI was unavailable, using build analysis instead
+        - Consider running Lighthouse locally for detailed performance insights
+        - Build size thresholds: Main < 300KB, Total < 2MB
+        EOF
+        
           echo "📄 Performance report generated at reports/performance/performance-report.md"
         else
           echo "❌ Build failed or dist directory not found"
