@@ -151,80 +151,17 @@ jobs:
     - name: Build project
       run: npm run build
 
-    - name: Start preview server and detect port
-      run: |
-        echo "🚀 Starting preview server..."
-        npm run preview:ci &
-        SERVER_PID=$!
-        
-        # Wait for server to be ready and detect actual port
-        echo "⏳ Waiting for preview server to start and detecting port..."
-        
-        # Try multiple ports to find where server actually started
-        for port in 4174 4175 4176 4177 4178; do
-          if timeout 10 bash -c "until curl -s http://localhost:$port > /dev/null; do sleep 1; done"; then
-            echo "✅ Preview server is ready on port $port!"
-            echo "Server PID: $SERVER_PID"
-            echo "$port" > server_port.txt
-            break
-          fi
-        done
-        
-        if [ ! -f server_port.txt ]; then
-          echo "❌ Server failed to start on any port within 60 seconds"
-          exit 1
-        fi
-
-    - name: Verify server is running
-      run: |
-        # Read the detected port
-        SERVER_PORT=$(cat server_port.txt)
-        echo "🔍 Using detected server port: $SERVER_PORT"
-        
-        # Check if server is responding
-        curl -f http://localhost:$SERVER_PORT || exit 1
-        echo "✅ Server is responding correctly on port $SERVER_PORT"
-        
-        # Wait for React app to fully load with multiple checks
-        echo "⏳ Waiting for React app to fully load..."
-        
-        # Wait for initial page load
-        sleep 30
-        
-        # Check if React app is rendering content
-        echo "🔍 Checking if React app is rendering content..."
-        for i in {1..10}; do
-          if curl -s "http://localhost:$SERVER_PORT" | grep -q "Breath Safe\|React\|root"; then
-            echo "✅ React app is rendering content (attempt $i)"
-            break
-          fi
-          echo "⏳ Waiting for React app to render content... (attempt $i/10)"
-          sleep 10
-        done
-        
-        # Final wait for React hydration
-        echo "⏳ Final wait for React hydration..."
-        sleep 20
-
     - name: Run Lighthouse CI performance audit
       run: |
-        # Read the detected server port
-        SERVER_PORT=$(cat server_port.txt)
-        echo "🔍 Running Lighthouse CI performance audit on port $SERVER_PORT..."
-        
-        # Verify server is still running on detected port
-        echo "🔍 Verifying server is still running on port $SERVER_PORT..."
-        curl -f http://localhost:$SERVER_PORT || exit 1
-        echo "✅ Server is still responding on port $SERVER_PORT"
+        echo "🚀 Starting Lighthouse CI performance audit..."
         
         # Create reports directory
         mkdir -p reports/lighthouse
         
-        # Run Lighthouse CI with proper configuration
+        # Run Lighthouse CI with automatic server management
         echo "🚀 Starting Lighthouse CI collection..."
         npx @lhci/cli@latest collect \
           --config=.lighthouserc.cjs \
-          --url=http://localhost:$SERVER_PORT \
           --output-path=reports/lighthouse
         
         echo "✅ Lighthouse CI collection completed"
