@@ -105,11 +105,41 @@ jobs:
         # Set API key environment variable
         export GITGUARDIAN_API_KEY="${{ secrets.GG_TOKEN }}"
         
-        # Run security scan with correct syntax
-        echo "🔍 Scanning repository for secrets..."
-        ggshield secret scan path . --recursive --exit-zero --verbose
+        # Show available commands for debugging
+        echo "🔍 Available GitGuardian CLI commands:"
+        ggshield --help
         
-        echo "✅ GitGuardian security scan completed"
+        # Try multiple command variations
+        echo "🔍 Attempting GitGuardian security scan..."
+        
+        # Method 1: Try the standard scan command
+        if ggshield scan path . --exit-zero --verbose 2>/dev/null; then
+          echo "✅ GitGuardian security scan completed successfully"
+          exit 0
+        fi
+        
+        # Method 2: Try with different syntax
+        if ggshield scan . --exit-zero --verbose 2>/dev/null; then
+          echo "✅ GitGuardian security scan completed successfully"
+          exit 0
+        fi
+        
+        # Method 3: Try with recursive flag
+        if ggshield scan path . --recursive --exit-zero --verbose 2>/dev/null; then
+          echo "✅ GitGuardian security scan completed successfully"
+          exit 0
+        fi
+        
+        # Method 4: Try with different command structure
+        if ggshield scan --path . --exit-zero --verbose 2>/dev/null; then
+          echo "✅ GitGuardian security scan completed successfully"
+          exit 0
+        fi
+        
+        # If all methods fail, show available commands
+        echo "❌ All scan methods failed. Available commands:"
+        ggshield --help
+        exit 1
 
     - name: Skip GitGuardian scan (no token)
       if: steps.check-token.outputs.token_available == 'false'
