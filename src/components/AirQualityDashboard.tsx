@@ -313,14 +313,14 @@ export default function AirQualityDashboard({
                         className="bg-card border border-border rounded-lg p-3 text-center cursor-pointer hover:bg-accent/50 transition-colors"
                         onClick={() => setSelectedPollutant({
                           name: pollutant.name,
-                          value: pollutant.value,
+                          value: pollutant.value || 0,
                           unit: pollutant.unit,
                           description: `Detailed information about ${pollutant.name}`,
                           color: pollutant.color
                         })}
                       >
                         <div className={`text-lg font-bold ${pollutant.color}`}>
-                          {pollutant.value.toFixed(1)}
+                          {(pollutant.value || 0).toFixed(1)}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {pollutant.name}
@@ -345,32 +345,35 @@ export default function AirQualityDashboard({
             transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
             className="grid grid-cols-1 md:grid-cols-3 gap-4"
           >
-            <StatCard
-              title="Total Points"
-              value={userPoints.totalPoints.toLocaleString()}
-              icon={Award}
-              description="Earned from air quality monitoring"
-              onClick={() => onNavigate?.('rewards')}
-              className="cursor-pointer hover:scale-105 transition-transform"
-            />
+            <div onClick={() => onNavigate?.('rewards')} className="cursor-pointer hover:scale-105 transition-transform">
+              <StatCard
+                title="Total Points"
+                value={(userPoints.totalPoints || 0).toLocaleString()}
+                icon={<Award className="w-5 h-5" />}
+                subtitle="Earned from air quality monitoring"
+                className="cursor-pointer"
+              />
+            </div>
             
-            <StatCard
-              title="Currency Value"
-              value={`$${userPoints.currencyValue.toFixed(2)}`}
-              icon={Zap}
-              description="Convertible to rewards"
-              onClick={() => onNavigate?.('store')}
-              className="cursor-pointer hover:scale-105 transition-transform"
-            />
+            <div onClick={() => onNavigate?.('history')} className="cursor-pointer hover:scale-105 transition-transform">
+              <StatCard
+                title="Today's Readings"
+                value={userPoints.todayReadings || 0}
+                icon={<Zap className="w-5 h-5" />}
+                subtitle="Air quality readings today"
+                className="cursor-pointer"
+              />
+            </div>
             
-            <StatCard
-              title="Can Withdraw"
-              value={userPoints.canWithdraw ? "Yes" : "No"}
-              icon={TrendingUp}
-              description={userPoints.canWithdraw ? "Minimum threshold reached" : "Need $50+ to withdraw"}
-              onClick={() => onNavigate?.('rewards')}
-              className="cursor-pointer hover:scale-105 transition-transform"
-            />
+            <div onClick={() => onNavigate?.('history')} className="cursor-pointer hover:scale-105 transition-transform">
+              <StatCard
+                title="Weekly Activity"
+                value={userPoints.weeklyReadings || 0}
+                icon={<TrendingUp className="w-5 h-5" />}
+                subtitle="Readings this week"
+                className="cursor-pointer"
+              />
+            </div>
           </motion.div>
         )}
 
@@ -381,9 +384,8 @@ export default function AirQualityDashboard({
           transition={{ duration: 0.6, ease: "easeOut", delay: 0.4 }}
         >
           <WeatherStatsCard 
-            coordinates={data.coordinates}
-            showMobileMenu={showMobileMenu}
-            onMobileMenuToggle={onMobileMenuToggle}
+            latitude={data.coordinates.lat}
+            longitude={data.coordinates.lon}
           />
         </motion.div>
 
