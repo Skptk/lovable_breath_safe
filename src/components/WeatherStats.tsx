@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -690,7 +691,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                     <Droplets className="h-3 w-3 text-blue-500" />
                     Humidity: {weatherData.currentWeather.humidity}%
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
                     <Wind className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                     <span>Wind Speed</span>
                   </div>

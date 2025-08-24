@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Loader2, AlertTriangle, Map } from 'lucide-react';
 import { getAQIColor, getAQILabel, LEAFLET_MAPS_CONFIG } from '@/config/maps';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Dynamic imports for Leaflet
 let L: any = null;
@@ -37,6 +38,9 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
   const [mapInstance, setMapInstance] = useState<any | null>(null);
   const [markers, setMarkers] = useState<any[]>([]);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const [currentTileLayer, setCurrentTileLayer] = useState<any | null>(null);
+  
+  const { isDark } = useTheme();
 
   // Load Leaflet dynamically
   useEffect(() => {
@@ -59,9 +63,59 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
     loadLeaflet();
   }, []);
 
-  // Dark theme tile layer configuration
-  const darkTileLayer = LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark;
-  const darkTileLayerAttribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.dark;
+  // Update map theme when theme changes
+  useEffect(() => {
+    if (!mapInstance || !L) return;
+
+    // Remove current tile layer
+    if (currentTileLayer) {
+      mapInstance.removeLayer(currentTileLayer);
+    }
+
+    // Add new tile layer based on current theme
+    const tileLayerUrl = isDark ? LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark : LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
+    const attribution = isDark ? LEAFLET_MAPS_CONFIG.ATTRIBUTION.dark : LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+    
+    const newTileLayer = L.tileLayer(tileLayerUrl, {
+      attribution: attribution,
+      subdomains: 'abcd',
+      maxZoom: 19,
+      minZoom: 3,
+    });
+
+    newTileLayer.addTo(mapInstance);
+    setCurrentTileLayer(newTileLayer);
+
+    // Update map styling based on theme
+    const style = document.createElement('style');
+    style.textContent = `
+      .leaflet-container {
+        background: ${isDark ? '#1a1a1a' : '#f8fafc'} !important;
+      }
+      .leaflet-control-zoom a {
+        background-color: ${isDark ? '#2a2a2a' : '#ffffff'} !important;
+        color: ${isDark ? '#ffffff' : '#1a1a1a'} !important;
+        border-color: ${isDark ? '#404040' : '#e5e5e5'} !important;
+      }
+      .leaflet-control-zoom a:hover {
+        background-color: ${isDark ? '#404040' : '#f1f5f9'} !important;
+      }
+      .leaflet-control-attribution {
+        background-color: ${isDark ? 'rgba(26, 26, 26, 0.8)' : 'rgba(255, 255, 255, 0.8)'} !important;
+        color: ${isDark ? '#cccccc' : '#374151'} !important;
+      }
+    `;
+    
+    // Remove existing style if present
+    const existingStyle = document.querySelector('style[data-leaflet-theme]');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    style.setAttribute('data-leaflet-theme', 'true');
+    document.head.appendChild(style);
+
+  }, [isDark, mapInstance, L]);
 
   // Initialize map when user location is available
   useEffect(() => {
@@ -91,38 +145,18 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         zoomAnimation: false, // Reduce jank on low-end devices
       });
 
-      // Add dark theme tile layer
-      L.tileLayer(darkTileLayer, {
-        attribution: darkTileLayerAttribution,
+      // Add initial tile layer based on current theme
+      const tileLayerUrl = isDark ? LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark : LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
+      const attribution = isDark ? LEAFLET_MAPS_CONFIG.ATTRIBUTION.dark : LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+      
+      const tileLayer = L.tileLayer(tileLayerUrl, {
+        attribution: attribution,
         subdomains: 'abcd',
         maxZoom: 19,
         minZoom: 3,
       }).addTo(map);
 
-      // Custom map styling for dark theme
-      map.on('load', () => {
-        // Add custom CSS for dark theme
-        const style = document.createElement('style');
-        style.textContent = `
-          .leaflet-container {
-            background: #1a1a1a !important;
-          }
-          .leaflet-control-zoom a {
-            background-color: #2a2a2a !important;
-            color: #ffffff !important;
-            border-color: #404040 !important;
-          }
-          .leaflet-control-zoom a:hover {
-            background-color: #404040 !important;
-          }
-          .leaflet-control-attribution {
-            background-color: rgba(26, 26, 26, 0.8) !important;
-            color: #cccccc !important;
-          }
-        `;
-        document.head.appendChild(style);
-      });
-
+      setCurrentTileLayer(tileLayer);
       setMapInstance(map);
       setMapLoaded(true);
 
@@ -201,7 +235,7 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       console.error('Error initializing map:', error);
       setMapError('Failed to initialize map');
     }
-  }, [userLocation, nearbyLocations, leafletLoaded, L]);
+  }, [userLocation, nearbyLocations, leafletLoaded, L, isDark]);
 
   // Cleanup markers and map on unmount
   useEffect(() => {

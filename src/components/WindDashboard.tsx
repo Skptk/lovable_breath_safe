@@ -189,25 +189,31 @@ export default function WindDashboard({ latitude, longitude }: WindDashboardProp
             <div className="flex justify-center">
               <div className="relative w-32 h-32">
                 {/* Wind Rose Circle */}
-                <div className="absolute inset-0 border-2 border-muted-foreground/20 rounded-full"></div>
+                <div className="absolute inset-0 border-2 border-muted-foreground/40 rounded-full"></div>
                 
                 {/* Wind Direction Arrow */}
                 <div 
-                  className="absolute inset-4 bg-primary/20 rounded-full flex items-center justify-center"
+                  className="absolute inset-4 bg-primary/30 rounded-full flex items-center justify-center"
                   style={{
                     transform: `rotate(${windData.windDirection}deg)`
                   }}
                 >
-                  <div className="w-1 h-12 bg-primary rounded-full relative">
+                  <div className="w-1.5 h-12 bg-primary rounded-full relative shadow-lg">
                     <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-primary"></div>
                   </div>
                 </div>
                 
-                {/* Direction Labels */}
-                <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 text-xs font-medium">N</div>
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 text-xs font-medium">S</div>
-                <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xs font-medium">W</div>
-                <div className="absolute right-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xs font-medium">E</div>
+                {/* Direction Labels - Enhanced visibility */}
+                <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 text-sm font-bold text-foreground bg-background/80 px-1 rounded">N</div>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 text-sm font-bold text-foreground bg-background/80 px-1 rounded">S</div>
+                <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-foreground bg-background/80 px-1 rounded">W</div>
+                <div className="absolute right-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-foreground bg-background/80 px-1 rounded">E</div>
+                
+                {/* Secondary Direction Labels for better orientation */}
+                <div className="absolute top-2 right-2 text-xs font-medium text-muted-foreground bg-background/60 px-1 rounded">NE</div>
+                <div className="absolute top-2 left-2 text-xs font-medium text-muted-foreground bg-background/60 px-1 rounded">NW</div>
+                <div className="absolute bottom-2 right-2 text-xs font-medium text-muted-foreground bg-background/60 px-1 rounded">SE</div>
+                <div className="absolute bottom-2 left-2 text-xs font-medium text-muted-foreground bg-background/60 px-1 rounded">SW</div>
               </div>
             </div>
 
