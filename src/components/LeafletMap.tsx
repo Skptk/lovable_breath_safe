@@ -72,23 +72,23 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       mapInstance.removeLayer(currentTileLayer);
     }
 
-    // Add new tile layer based on current theme with fallback
+    // Add new tile layer based on current theme with enhanced fallback
     let tileLayerUrl: string;
     let attribution: string;
     
     try {
-      if (isDark) {
-        tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark;
-        attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.dark;
-      } else {
-        tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
-        attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+      // Use the same reliable tile source for both themes to prevent rendering issues
+      tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light; // Most reliable source
+      attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('LeafletMap: Using reliable tile layer:', tileLayerUrl);
       }
     } catch (error) {
-      // Fallback to light theme if dark theme fails
-      console.warn('Dark theme tile layer failed, falling back to light theme');
-      tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
-      attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+      // Fallback to light theme if any issues occur
+      console.warn('LeafletMap: Tile layer configuration failed, using fallback');
+      tileLayerUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
     }
     
     const newTileLayer = L.tileLayer(tileLayerUrl, {
@@ -96,6 +96,11 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       subdomains: 'abcd',
       maxZoom: 19,
       minZoom: 3,
+      // Add retry options for better tile loading
+      retry: 3,
+      retryDelay: 1000,
+      // Add error handling for tile loading failures
+      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
     });
 
     newTileLayer.addTo(mapInstance);
@@ -118,6 +123,10 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       .leaflet-control-attribution {
         background-color: ${isDark ? 'rgba(26, 26, 26, 0.8)' : 'rgba(255, 255, 255, 0.8)'} !important;
         color: ${isDark ? '#cccccc' : '#374151'} !important;
+      }
+      /* Ensure tiles load properly */
+      .leaflet-tile {
+        filter: ${isDark ? 'brightness(0.8) contrast(1.2)' : 'none'};
       }
     `;
     
@@ -165,18 +174,18 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       let attribution: string;
       
       try {
-        if (isDark) {
-          tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark;
-          attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.dark;
-        } else {
-          tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
-          attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+        // Use the same reliable tile source for both themes to prevent rendering issues
+        tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light; // Most reliable source
+        attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('LeafletMap: Initial map using reliable tile layer:', tileLayerUrl);
         }
       } catch (error) {
-        // Fallback to light theme if dark theme fails
-        console.warn('Dark theme tile layer failed during initialization, falling back to light theme');
-        tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
-        attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+        // Fallback to light theme if any issues occur
+        console.warn('LeafletMap: Initial tile layer configuration failed, using fallback');
+        tileLayerUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
       }
       
       const tileLayer = L.tileLayer(tileLayerUrl, {
@@ -184,6 +193,11 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         subdomains: 'abcd',
         maxZoom: 19,
         minZoom: 3,
+        // Add retry options for better tile loading
+        retry: 3,
+        retryDelay: 1000,
+        // Add error handling for tile loading failures
+        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
       }).addTo(map);
 
       setCurrentTileLayer(tileLayer);

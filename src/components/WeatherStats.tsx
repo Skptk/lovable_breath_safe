@@ -708,7 +708,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
               </>
             ) : (
               <div className="text-2xl font-bold text-muted-foreground">
-                {weatherData.error ? `Error: ${weatherData.error}` : 'No Data'}
+                {weatherData.error ? 'Weather data unavailable' : 'No Data'}
               </div>
             )}
             <p className="text-xs text-muted-foreground mt-2">
@@ -717,6 +717,15 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                 weatherData.loading ? 'Loading weather data...' : 'Weather data unavailable'
               }
             </p>
+            {/* Show refresh status instead of error messages */}
+            {weatherData.error && !weatherData.currentWeather && (
+              <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Refreshing weather data...</span>
+                </div>
+              </div>
+            )}
             {/* Debug info in development */}
             {process.env.NODE_ENV === 'development' && (
               <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
