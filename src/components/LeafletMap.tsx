@@ -72,9 +72,24 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       mapInstance.removeLayer(currentTileLayer);
     }
 
-    // Add new tile layer based on current theme
-    const tileLayerUrl = isDark ? LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark : LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
-    const attribution = isDark ? LEAFLET_MAPS_CONFIG.ATTRIBUTION.dark : LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+    // Add new tile layer based on current theme with fallback
+    let tileLayerUrl: string;
+    let attribution: string;
+    
+    try {
+      if (isDark) {
+        tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark;
+        attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.dark;
+      } else {
+        tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
+        attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+      }
+    } catch (error) {
+      // Fallback to light theme if dark theme fails
+      console.warn('Dark theme tile layer failed, falling back to light theme');
+      tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
+      attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+    }
     
     const newTileLayer = L.tileLayer(tileLayerUrl, {
       attribution: attribution,
@@ -146,8 +161,23 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       });
 
       // Add initial tile layer based on current theme
-      const tileLayerUrl = isDark ? LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark : LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
-      const attribution = isDark ? LEAFLET_MAPS_CONFIG.ATTRIBUTION.dark : LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+      let tileLayerUrl: string;
+      let attribution: string;
+      
+      try {
+        if (isDark) {
+          tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark;
+          attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.dark;
+        } else {
+          tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
+          attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+        }
+      } catch (error) {
+        // Fallback to light theme if dark theme fails
+        console.warn('Dark theme tile layer failed during initialization, falling back to light theme');
+        tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
+        attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+      }
       
       const tileLayer = L.tileLayer(tileLayerUrl, {
         attribution: attribution,

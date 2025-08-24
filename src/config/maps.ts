@@ -4,16 +4,16 @@ export const LEAFLET_MAPS_CONFIG = {
   DEFAULT_ZOOM: 13,
   DEFAULT_CENTER: { lat: 0, lng: 0 },
   
-  // Tile layer configuration
+  // Tile layer configuration - Fixed dark theme tiles for better visibility
   TILE_LAYERS: {
-    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    dark: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', // Humanitarian OpenStreetMap - better dark visibility
+    light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', // Standard OpenStreetMap
     satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
   },
   
   // Attribution for tile layers
   ATTRIBUTION: {
-    dark: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    dark: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://www.hotosm.org/">Humanitarian OpenStreetMap</a>',
     light: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     satellite: '&copy; <a href="https://www.esri.com/">Esri</a>'
   },

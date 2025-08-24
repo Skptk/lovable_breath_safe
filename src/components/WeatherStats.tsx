@@ -707,14 +707,24 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                 </div>
               </>
             ) : (
-              <div className="text-2xl font-bold text-muted-foreground">No Data</div>
+              <div className="text-2xl font-bold text-muted-foreground">
+                {weatherData.error ? `Error: ${weatherData.error}` : 'No Data'}
+              </div>
             )}
             <p className="text-xs text-muted-foreground mt-2">
               {weatherData.currentWeather?.timestamp ? 
                 `Updated: ${new Date(weatherData.currentWeather.timestamp).toLocaleTimeString()}` : 
-                'Weather data unavailable'
+                weatherData.loading ? 'Loading weather data...' : 'Weather data unavailable'
               }
             </p>
+            {/* Debug info in development */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+                <strong>Debug:</strong> Loading: {weatherData.loading.toString()}, 
+                Has Data: {(!!weatherData.currentWeather).toString()}, 
+                Error: {weatherData.error || 'None'}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
