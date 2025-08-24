@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, RefreshCw, Menu, X } from "lucide-react";
+import { Search, RefreshCw, Menu, X, MapPin, MapPinOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import SearchDialog from "./SearchDialog";
@@ -31,8 +31,66 @@ function Header({
   onMobileMenuToggle
 }: HeaderProps): JSX.Element {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
+
+  // Check location permission status
+  useEffect(() => {
+    const checkLocationPermission = async () => {
+      try {
+        if (navigator.permissions) {
+          const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+          setLocationPermission(permissionStatus.state);
+          
+          // Listen for permission changes
+          permissionStatus.onchange = () => {
+            setLocationPermission(permissionStatus.state);
+          };
+        } else {
+          // Fallback for browsers without permissions API
+          setLocationPermission('unknown');
+        }
+      } catch (error) {
+        console.warn('Failed to check location permission:', error);
+        setLocationPermission('unknown');
+      }
+    };
+
+    checkLocationPermission();
+  }, []);
+
+  // Get location permission icon and color
+  const getLocationPermissionDisplay = () => {
+    switch (locationPermission) {
+      case 'granted':
+        return {
+          icon: <MapPin className="h-4 w-4 text-green-500" />,
+          tooltip: 'Location access granted',
+          className: 'text-green-500'
+        };
+      case 'denied':
+        return {
+          icon: <MapPinOff className="h-4 w-4 text-red-500" />,
+          tooltip: 'Location access denied',
+          className: 'text-red-500'
+        };
+      case 'prompt':
+        return {
+          icon: <MapPin className="h-4 w-4 text-yellow-500" />,
+          tooltip: 'Location permission not set',
+          className: 'text-yellow-500'
+        };
+      default:
+        return {
+          icon: <MapPin className="h-4 w-4 text-gray-500" />,
+          tooltip: 'Location permission unknown',
+          className: 'text-gray-500'
+        };
+    }
+  };
+
+  const locationDisplay = getLocationPermissionDisplay();
 
   return (
     <div className="flex items-center justify-between mb-6">
@@ -111,6 +169,18 @@ function Header({
             </Button>
           </motion.div>
         )}
+
+        {/* Location Permission Indicator */}
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="hidden sm:flex"
+          title={locationDisplay.tooltip}
+        >
+          <div className={`h-9 w-9 rounded-full border border-border flex items-center justify-center ${locationDisplay.className}`}>
+            {locationDisplay.icon}
+          </div>
+        </motion.div>
 
         {/* Notification Bell */}
         <NotificationBell />

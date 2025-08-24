@@ -70,15 +70,105 @@ export default function AirQualityDashboard({
     
     try {
       console.log('Starting location permission request...');
-      const granted = await requestLocationPermission();
-      if (granted) {
-        console.log('Location permission granted, refreshing data...');
-        // Don't auto-refresh, let the useQuery hook handle it when hasUserConsent changes
-      } else {
-        console.log('Location permission denied by user');
+      setIsRequestingPermission(true);
+      
+      // Check if geolocation is supported
+      if (!navigator.geolocation) {
+        console.error('Geolocation not supported by browser');
+        toast({
+          title: "Location Not Supported",
+          description: "Your browser doesn't support location services.",
+          variant: "destructive",
+        });
+        return;
       }
-    } catch (error) {
+
+      // Check current permission status
+      if (navigator.permissions) {
+        const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+        console.log('Current permission status:', permissionStatus.state);
+        
+        if (permissionStatus.state === 'denied') {
+          console.log('Location permission denied, showing instructions');
+          toast({
+            title: "Location Permission Required",
+            description: "Please enable location access in your browser settings to get accurate air quality data.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Request location with proper error handling
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          (error) => {
+            console.error('Geolocation error:', error);
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                reject(new Error('Location permission denied by user'));
+                break;
+              case error.POSITION_UNAVAILABLE:
+                reject(new Error('Location information unavailable'));
+                break;
+              case error.TIMEOUT:
+                reject(new Error('Location request timed out'));
+                break;
+              default:
+                reject(new Error('Unknown geolocation error'));
+            }
+          },
+          {
+            timeout: 15000,
+            enableHighAccuracy: false,
+            maximumAge: 300000 // 5 minutes
+          }
+        );
+      });
+
+      console.log('Location permission granted, coordinates obtained:', {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: position.coords.accuracy
+      });
+
+      // Store location for future use
+      localStorage.setItem('lastKnownLocation', JSON.stringify({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        timestamp: Date.now()
+      }));
+
+      // Update user consent state
+      setHasUserConsent(true);
+      
+      toast({
+        title: "Location Access Granted",
+        description: "Air quality data will now be fetched for your location.",
+        variant: "default",
+      });
+
+    } catch (error: any) {
       console.error('Failed to request location permission:', error);
+      
+      // Show appropriate error message
+      let errorMessage = 'Failed to get location permission';
+      if (error.message.includes('permission denied')) {
+        errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+      } else if (error.message.includes('unavailable')) {
+        errorMessage = 'Location services unavailable. Please check your device settings.';
+      } else if (error.message.includes('timed out')) {
+        errorMessage = 'Location request timed out. Please try again.';
+      }
+      
+      toast({
+        title: "Location Access Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsRequestingPermission(false);
     }
   };
 

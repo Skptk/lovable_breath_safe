@@ -34,8 +34,20 @@ export function useStableChannelSubscription({
   const retryCountRef = useRef(0);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isDestroyedRef = useRef(false);
+  const subscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isSubscribingRef = useRef(false);
+  
+  // Store stable references to prevent dependency loop
+  const configRef = useRef(config);
+  const onDataRef = useRef(onData);
+  const enabledRef = useRef(enabled);
+  
+  // Update refs when props change
+  configRef.current = config;
+  onDataRef.current = onData;
+  enabledRef.current = enabled;
 
-  // Create and configure channel
+  // Create and configure channel - stable function
   const createChannel = useCallback(() => {
     if (isDestroyedRef.current) return null;
 
@@ -43,26 +55,26 @@ export function useStableChannelSubscription({
       const channel = supabase.channel(channelName);
       
       // Configure postgres changes if config provided
-      if (config?.event && config?.schema && config?.table) {
+      if (configRef.current?.event && configRef.current?.schema && configRef.current?.table) {
         (channel as any).on(
           'postgres_changes',
           {
-            event: config.event,
-            schema: config.schema,
-            table: config.table,
-            filter: config.filter,
+            event: configRef.current.event,
+            schema: configRef.current.schema,
+            table: configRef.current.table,
+            filter: configRef.current.filter,
           },
           (payload: any) => {
-            if (!isDestroyedRef.current && onData) {
-              onData(payload);
+            if (!isDestroyedRef.current && onDataRef.current) {
+              onDataRef.current(payload);
             }
           }
         );
       } else {
         // Generic channel for custom events
         (channel as any).on('*', (event: any, payload: any) => {
-          if (!isDestroyedRef.current && onData) {
-            onData(payload);
+          if (!isDestroyedRef.current && onDataRef.current) {
+            onDataRef.current(payload);
           }
         });
       }
@@ -72,14 +84,23 @@ export function useStableChannelSubscription({
       console.error(`❌ [StableChannel] Error creating channel ${channelName}:`, error);
       return null;
     }
-  }, [channelName, config, onData]);
+  }, [channelName]); // Only depend on channelName
 
-  // Subscribe to channel
+  // Subscribe to channel - stable function with debouncing
   const subscribe = useCallback(async () => {
-    if (isDestroyedRef.current || !enabled || isSubscribedRef.current) return;
+    if (isDestroyedRef.current || !enabledRef.current || isSubscribedRef.current || isSubscribingRef.current) {
+      console.log(`🔌 [StableChannel] Subscription skipped for ${channelName}:`, {
+        isDestroyed: isDestroyedRef.current,
+        enabled: enabledRef.current,
+        isSubscribed: isSubscribedRef.current,
+        isSubscribing: isSubscribingRef.current
+      });
+      return;
+    }
 
     try {
       console.log(`🔌 [StableChannel] Subscribing to ${channelName}`);
+      isSubscribingRef.current = true;
       
       const channel = createChannel();
       if (!channel) {
@@ -93,24 +114,28 @@ export function useStableChannelSubscription({
           case 'SUBSCRIBED':
             console.log(`✅ [StableChannel] Successfully subscribed to ${channelName}`);
             isSubscribedRef.current = true;
+            isSubscribingRef.current = false;
             retryCountRef.current = 0;
             break;
             
           case 'CHANNEL_ERROR':
             console.error(`❌ [StableChannel] Channel error for ${channelName}:`, error);
             isSubscribedRef.current = false;
+            isSubscribingRef.current = false;
             handleChannelError(error);
             break;
             
           case 'TIMED_OUT':
             console.warn(`⏰ [StableChannel] Channel timeout for ${channelName}`);
             isSubscribedRef.current = false;
+            isSubscribingRef.current = false;
             handleChannelError(new Error('Channel timeout'));
             break;
             
           case 'CLOSED':
             console.log(`🔒 [StableChannel] Channel closed for ${channelName}`);
             isSubscribedRef.current = false;
+            isSubscribingRef.current = false;
             break;
         }
       });
@@ -119,11 +144,12 @@ export function useStableChannelSubscription({
 
     } catch (error) {
       console.error(`❌ [StableChannel] Subscription failed for ${channelName}:`, error);
+      isSubscribingRef.current = false;
       handleChannelError(error);
     }
-  }, [channelName, enabled, createChannel]);
+  }, [channelName, createChannel]); // Stable dependencies
 
-  // Handle channel errors with retry logic
+  // Handle channel errors with retry logic - stable function
   const handleChannelError = useCallback((error: any) => {
     if (isDestroyedRef.current) return;
 
@@ -141,18 +167,23 @@ export function useStableChannelSubscription({
     } else {
       console.error(`❌ [StableChannel] Max retries reached for ${channelName}`);
     }
-  }, [channelName, maxRetries, subscribe]);
+  }, [channelName, maxRetries, subscribe]); // Stable dependencies
 
-  // Cleanup function
+  // Cleanup function - stable function
   const cleanup = useCallback(() => {
     if (isDestroyedRef.current) return;
 
     console.log(`🧹 [StableChannel] Cleaning up ${channelName}`);
     
-    // Clear retry timeout
+    // Clear all timeouts
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = null;
+    }
+    
+    if (subscriptionTimeoutRef.current) {
+      clearTimeout(subscriptionTimeoutRef.current);
+      subscriptionTimeoutRef.current = null;
     }
 
     // Unsubscribe from channel
@@ -160,14 +191,15 @@ export function useStableChannelSubscription({
       try {
         channelRef.current.unsubscribe();
         isSubscribedRef.current = false;
+        isSubscribingRef.current = false;
       } catch (error) {
         console.warn(`⚠️ [StableChannel] Error unsubscribing from ${channelName}:`, error);
       }
       channelRef.current = null;
     }
-  }, [channelName]);
+  }, [channelName]); // Only depend on channelName
 
-  // Reconnect function
+  // Reconnect function - stable function
   const reconnect = useCallback(async () => {
     if (isDestroyedRef.current) return;
 
@@ -185,35 +217,47 @@ export function useStableChannelSubscription({
         subscribe();
       }
     }, 1000);
-  }, [channelName, cleanup, subscribe]);
+  }, [channelName, cleanup, subscribe]); // Stable dependencies
 
-  // Check if connected
+  // Check if connected - stable function
   const isConnected = useCallback(() => {
     return isSubscribedRef.current && channelRef.current;
-  }, []);
+  }, []); // No dependencies
 
-  // Initialize subscription
+  // Initialize subscription - stable effect with debouncing
   useEffect(() => {
-    if (enabled) {
-      subscribe();
+    if (enabledRef.current) {
+      // Add debouncing to prevent rapid subscription attempts
+      if (subscriptionTimeoutRef.current) {
+        clearTimeout(subscriptionTimeoutRef.current);
+      }
+      
+      subscriptionTimeoutRef.current = setTimeout(() => {
+        if (!isDestroyedRef.current && enabledRef.current) {
+          subscribe();
+        }
+      }, 100); // 100ms debounce
     }
 
     return () => {
+      if (subscriptionTimeoutRef.current) {
+        clearTimeout(subscriptionTimeoutRef.current);
+      }
       cleanup();
     };
-  }, [enabled, subscribe, cleanup]);
+  }, [channelName, enabled]); // Only depend on channelName and enabled, not the functions
 
-  // Cleanup on unmount
+  // Cleanup on unmount - stable effect
   useEffect(() => {
     return () => {
       isDestroyedRef.current = true;
       cleanup();
     };
-  }, [cleanup]);
+  }, [cleanup]); // Stable cleanup function
 
   return {
     isConnected: isConnected(),
-    isConnecting: !isSubscribedRef.current && enabled,
+    isConnecting: !isSubscribedRef.current && enabledRef.current,
     isSubscribed: isSubscribedRef.current,
     channelName,
     cleanup,

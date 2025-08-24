@@ -32,7 +32,7 @@ const getRealtimeConfig = () => {
   
   console.log('🔍 [Config] Environment detected:', { isNetlify, isDevelopment });
   
-  // IMPROVED CONFIG: Better WebSocket connection handling
+  // IMPROVED CONFIG: Better WebSocket connection handling and postgres_changes configuration
   const baseConfig = {
     heartbeatIntervalMs: isNetlify ? 15000 : 30000, // More frequent heartbeats on Netlify
     reconnectAfterMs: (tries: number) => {
@@ -44,6 +44,15 @@ const getRealtimeConfig = () => {
     timeout: isNetlify ? 25000 : 15000, // Longer timeout for Netlify
     params: {
       eventsPerSecond: isNetlify ? 5 : 10, // Reduce events per second on Netlify
+      // Fix: Ensure proper postgres_changes configuration
+      postgres_changes: {
+        // Enable postgres_changes for real-time database updates
+        enabled: true,
+        // Ensure proper schema and table binding
+        schema: 'public',
+        // Add proper event filtering
+        events: ['INSERT', 'UPDATE', 'DELETE']
+      }
     }
   };
   

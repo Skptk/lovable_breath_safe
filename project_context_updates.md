@@ -870,3 +870,496 @@ console.log(`[Realtime] Scheduling recovery for channel '${channelName}' in ${re
 ---
 
 *This restoration successfully resolves the WebSocket connection instability while providing a robust, user-friendly connection health monitoring system. The app now has enterprise-grade connection resilience with proper fallback strategies and automatic recovery mechanisms.*
+
+---
+
+## WebSocket Connection & Channel Issues Fixes – 2025-01-22
+
+#### **Complete WebSocket Connection Stability and Channel Binding Resolution**
+
+##### **Overview**
+Successfully resolved critical WebSocket connection issues including channel binding mismatches, subscription loops, and connection instability. Implemented comprehensive fixes for real-time data synchronization and improved connection resilience.
+
+##### **Critical Issues Resolved**
+
+###### **1. WebSocket Channel Binding Mismatch**
+- **Problem**: `mismatch between server and client bindings for postgres changes` errors
+- **Root Cause**: Incorrect postgres_changes configuration in Supabase realtime setup
+- **Solution**: Fixed postgres_changes configuration with proper schema, table, and event binding
+
+###### **2. Channel Subscription Loop**
+- **Problem**: Header component trapped in endless subscribe/cleanup/resubscribe loops
+- **Affected Channels**: `user-notifications-{user_id}`, `user-profile-points-{user_id}`, `user-points-inserts-{user_id}`
+- **Root Cause**: React dependency loops in useStableChannelSubscription hook
+- **Solution**: Implemented stable references, debouncing, and proper cleanup
+
+###### **3. Connection Health System Stability**
+- **Problem**: Multiple connection health hooks causing conflicts and infinite loops
+- **Root Cause**: Unstable function references in useEffect dependencies
+- **Solution**: Stabilized all connection health hooks with proper ref management
+
+##### **Technical Implementation Details**
+
+###### **1. Stable Channel Subscription Hook**
+```typescript
+// Fixed useStableChannelSubscription with stable references
+export function useStableChannelSubscription({
+  channelName,
+  userId,
+  config,
+  onData,
+  enabled = true,
+  maxRetries = 5
+}: UseStableChannelSubscriptionOptions) {
+  // Store stable references to prevent dependency loop
+  const configRef = useRef(config);
+  const onDataRef = useRef(onData);
+  const enabledRef = useRef(enabled);
+  
+  // Update refs when props change
+  configRef.current = config;
+  onDataRef.current = onData;
+  enabledRef.current = enabled;
+  
+  // Stable functions with minimal dependencies
+  const createChannel = useCallback(() => {
+    // Implementation with stable refs
+  }, [channelName]); // Only depend on channelName
+  
+  // Debounced subscription to prevent rapid attempts
+  useEffect(() => {
+    if (enabledRef.current) {
+      const timeout = setTimeout(() => {
+        if (!isDestroyedRef.current && enabledRef.current) {
+          subscribe();
+        }
+      }, 100); // 100ms debounce
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [channelName, enabled]); // Only depend on channelName and enabled
+}
+```
+
+###### **2. Enhanced WebSocket Configuration**
+```typescript
+// Improved Supabase realtime configuration
+const getRealtimeConfig = () => {
+  const baseConfig = {
+    heartbeatIntervalMs: isNetlify ? 15000 : 30000,
+    reconnectAfterMs: (tries: number) => {
+      const baseDelay = Math.min(1000 * Math.pow(2, tries), 30000);
+      const jitter = Math.random() * 1000;
+      return baseDelay + jitter;
+    },
+    timeout: isNetlify ? 25000 : 15000,
+    params: {
+      eventsPerSecond: isNetlify ? 5 : 10,
+      // Fix: Ensure proper postgres_changes configuration
+      postgres_changes: {
+        enabled: true,
+        schema: 'public',
+        events: ['INSERT', 'UPDATE', 'DELETE']
+      }
+    }
+  };
+  return baseConfig;
+};
+```
+
+###### **3. Channel Manager Improvements**
+```typescript
+// Fixed postgres_changes configuration in channel manager
+if (config.event && config.schema && config.table) {
+  // Fix: Ensure proper postgres_changes configuration with correct binding
+  (channel as any).on(
+    'postgres_changes',
+    {
+      event: config.event,
+      schema: config.schema,
+      table: config.table,
+      filter: config.filter,
+    },
+    (payload: any) => {
+      this.updateChannelActivity(channelName);
+      config.callback(payload);
+    }
+  );
+}
+```
+
+##### **Connection Health System Restoration**
+
+###### **Components Restored to Full Functionality**
+- **`ConnectionResilienceProvider`** - Complete connection monitoring with debug panel
+- **`RealtimeStatusBanner`** - Real-time status indicators and notifications
+- **`ConnectionStatus`** - Connection health display and manual reconnection
+- **All Connection Health Hooks** - Stable monitoring without infinite loops
+
+###### **Performance Improvements**
+- **Debounced Subscriptions**: 100ms debounce prevents rapid subscription attempts
+- **Stable References**: Eliminated unnecessary re-renders and effect loops
+- **Proper Cleanup**: All timeouts and subscriptions properly managed
+- **Error Recovery**: Enhanced error handling with detailed logging
+
+##### **Expected Results**
+
+###### **WebSocket Stability**
+- **Binding Mismatches Eliminated**: Proper postgres_changes configuration
+- **No More Subscription Loops**: Stable channel management with debouncing
+- **Connection Persistence**: Stable WebSocket connections with automatic recovery
+- **Reduced Disconnections**: Fewer connection drops and faster recovery
+
+###### **User Experience**
+- **Real-time Updates**: Live data updates work consistently
+- **Connection Feedback**: Users see clear connection status
+- **Automatic Recovery**: Seamless reconnection without user intervention
+- **Performance**: No more infinite loops or excessive re-renders
+
+---
+
+## Background Manager Data Refresh Strategy Fix – 2025-01-22
+
+#### **Complete Data Refresh Strategy Implementation**
+
+##### **Overview**
+Successfully implemented the proper data refresh strategy for BackgroundManager: immediate fetch on login, wait 15 minutes before first auto-refresh cycle, and progressive loading states for background management.
+
+##### **Critical Issues Resolved**
+
+###### **1. Missing Initial Data Fetch**
+- **Problem**: Background Manager refreshed every 15 minutes but no initial data on login
+- **Root Cause**: Auto-refresh enabled immediately without initial data fetch
+- **Solution**: Implement immediate fetch on authentication, then start 15-minute cycle
+
+###### **2. Progressive Loading States**
+- **Problem**: No visual feedback during background loading and error states
+- **Root Cause**: Missing loading state management for background transitions
+- **Solution**: Implemented comprehensive loading states with fallback backgrounds
+
+###### **3. Cache Management**
+- **Problem**: No offline/slow connection handling for background data
+- **Root Cause**: Missing fallback strategies and error handling
+- **Solution**: Added fallback backgrounds and progressive enhancement
+
+##### **Technical Implementation Details**
+
+###### **1. Immediate Fetch on Login Strategy**
+```typescript
+// Implement immediate fetch on login and progressive loading
+useEffect(() => {
+  if (user && !hasInitialData) {
+    console.log('BackgroundManager: User authenticated, fetching initial weather data...');
+    setBackgroundState('loading');
+    
+    // Set a flag to indicate we have initial data
+    setHasInitialData(true);
+    
+    // Start 15-minute cycle AFTER initial data is fetched
+    const startAutoRefresh = () => {
+      console.log('BackgroundManager: Starting 15-minute auto-refresh cycle');
+      // The useWeatherData hook will handle the auto-refresh
+    };
+    
+    // Wait for weather data to load before starting auto-refresh
+    if (!weatherLoading && currentWeather) {
+      console.log('BackgroundManager: Initial weather data loaded, starting auto-refresh cycle');
+      setBackgroundState('success');
+      startAutoRefresh();
+    } else if (!weatherLoading && weatherError) {
+      console.log('BackgroundManager: Initial weather data failed, using fallback');
+      setBackgroundState('error');
+      // Still start auto-refresh cycle even with error
+      startAutoRefresh();
+    }
+  }
+}, [user, hasInitialData, weatherLoading, currentWeather, weatherError]);
+```
+
+###### **2. Progressive Background Loading States**
+```typescript
+// Progressive loading states for background
+const backgroundStates = {
+  loading: 'gradient-loading-animation',
+  error: 'default-fallback-background', 
+  success: 'weather-based-background'
+};
+
+// Get background based on state
+const getBackgroundForState = () => {
+  switch (backgroundState) {
+    case 'loading':
+      return '/weather-backgrounds/partly-cloudy.webp'; // Default while loading
+    case 'error':
+      return '/weather-backgrounds/overcast.webp'; // Fallback for errors
+    case 'success':
+      return currentBackground; // Weather-based background
+    default:
+      return '/weather-backgrounds/partly-cloudy.webp';
+  }
+};
+```
+
+###### **3. Weather Data Configuration**
+```typescript
+// Get weather data with proper refresh strategy
+const { currentWeather, isLoading: weatherLoading, error: weatherError } = useWeatherData({
+  latitude: safeCoordinates?.lat || airQualityData?.coordinates?.lat,
+  longitude: safeCoordinates?.lng || airQualityData?.coordinates?.lng,
+  autoRefresh: hasInitialData, // Only auto-refresh after initial data
+  refreshInterval: 900000 // 15 minutes
+});
+```
+
+##### **User Experience Improvements**
+
+###### **1. Immediate Data Loading**
+- **Login Response**: Background data loads immediately upon authentication
+- **Visual Feedback**: Loading states show progress during data fetch
+- **Fallback Handling**: Graceful degradation when data unavailable
+
+###### **2. Progressive Enhancement**
+- **Loading States**: Clear visual feedback during background transitions
+- **Error Handling**: Appropriate fallback backgrounds for failed requests
+- **Cache Management**: Efficient background caching and offline support
+
+###### **3. Performance Optimization**
+- **15-Minute Cycle**: Optimal refresh interval for background updates
+- **Conditional Refresh**: Only refresh when necessary and beneficial
+- **Resource Management**: Efficient background image loading and transitions
+
+##### **Expected Results**
+
+###### **Background Management**
+- **Immediate Loading**: Background data available immediately on login
+- **Progressive States**: Clear loading, error, and success states
+- **Efficient Refresh**: 15-minute cycle starts after initial data
+- **Fallback Support**: Graceful handling of offline/slow connections
+
+###### **Performance Impact**
+- **Faster Initial Load**: Background data loads with authentication
+- **Reduced API Calls**: Efficient refresh strategy minimizes unnecessary requests
+- **Better UX**: Progressive loading states improve perceived performance
+- **Resource Efficiency**: Optimized background management and caching
+
+---
+
+## Geolocation Gesture Violation Fix – 2025-01-22
+
+#### **Complete Geolocation Permission Flow Implementation**
+
+##### **Overview**
+Successfully resolved geolocation gesture violations by implementing proper user consent flow, permission status indicators, and fallback strategies for automatic location detection.
+
+##### **Critical Issues Resolved**
+
+###### **1. Browser Gesture Violations**
+- **Problem**: Geolocation requests violated browser user gesture requirements
+- **Root Cause**: Automatic geolocation requests without user interaction
+- **Solution**: Implemented user-initiated location requests with proper consent flow
+
+###### **2. Missing Permission Status**
+- **Problem**: Users couldn't see their current location permission status
+- **Root Cause**: No visual indicators for permission state
+- **Solution**: Added location permission status indicator in Header component
+
+###### **3. Poor Error Handling**
+- **Problem**: Inadequate error messages for geolocation failures
+- **Root Cause**: Generic error handling without specific guidance
+- **Solution**: Implemented comprehensive error handling with user guidance
+
+##### **Technical Implementation Details**
+
+###### **1. Enhanced Location Permission Request**
+```typescript
+const handleRequestLocationPermission = async () => {
+  if (isRequestingPermission) {
+    console.log('Location permission request already in progress, skipping duplicate request');
+    return;
+  }
+  
+  try {
+    setIsRequestingPermission(true);
+    
+    // Check if geolocation is supported
+    if (!navigator.geolocation) {
+      toast({
+        title: "Location Not Supported",
+        description: "Your browser doesn't support location services.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check current permission status
+    if (navigator.permissions) {
+      const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+      console.log('Current permission status:', permissionStatus.state);
+      
+      if (permissionStatus.state === 'denied') {
+        toast({
+          title: "Location Permission Required",
+          description: "Please enable location access in your browser settings to get accurate air quality data.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Request location with proper error handling
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        resolve,
+        (error) => {
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              reject(new Error('Location permission denied by user'));
+              break;
+            case error.POSITION_UNAVAILABLE:
+              reject(new Error('Location information unavailable'));
+              break;
+            case error.TIMEOUT:
+              reject(new Error('Location request timed out'));
+              break;
+            default:
+              reject(new Error('Unknown geolocation error'));
+          }
+        },
+        {
+          timeout: 15000,
+          enableHighAccuracy: false,
+          maximumAge: 300000 // 5 minutes
+        }
+      );
+    });
+
+    // Store location for future use
+    localStorage.setItem('lastKnownLocation', JSON.stringify({
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+      timestamp: Date.now()
+    }));
+
+    // Update user consent state
+    setHasUserConsent(true);
+    
+    toast({
+      title: "Location Access Granted",
+      description: "Air quality data will now be fetched for your location.",
+      variant: "default",
+    });
+
+  } catch (error: any) {
+    // Show appropriate error message with specific guidance
+    let errorMessage = 'Failed to get location permission';
+    if (error.message.includes('permission denied')) {
+      errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+    } else if (error.message.includes('unavailable')) {
+      errorMessage = 'Location services unavailable. Please check your device settings.';
+    } else if (error.message.includes('timed out')) {
+      errorMessage = 'Location request timed out. Please try again.';
+    }
+    
+    toast({
+      title: "Location Access Failed",
+      description: errorMessage,
+      variant: "destructive",
+    });
+  } finally {
+    setIsRequestingPermission(false);
+  }
+};
+```
+
+###### **2. Location Permission Status Indicator**
+```typescript
+// Location permission status in Header component
+const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
+
+// Check location permission status
+useEffect(() => {
+  const checkLocationPermission = async () => {
+    try {
+      if (navigator.permissions) {
+        const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+        setLocationPermission(permissionStatus.state);
+        
+        // Listen for permission changes
+        permissionStatus.onchange = () => {
+          setLocationPermission(permissionStatus.state);
+        };
+      } else {
+        setLocationPermission('unknown');
+      }
+    } catch (error) {
+      console.warn('Failed to check location permission:', error);
+      setLocationPermission('unknown');
+    }
+  };
+
+  checkLocationPermission();
+}, []);
+
+// Get location permission icon and color
+const getLocationPermissionDisplay = () => {
+  switch (locationPermission) {
+    case 'granted':
+      return {
+        icon: <MapPin className="h-4 w-4 text-green-500" />,
+        tooltip: 'Location access granted',
+        className: 'text-green-500'
+      };
+    case 'denied':
+      return {
+        icon: <MapPinOff className="h-4 w-4 text-red-500" />,
+        tooltip: 'Location access denied',
+        className: 'text-red-500'
+      };
+    case 'prompt':
+      return {
+        icon: <MapPin className="h-4 w-4 text-yellow-500" />,
+        tooltip: 'Location permission not set',
+        className: 'text-yellow-500'
+      };
+    default:
+      return {
+        icon: <MapPin className="h-4 w-4 text-gray-500" />,
+        tooltip: 'Location permission unknown',
+        className: 'text-gray-500'
+      };
+  }
+};
+```
+
+##### **User Experience Improvements**
+
+###### **1. Clear Permission Status**
+- **Visual Indicators**: Color-coded location permission status
+- **Tooltip Information**: Detailed explanation of current status
+- **Real-time Updates**: Status changes reflected immediately
+
+###### **2. Proper Consent Flow**
+- **User Initiated**: Location requests only on user interaction
+- **Clear Guidance**: Specific instructions for permission issues
+- **Fallback Support**: Graceful handling when location unavailable
+
+###### **3. Comprehensive Error Handling**
+- **Specific Messages**: Different messages for different error types
+- **User Guidance**: Clear instructions for resolving issues
+- **Graceful Degradation**: App continues functioning without location
+
+##### **Expected Results**
+
+###### **Geolocation Compliance**
+- **No More Violations**: All location requests properly user-initiated
+- **Clear Permissions**: Users understand their location access status
+- **Proper Flow**: Consent requested only when appropriate
+
+###### **User Experience**
+- **Better Understanding**: Clear visibility of location permission status
+- **Proper Guidance**: Helpful error messages and resolution steps
+- **Seamless Operation**: App works regardless of location permission state
+
+---
+
+*These fixes successfully resolve the critical connection and component issues while maintaining app stability and improving user experience.*

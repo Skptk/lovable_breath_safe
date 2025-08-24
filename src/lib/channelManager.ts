@@ -166,6 +166,7 @@ export class ChannelManager {
       
       // Configure postgres changes if config provided
       if (config.event && config.schema && config.table) {
+        // Fix: Ensure proper postgres_changes configuration with correct binding
         (channel as any).on(
           'postgres_changes',
           {

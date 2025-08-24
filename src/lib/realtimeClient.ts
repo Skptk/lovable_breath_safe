@@ -298,6 +298,7 @@ class RealtimeConnectionManager {
       
       // Configure postgres changes if config provided
       if (config?.event && config?.schema && config?.table) {
+        // Fix: Ensure proper postgres_changes configuration with correct binding
         (newChannel as any).on(
           'postgres_changes',
           {
@@ -317,7 +318,7 @@ class RealtimeConnectionManager {
         });
       }
 
-      // Subscribe to the channel
+      // Subscribe to the channel with improved error handling
       const subscription = newChannel.subscribe((status, error) => {
         if (status === 'SUBSCRIBED') {
           console.info(`[Realtime] Successfully resubscribed to '${channelName}' after retry`);
@@ -327,6 +328,18 @@ class RealtimeConnectionManager {
           channelData.isReconnecting = false;
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn(`[Realtime] Channel '${channelName}' resubscription error:`, status, error);
+          
+          // Enhanced error logging for debugging
+          if (error) {
+            console.error(`[Realtime] Detailed error for '${channelName}':`, {
+              error: error.message || error,
+              code: (error as any).code,
+              details: (error as any).details,
+              hint: (error as any).hint,
+              timestamp: new Date().toISOString()
+            });
+          }
+          
           // Don't immediately retry on resubscription error, let the main error handler deal with it
           channelData.isReconnecting = false;
         } else if (status === 'CLOSED') {

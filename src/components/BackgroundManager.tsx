@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAirQuality } from '../hooks/useAirQuality';
 import { useWeatherData } from '../hooks/useWeatherData';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
 
 // Refresh lock mechanism for weather backgrounds
@@ -85,9 +86,12 @@ interface BackgroundManagerProps {
 export default function BackgroundManager({ children }: BackgroundManagerProps) {
   const { data: airQualityData } = useAirQuality();
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.webp');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [safeCoordinates, setSafeCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [hasInitialData, setHasInitialData] = useState(false);
+  const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
 
   // Get safe coordinates without violating geolocation policies
   useEffect(() => {
@@ -111,13 +115,53 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     }
   }, []);
 
-  // Get weather data when safe coordinates are available
-  const { currentWeather } = useWeatherData({
+  // Get weather data with proper refresh strategy
+  const { currentWeather, isLoading: weatherLoading, error: weatherError } = useWeatherData({
     latitude: safeCoordinates?.lat || airQualityData?.coordinates?.lat,
     longitude: safeCoordinates?.lng || airQualityData?.coordinates?.lng,
-    autoRefresh: true,
+    autoRefresh: hasInitialData, // Only auto-refresh after initial data
     refreshInterval: 900000 // 15 minutes
   });
+
+  // Implement immediate fetch on login and progressive loading
+  useEffect(() => {
+    if (user && !hasInitialData) {
+      console.log('BackgroundManager: User authenticated, fetching initial weather data...');
+      setBackgroundState('loading');
+      
+      // Set a flag to indicate we have initial data
+      setHasInitialData(true);
+      
+      // Start 15-minute cycle AFTER initial data is fetched
+      const startAutoRefresh = () => {
+        console.log('BackgroundManager: Starting 15-minute auto-refresh cycle');
+        // The useWeatherData hook will handle the auto-refresh
+      };
+      
+      // Wait for weather data to load before starting auto-refresh
+      if (!weatherLoading && currentWeather) {
+        console.log('BackgroundManager: Initial weather data loaded, starting auto-refresh cycle');
+        setBackgroundState('success');
+        startAutoRefresh();
+      } else if (!weatherLoading && weatherError) {
+        console.log('BackgroundManager: Initial weather data failed, using fallback');
+        setBackgroundState('error');
+        // Still start auto-refresh cycle even with error
+        startAutoRefresh();
+      }
+    }
+  }, [user, hasInitialData, weatherLoading, currentWeather, weatherError]);
+
+  // Update background state based on weather loading status
+  useEffect(() => {
+    if (weatherLoading) {
+      setBackgroundState('loading');
+    } else if (weatherError) {
+      setBackgroundState('error');
+    } else if (currentWeather) {
+      setBackgroundState('success');
+    }
+  }, [weatherLoading, weatherError, currentWeather]);
 
   // Determine the appropriate background image based on weather and time
   const targetBackground = useMemo(() => {
@@ -203,6 +247,20 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   // Get overlay opacity based on theme
   const overlayOpacity = theme === 'light' ? '0.2' : '0.4';
 
+  // Get background based on state
+  const getBackgroundForState = () => {
+    switch (backgroundState) {
+      case 'loading':
+        return '/weather-backgrounds/partly-cloudy.webp'; // Default while loading
+      case 'error':
+        return '/weather-backgrounds/overcast.webp'; // Fallback for errors
+      case 'success':
+        return currentBackground; // Weather-based background
+      default:
+        return '/weather-backgrounds/partly-cloudy.webp';
+    }
+  };
+
   return (
     <div className="relative min-h-screen">
       {/* Weather Background */}
@@ -213,11 +271,11 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
         }}
       >
         <img
-          src={currentBackground}
+          src={getBackgroundForState()}
           alt="Weather background"
           className="w-full h-full object-cover"
           onError={(e) => {
-            console.warn('BackgroundManager: Failed to load background image:', currentBackground);
+            console.warn('BackgroundManager: Failed to load background image:', getBackgroundForState());
             // Fallback to default background
             setCurrentBackground('/weather-backgrounds/partly-cloudy.webp');
           }}
