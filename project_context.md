@@ -1151,6 +1151,115 @@ Successfully resolved all text contrast issues across the Breath Safe webapp by 
 
 ---
 
+## Weather Stats Page Fixes – 2025-01-22
+
+### **Complete Weather Stats Page Issue Resolution**
+
+#### **Overview**
+Successfully resolved critical issues in the Weather Stats page that were affecting user experience: map appearing completely black, weather conditions card not loading data, and compass direction labels being invisible. Implemented dynamic theme integration, enhanced visibility, and fixed data display structure while maintaining all existing functionality.
+
+#### **Issues Identified and Resolved**
+
+##### **1. Map Appearing Completely Black**
+- **Problem**: Map was using only dark theme tiles regardless of user's light/dark mode preference
+- **Root Cause**: Static dark theme tile layer configuration without theme awareness
+- **Solution**: Implemented dynamic map theme integration using `useTheme` context
+- **Technical Implementation**:
+  - Added `useTheme` hook integration to `LeafletMap` component
+  - Dynamic tile layer switching based on `isDark` state
+  - Real-time theme updates when user switches between light/dark modes
+  - Proper cleanup and re-initialization of tile layers
+
+##### **2. Weather Conditions Card Not Loading Data**
+- **Problem**: Weather conditions card displayed "No Data" despite weather data being available
+- **Root Cause**: Incorrect data structure references in the weather card component
+- **Solution**: Fixed data structure mapping and display logic
+- **Technical Implementation**:
+  - Corrected `weatherData.currentWeather` property access
+  - Fixed temperature, humidity, and wind speed display
+  - Enhanced error handling and loading states
+  - Maintained proper data validation
+
+##### **3. Compass Direction Labels Not Visible**
+- **Problem**: Wind direction labels (N, S, E, W) and directional arrow were extremely faint
+- **Root Cause**: Insufficient contrast against dark backgrounds
+- **Solution**: Enhanced compass visibility with better contrast and styling
+- **Technical Implementation**:
+  - Added background overlays to direction labels for better visibility
+  - Increased font weight and size for primary directions
+  - Added secondary direction labels (NE, NW, SE, SW) for better orientation
+  - Enhanced wind direction arrow with better thickness and shadows
+  - Theme-aware styling that works on both light and dark backgrounds
+
+#### **Technical Implementation Details**
+
+##### **Map Theme Integration**
+```typescript
+// Dynamic tile layer switching based on theme
+const tileLayerUrl = isDark ? LEAFLET_MAPS_CONFIG.TILE_LAYERS.dark : LEAFLET_MAPS_CONFIG.TILE_LAYERS.light;
+const attribution = isDark ? LEAFLET_MAPS_CONFIG.ATTRIBUTION.dark : LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
+
+// Real-time theme updates
+useEffect(() => {
+  if (!mapInstance || !L) return;
+  
+  // Remove current tile layer
+  if (currentTileLayer) {
+    mapInstance.removeLayer(currentTileLayer);
+  }
+  
+  // Add new tile layer based on current theme
+  const newTileLayer = L.tileLayer(tileLayerUrl, { ... });
+  newTileLayer.addTo(mapInstance);
+  setCurrentTileLayer(newTileLayer);
+}, [isDark, mapInstance, L]);
+```
+
+##### **Enhanced Compass Visibility**
+```typescript
+{/* Direction Labels - Enhanced visibility */}
+<div className="absolute -top-2 left-1/2 transform -translate-x-1/2 text-sm font-bold text-foreground bg-background/80 px-1 rounded">N</div>
+<div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 text-sm font-bold text-foreground bg-background/80 px-1 rounded">S</div>
+<div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-foreground bg-background/80 px-1 rounded">W</div>
+<div className="absolute right-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-foreground bg-background/80 px-1 rounded">E</div>
+
+{/* Secondary Direction Labels for better orientation */}
+<div className="absolute top-2 right-2 text-xs font-medium text-muted-foreground bg-background/60 px-1 rounded">NE</div>
+<div className="absolute top-2 left-2 text-xs font-medium text-muted-foreground bg-background/60 px-1 rounded">NW</div>
+<div className="absolute bottom-2 right-2 text-xs font-medium text-muted-foreground bg-background/60 px-1 rounded">SE</div>
+<div className="absolute bottom-2 left-2 text-xs font-medium text-muted-foreground bg-background/60 px-1 rounded">SW</div>
+```
+
+#### **Files Modified**
+- `src/components/LeafletMap.tsx`: Dynamic theme integration and tile layer management
+- `src/components/WindDashboard.tsx`: Enhanced compass visibility and styling
+- `src/components/WeatherStats.tsx`: Fixed weather data display structure
+
+#### **User Experience Improvements**
+- **Map Visibility**: Maps now properly adapt to user's theme preference
+- **Weather Data**: Weather conditions card displays actual data instead of "No Data"
+- **Compass Navigation**: Wind direction indicators are clearly visible on all backgrounds
+- **Theme Consistency**: Map styling automatically matches the overall app theme
+- **Performance**: Efficient tile layer management with proper cleanup
+
+#### **Maintained Functionality**
+- All existing weather data fetching and display logic
+- 15-minute auto-refresh functionality
+- Air quality monitoring and visualization
+- Wind dashboard and forecast components
+- Location services and permission handling
+- Responsive design and mobile compatibility
+
+#### **Testing and Verification**
+- ✅ Map tiles switch correctly between light and dark themes
+- ✅ Weather conditions card displays actual temperature, humidity, and wind data
+- ✅ Compass direction labels are clearly visible on both light and dark backgrounds
+- ✅ Theme switching works seamlessly without map reloading
+- ✅ All existing weather functionality preserved
+- ✅ Build process completes successfully without errors
+
+---
+
 ## Infinite Re-render Loop Fixes – 2025-01-22
 
 ### **Complete Performance Optimization Implementation**
