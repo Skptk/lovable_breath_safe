@@ -10,17 +10,13 @@ import LeafletMap from "./LeafletMap";
 import Header from "@/components/Header";
 import WindDashboard from "./WindDashboard";
 import WeatherForecast from "./WeatherForecast";
+import LocationPermissionBanner from "./LocationPermissionBanner";
 
 // Use centralized weather store instead of useWeatherData hook
 import { useWeatherStore } from "@/store/weatherStore";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
-interface UserLocation {
-  latitude: number;
-  longitude: number;
-  city: string;
-  state: string;
-  country: string;
-}
+// UserLocation interface is now handled by LocationData from useGeolocation hook
 
 interface AirQualityData {
   aqi: number;
@@ -35,27 +31,30 @@ interface WeatherStatsProps {
 }
 
 export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDemoMode = false }: WeatherStatsProps = {}): JSX.Element {
-  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [airQualityData, setAirQualityData] = useState<AirQualityData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [locationRequested, setLocationRequested] = useState(false);
-  const [isRequestingLocation, setIsRequestingLocation] = useState(false); // Prevent multiple simultaneous requests
-  const [retryCount, setRetryCount] = useState(0);
-
-  // Use refs to track previous values and prevent unnecessary re-renders
-  const prevLocationRef = useRef<UserLocation | null>(null);
 
   const { toast } = useToast();
 
+  // Use new geolocation hook for proper location handling
+  const {
+    locationData,
+    hasUserConsent,
+    permissionStatus,
+    requestLocation,
+    useIPBasedLocation,
+    isRequesting: isRequestingLocation
+  } = useGeolocation();
+
   // Memoize location object to prevent unnecessary re-renders
   const memoizedLocation = useMemo(() => {
-    if (!userLocation) return null;
+    if (!locationData) return null;
     return {
-      latitude: userLocation.latitude,
-      longitude: userLocation.longitude
+      latitude: locationData.latitude,
+      longitude: locationData.longitude
     };
-  }, [userLocation?.latitude, userLocation?.longitude]);
+  }, [locationData?.latitude, locationData?.longitude]);
 
   // Use centralized weather store instead of useWeatherData hook
   const { 
@@ -71,37 +70,31 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
   // Debug logging for weather data (reduced frequency)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('WeatherStats: userLocation changed:', userLocation);
+      console.log('WeatherStats: locationData changed:', locationData);
       console.log('WeatherStats: weather store state:', {
         loading: weatherLoading,
         error: weatherError,
         currentWeather: currentWeather
       });
     }
-  }, [userLocation, weatherLoading, weatherError, currentWeather]);
+  }, [locationData, weatherLoading, weatherError, currentWeather]);
 
   // Trigger weather data fetch only when location truly changes
   useEffect(() => {
-    if (!userLocation?.latitude || !userLocation?.longitude) return;
+    if (!locationData?.latitude || !locationData?.longitude) return;
     
-    // Deep comparison to prevent unnecessary fetches
-    const prevLocation = prevLocationRef.current;
-    const locationChanged = !prevLocation || 
-      prevLocation.latitude !== userLocation.latitude || 
-      prevLocation.longitude !== userLocation.longitude;
-    
-    if (locationChanged && !currentWeather && !weatherLoading) {
-      console.log('WeatherStats: Location changed, triggering weather data fetch for coordinates:', userLocation.latitude, userLocation.longitude);
+    if (!currentWeather && !weatherLoading) {
+      console.log('WeatherStats: Location available, triggering weather data fetch for coordinates:', locationData.latitude, locationData.longitude);
       
       // Update weather store coordinates
-      setCoordinates({ latitude: userLocation.latitude, longitude: userLocation.longitude });
+      setCoordinates({ latitude: locationData.latitude, longitude: locationData.longitude });
       
       // Fetch weather and forecast data using centralized store
       const fetchData = async () => {
         try {
           await Promise.all([
-            fetchWeatherData({ latitude: userLocation.latitude, longitude: userLocation.longitude }),
-            fetchForecastData({ latitude: userLocation.latitude, longitude: userLocation.longitude })
+            fetchWeatherData({ latitude: locationData.latitude, longitude: locationData.longitude }),
+            fetchForecastData({ latitude: locationData.latitude, longitude: locationData.longitude })
           ]);
           console.log('WeatherStats: Weather and forecast data fetched successfully');
         } catch (error) {
@@ -110,78 +103,12 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
       };
       
       fetchData();
-      
-      // Update previous location reference
-      prevLocationRef.current = { ...userLocation };
     }
-  }, [userLocation?.latitude, userLocation?.longitude, currentWeather, weatherLoading, setCoordinates, fetchWeatherData, fetchForecastData]);
+  }, [locationData?.latitude, locationData?.longitude, currentWeather, weatherLoading, setCoordinates, fetchWeatherData, fetchForecastData]);
 
-  // Check for existing location permissions on component mount
-  useEffect(() => {
-    const checkExistingLocationPermission = async () => {
-      console.log('WeatherStats: Checking for existing location permissions...');
-      
-      // Check if we have stored permission in localStorage (persistent across sessions)
-      const storedPermission = localStorage.getItem('breath-safe-location-permission');
-      console.log('WeatherStats: Stored permission:', storedPermission);
-      
-      // Check if we have session-based permission (current browsing session)
-      const sessionPermission = sessionStorage.getItem('breath-safe-session-location-permission');
-      console.log('WeatherStats: Session permission:', sessionPermission);
-      
-      if (storedPermission === 'granted' || sessionPermission === 'granted') {
-        console.log('WeatherStats: Found existing permission, checking browser permission...');
-        // Check if browser still has permission
-        if (navigator.permissions && navigator.permissions.query) {
-          try {
-            const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-            console.log('WeatherStats: Browser permission status:', permissionStatus.state);
-            if (permissionStatus.state === 'granted') {
-              // User has permission, automatically get location
-              console.log('WeatherStats: User has existing location permission, automatically getting location');
-              setLocationRequested(true);
-              getUserLocation();
-              return;
-            } else if (permissionStatus.state === 'denied') {
-              // Permission was revoked, clear stored permissions
-              localStorage.removeItem('breath-safe-location-permission');
-              sessionStorage.removeItem('breath-safe-session-location-permission');
-              console.log('WeatherStats: Location permission revoked by user');
-            }
-          } catch (error) {
-            console.log('Permission API not supported, using stored permission');
-            // If permission API not supported, trust stored permission
-            setLocationRequested(true);
-            getUserLocation();
-            return;
-          }
-        } else {
-          // Permission API not supported, trust stored permission
-          console.log('WeatherStats: Permission API not supported, trusting stored permission');
-          setLocationRequested(true);
-          getUserLocation();
-          return;
-        }
-      }
-      
-      // No stored permission or permission was revoked
-      console.log('WeatherStats: No existing location permission found');
-    };
+  // Location permissions are now handled by useGeolocation hook
 
-    checkExistingLocationPermission();
-  }, []);
-
-  // Cleanup session storage on unmount if user hasn't explicitly granted permission
-  useEffect(() => {
-    return () => {
-      // Only clear session storage if user hasn't explicitly granted permission
-      // This prevents clearing during normal navigation when user has granted permission
-      const hasExplicitPermission = localStorage.getItem('breath-safe-location-permission') === 'granted';
-      if (!hasExplicitPermission) {
-        sessionStorage.removeItem('breath-safe-session-location-permission');
-      }
-    };
-  }, []);
+  // Session storage cleanup is now handled by useGeolocation hook
 
   // Helper function to convert wind direction degrees to cardinal directions
   const getWindDirection = (degrees: number): string => {
@@ -192,146 +119,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
 
 
 
-  const getUserLocation = async (): Promise<void> => {
-    console.log('WeatherStats: getUserLocation called - checking permissions first');
-    
-    // Check if we already have location data and permission
-    const storedPermission = localStorage.getItem('breath-safe-location-permission');
-    const sessionPermission = sessionStorage.getItem('breath-safe-session-location-permission');
-    
-    if ((storedPermission === 'granted' || sessionPermission === 'granted') && userLocation) {
-      console.log('WeatherStats: User already has location and permission, skipping request');
-      return;
-    }
-    
-    // Prevent multiple simultaneous location requests
-    if (isRequestingLocation) {
-      console.log('WeatherStats: Location request already in progress, skipping duplicate request');
-      return;
-    }
-    
-    setLoading(true);
-    setLocationRequested(true);
-    setError(null);
-    setIsRequestingLocation(true);
-    
-    // Check if geolocation is supported
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser');
-      setLoading(false);
-      return;
-    }
-
-    // Check if we have permission to access location
-    if (navigator.permissions && navigator.permissions.query) {
-      try {
-        const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-        if (permissionStatus.state === 'denied') {
-          setError('Location access denied. Please enable location permissions in your browser settings.');
-          setLoading(false);
-          return;
-        }
-      } catch (error) {
-        console.log('Permission API not supported, proceeding with geolocation request');
-      }
-    }
-
-    try {
-      console.log('WeatherStats: Starting geolocation request...');
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 30000, // 30 seconds - mobile devices need more time
-          enableHighAccuracy: false, // Disable high accuracy for mobile compatibility
-          maximumAge: 10 * 60 * 1000 // Allow 10-minute old data for mobile
-        });
-      });
-
-              console.log('WeatherStats: Geolocation successful, coordinates:', position.coords.latitude, position.coords.longitude);
-      const { latitude, longitude } = position.coords;
-      
-      // Store location permission in localStorage for persistent storage and sessionStorage for current session
-      localStorage.setItem('breath-safe-location-permission', 'granted');
-      sessionStorage.setItem('breath-safe-session-location-permission', 'granted');
-      console.log('WeatherStats: Location permission stored for session persistence');
-      
-      // Get city name from coordinates using reverse geocoding
-      const cityName = await getCityFromCoordinates(latitude, longitude);
-      
-      setUserLocation({
-        latitude,
-        longitude,
-        city: cityName.city || 'Your Location',
-        state: cityName.state || '',
-        country: cityName.country || ''
-      });
-
-      // Fetch real air quality data
-      await fetchAirQualityData(latitude, longitude);
-
-
-      
-    } catch (err: any) {
-      // Reduce console noise for location errors
-      if (err.code === 1) {
-        console.log('Location permission denied by user');
-      } else {
-        console.error('Error getting location:', err);
-      }
-      
-      let errorMessage = 'Failed to get your location.';
-      
-      if (err.code === 1) {
-        errorMessage = 'Location access denied. Please enable location permissions in your browser settings.';
-        // Store denied permission to avoid repeated prompts
-        localStorage.setItem('breath-safe-location-permission', 'denied');
-        sessionStorage.setItem('breath-safe-session-location-permission', 'denied');
-        console.log('WeatherStats: Location permission denied and stored');
-      } else if (err.code === 2) {
-        errorMessage = 'Location unavailable. This usually happens on new accounts or when location services are not ready. Please try again in a few moments.';
-      } else if (err.code === 3) {
-        errorMessage = 'Location timeout. Please wait a moment and try again.';
-      }
-      
-      setError(errorMessage);
-      
-      // For new users or location unavailable, provide fallback location
-      if (err.code === 2) {
-        console.log('WeatherStats: Providing fallback location for new user, retry count:', retryCount);
-        
-        if (retryCount < 3) {
-          // Increment retry count and show retry message
-          setRetryCount(prev => prev + 1);
-          
-          // Show user-friendly retry message
-          const attemptNumber = retryCount + 1;
-          toast({
-            title: "Setting Up Location Services",
-            description: `Attempt ${attemptNumber}/3: Configuring location services for your account. This may take a moment.`,
-            variant: "default",
-          });
-          
-          // Log retry attempt for debugging
-                      console.log(`WeatherStats: Retry attempt ${attemptNumber}/3 for new user geolocation`);
-        } else {
-          // After 3 retries, show error instead of demo data
-          console.log('WeatherStats: All retry attempts failed, showing error');
-          setError('Location services are not available after multiple attempts. Please try again later.');
-          
-          // No demo data - show error instead
-          setError('Location services are not available. Please try again later.');
-        }
-      } else {
-        toast({
-          title: "Location Access Required",
-          description: "This app needs your location to show air quality data. Please allow location access when prompted.",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setLoading(false);
-      setIsRequestingLocation(false); // Reset the requesting state
-    }
-  };
+  // Location handling is now managed by useGeolocation hook
 
   const fetchAirQualityData = async (lat: number, lon: number): Promise<void> => {
     try {
@@ -418,42 +206,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
     return "Hazardous";
   };
 
-  const resetLocationPermission = () => {
-    localStorage.removeItem('breath-safe-location-permission');
-    sessionStorage.removeItem('breath-safe-session-location-permission');
-    setRetryCount(0);
-    setError(null);
-    setUserLocation(null);
-    setAirQualityData(null);
-    setLocationRequested(false);
-  };
-
-  // Check if user has already granted location permission in this session
-  const hasLocationPermission = (): boolean => {
-    const storedPermission = localStorage.getItem('breath-safe-location-permission');
-    const sessionPermission = sessionStorage.getItem('breath-safe-session-location-permission');
-    return storedPermission === 'granted' || sessionPermission === 'granted';
-  };
-
-  // Auto-retry geolocation for new users after a delay
-  useEffect(() => {
-    if (error && retryCount > 0 && retryCount < 3 && !userLocation) {
-      const timer = setTimeout(() => {
-        console.log(`WeatherStats: Auto-retrying geolocation for new user (attempt ${retryCount + 1}/3)...`);
-        
-        // Show user feedback about the auto-retry
-        toast({
-          title: "Retrying Location Services",
-          description: `Automatically retrying to get your location... (${retryCount + 1}/3)`,
-          variant: "default",
-        });
-        
-        getUserLocation();
-      }, 2000); // Wait 2 seconds before retry
-      
-      return () => clearTimeout(timer);
-    }
-  }, [error, retryCount, userLocation]);
+  // Location permission management is now handled by useGeolocation hook
 
   if (loading) {
     return (
@@ -477,7 +230,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
     );
   }
 
-  if (!userLocation && !loading) {
+  if (!locationData && !loading) {
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -492,13 +245,10 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
           <div className="text-center space-y-4 max-w-md">
             <MapPin className="h-12 w-12 text-primary mx-auto" />
             <h3 className="text-lg font-semibold">
-              {hasLocationPermission() ? 'Location Services Ready' : 'Enable Location Services'}
+              Enable Location Services
             </h3>
             <p className="text-muted-foreground">
-              {hasLocationPermission() 
-                ? 'Your location permission is already enabled. Click below to view the map with your current location.'
-                : 'Allow location access to view air quality data and nearby monitoring stations on the map.'
-              }
+              Allow location access to view air quality data and nearby monitoring stations on the map.
             </p>
             
             <div className="text-sm text-muted-foreground space-y-2 p-4 bg-muted/50 rounded-lg">
@@ -511,27 +261,17 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
               </ul>
             </div>
             
-            <Button onClick={getUserLocation} className="w-full" size="lg">
+            <Button onClick={() => requestLocation()} className="w-full" size="lg">
               <MapPin className="h-4 w-4 mr-2" />
-              {hasLocationPermission() ? 'View Map with Location' : 'Enable Location & View Map'}
+              Enable Location & View Map
             </Button>
-            
-            {hasLocationPermission() && (
-              <Button 
-                onClick={resetLocationPermission} 
-                variant="outline" 
-                className="w-full"
-              >
-                Reset Location Permission
-              </Button>
-            )}
           </div>
         </div>
       </div>
     );
   }
 
-  if (error && !userLocation) {
+  if (error && !locationData) {
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -559,22 +299,16 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             </div>
             
             <div className="flex flex-col gap-2">
-              {retryCount > 0 && retryCount < 3 && (
-                <div className="text-xs text-muted-foreground text-center p-2 bg-muted/30 rounded">
-                  Attempt {retryCount}/3 - Auto-retrying in a few seconds...
-                </div>
-              )}
-
-              <Button onClick={getUserLocation} variant="outline" className="w-full">
+              <Button onClick={() => requestLocation()} variant="outline" className="w-full">
                 <MapPin className="h-4 w-4 mr-2" />
                 Try Again Now
               </Button>
               <Button 
-                onClick={resetLocationPermission} 
+                onClick={() => useIPBasedLocation()} 
                 variant="secondary"
                 className="w-full"
               >
-                Start Fresh
+                Use IP-Based Location
               </Button>
               <Button 
                 onClick={() => window.location.reload()} 
@@ -599,6 +333,30 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
+
+      {/* Location Permission Banner */}
+      {!isDemoMode && (
+        <LocationPermissionBanner
+          onLocationRequest={async () => {
+            try {
+              await requestLocation();
+            } catch (error) {
+              console.error('Location request failed:', error);
+            }
+          }}
+          onSkip={async () => {
+            try {
+              await useIPBasedLocation();
+            } catch (error) {
+              console.error('IP-based location failed:', error);
+            }
+          }}
+          permissionStatus={permissionStatus}
+          locationSource={locationData?.source}
+          city={locationData?.city}
+          country={locationData?.country}
+        />
+      )}
 
       {/* Demo Mode Banner */}
       {isDemoMode && (
@@ -662,12 +420,12 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{userLocation?.city || 'Unknown'}</div>
+            <div className="text-2xl font-bold">{locationData?.city || 'Unknown'}</div>
             <p className="text-xs text-muted-foreground">
-              {userLocation?.state && `${userLocation.state}, `}{userLocation?.country}
+              {locationData?.country}
             </p>
             <p className="text-xs text-muted-foreground">
-              {userLocation?.latitude?.toFixed(4)}, {userLocation?.longitude?.toFixed(4)}
+              {locationData?.latitude?.toFixed(4)}, {locationData?.longitude?.toFixed(4)}
             </p>
           </CardContent>
         </Card>
@@ -746,7 +504,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
       </div>
 
       {/* Comprehensive Weather Data */}
-      {userLocation && currentWeather && (
+      {locationData && currentWeather && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Temperature & Feels Like */}
           <Card className="floating-card bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30">
@@ -823,18 +581,18 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
       )}
 
       {/* Wind Dashboard */}
-      {userLocation && (
+      {locationData && (
         <WindDashboard 
-          latitude={userLocation.latitude} 
-          longitude={userLocation.longitude} 
+          latitude={locationData.latitude} 
+          longitude={locationData.longitude} 
         />
       )}
 
       {/* Weather Forecast */}
-      {userLocation && (
+      {locationData && (
         <WeatherForecast 
-          latitude={userLocation.latitude} 
-          longitude={userLocation.longitude} 
+          latitude={locationData.latitude} 
+          longitude={locationData.longitude} 
         />
       )}
 
@@ -853,7 +611,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                       Weather & Air Quality Map
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                      {userLocation ? `${userLocation.city}, ${userLocation.state}, ${userLocation.country}` : 'Loading location...'}
+                      {locationData ? `${locationData.city}, ${locationData.country}` : 'Loading location...'}
                     </p>
                   </div>
                   {airQualityData && (
@@ -887,7 +645,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
           {/* Leaflet Map Integration - Full width/height within card */}
           <div className="w-full h-full pt-20">
             <LeafletMap
-              userLocation={userLocation}
+              userLocation={locationData}
               airQualityData={airQualityData}
             />
           </div>
@@ -897,7 +655,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
       {/* Information Grid Beneath Map */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Location Information Card */}
-        {userLocation && (
+        {locationData && (
           <Card>
             <CardHeader className="flex flex-row items-center space-y-0 pb-2">
               <MapPin className="h-4 w-4 text-primary mr-2" />
@@ -907,21 +665,21 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">City:</span>
-                  <span className="text-sm font-medium">{userLocation.city}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">State:</span>
-                  <span className="text-sm font-medium">{userLocation.state}</span>
+                  <span className="text-sm font-medium">{locationData.city}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Country:</span>
-                  <span className="text-sm font-medium">{userLocation.country}</span>
+                  <span className="text-sm font-medium">{locationData.country}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Coordinates:</span>
                   <span className="text-sm font-medium">
-                    {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
+                    {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
                   </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Source:</span>
+                  <span className="text-sm font-medium capitalize">{locationData.source}</span>
                 </div>
               </div>
             </CardContent>

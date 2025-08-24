@@ -2,6 +2,7 @@
 export { useAuth } from './useAuth';
 export { useAirQuality } from './useAirQuality';
 export { useWeatherData } from './useWeatherData';
+export { useGeolocation } from './useGeolocation';
 export { useNotifications } from './useNotifications';
 export { useUserPoints } from './useUserPoints';
 export { useAchievements } from './useAchievements';

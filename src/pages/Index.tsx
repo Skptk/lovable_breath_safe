@@ -81,6 +81,17 @@ export default function Index(): JSX.Element {
     }
   }, []); // Empty dependency array - only run on mount
 
+  // Sync URL with component state when view changes
+  useEffect(() => {
+    const currentViewParam = searchParams.get("view") || "dashboard";
+    if (currentView !== currentViewParam) {
+      console.log('Index component - Syncing URL with view state:', currentView);
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('view', currentView);
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [currentView, searchParams]);
+
   // Cleanup realtime channels on unmount
   useEffect(() => {
     return () => {

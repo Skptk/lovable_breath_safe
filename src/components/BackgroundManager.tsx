@@ -3,6 +3,7 @@ import { useAirQuality } from '../hooks/useAirQuality';
 import { useWeatherStore } from '../store/weatherStore';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useGeolocation } from '../hooks/useGeolocation';
 import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
 
 // Refresh lock mechanism for weather backgrounds
@@ -38,46 +39,7 @@ const setBackgroundRefreshLock = (): void => {
   }
 };
 
-// Safe location handling to prevent geolocation violations
-const getLocationSafely = async (): Promise<{ lat: number; lng: number } | null> => {
-  try {
-    // Check if we have stored location
-    const storedLocation = localStorage.getItem('lastKnownLocation');
-    if (storedLocation) {
-      const location = JSON.parse(storedLocation);
-      console.log('BackgroundManager: Using stored location:', location);
-      return location;
-    }
-
-    // Only request fresh location if user gesture available
-    if (navigator.userActivation?.hasBeenActive) {
-      console.log('BackgroundManager: User gesture available, requesting fresh location');
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutes
-        });
-      });
-      
-      const location = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude
-      };
-      
-      localStorage.setItem('lastKnownLocation', JSON.stringify(location));
-      console.log('BackgroundManager: Fresh location obtained:', location);
-      return location;
-    }
-
-    console.log('BackgroundManager: No user gesture for geolocation, using fallback');
-    // Use fallback location for Kenya
-    return { lat: -1.1424, lng: 36.7088 };
-  } catch (error) {
-    console.log('BackgroundManager: Using fallback location due to error:', error);
-    // Use fallback location for Kenya
-    return { lat: -1.1424, lng: 36.7088 };
-  }
-};
+// Location handling is now managed by useGeolocation hook
 
 interface BackgroundManagerProps {
   children: React.ReactNode;
@@ -89,7 +51,6 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   const { user } = useAuth();
   const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.webp');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [safeCoordinates, setSafeCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [hasInitialData, setHasInitialData] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
 
@@ -102,40 +63,29 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     setCoordinates
   } = useWeatherStore();
 
-  // Get safe coordinates without violating geolocation policies
-  useEffect(() => {
-    const initializeSafeLocation = async () => {
-      try {
-        const location = await getLocationSafely();
-        setSafeCoordinates(location);
-        
-        // Update weather store coordinates when we get location
-        if (location) {
-          setCoordinates({ latitude: location.lat, longitude: location.lng });
-        }
-      } catch (error) {
-        console.warn('BackgroundManager: Failed to get safe location:', error);
-        // Use fallback location
-        const fallbackLocation = { lat: -1.1424, lng: 36.7088 };
-        setSafeCoordinates(fallbackLocation);
-        setCoordinates({ latitude: fallbackLocation.lat, longitude: fallbackLocation.lng });
-      }
-    };
+  // Use new geolocation hook for proper location handling
+  const { 
+    locationData, 
+    hasUserConsent, 
+    permissionStatus,
+    requestLocation,
+    useIPBasedLocation
+  } = useGeolocation();
 
-    // Only initialize location when component mounts and user has interacted
-    if (document.hasFocus()) {
-      initializeSafeLocation();
-    } else {
-      // Use fallback location if no user interaction
-      const fallbackLocation = { lat: -1.1424, lng: 36.7088 };
-      setSafeCoordinates(fallbackLocation);
-      setCoordinates({ latitude: fallbackLocation.lat, longitude: fallbackLocation.lng });
+  // Update weather store coordinates when location data changes
+  useEffect(() => {
+    if (locationData) {
+      console.log('BackgroundManager: Location data updated, setting coordinates:', locationData);
+      setCoordinates({ 
+        latitude: locationData.latitude, 
+        longitude: locationData.longitude 
+      });
     }
-  }, [setCoordinates]);
+  }, [locationData, setCoordinates]);
 
   // Implement immediate fetch on login and progressive loading
   useEffect(() => {
-    if (user && !hasInitialData && safeCoordinates) {
+    if (user && !hasInitialData && locationData) {
       console.log('BackgroundManager: User authenticated, fetching initial weather data...');
       setBackgroundState('loading');
       
@@ -146,8 +96,8 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
       const fetchInitialWeather = async () => {
         try {
           await fetchWeatherData({ 
-            latitude: safeCoordinates.lat, 
-            longitude: safeCoordinates.lng 
+            latitude: locationData.latitude, 
+            longitude: locationData.longitude 
           });
           console.log('BackgroundManager: Initial weather data fetched successfully');
           setBackgroundState('success');
@@ -159,7 +109,7 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
       
       fetchInitialWeather();
     }
-  }, [user, hasInitialData, safeCoordinates, fetchWeatherData]);
+  }, [user, hasInitialData, locationData, fetchWeatherData]);
 
   // Update background state based on weather loading status
   useEffect(() => {
