@@ -1,240 +1,174 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw, Home, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
-  isRecovering: boolean;
+  isPromiseRejection: boolean;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
     errorInfo: null,
-    isRecovering: false,
+    isPromiseRejection: false
+  };
+
+  constructor(props: Props) {
+    super(props);
+    
+    // Listen for unhandled promise rejections
+    if (typeof window !== 'undefined') {
+      window.addEventListener('unhandledrejection', this.handlePromiseRejection);
+    }
+  }
+
+  componentWillUnmount() {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('unhandledrejection', this.handlePromiseRejection);
+    }
+  }
+
+  private handlePromiseRejection = (event: PromiseRejectionEvent) => {
+    console.error('Unhandled promise rejection caught by ErrorBoundary:', event.reason);
+    
+    this.setState({
+      hasError: true,
+      error: new Error(`Unhandled Promise Rejection: ${event.reason?.message || event.reason}`),
+      errorInfo: null,
+      isPromiseRejection: true
+    });
+
+    // Prevent the default browser behavior
+    event.preventDefault();
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI
-    return { 
-      hasError: true, 
-      error, 
+    return {
+      hasError: true,
+      error,
       errorInfo: null,
-      isRecovering: false,
+      isPromiseRejection: false
     };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to console
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error('Error caught by ErrorBoundary:', error, errorInfo);
     
-    // Update state with error info
     this.setState({
       error,
       errorInfo,
+      isPromiseRejection: false
     });
-
-    // Call custom error handler if provided
-    if (this.props.onError) {
-      this.props.onError(error, errorInfo);
-    }
-
-    // Log to error reporting service if available
-    this.logErrorToService(error, errorInfo);
-  }
-
-  private logErrorToService(error: Error, errorInfo: ErrorInfo) {
-    try {
-      // Log error with additional context
-      const errorData = {
-        message: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-        // Add any other relevant error context
-      };
-
-      console.error('Error logged:', errorData);
-      
-      // Here you could send to an error reporting service like Sentry
-      // if (window.Sentry) {
-      //   window.Sentry.captureException(error, { extra: errorData });
-      // }
-    } catch (loggingError) {
-      console.error('Failed to log error:', loggingError);
-    }
   }
 
   private handleRetry = () => {
-    this.setState({ isRecovering: true });
-    
-    // Clear the error state
     this.setState({
       hasError: false,
       error: null,
       errorInfo: null,
-      isRecovering: false,
+      isPromiseRejection: false
     });
   };
 
   private handleGoHome = () => {
-    // Navigate to home page
     window.location.href = '/';
   };
 
   private handleReload = () => {
-    // Reload the page
     window.location.reload();
   };
 
-  private isModuleLoadingError(): boolean {
-    return this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
-           this.state.error?.message?.includes('Loading chunk') ||
-           this.state.error?.message?.includes('Loading CSS chunk');
-  }
-
-  private isNetworkError(): boolean {
-    return this.state.error?.message?.includes('Failed to fetch') ||
-           this.state.error?.message?.includes('NetworkError') ||
-           this.state.error?.message?.includes('ERR_NETWORK');
-  }
-
-  private renderErrorContent() {
-    const { error, isRecovering } = this.state;
-    
-    if (isRecovering) {
-      return (
-        <div className="flex items-center justify-center p-8">
-          <RefreshCw className="h-6 w-6 animate-spin text-primary mr-3" />
-          <span className="text-lg">Recovering...</span>
-        </div>
-      );
-    }
-
-    const isModuleError = this.isModuleLoadingError();
-    const isNetworkError = this.isNetworkError();
-
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex items-center justify-center p-4">
-        <div className="max-w-md w-full floating-card p-6 text-center">
-          {/* Error Icon */}
-          <div className="flex justify-center mb-4">
-            {isModuleError || isNetworkError ? (
-              <AlertCircle className="h-16 w-16 text-amber-500" />
-            ) : (
-              <AlertTriangle className="h-16 w-16 text-destructive" />
-            )}
-          </div>
-
-          {/* Error Title */}
-          <h1 className="text-xl font-semibold text-foreground mb-2">
-            {isModuleError ? 'Module Loading Error' : 
-             isNetworkError ? 'Network Error' : 'Something went wrong'}
-          </h1>
-
-          {/* Error Message */}
-          <p className="text-muted-foreground mb-6">
-            {isModuleError ? 
-              'Failed to load a component. This might be due to a network issue or deployment problem.' :
-             isNetworkError ?
-              'Unable to connect to the server. Please check your internet connection.' :
-              'An unexpected error occurred. Please try again or contact support if the problem persists.'
-            }
-          </p>
-
-          {/* Error Details (Development only) */}
-          {import.meta.env.DEV && error && (
-            <details className="mb-6 text-left">
-              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground mb-2">
-                Error Details (Development)
-              </summary>
-              <div className="bg-muted rounded p-3 text-xs font-mono text-muted-foreground overflow-auto max-h-32">
-                <div className="mb-2">
-                  <strong>Message:</strong> {error.message}
-                </div>
-                {error.stack && (
-                  <div>
-                    <strong>Stack:</strong>
-                    <pre className="whitespace-pre-wrap mt-1">{error.stack}</pre>
-                  </div>
-                )}
-              </div>
-            </details>
-          )}
-
-          {/* Action Buttons */}
-          <div className="space-y-3">
-            {isModuleError || isNetworkError ? (
-              <>
-                <Button 
-                  onClick={this.handleRetry} 
-                  className="w-full"
-                  disabled={isRecovering}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Try Again
-                </Button>
-                
-                <Button 
-                  onClick={this.handleReload} 
-                  variant="outline" 
-                  className="w-full"
-                >
-                  Reload Page
-                </Button>
-              </>
-            ) : (
-              <Button 
-                onClick={this.handleRetry} 
-                className="w-full"
-                disabled={isRecovering}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
-              </Button>
-            )}
-            
-            <Button 
-              onClick={this.handleGoHome} 
-              variant="ghost" 
-              className="w-full"
-            >
-              <Home className="h-4 w-4 mr-2" />
-              Go Home
-            </Button>
-          </div>
-
-          {/* Additional Help */}
-          <div className="mt-6 pt-4 border-t border-border">
-            <p className="text-xs text-muted-foreground">
-              If this problem continues, try clearing your browser cache or contact support.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   public render() {
     if (this.state.hasError) {
-      // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      // Default error UI
-      return this.renderErrorContent();
+      const isPromiseRejection = this.state.isPromiseRejection;
+      const errorMessage = this.state.error?.message || 'An unexpected error occurred';
+      const errorStack = this.state.errorInfo?.componentStack || '';
+
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+                {isPromiseRejection ? (
+                  <Bug className="h-8 w-8 text-destructive" />
+                ) : (
+                  <AlertTriangle className="h-8 w-8 text-destructive" />
+                )}
+              </div>
+              <CardTitle className="text-xl">
+                {isPromiseRejection ? 'Promise Rejection Error' : 'Something went wrong'}
+              </CardTitle>
+              <p className="text-muted-foreground">
+                {isPromiseRejection 
+                  ? 'An unhandled promise rejection occurred. This usually means there was an issue with an API call or async operation.'
+                  : 'An error occurred while rendering this component. Please try again or contact support if the problem persists.'
+                }
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Error Details */}
+              <div className="rounded-lg bg-muted p-4">
+                <h4 className="font-semibold mb-2">Error Details:</h4>
+                <p className="text-sm text-muted-foreground font-mono break-words">
+                  {errorMessage}
+                </p>
+                {errorStack && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-sm text-muted-foreground">
+                      Component Stack Trace
+                    </summary>
+                    <pre className="text-xs text-muted-foreground mt-2 whitespace-pre-wrap overflow-auto max-h-32">
+                      {errorStack}
+                    </pre>
+                  </details>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button onClick={this.handleRetry} variant="default" className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </Button>
+                <Button onClick={this.handleGoHome} variant="outline" className="gap-2">
+                  <Home className="h-4 w-4" />
+                  Go Home
+                </Button>
+                <Button onClick={this.handleReload} variant="outline" className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Reload Page
+                </Button>
+              </div>
+
+              {/* Additional Help */}
+              <div className="text-center text-sm text-muted-foreground">
+                <p>
+                  If this error persists, please check your internet connection and try again.
+                </p>
+                {isPromiseRejection && (
+                  <p className="mt-1">
+                    This might be related to a temporary API issue or network problem.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
     }
 
     return this.props.children;

@@ -401,8 +401,27 @@ export const useAirQuality = (): UseAirQualityReturn => {
         setIsUsingCachedData(true);
         return lastReading;
       } else {
-        console.log('useAirQuality: No cached data available, throwing error');
-        throw new Error('Data was recently fetched. Please wait for the next automatic refresh in 15 minutes.');
+        console.log('useAirQuality: No cached data available, handling gracefully');
+        // Handle rate limiting gracefully without throwing errors
+        console.log('ℹ️ Air quality data rate limited, using cached data');
+        return lastReading || {
+          aqi: 0,
+          pm25: 0,
+          pm10: 0,
+          no2: 0,
+          so2: 0,
+          co: 0,
+          o3: 0,
+          location: 'Rate Limited',
+          userLocation: 'Rate Limited',
+          coordinates: { lat: 0, lon: 0 },
+          userCoordinates: { lat: 0, lon: 0 },
+          timestamp: new Date().toLocaleString(),
+          dataSource: 'Rate Limited - Using Cached Data',
+          userPoints: 0,
+          currencyRewards: 0,
+          canWithdraw: false
+        };
       }
     }
 

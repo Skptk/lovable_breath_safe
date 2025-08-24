@@ -130,8 +130,13 @@ export const useUserPoints = () => {
   useEffect(() => {
     if (!user) return;
 
+    let mounted = true;
+    const unsubscribeFunctions: (() => void)[] = [];
+
     // Subscribe to profile points updates
     const unsubscribeProfile = subscribeToUserProfilePoints((payload) => {
+      if (!mounted) return;
+      
       console.log('Profile points updated:', payload);
       if (payload.eventType === 'UPDATE') {
         const updatedProfile = payload.new as any;
@@ -141,9 +146,12 @@ export const useUserPoints = () => {
         }));
       }
     });
+    unsubscribeFunctions.push(unsubscribeProfile);
 
     // Subscribe to user points inserts
     const unsubscribePoints = subscribeToUserPoints((payload) => {
+      if (!mounted) return;
+      
       console.log('New points earned:', payload);
       if (payload.eventType === 'INSERT') {
         const newPointRecord = payload.new as PointRecord;
@@ -162,10 +170,11 @@ export const useUserPoints = () => {
         fetchUserPoints();
       }
     });
+    unsubscribeFunctions.push(unsubscribePoints);
 
     return () => {
-      unsubscribeProfile();
-      unsubscribePoints();
+      mounted = false;
+      unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
     };
   }, [user, subscribeToUserProfilePoints, subscribeToUserPoints, fetchUserPoints]);
 

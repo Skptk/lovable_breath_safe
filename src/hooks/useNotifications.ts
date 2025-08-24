@@ -346,7 +346,10 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!user) return;
 
+    let mounted = true;
     const unsubscribe = subscribeToNotifications((payload) => {
+      if (!mounted) return;
+      
       console.log('New notification received:', payload);
       
       if (payload.eventType === 'INSERT') {
@@ -380,7 +383,10 @@ export const useNotifications = () => {
       }
     });
 
-    return unsubscribe;
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, [user, subscribeToNotifications, notifications]);
 
   // Initial data fetch

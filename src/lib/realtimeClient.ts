@@ -4,10 +4,22 @@ import { supabase } from '@/integrations/supabase/client';
 // Environment flag to disable realtime entirely
 const REALTIME_ENABLED = import.meta.env.VITE_SUPABASE_REALTIME_ENABLED !== 'false';
 
+// Retry configuration
+const MAX_RETRY_ATTEMPTS = 3;
+const BASE_RETRY_DELAY = 1000; // 1 second
+const MAX_RETRY_DELAY = 30000; // 30 seconds
+
 // Singleton connection manager
 class RealtimeConnectionManager {
   private static instance: RealtimeConnectionManager;
-  private activeChannels: Map<string, { channel: RealtimeChannel; refs: number; callbacks: Set<(payload: any) => void> }> = new Map();
+  private activeChannels: Map<string, { 
+    channel: RealtimeChannel; 
+    refs: number; 
+    callbacks: Set<(payload: any) => void>;
+    retryCount: number;
+    lastRetryTime: number;
+    isReconnecting: boolean;
+  }> = new Map();
   private connectionStatus: 'connected' | 'reconnecting' | 'disconnected' = 'connected';
   private statusListeners: Set<(status: 'connected' | 'reconnecting' | 'disconnected') => void> = new Set();
   private pendingCleanups: Map<string, NodeJS.Timeout> = new Map(); // Track pending cleanups
@@ -61,6 +73,135 @@ class RealtimeConnectionManager {
   private notifyStatusListeners(status: 'connected' | 'reconnecting' | 'disconnected'): void {
     if (!this.isDestroyed) {
       this.statusListeners.forEach(listener => listener(status));
+    }
+  }
+
+  // Calculate exponential backoff delay
+  private calculateRetryDelay(retryCount: number): number {
+    const delay = Math.min(BASE_RETRY_DELAY * Math.pow(2, retryCount), MAX_RETRY_DELAY);
+    // Add jitter to prevent thundering herd
+    return delay + Math.random() * 1000;
+  }
+
+  // Retry channel subscription with exponential backoff
+  private async retryChannelSubscription(
+    channelName: string,
+    callback: (payload: any) => void,
+    config?: {
+      event?: string;
+      schema?: string;
+      table?: string;
+      filter?: string;
+    }
+  ): Promise<void> {
+    const channelData = this.activeChannels.get(channelName);
+    if (!channelData) return;
+
+    if (channelData.retryCount >= MAX_RETRY_ATTEMPTS) {
+      console.error(`[Realtime] Channel '${channelName}' failed after ${MAX_RETRY_ATTEMPTS} retry attempts. Giving up.`);
+      this.setConnectionStatus('disconnected');
+      return;
+    }
+
+    const now = Date.now();
+    const timeSinceLastRetry = now - channelData.lastRetryTime;
+    const retryDelay = this.calculateRetryDelay(channelData.retryCount);
+
+    if (timeSinceLastRetry < retryDelay) {
+      // Wait for the retry delay
+      setTimeout(() => this.retryChannelSubscription(channelName, callback, config), retryDelay - timeSinceLastRetry);
+      return;
+    }
+
+    console.log(`[Realtime] Retrying channel '${channelName}' subscription (attempt ${channelData.retryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
+    
+    try {
+      // Remove the old channel
+      if (channelData.channel && typeof channelData.channel.unsubscribe === 'function') {
+        channelData.channel.unsubscribe();
+      }
+      supabase.removeChannel(channelData.channel);
+
+      // Create new channel
+      const newChannel = supabase.channel(channelName);
+      
+      // Configure postgres changes if config provided
+      if (config?.event && config?.schema && config?.table) {
+        (newChannel as any).on(
+          'postgres_changes',
+          {
+            event: config.event,
+            schema: config.schema,
+            table: config.table,
+            filter: config.filter,
+          },
+          (payload: any) => {
+            callback(payload);
+          }
+        );
+      } else {
+        // Generic channel for custom events
+        (newChannel as any).on('*', (event: any, payload: any) => {
+          callback(payload);
+        });
+      }
+
+      // Subscribe to the channel
+      const subscription = newChannel.subscribe((status, error) => {
+        if (status === 'SUBSCRIBED') {
+          console.info(`[Realtime] Successfully resubscribed to '${channelName}' after retry`);
+          this.setConnectionStatus('connected');
+          // Reset retry count on successful subscription
+          channelData.retryCount = 0;
+          channelData.isReconnecting = false;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn(`[Realtime] Channel '${channelName}' resubscription error:`, status, error);
+          this.handleChannelError(channelName, error);
+        } else if (status === 'CLOSED') {
+          console.info(`[Realtime] Channel '${channelName}' closed after retry`);
+        }
+      });
+
+      // Update channel data
+      channelData.channel = subscription;
+      channelData.retryCount++;
+      channelData.lastRetryTime = now;
+      channelData.isReconnecting = false;
+
+    } catch (error) {
+      console.error(`[Realtime] Failed to retry channel '${channelName}' subscription:`, error);
+      this.handleChannelError(channelName, error);
+    }
+  }
+
+  // Handle channel errors with retry logic
+  private handleChannelError(channelName: string, error: any): void {
+    const channelData = this.activeChannels.get(channelName);
+    if (!channelData) return;
+
+    // Log detailed error information
+    console.error(`[Realtime] Channel '${channelName}' error:`, {
+      channelName,
+      error: error?.message || error,
+      retryCount: channelData.retryCount,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      connectionStatus: this.connectionStatus
+    });
+
+    // Set reconnecting status
+    channelData.isReconnecting = true;
+    this.setConnectionStatus('reconnecting');
+
+    // Attempt retry if not already reconnecting
+    if (!channelData.isReconnecting) {
+      this.retryChannelSubscription(channelName, Array.from(channelData.callbacks)[0], {
+        event: 'postgres_changes',
+        schema: 'public',
+        table: channelName.includes('notifications') ? 'notifications' : 
+               channelName.includes('points') ? 'user_points' : 
+               channelName.includes('profile') ? 'profiles' : 'unknown'
+      });
     }
   }
 
@@ -136,22 +277,37 @@ class RealtimeConnectionManager {
           console.info(`[Realtime] Successfully subscribed to '${channelName}'`);
           this.setConnectionStatus('connected');
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn(`[Realtime] Channel '${channelName}' subscription error:`, status, error);
-          // Don't change connection status for individual channel errors
+          console.error(`[Realtime] Channel '${channelName}' subscription error:`, {
+            status,
+            error: error?.message || error,
+            channelName,
+            timestamp: new Date().toISOString(),
+            retryCount: 0
+          });
+          this.handleChannelError(channelName, error);
         } else if (status === 'CLOSED') {
           console.info(`[Realtime] Channel '${channelName}' closed`);
         }
       });
 
-      // Store the channel with reference counting
+      // Store the channel with reference counting and retry tracking
       this.activeChannels.set(channelName, {
         channel: subscription,
         refs: 1,
-        callbacks: new Set([callback])
+        callbacks: new Set([callback]),
+        retryCount: 0,
+        lastRetryTime: 0,
+        isReconnecting: false
       });
       
     } catch (error) {
-      console.error(`[Realtime] Failed to create channel '${channelName}':`, error);
+      console.error(`[Realtime] Failed to create channel '${channelName}':`, {
+        error: error?.message || error,
+        channelName,
+        timestamp: new Date().toISOString(),
+        config
+      });
+      this.handleChannelError(channelName, error);
     }
   }
 
@@ -274,12 +430,17 @@ class RealtimeConnectionManager {
     connectionStatus: 'connected' | 'reconnecting' | 'disconnected';
     reconnectAttempts: number;
   } {
+    let totalReconnectAttempts = 0;
+    for (const channelData of this.activeChannels.values()) {
+      totalReconnectAttempts += channelData.retryCount;
+    }
+
     return {
       enabled: REALTIME_ENABLED && !this.isDestroyed,
       activeChannels: Array.from(this.activeChannels.keys()),
       totalChannels: this.activeChannels.size,
       connectionStatus: this.getConnectionStatus(),
-      reconnectAttempts: 0, // Simplified for now
+      reconnectAttempts: totalReconnectAttempts,
     };
   }
 

@@ -14,7 +14,7 @@ export { default as PollutantModal } from './PollutantModal';
 export { default as BackgroundManager } from './BackgroundManager';
 export { Header } from './Header';
 export { default as LazyHeader } from './LazyHeader';
-export { RealtimeStatusBanner } from './RealtimeStatusBanner';
+export { default as RealtimeStatusBanner } from './RealtimeStatusBanner';
 
 // Refactored UI Components
 export { LoadingSkeleton } from './ui/LoadingSkeleton';
@@ -25,7 +25,7 @@ export { UserPointsDisplay } from './ui/UserPointsDisplay';
 export { PollutantCards } from './ui/PollutantCards';
 
 // Error Boundary
-export { ErrorBoundary } from './ErrorBoundary/ErrorBoundary';
+export { default as ErrorBoundary } from './ErrorBoundary/ErrorBoundary';
 
 // UI Components (re-export from shadcn/ui)
 export * from './ui/accordion';

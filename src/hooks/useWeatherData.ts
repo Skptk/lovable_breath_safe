@@ -306,7 +306,12 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
       if (process.env.NODE_ENV === 'development') {
         console.log('useWeatherData: Refresh locked - preventing duplicate weather data pull on manual refresh');
       }
-      throw new Error('Weather data was recently fetched. Please wait for the next automatic refresh in 15 minutes.');
+      // Handle rate limiting gracefully without throwing errors
+      console.log('ℹ️ Weather data rate limited, using cached data');
+      return {
+        weather: currentWeather,
+        forecast: forecast
+      };
     }
 
     setLoading(true);
@@ -343,17 +348,36 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
       };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch weather data';
-      setError(errorMessage);
-      toast({
-        title: 'Weather Data Error',
-        description: errorMessage,
-        variant: 'destructive'
-      });
-      throw err;
+      
+      // Handle rate limiting gracefully
+      if (errorMessage.includes('recently fetched')) {
+        console.log('ℹ️ Weather data rate limited, using cached data');
+        setError(null); // Clear error state
+        // Return cached data if available
+        if (currentWeather) {
+          return {
+            weather: currentWeather,
+            forecast: forecast
+          };
+        }
+      } else {
+        setError(errorMessage);
+        toast({
+          title: 'Weather Data Error',
+          description: errorMessage,
+          variant: 'destructive'
+        });
+      }
+      
+      // Don't throw the error, handle it gracefully
+      return {
+        weather: currentWeather,
+        forecast: forecast
+      };
     } finally {
       setLoading(false);
     }
-  }, [fetchCurrentWeather, fetchForecast, fetchWindData, toast]);
+  }, [fetchCurrentWeather, fetchForecast, fetchWindData, toast, currentWeather, forecast]);
 
   // Manual refresh function that clears the refresh lock
   const manualRefresh = useCallback(async () => {

@@ -29,26 +29,34 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
   // Track active subscriptions to prevent duplicates
   const activeSubscriptions = useRef<Set<string>>(new Set());
   const statusListenerCleanup = useRef<(() => void) | null>(null);
+  const mountedRef = useRef(true);
 
   // Set up connection status listener
   useEffect(() => {
+    if (!mountedRef.current) return;
+
     if (statusListenerCleanup.current) {
       statusListenerCleanup.current();
     }
 
     statusListenerCleanup.current = addConnectionStatusListener((status) => {
-      setConnectionStatus(status);
+      if (mountedRef.current) {
+        setConnectionStatus(status);
+      }
     });
 
     return () => {
       if (statusListenerCleanup.current) {
         statusListenerCleanup.current();
+        statusListenerCleanup.current = null;
       }
     };
   }, []);
 
   // Clean up all channels when user signs out
   useEffect(() => {
+    if (!mountedRef.current) return;
+
     if (!user) {
       console.log('🔄 User signed out, cleaning up realtime channels...');
       cleanupAllChannels();
@@ -56,10 +64,21 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     }
   }, [user]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (statusListenerCleanup.current) {
+        statusListenerCleanup.current();
+      }
+      cleanupAllChannels();
+    };
+  }, []);
+
   // Subscribe to notifications channel
   const subscribeToNotifications = useCallback((callback: (payload: any) => void) => {
-    if (!user) {
-      console.warn('Cannot subscribe to notifications: no user');
+    if (!user || !mountedRef.current) {
+      console.warn('Cannot subscribe to notifications: no user or component unmounted');
       return () => {};
     }
 
@@ -82,16 +101,18 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     // Return cleanup function
     return () => {
-      console.log('🔔 Unsubscribing from notifications channel for user:', user.id);
-      unsubscribeFromChannel(`user-notifications-${user.id}`, callback);
-      activeSubscriptions.current.delete(subscriptionId);
+      if (mountedRef.current) {
+        console.log('🔔 Unsubscribing from notifications channel for user:', user.id);
+        unsubscribeFromChannel(`user-notifications-${user.id}`, callback);
+        activeSubscriptions.current.delete(subscriptionId);
+      }
     };
   }, [user]);
 
   // Subscribe to user points channel
   const subscribeToUserPoints = useCallback((callback: (payload: any) => void) => {
-    if (!user) {
-      console.warn('Cannot subscribe to user points: no user');
+    if (!user || !mountedRef.current) {
+      console.warn('Cannot subscribe to user points: no user or component unmounted');
       return () => {};
     }
 
@@ -114,16 +135,18 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     // Return cleanup function
     return () => {
-      console.log('💰 Unsubscribing from user points channel for user:', user.id);
-      unsubscribeFromChannel(`user-points-${user.id}`, callback);
-      activeSubscriptions.current.delete(subscriptionId);
+      if (mountedRef.current) {
+        console.log('💰 Unsubscribing from user points channel for user:', user.id);
+        unsubscribeFromChannel(`user-points-${user.id}`, callback);
+        activeSubscriptions.current.delete(subscriptionId);
+      }
     };
   }, [user]);
 
   // Subscribe to user profile points channel
   const subscribeToUserProfilePoints = useCallback((callback: (payload: any) => void) => {
-    if (!user) {
-      console.warn('Cannot subscribe to user profile points: no user');
+    if (!user || !mountedRef.current) {
+      console.warn('Cannot subscribe to user profile points: no user or component unmounted');
       return () => {};
     }
 
@@ -146,9 +169,11 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
 
     // Return cleanup function
     return () => {
-      console.log('👤 Unsubscribing from user profile points channel for user:', user.id);
-      unsubscribeFromChannel(`user-profile-points-${user.id}`, callback);
-      activeSubscriptions.current.delete(subscriptionId);
+      if (mountedRef.current) {
+        console.log('👤 Unsubscribing from user profile points channel for user:', user.id);
+        unsubscribeFromChannel(`user-profile-points-${user.id}`, callback);
+        activeSubscriptions.current.delete(subscriptionId);
+      }
     };
   }, [user]);
 
