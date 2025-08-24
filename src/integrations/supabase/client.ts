@@ -16,12 +16,15 @@ function validateSupabaseConfig(url: string | undefined, key: string | undefined
   }
 
   // Basic URL validation
-  if (!url.startsWith('https://') || !url.includes('.supabase.co')) {
-    throw new Error('Invalid Supabase URL format. Expected: https://your-project.supabase.co');
+  if (!url.startsWith('https://') || !url.includes('supabase.co')) {
+    throw new Error('Invalid Supabase URL format. Expected https://*.supabase.co');
   }
 }
 
-// Environment detection and appropriate configuration
+// Validate configuration before creating client
+validateSupabaseConfig(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Environment-specific realtime configuration
 const getRealtimeConfig = () => {
   const isNetlify = window.location.hostname.includes('netlify.app') || 
                    window.location.hostname.includes('netlify.com');
@@ -29,31 +32,35 @@ const getRealtimeConfig = () => {
   
   console.log('🔍 [Config] Environment detected:', { isNetlify, isDevelopment });
   
-  if (isNetlify) {
-    return {
-      transport: 'websocket', // Force WebSocket transport
-      heartbeatIntervalMs: 15000, // More frequent heartbeats on Netlify
-      reconnectAfterMs: (tries: number) => Math.min(tries * 2000, 30000),
-      timeout: 20000, // Longer timeout for Netlify
-      params: {
-        eventsPerSecond: 5, // Reduce events per second on Netlify
-      }
-    };
-  }
-  
-  // Default configuration for other environments
-  return {
-    heartbeatIntervalMs: 30000,
-    reconnectAfterMs: (tries: number) => Math.min(tries * 1000, 10000),
-    timeout: 10000,
+  // CRITICAL FIX: Remove transport specification - let Supabase handle this automatically
+  const baseConfig = {
+    heartbeatIntervalMs: isNetlify ? 15000 : 30000, // More frequent heartbeats on Netlify
+    reconnectAfterMs: (tries: number) => Math.min(tries * (isNetlify ? 2000 : 1000), isNetlify ? 30000 : 10000),
+    timeout: isNetlify ? 20000 : 10000, // Longer timeout for Netlify
     params: {
-      eventsPerSecond: 10,
+      eventsPerSecond: isNetlify ? 5 : 10, // Reduce events per second on Netlify
     }
   };
+  
+  console.log('🔧 [Config] Realtime config:', baseConfig);
+  return baseConfig;
 };
 
-// WebSocket connection diagnostics
-const diagnoseConnection = async () => {
+// Create Supabase client with environment-specific realtime config
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  realtime: getRealtimeConfig(),
+  db: {
+    schema: 'public',
+  },
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
+
+// Enhanced connection diagnostics
+export const diagnoseConnection = async (): Promise<void> => {
   console.log('🔍 [Diagnostics] Starting WebSocket connection diagnosis...');
   
   // Check if Supabase URL is accessible
@@ -91,67 +98,4 @@ const diagnoseConnection = async () => {
 };
 
 // Run diagnostics on app start
-if (typeof window !== 'undefined') {
-  // Run diagnostics after a short delay to ensure app is loaded
-  setTimeout(() => {
-    diagnoseConnection();
-  }, 2000);
-}
-
-// Validate configuration before creating client
-validateSupabaseConfig(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-
-// Create singleton Supabase client
-let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
-
-export function getSupabaseClient() {
-  if (!supabaseInstance) {
-    console.log('🔧 Creating Supabase client instance with enhanced connection settings...');
-    
-    // Get environment-specific realtime configuration
-    const realtimeConfig = getRealtimeConfig();
-    
-    // Create configuration object with enhanced WebSocket stability settings
-    const clientConfig = {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-        storage: window.localStorage,
-        storageKey: 'supabase.auth.token'
-      },
-      realtime: realtimeConfig,
-      db: {
-        schema: 'public',
-      },
-      global: {
-        headers: {
-          'x-client-info': 'breath-safe-app'
-        }
-      }
-    };
-    
-    supabaseInstance = createClient<Database>(
-      SUPABASE_URL!,
-      SUPABASE_PUBLISHABLE_KEY!,
-      clientConfig
-    );
-    console.log('✅ Supabase client instance created with enhanced WebSocket settings');
-    console.log('🔧 [Config] Applied realtime configuration:', realtimeConfig);
-  }
-  return supabaseInstance;
-}
-
-// Export the singleton instance
-export const supabase = getSupabaseClient();
-
-// Export a function to reset the instance (useful for testing)
-export function resetSupabaseClient() {
-  if (supabaseInstance) {
-    console.log('🔄 Resetting Supabase client instance...');
-    supabaseInstance = null;
-  }
-}
-
-// Export diagnostics function for manual testing
-export { diagnoseConnection };
+diagnoseConnection();

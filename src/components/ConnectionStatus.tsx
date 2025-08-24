@@ -19,19 +19,32 @@ export function ConnectionStatus() {
   
   const { toast } = useToast();
 
-  // Check connection status
+  // CRITICAL FIX: Passive connection monitoring - don't force reconnection
   const checkConnection = () => {
     const now = new Date();
-    const isConnected = supabase.realtime.isConnected();
     
-    if (isConnected) {
+    try {
+      const isConnected = supabase.realtime.isConnected();
+      const isConnecting = supabase.realtime.isConnecting();
+      
+      let newStatus: ConnectionStatusState['status'];
+      
+      if (isConnected) {
+        newStatus = 'connected';
+      } else if (isConnecting) {
+        newStatus = 'connecting';
+      } else {
+        newStatus = 'disconnected';
+      }
+      
       setConnectionState(prev => ({
         ...prev,
-        status: 'connected',
+        status: newStatus,
         lastCheck: now,
-        showToast: false
+        showToast: newStatus === 'disconnected' && prev.status !== 'disconnected'
       }));
-    } else {
+    } catch (error) {
+      console.error('❌ [ConnectionStatus] Error checking connection:', error);
       setConnectionState(prev => ({
         ...prev,
         status: 'disconnected',
@@ -41,48 +54,36 @@ export function ConnectionStatus() {
     }
   };
 
-  // Manual reconnection
+  // CRITICAL FIX: Remove manual reconnection - let Supabase handle this automatically
   const handleReconnect = async () => {
+    console.log('⚠️ [ConnectionStatus] Manual reconnection disabled - letting Supabase handle reconnection internally');
+    
     setConnectionState(prev => ({
       ...prev,
       status: 'reconnecting'
     }));
 
-    try {
-      await supabase.realtime.connect();
-      
-      // Check if reconnection was successful
-      setTimeout(() => {
-        checkConnection();
-      }, 2000);
-      
-      toast({
-        title: "Reconnecting...",
-        description: "Attempting to restore live updates",
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error('❌ [ConnectionStatus] Manual reconnection failed:', error);
-      setConnectionState(prev => ({
-        ...prev,
-        status: 'disconnected'
-      }));
-      
-      toast({
-        title: "Connection Failed",
-        description: "Unable to restore live updates. Please check your internet connection.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    }
+    // Don't attempt manual reconnection - let Supabase handle this
+    // This prevents the transport constructor error
+    
+    toast({
+      title: "Reconnection Disabled",
+      description: "Letting Supabase handle reconnection automatically to prevent errors.",
+      duration: 3000,
+    });
+    
+    // Reset status after a delay
+    setTimeout(() => {
+      checkConnection();
+    }, 2000);
   };
 
-  // Monitor connection status
+  // Monitor connection status passively
   useEffect(() => {
     // Initial check
     checkConnection();
     
-    // Set up periodic checks
+    // Set up periodic checks every 5 seconds
     const interval = setInterval(checkConnection, 5000);
     
     // Listen for realtime connection changes
@@ -108,7 +109,7 @@ export function ConnectionStatus() {
     if (connectionState.showToast && connectionState.status === 'disconnected') {
       toast({
         title: "Live Updates Unavailable",
-        description: "Your app is using cached data. Live updates will resume when connection is restored.",
+        description: "Your app is using cached data. Live updates will resume when connection is restored automatically.",
         duration: 8000,
       });
       
@@ -135,7 +136,7 @@ export function ConnectionStatus() {
       case 'reconnecting':
         return {
           icon: <RefreshCw className="h-4 w-4 animate-spin" />,
-          text: "Reconnecting to live updates...",
+          text: "Supabase handling reconnection...",
           bgColor: "bg-yellow-100 border-yellow-400 text-yellow-700",
           darkBgColor: "dark:bg-yellow-900/20 dark:border-yellow-500 dark:text-yellow-300"
         };
@@ -173,7 +174,7 @@ export function ConnectionStatus() {
             onClick={handleReconnect}
             className="ml-2 h-7 px-2 text-xs border-current text-current hover:bg-current hover:text-white transition-colors"
           >
-            Retry
+            Info
           </Button>
         )}
       </div>

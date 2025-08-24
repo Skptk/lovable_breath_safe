@@ -24,6 +24,7 @@ interface GracefulRealtimeState {
 /**
  * Hook that provides graceful degradation when realtime fails
  * Falls back to polling when WebSocket connections are unavailable
+ * CRITICAL FIX: Increased timeouts and removed manual reconnection attempts
  */
 export function useGracefulRealtime({
   channelName,
@@ -33,7 +34,7 @@ export function useGracefulRealtime({
   enabled = true
 }: UseGracefulRealtimeOptions) {
   const {
-    timeout = 10000, // 10 second timeout
+    timeout = 30000, // CRITICAL FIX: Increased from 10s to 30s for slow connections
     maxRetries = 3,
     fallbackPollingInterval = 30000 // 30 second polling
   } = config;
@@ -51,7 +52,7 @@ export function useGracefulRealtime({
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Try realtime first
+  // Try realtime first with increased timeout
   const attemptRealtime = useCallback(async () => {
     if (!enabled || !mountedRef.current) return null;
 
@@ -60,10 +61,10 @@ export function useGracefulRealtime({
       
       const channel = supabase.channel(channelName);
       
-      // Set up channel subscription with timeout
+      // CRITICAL FIX: Set up channel subscription with increased timeout
       const subscribed = await new Promise<boolean>((resolve) => {
         const timeoutId = setTimeout(() => {
-          console.warn(`⚠️ [GracefulRealtime] ${channelName} subscription timeout`);
+          console.warn(`⚠️ [GracefulRealtime] ${channelName} subscription timeout after ${timeout}ms`);
           resolve(false);
         }, timeout);
 
@@ -222,7 +223,7 @@ export function useGracefulRealtime({
     }
   };
 
-  // Retry realtime connection
+  // CRITICAL FIX: Retry realtime connection with increased delays
   const retryRealtime = useCallback(async () => {
     if (!enabled || !mountedRef.current || state.retryCount >= maxRetries) {
       console.warn(`⚠️ [GracefulRealtime] ${channelName} max retries reached, staying in fallback mode`);
@@ -292,10 +293,11 @@ export function useGracefulRealtime({
     };
   }, [enabled, attemptRealtime, startFallbackPolling]);
 
-  // Auto-retry realtime after a delay when in fallback mode
+  // CRITICAL FIX: Auto-retry realtime after increased delays when in fallback mode
   useEffect(() => {
     if (state.fallbackPolling && state.retryCount < maxRetries) {
-      const delay = Math.min(1000 * Math.pow(2, state.retryCount), 30000); // Exponential backoff
+      // Increased delays: 2s, 4s, 8s, 16s, 32s (capped at 60s)
+      const delay = Math.min(2000 * Math.pow(2, state.retryCount), 60000);
       
       retryTimeoutRef.current = setTimeout(() => {
         if (mountedRef.current) {
