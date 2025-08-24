@@ -11,11 +11,8 @@ import Header from "@/components/Header";
 import WindDashboard from "./WindDashboard";
 import WeatherForecast from "./WeatherForecast";
 
-
-import { useWeatherData } from "@/hooks/useWeatherData";
-
-
-
+// Use centralized weather store instead of useWeatherData hook
+import { useWeatherStore } from "@/store/weatherStore";
 
 interface UserLocation {
   latitude: number;
@@ -48,7 +45,6 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
 
   // Use refs to track previous values and prevent unnecessary re-renders
   const prevLocationRef = useRef<UserLocation | null>(null);
-  const weatherDataRefetchRef = useRef<(() => void) | null>(null);
 
   const { toast } = useToast();
 
@@ -61,30 +57,28 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
     };
   }, [userLocation?.latitude, userLocation?.longitude]);
 
-  // Weather data hook integration with memoized coordinates
-  const weatherData = useWeatherData({
-    latitude: memoizedLocation?.latitude,
-    longitude: memoizedLocation?.longitude,
-    autoRefresh: true,
-    refreshInterval: 900000 // 15 minutes
-  });
+  // Use centralized weather store instead of useWeatherData hook
+  const { 
+    weatherData: currentWeather,
+    forecastData: forecast,
+    isLoading: weatherLoading,
+    error: weatherError,
+    fetchWeatherData,
+    fetchForecastData,
+    setCoordinates
+  } = useWeatherStore();
 
-  // Store refetch function in ref to prevent dependency changes
-  useEffect(() => {
-    weatherDataRefetchRef.current = weatherData.refetch;
-  }, [weatherData.refetch]);
-
-  // Debug logging for weather data hook (reduced frequency)
+  // Debug logging for weather data (reduced frequency)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log('WeatherStats: userLocation changed:', userLocation);
-      console.log('WeatherStats: weatherData state:', {
-        loading: weatherData.loading,
-        error: weatherData.error,
-        currentWeather: weatherData.currentWeather
+      console.log('WeatherStats: weather store state:', {
+        loading: weatherLoading,
+        error: weatherError,
+        currentWeather: currentWeather
       });
     }
-  }, [userLocation, weatherData.loading, weatherData.error, weatherData.currentWeather]);
+  }, [userLocation, weatherLoading, weatherError, currentWeather]);
 
   // Trigger weather data fetch only when location truly changes
   useEffect(() => {
@@ -96,18 +90,31 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
       prevLocation.latitude !== userLocation.latitude || 
       prevLocation.longitude !== userLocation.longitude;
     
-    if (locationChanged && !weatherData.currentWeather && !weatherData.loading) {
+    if (locationChanged && !currentWeather && !weatherLoading) {
       console.log('WeatherStats: Location changed, triggering weather data fetch for coordinates:', userLocation.latitude, userLocation.longitude);
       
-      // Use the stored refetch function
-      if (weatherDataRefetchRef.current) {
-        weatherDataRefetchRef.current();
-      }
+      // Update weather store coordinates
+      setCoordinates({ latitude: userLocation.latitude, longitude: userLocation.longitude });
+      
+      // Fetch weather and forecast data using centralized store
+      const fetchData = async () => {
+        try {
+          await Promise.all([
+            fetchWeatherData({ latitude: userLocation.latitude, longitude: userLocation.longitude }),
+            fetchForecastData({ latitude: userLocation.latitude, longitude: userLocation.longitude })
+          ]);
+          console.log('WeatherStats: Weather and forecast data fetched successfully');
+        } catch (error) {
+          console.error('WeatherStats: Failed to fetch weather data:', error);
+        }
+      };
+      
+      fetchData();
       
       // Update previous location reference
       prevLocationRef.current = { ...userLocation };
     }
-  }, [userLocation?.latitude, userLocation?.longitude, weatherData.currentWeather, weatherData.loading]);
+  }, [userLocation?.latitude, userLocation?.longitude, currentWeather, weatherLoading, setCoordinates, fetchWeatherData, fetchForecastData]);
 
   // Check for existing location permissions on component mount
   useEffect(() => {
@@ -669,56 +676,56 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
         <Card className="floating-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Weather Conditions</CardTitle>
-            {weatherData.currentWeather?.weatherCondition === 'Rain' ? (
+            {currentWeather?.weatherCondition === 'Rain' ? (
               <CloudRain className="h-4 w-4 text-muted-foreground" />
-            ) : weatherData.currentWeather?.weatherCondition === 'Clouds' ? (
+            ) : currentWeather?.weatherCondition === 'Clouds' ? (
               <Cloud className="h-4 w-4 text-muted-foreground" />
             ) : (
               <Sun className="h-4 w-4 text-muted-foreground" />
             )}
           </CardHeader>
           <CardContent>
-            {weatherData.loading ? (
+            {weatherLoading ? (
               <div className="text-2xl font-bold">Loading...</div>
-            ) : weatherData.currentWeather ? (
+            ) : currentWeather ? (
               <>
                 <div className="text-2xl font-bold flex items-center gap-2">
                   <Thermometer className="h-6 w-6 text-orange-500" />
-                  {weatherData.currentWeather.temperature}°C
+                  {currentWeather.temperature}°C
                 </div>
                 <div className="text-sm text-muted-foreground space-y-1 mt-2">
                   <div className="flex items-center gap-2">
                     <Droplets className="h-3 w-3 text-blue-500" />
-                    Humidity: {weatherData.currentWeather.humidity}%
+                    Humidity: {currentWeather.humidity}%
                   </div>
                   <div className="flex items-center gap-2">
                     <Wind className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                     <span>Wind Speed</span>
                   </div>
                   <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
-                    {weatherData.currentWeather.windSpeed} km/h
+                    {currentWeather.windSpeed} km/h
                   </div>
-                  {weatherData.currentWeather.feelsLikeTemperature && (
+                  {currentWeather.feelsLikeTemperature && (
                     <div className="flex items-center gap-2">
                       <Eye className="h-3 w-3 text-purple-500" />
-                      Feels like: {weatherData.currentWeather.feelsLikeTemperature}°C
+                      Feels like: {currentWeather.feelsLikeTemperature}°C
                     </div>
                   )}
                 </div>
               </>
             ) : (
               <div className="text-2xl font-bold text-muted-foreground">
-                {weatherData.error ? 'Weather data unavailable' : 'No Data'}
+                {weatherError ? 'Weather data unavailable' : 'No Data'}
               </div>
             )}
             <p className="text-xs text-muted-foreground mt-2">
-              {weatherData.currentWeather?.timestamp ? 
-                `Updated: ${new Date(weatherData.currentWeather.timestamp).toLocaleTimeString()}` : 
-                weatherData.loading ? 'Loading weather data...' : 'Weather data unavailable'
+              {currentWeather?.timestamp ? 
+                `Updated: ${new Date(currentWeather.timestamp).toLocaleTimeString()}` : 
+                weatherLoading ? 'Loading weather data...' : 'Weather data unavailable'
               }
             </p>
             {/* Show refresh status instead of error messages */}
-            {weatherData.error && !weatherData.currentWeather && (
+            {weatherError && !currentWeather && (
               <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -729,9 +736,9 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             {/* Debug info in development */}
             {process.env.NODE_ENV === 'development' && (
               <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
-                <strong>Debug:</strong> Loading: {weatherData.loading.toString()}, 
-                Has Data: {(!!weatherData.currentWeather).toString()}, 
-                Error: {weatherData.error || 'None'}
+                <strong>Debug:</strong> Loading: {weatherLoading.toString()}, 
+                Has Data: {(!!currentWeather).toString()}, 
+                Error: {weatherError || 'None'}
               </div>
             )}
           </CardContent>
@@ -739,7 +746,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
       </div>
 
       {/* Comprehensive Weather Data */}
-      {userLocation && weatherData.currentWeather && (
+      {userLocation && currentWeather && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Temperature & Feels Like */}
           <Card className="floating-card bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30">
@@ -751,10 +758,10 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {weatherData.currentWeather.temperature}°C
+                {currentWeather.temperature}°C
               </div>
               <p className="text-xs text-muted-foreground">
-                Feels like {weatherData.currentWeather.feelsLikeTemperature || weatherData.currentWeather.temperature}°C
+                Feels like {currentWeather.feelsLikeTemperature || currentWeather.temperature}°C
               </p>
             </CardContent>
           </Card>
@@ -769,10 +776,10 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {weatherData.currentWeather.humidity}%
+                {currentWeather.humidity}%
               </div>
               <p className="text-xs text-muted-foreground">
-                Dew point {weatherData.currentWeather.airPressure || 'N/A'} hPa
+                Dew point {currentWeather.airPressure || 'N/A'} hPa
               </p>
             </CardContent>
           </Card>
@@ -787,10 +794,10 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
-                {weatherData.currentWeather.windSpeed} km/h
+                {currentWeather.windSpeed} km/h
               </div>
               <div className="text-sm text-muted-foreground">
-                {weatherData.currentWeather.windDirection}° {getWindDirection(weatherData.currentWeather.windDirection)}
+                {currentWeather.windDirection}° {getWindDirection(currentWeather.windDirection)}
               </div>
             </CardContent>
           </Card>
@@ -805,10 +812,10 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {weatherData.currentWeather.visibility || 'N/A'} km
+                {currentWeather.visibility || 'N/A'} km
               </div>
               <p className="text-xs text-muted-foreground">
-                UV index {weatherData.currentWeather.uvIndex || 'N/A'}
+                UV index {currentWeather.uvIndex || 'N/A'}
               </p>
             </CardContent>
           </Card>
@@ -922,7 +929,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
         )}
 
         {/* Weather Summary Card */}
-        {weatherData.currentWeather && (
+        {currentWeather && (
           <Card>
             <CardHeader className="flex flex-row items-center space-y-0 pb-2">
               <Cloud className="h-4 w-4 text-blue-500 mr-2" />
@@ -933,29 +940,29 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                 <div className="flex items-center gap-2">
                   <Thermometer className="h-3 w-3 text-red-500" />
                   <span className="text-muted-foreground">Temp:</span>
-                  <span className="font-medium">{weatherData.currentWeather.temperature}°C</span>
+                  <span className="font-medium">{currentWeather.temperature}°C</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Droplets className="h-3 w-3 text-blue-500" />
                   <span className="text-muted-foreground">Humidity:</span>
-                  <span className="font-medium">{weatherData.currentWeather.humidity}%</span>
+                  <span className="font-medium">{currentWeather.humidity}%</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Wind className="h-3 w-3 text-green-500" />
                   <span className="text-muted-foreground">Wind:</span>
-                  <span className="font-medium">{weatherData.currentWeather.windSpeed} km/h</span>
+                  <span className="font-medium">{currentWeather.windSpeed} km/h</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Eye className="h-3 w-3 text-purple-500" />
                   <span className="text-muted-foreground">Visibility:</span>
-                  <span className="font-medium">{weatherData.currentWeather.visibility || 'N/A'} km</span>
+                  <span className="font-medium">{currentWeather.visibility || 'N/A'} km</span>
                 </div>
               </div>
-              {weatherData.currentWeather.feelsLikeTemperature && (
+              {currentWeather.feelsLikeTemperature && (
                 <div className="flex items-center gap-2 text-sm">
                   <Thermometer className="h-3 w-3 text-orange-500" />
                   <span className="text-muted-foreground">Feels like:</span>
-                  <span className="font-medium">{weatherData.currentWeather.feelsLikeTemperature}°C</span>
+                  <span className="font-medium">{currentWeather.feelsLikeTemperature}°C</span>
                 </div>
               )}
             </CardContent>

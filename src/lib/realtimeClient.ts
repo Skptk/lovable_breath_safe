@@ -20,6 +20,7 @@ class RealtimeConnectionManager {
     lastRetryTime: number;
     isReconnecting: boolean;
     connectionHealth: 'healthy' | 'unhealthy' | 'unknown';
+    config: any; // Add config property for channel recovery
   }> = new Map();
   private connectionStatus: 'connected' | 'reconnecting' | 'disconnected' = 'connected';
   private statusListeners: Set<(status: 'connected' | 'reconnecting' | 'disconnected') => void> = new Set();
@@ -48,6 +49,9 @@ class RealtimeConnectionManager {
       
       // Add global connection recovery mechanism
       this.startGlobalConnectionRecovery();
+      
+      // Add WebSocket reconnection mechanism for code 1011
+      this.startWebSocketReconnection();
     }
   }
 
@@ -202,6 +206,153 @@ class RealtimeConnectionManager {
       console.warn(`[Realtime] Channel '${channelName}' health check failed:`, error);
       channelData.isReconnecting = true;
       channelData.connectionHealth = 'unhealthy';
+    }
+  }
+
+  // Start WebSocket reconnection mechanism for specific error codes
+  private startWebSocketReconnection(): void {
+    // Listen for WebSocket close events on the Supabase client
+    if (typeof window !== 'undefined' && supabase.realtime) {
+      // Monitor the realtime connection status
+      const checkWebSocketStatus = () => {
+        if (this.isDestroyed) return;
+        
+        try {
+          // Check if WebSocket is connected
+          const isConnected = supabase.realtime.isConnected();
+          
+          if (!isConnected && this.connectionStatus === 'connected') {
+            console.log('🔍 [Diagnostics] WebSocket disconnected, attempting reconnection...');
+            this.setConnectionStatus('reconnecting');
+            
+            // Attempt to reconnect the WebSocket
+            this.reconnectWebSocket();
+          }
+        } catch (error) {
+          console.warn('🔍 [Diagnostics] Error checking WebSocket status:', error);
+        }
+      };
+      
+      // Check WebSocket status every 10 seconds
+      setInterval(checkWebSocketStatus, 10000);
+    }
+  }
+
+  // Reconnect WebSocket connection
+  private async reconnectWebSocket(): Promise<void> {
+    if (this.isDestroyed) return;
+    
+    try {
+      console.log('🔄 [Realtime] Attempting WebSocket reconnection...');
+      
+      // Disconnect current connection
+      await supabase.realtime.disconnect();
+      
+      // Wait a moment before reconnecting
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Attempt to reconnect
+      await supabase.realtime.connect();
+      
+      console.log('✅ [Realtime] WebSocket reconnection successful');
+      this.setConnectionStatus('connected');
+      
+      // Recover all active channels after reconnection
+      this.recoverAllChannels();
+      
+    } catch (error) {
+      console.error('❌ [Realtime] WebSocket reconnection failed:', error);
+      this.setConnectionStatus('disconnected');
+      
+      // Schedule another reconnection attempt with exponential backoff
+      const retryDelay = Math.min(5000 * Math.pow(2, Math.min(this.getGlobalRetryCount(), 5)), 60000);
+      console.log(`🔄 [Realtime] Scheduling WebSocket reconnection in ${retryDelay / 1000} seconds...`);
+      
+      setTimeout(() => {
+        if (!this.isDestroyed) {
+          this.reconnectWebSocket();
+        }
+      }, retryDelay);
+    }
+  }
+
+  // Get global retry count for WebSocket reconnection
+  private getGlobalRetryCount(): number {
+    // This could be enhanced to track global retry attempts
+    return 0;
+  }
+
+  // Recover all active channels after WebSocket reconnection
+  private async recoverAllChannels(): Promise<void> {
+    if (this.isDestroyed) return;
+    
+    console.log('🔄 [Realtime] Recovering all active channels after WebSocket reconnection...');
+    
+    for (const [channelName, channelData] of this.activeChannels) {
+      if (channelData.refs > 0) {
+        console.log(`🔄 [Realtime] Recovering channel: ${channelName}`);
+        
+        try {
+          // Create new channel
+          const newChannel = supabase.channel(channelName);
+          
+          // Configure postgres changes if config provided
+          if (channelData.config?.event && channelData.config?.schema && channelData.config?.table) {
+            // Use type assertion to bypass TypeScript strict checking
+            (newChannel as any).on(
+              'postgres_changes',
+              {
+                event: channelData.config.event,
+                schema: channelData.config.schema,
+                table: channelData.config.table,
+                filter: channelData.config.filter,
+              },
+              (payload: any) => {
+                // Call all stored callbacks
+                for (const callback of channelData.callbacks) {
+                  callback(payload);
+                }
+              }
+            );
+          } else {
+            // Generic channel for custom events
+            (newChannel as any).on('*', (event: any, payload: any) => {
+              // Call all stored callbacks
+              for (const callback of channelData.callbacks) {
+                callback(payload);
+              }
+            });
+          }
+
+          // Subscribe to the channel
+          const subscription = newChannel.subscribe((status, error) => {
+            if (status === 'SUBSCRIBED') {
+              console.info(`[Realtime] Successfully recovered channel '${channelName}'`);
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              console.error(`[Realtime] Recovered channel '${channelName}' subscription error:`, {
+                status,
+                error: error?.message || error,
+                channelName,
+                timestamp: new Date().toISOString()
+              });
+              channelData.connectionHealth = 'unhealthy';
+            } else if (status === 'CLOSED') {
+              console.info(`[Realtime] Recovered channel '${channelName}' closed`);
+            }
+          });
+          
+          // Update the channel reference
+          channelData.channel = subscription;
+          channelData.connectionHealth = 'healthy';
+          channelData.retryCount = 0;
+          channelData.isReconnecting = false;
+          
+          console.log(`✅ [Realtime] Channel recovered: ${channelName}`);
+        } catch (error) {
+          console.error(`❌ [Realtime] Failed to recover channel: ${channelName}`, error);
+          channelData.connectionHealth = 'unhealthy';
+        }
+      }
     }
   }
 
@@ -635,7 +786,8 @@ class RealtimeConnectionManager {
         retryCount: 0,
         lastRetryTime: 0,
         isReconnecting: false,
-        connectionHealth: 'healthy'
+        connectionHealth: 'healthy',
+        config: config || {} // Store the config
       });
       
     } catch (error) {

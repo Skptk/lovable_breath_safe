@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAirQuality } from '../hooks/useAirQuality';
-import { useWeatherData } from '../hooks/useWeatherData';
+import { useWeatherStore } from '../store/weatherStore';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
@@ -93,16 +93,32 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   const [hasInitialData, setHasInitialData] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
 
+  // Use centralized weather store instead of useWeatherData hook
+  const { 
+    weatherData: currentWeather, 
+    isLoading: weatherLoading, 
+    error: weatherError,
+    fetchWeatherData,
+    setCoordinates
+  } = useWeatherStore();
+
   // Get safe coordinates without violating geolocation policies
   useEffect(() => {
     const initializeSafeLocation = async () => {
       try {
         const location = await getLocationSafely();
         setSafeCoordinates(location);
+        
+        // Update weather store coordinates when we get location
+        if (location) {
+          setCoordinates({ latitude: location.lat, longitude: location.lng });
+        }
       } catch (error) {
         console.warn('BackgroundManager: Failed to get safe location:', error);
         // Use fallback location
-        setSafeCoordinates({ lat: -1.1424, lng: 36.7088 });
+        const fallbackLocation = { lat: -1.1424, lng: 36.7088 };
+        setSafeCoordinates(fallbackLocation);
+        setCoordinates({ latitude: fallbackLocation.lat, longitude: fallbackLocation.lng });
       }
     };
 
@@ -111,46 +127,39 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
       initializeSafeLocation();
     } else {
       // Use fallback location if no user interaction
-      setSafeCoordinates({ lat: -1.1424, lng: 36.7088 });
+      const fallbackLocation = { lat: -1.1424, lng: 36.7088 };
+      setSafeCoordinates(fallbackLocation);
+      setCoordinates({ latitude: fallbackLocation.lat, longitude: fallbackLocation.lng });
     }
-  }, []);
-
-  // Get weather data with proper refresh strategy
-  const { currentWeather, isLoading: weatherLoading, error: weatherError } = useWeatherData({
-    latitude: safeCoordinates?.lat || airQualityData?.coordinates?.lat,
-    longitude: safeCoordinates?.lng || airQualityData?.coordinates?.lng,
-    autoRefresh: hasInitialData, // Only auto-refresh after initial data
-    refreshInterval: 900000 // 15 minutes
-  });
+  }, [setCoordinates]);
 
   // Implement immediate fetch on login and progressive loading
   useEffect(() => {
-    if (user && !hasInitialData) {
+    if (user && !hasInitialData && safeCoordinates) {
       console.log('BackgroundManager: User authenticated, fetching initial weather data...');
       setBackgroundState('loading');
       
       // Set a flag to indicate we have initial data
       setHasInitialData(true);
       
-      // Start 15-minute cycle AFTER initial data is fetched
-      const startAutoRefresh = () => {
-        console.log('BackgroundManager: Starting 15-minute auto-refresh cycle');
-        // The useWeatherData hook will handle the auto-refresh
+      // Fetch initial weather data using centralized store
+      const fetchInitialWeather = async () => {
+        try {
+          await fetchWeatherData({ 
+            latitude: safeCoordinates.lat, 
+            longitude: safeCoordinates.lng 
+          });
+          console.log('BackgroundManager: Initial weather data fetched successfully');
+          setBackgroundState('success');
+        } catch (error) {
+          console.log('BackgroundManager: Initial weather data failed, using fallback');
+          setBackgroundState('error');
+        }
       };
       
-      // Wait for weather data to load before starting auto-refresh
-      if (!weatherLoading && currentWeather) {
-        console.log('BackgroundManager: Initial weather data loaded, starting auto-refresh cycle');
-        setBackgroundState('success');
-        startAutoRefresh();
-      } else if (!weatherLoading && weatherError) {
-        console.log('BackgroundManager: Initial weather data failed, using fallback');
-        setBackgroundState('error');
-        // Still start auto-refresh cycle even with error
-        startAutoRefresh();
-      }
+      fetchInitialWeather();
     }
-  }, [user, hasInitialData, weatherLoading, currentWeather, weatherError]);
+  }, [user, hasInitialData, safeCoordinates, fetchWeatherData]);
 
   // Update background state based on weather loading status
   useEffect(() => {
