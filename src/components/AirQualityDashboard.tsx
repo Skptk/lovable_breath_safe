@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,15 @@ export default function AirQualityDashboard({
   } | null>(null);
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+
+  // Memoize coordinates to prevent unnecessary re-renders of WeatherStatsCard
+  const memoizedCoordinates = useMemo(() => {
+    if (!data?.coordinates) return null;
+    return {
+      latitude: data.coordinates.lat,
+      longitude: data.coordinates.lon
+    };
+  }, [data?.coordinates?.lat, data?.coordinates?.lon]);
 
   const handleRefresh = () => {
     if (hasUserConsent) {
@@ -162,13 +171,6 @@ export default function AirQualityDashboard({
     
     const locationSource = isUserLocation ? 'Your Location' : 'Nearest Sensor';
     const locationIcon = isUserLocation ? User : Satellite;
-
-    // Debug: Log coordinates being passed to WeatherStatsCard
-    console.log('AirQualityDashboard: Passing coordinates to WeatherStatsCard:', {
-      coordinates: data.coordinates,
-      lat: data.coordinates.lat,
-      lon: data.coordinates.lon
-    });
 
     return (
       <div className="space-y-6 lg:space-y-8">
@@ -383,10 +385,12 @@ export default function AirQualityDashboard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut", delay: 0.4 }}
         >
-          <WeatherStatsCard 
-            latitude={data.coordinates.lat}
-            longitude={data.coordinates.lon}
-          />
+          {memoizedCoordinates && (
+            <WeatherStatsCard 
+              latitude={memoizedCoordinates.latitude}
+              longitude={memoizedCoordinates.longitude}
+            />
+          )}
         </motion.div>
 
         {/* Pollutant Detail Modal */}

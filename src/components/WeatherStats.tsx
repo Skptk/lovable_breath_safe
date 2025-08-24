@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,33 +45,68 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
   const [isRequestingLocation, setIsRequestingLocation] = useState(false); // Prevent multiple simultaneous requests
   const [retryCount, setRetryCount] = useState(0);
 
+  // Use refs to track previous values and prevent unnecessary re-renders
+  const prevLocationRef = useRef<UserLocation | null>(null);
+  const weatherDataRefetchRef = useRef<(() => void) | null>(null);
+
   const { toast } = useToast();
 
-  // Weather data hook integration
+  // Memoize location object to prevent unnecessary re-renders
+  const memoizedLocation = useMemo(() => {
+    if (!userLocation) return null;
+    return {
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude
+    };
+  }, [userLocation?.latitude, userLocation?.longitude]);
+
+  // Weather data hook integration with memoized coordinates
   const weatherData = useWeatherData({
-    latitude: userLocation?.latitude,
-    longitude: userLocation?.longitude,
+    latitude: memoizedLocation?.latitude,
+    longitude: memoizedLocation?.longitude,
     autoRefresh: true,
     refreshInterval: 900000 // 15 minutes
   });
 
-  // Debug logging for weather data hook
+  // Store refetch function in ref to prevent dependency changes
   useEffect(() => {
-    console.log('WeatherStats: userLocation changed:', userLocation);
-    console.log('WeatherStats: weatherData state:', {
-      loading: weatherData.loading,
-      error: weatherData.error,
-      currentWeather: weatherData.currentWeather
-    });
+    weatherDataRefetchRef.current = weatherData.refetch;
+  }, [weatherData.refetch]);
+
+  // Debug logging for weather data hook (reduced frequency)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('WeatherStats: userLocation changed:', userLocation);
+      console.log('WeatherStats: weatherData state:', {
+        loading: weatherData.loading,
+        error: weatherData.error,
+        currentWeather: weatherData.currentWeather
+      });
+    }
   }, [userLocation, weatherData.loading, weatherData.error, weatherData.currentWeather]);
 
-  // Trigger weather data fetch when user location becomes available
+  // Trigger weather data fetch only when location truly changes
   useEffect(() => {
-    if (userLocation?.latitude && userLocation?.longitude && !weatherData.currentWeather && !weatherData.loading) {
-      console.log('WeatherStats: Triggering manual weather data fetch for coordinates:', userLocation.latitude, userLocation.longitude);
-      weatherData.refetch();
+    if (!userLocation?.latitude || !userLocation?.longitude) return;
+    
+    // Deep comparison to prevent unnecessary fetches
+    const prevLocation = prevLocationRef.current;
+    const locationChanged = !prevLocation || 
+      prevLocation.latitude !== userLocation.latitude || 
+      prevLocation.longitude !== userLocation.longitude;
+    
+    if (locationChanged && !weatherData.currentWeather && !weatherData.loading) {
+      console.log('WeatherStats: Location changed, triggering weather data fetch for coordinates:', userLocation.latitude, userLocation.longitude);
+      
+      // Use the stored refetch function
+      if (weatherDataRefetchRef.current) {
+        weatherDataRefetchRef.current();
+      }
+      
+      // Update previous location reference
+      prevLocationRef.current = { ...userLocation };
     }
-  }, [userLocation, weatherData.currentWeather, weatherData.loading, weatherData.refetch]);
+  }, [userLocation?.latitude, userLocation?.longitude, weatherData.currentWeather, weatherData.loading]);
 
   // Check for existing location permissions on component mount
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,14 +26,22 @@ interface WeatherStatsCardProps {
   longitude: number;
 }
 
-export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCardProps): JSX.Element {
+// Memoize the component to prevent unnecessary re-renders
+const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardProps): JSX.Element => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchWeatherData = async (): Promise<void> => {
+  // Memoize coordinates to prevent unnecessary re-renders
+  const memoizedCoordinates = useMemo(() => ({
+    latitude,
+    longitude
+  }), [latitude, longitude]);
+
+  // Memoize fetch function to prevent recreation on every render
+  const fetchWeatherData = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
 
@@ -43,7 +51,9 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
         throw new Error('Invalid coordinates provided');
       }
 
-      console.log('WeatherStatsCard: Fetching weather data for coordinates:', { latitude, longitude });
+      if (process.env.NODE_ENV === 'development') {
+        console.log('WeatherStatsCard: Fetching weather data for coordinates:', { latitude, longitude });
+      }
 
       const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
       if (!apiKey) {
@@ -51,15 +61,19 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
         throw new Error('OpenWeatherMap API key not configured');
       }
 
-      console.log('WeatherStatsCard: API key configured, making request to OpenWeatherMap');
-      console.log('WeatherStatsCard: API key length:', apiKey.length);
-      console.log('WeatherStatsCard: API key starts with:', apiKey.substring(0, 4) + '...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('WeatherStatsCard: API key configured, making request to OpenWeatherMap');
+        console.log('WeatherStatsCard: API key length:', apiKey.length);
+        console.log('WeatherStatsCard: API key starts with:', apiKey.substring(0, 4) + '...');
+      }
 
       const response = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`
       );
 
-      console.log('WeatherStatsCard: API response status:', response.status);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('WeatherStatsCard: API response status:', response.status);
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -117,7 +131,7 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
     } finally {
       setLoading(false);
     }
-  };
+  }, [latitude, longitude, toast]);
 
   // Weather icon mapping function
   const getWeatherIcon = (weatherCode: number) => {
@@ -146,22 +160,24 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
     return 'text-red-600';
   };
 
-  // Fetch weather data when coordinates change
+  // Fetch weather data when coordinates change (memoized coordinates)
   useEffect(() => {
-    if (latitude && longitude && !isNaN(latitude) && !isNaN(longitude)) {
+    if (memoizedCoordinates.latitude && memoizedCoordinates.longitude && 
+        !isNaN(memoizedCoordinates.latitude) && !isNaN(memoizedCoordinates.longitude)) {
       fetchWeatherData();
     }
-  }, [latitude, longitude]);
+  }, [memoizedCoordinates.latitude, memoizedCoordinates.longitude, fetchWeatherData]);
 
-  // Auto-refresh every 15 minutes
+  // Auto-refresh every 15 minutes (memoized coordinates)
   useEffect(() => {
-    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+    if (!memoizedCoordinates.latitude || !memoizedCoordinates.longitude || 
+        isNaN(memoizedCoordinates.latitude) || isNaN(memoizedCoordinates.longitude)) {
       return; // Don't set up auto-refresh if coordinates are invalid
     }
 
     const interval = setInterval(fetchWeatherData, 15 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [latitude, longitude]);
+  }, [memoizedCoordinates.latitude, memoizedCoordinates.longitude, fetchWeatherData]);
 
   // Show message if coordinates are not available
   if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
@@ -369,4 +385,6 @@ export default function WeatherStatsCard({ latitude, longitude }: WeatherStatsCa
       </CardContent>
     </Card>
   );
-}
+});
+
+export default WeatherStatsCard;

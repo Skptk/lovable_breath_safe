@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -130,6 +130,18 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
   const [forecast, setForecast] = useState<ForecastData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Use refs to track previous coordinates and prevent unnecessary re-renders
+  const prevCoordinatesRef = useRef<{ latitude: number; longitude: number } | null>(null);
+
+  // Memoize coordinates to prevent unnecessary re-renders
+  const memoizedCoordinates = useMemo(() => {
+    if (!options.latitude || !options.longitude) return null;
+    return {
+      latitude: options.latitude,
+      longitude: options.longitude
+    };
+  }, [options.latitude, options.longitude]);
 
   // Fetch current weather from OpenWeatherMap
   const fetchCurrentWeather = useCallback(async (lat: number, lon: number): Promise<WeatherData> => {
@@ -291,7 +303,9 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
   const fetchAllWeatherData = useCallback(async (lat: number, lon: number) => {
     // Check refresh lock to prevent duplicate pulls on manual refresh
     if (isRefreshLocked()) {
-      console.log('useWeatherData: Refresh locked - preventing duplicate weather data pull on manual refresh');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('useWeatherData: Refresh locked - preventing duplicate weather data pull on manual refresh');
+      }
       throw new Error('Weather data was recently fetched. Please wait for the next automatic refresh in 15 minutes.');
     }
 
@@ -319,7 +333,9 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
 
       // Set refresh lock to prevent duplicate pulls on manual refresh
       setRefreshLock();
-      console.log('useWeatherData: Refresh lock set - preventing duplicate pulls for 14 minutes');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('useWeatherData: Refresh lock set - preventing duplicate pulls for 14 minutes');
+      }
 
       return {
         weather: comprehensiveWeather,
@@ -344,28 +360,32 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
     try {
       // Clear refresh lock for manual refresh
       clearRefreshLock();
-      console.log('useWeatherData: Manual refresh - cleared refresh lock');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('useWeatherData: Manual refresh - cleared refresh lock');
+      }
       
-      if (options.latitude && options.longitude) {
-        await fetchAllWeatherData(options.latitude, options.longitude);
-        console.log('useWeatherData: Manual refresh completed');
+      if (memoizedCoordinates?.latitude && memoizedCoordinates?.longitude) {
+        await fetchAllWeatherData(memoizedCoordinates.latitude, memoizedCoordinates.longitude);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('useWeatherData: Manual refresh completed');
+        }
       }
     } catch (error) {
       console.error('Manual weather refresh failed:', error);
       throw error;
     }
-  }, [options.latitude, options.longitude, fetchAllWeatherData]);
+  }, [memoizedCoordinates, fetchAllWeatherData]);
 
-  // React Query for weather data
+  // React Query for weather data with memoized coordinates
   const weatherQuery = useQuery({
-    queryKey: ['weather-data', options.latitude, options.longitude],
+    queryKey: ['weather-data', memoizedCoordinates?.latitude, memoizedCoordinates?.longitude],
     queryFn: () => {
-      if (!options.latitude || !options.longitude) {
+      if (!memoizedCoordinates?.latitude || !memoizedCoordinates?.longitude) {
         throw new Error('Latitude and longitude are required');
       }
-      return fetchAllWeatherData(options.latitude, options.longitude);
+      return fetchAllWeatherData(memoizedCoordinates.latitude, memoizedCoordinates.longitude);
     },
-    enabled: !!(options.latitude && options.longitude),
+    enabled: !!(memoizedCoordinates?.latitude && memoizedCoordinates?.longitude),
     refetchInterval: autoRefresh ? refreshInterval : false,
     staleTime: 300000, // 5 minutes
     gcTime: 900000, // 15 minutes
@@ -417,31 +437,43 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
     }
   });
 
-  // Auto-refresh effect
+  // Auto-refresh effect with memoized coordinates
   useEffect(() => {
-    if (!autoRefresh || !options.latitude || !options.longitude) return;
+    if (!autoRefresh || !memoizedCoordinates?.latitude || !memoizedCoordinates?.longitude) return;
 
     const interval = setInterval(() => {
-      if (options.latitude && options.longitude) {
-        fetchAllWeatherData(options.latitude, options.longitude);
+      if (memoizedCoordinates?.latitude && memoizedCoordinates?.longitude) {
+        fetchAllWeatherData(memoizedCoordinates.latitude, memoizedCoordinates.longitude);
       }
     }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval, options.latitude, options.longitude, fetchAllWeatherData]);
+  }, [autoRefresh, refreshInterval, memoizedCoordinates, fetchAllWeatherData]);
 
-  // Handle coordinate changes and trigger data fetch
+  // Handle coordinate changes and trigger data fetch (with deep comparison)
   useEffect(() => {
-    if (options.latitude && options.longitude) {
-      console.log('useWeatherData: Coordinates changed, triggering data fetch:', options.latitude, options.longitude);
+    if (!memoizedCoordinates?.latitude || !memoizedCoordinates?.longitude) return;
+    
+    // Deep comparison to prevent unnecessary fetches
+    const prevCoords = prevCoordinatesRef.current;
+    const coordinatesChanged = !prevCoords || 
+      prevCoords.latitude !== memoizedCoordinates.latitude || 
+      prevCoords.longitude !== memoizedCoordinates.longitude;
+    
+    if (coordinatesChanged) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('useWeatherData: Coordinates changed, triggering data fetch:', memoizedCoordinates.latitude, memoizedCoordinates.longitude);
+      }
       // Reset state when coordinates change
       setCurrentWeather(null);
       setForecast([]);
       setError(null);
+      // Update previous coordinates reference
+      prevCoordinatesRef.current = { ...memoizedCoordinates };
       // Trigger the query to fetch new data
       weatherQuery.refetch();
     }
-  }, [options.latitude, options.longitude, weatherQuery.refetch]);
+  }, [memoizedCoordinates?.latitude, memoizedCoordinates?.longitude, weatherQuery.refetch]);
 
   // Memoized values
   const weatherSummary = useMemo(() => {
