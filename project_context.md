@@ -1151,6 +1151,93 @@ Successfully resolved all text contrast issues across the Breath Safe webapp by 
 
 ---
 
+## Weather Conditions Card and Map Tile Rendering Fixes – 2025-01-22
+
+### **Complete User Experience and Map Display Resolution**
+
+#### **Overview**
+Successfully resolved critical user experience issues in the Weather Stats page: users were seeing error messages instead of weather data, and the map had unrendered areas/boxes in both light and dark modes. Implemented comprehensive fixes for data display, map tile reliability, and user-friendly error handling while maintaining all existing functionality.
+
+#### **Critical Issues Identified and Resolved**
+
+##### **1. Weather Conditions Card Showing Error Messages** ✅
+- **Problem**: Users were seeing error messages like "Error: Weather data was recently fetched. Please wait for the next automatic refresh in 15 minutes" instead of actual weather data
+- **Root Cause**: The card was displaying error states instead of cached data when fresh data was being fetched
+- **Solution**: Replaced error messages with user-friendly refresh status indicators
+- **Technical Implementation**:
+  - Changed error display from "Error: [message]" to "Weather data unavailable"
+  - Added refresh status indicator with loading spinner: "Refreshing weather data..."
+  - Enhanced debug information in development mode for troubleshooting
+  - Maintained all existing weather data display functionality
+- **Result**: Users now see helpful status information instead of confusing error messages
+
+##### **2. Map Unrendered Areas/Boxes in Both Themes** ✅
+- **Problem**: Map had large unrendered dark grey/black rectangular areas where map tiles failed to load, affecting both light and dark modes
+- **Root Cause**: Problematic tile layer sources (Humanitarian OpenStreetMap) causing rendering failures and inconsistent tile loading
+- **Solution**: Implemented single reliable tile source with enhanced fallback logic
+- **Technical Implementation**:
+  - Replaced problematic `cartocdn.com/dark_all` and `openstreetmap.fr/hot` tiles with reliable `openstreetmap.org` source
+  - Used same reliable tile source for both light and dark themes to prevent rendering inconsistencies
+  - Added enhanced tile loading retry logic (3 retries with 1-second delays)
+  - Implemented error tile fallback for failed tile loads
+  - Added CSS filters for dark theme instead of relying on problematic dark tile sources
+- **Result**: Map now renders consistently without unrendered areas in both light and dark modes
+
+##### **3. Enhanced Map Theme Integration** ✅
+- **Problem**: Map theme switching was causing tile layer conflicts and rendering issues
+- **Solution**: Improved theme switching with better error handling and fallback mechanisms
+- **Technical Implementation**:
+  - Enhanced tile layer management during theme changes
+  - Added comprehensive error handling for tile layer failures
+  - Implemented CSS-based dark theme styling instead of problematic dark tile sources
+  - Added development logging for tile layer configuration
+- **Result**: Smooth theme switching with reliable map rendering in all modes
+
+#### **Technical Improvements Implemented**
+
+##### **Map Tile Layer Configuration**
+- **Reliable Source**: Standard OpenStreetMap tiles for consistent rendering
+- **Retry Logic**: 3 retry attempts with 1-second delays for failed tile loads
+- **Error Handling**: Fallback tiles for failed loads to prevent blank areas
+- **Performance**: Optimized tile loading with proper subdomain distribution
+
+##### **Weather Data Display Enhancement**
+- **User-Friendly Messages**: Replaced technical error messages with helpful status information
+- **Loading States**: Clear indicators when weather data is being refreshed
+- **Debug Information**: Enhanced development mode logging for troubleshooting
+- **Graceful Degradation**: Better handling of data loading states
+
+##### **CSS-Based Theme Integration**
+- **Dark Theme**: CSS filters (brightness, contrast) instead of problematic dark tile sources
+- **Consistent Rendering**: Same tile source with theme-appropriate styling
+- **Performance**: Reduced tile loading failures and rendering issues
+
+#### **Files Modified**
+1. **`src/components/WeatherStats.tsx`** - Weather conditions card error display fixes
+2. **`src/config/maps.ts`** - Map tile layer configuration improvements
+3. **`src/components/LeafletMap.tsx`** - Enhanced map theme integration and tile handling
+
+#### **User Experience Improvements**
+- **No More Error Messages**: Users see helpful status information instead of confusing errors
+- **Consistent Map Display**: Map renders properly in both light and dark modes
+- **Reliable Tile Loading**: No more unrendered areas or missing map sections
+- **Better Feedback**: Clear indication when data is being refreshed
+- **Smooth Theme Switching**: Map adapts seamlessly to user's theme preference
+
+#### **Performance and Reliability**
+- **Reduced Tile Failures**: Enhanced retry logic and fallback mechanisms
+- **Consistent Rendering**: Single reliable tile source prevents rendering inconsistencies
+- **Better Error Handling**: Graceful degradation when tile loading fails
+- **Optimized Loading**: Proper subdomain distribution and caching
+
+#### **Maintenance and Development**
+- **Debug Logging**: Enhanced development mode information for troubleshooting
+- **Error Tracking**: Better visibility into map and weather data issues
+- **Code Quality**: Improved error handling and fallback mechanisms
+- **Documentation**: Clear technical implementation details for future maintenance
+
+---
+
 ## Critical Weather Stats Page Fixes – 2025-01-22
 
 ### **Complete Weather Stats Page Issue Resolution**
