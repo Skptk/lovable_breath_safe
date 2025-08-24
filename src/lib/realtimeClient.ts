@@ -40,6 +40,65 @@ class RealtimeConnectionManager {
           console.log(`[Realtime] View changed to: ${newView}, preventing duplicate subscriptions for 2 seconds`);
         }
       });
+
+      // Add connection health check
+      this.startConnectionHealthCheck();
+    }
+  }
+
+  // Start periodic connection health check
+  private startConnectionHealthCheck(): void {
+    setInterval(() => {
+      if (this.isDestroyed) return;
+      
+      const now = Date.now();
+      let hasActiveConnections = false;
+      let hasReconnectingChannels = false;
+
+      // Check all channels for health
+      for (const [channelName, channelData] of this.activeChannels) {
+        if (channelData.isReconnecting) {
+          hasReconnectingChannels = true;
+        }
+        
+        // Check if channel is stale (no activity for more than 5 minutes)
+        if (now - channelData.lastRetryTime > 5 * 60 * 1000 && channelData.lastRetryTime > 0) {
+          console.warn(`[Realtime] Channel '${channelName}' appears stale, checking health...`);
+          // Trigger a health check by attempting to ping the channel
+          this.checkChannelHealth(channelName);
+        }
+        
+        hasActiveConnections = true;
+      }
+
+      // Update connection status based on channel health
+      if (hasReconnectingChannels) {
+        this.setConnectionStatus('reconnecting');
+      } else if (hasActiveConnections) {
+        this.setConnectionStatus('connected');
+      } else {
+        this.setConnectionStatus('disconnected');
+      }
+    }, 30000); // Check every 30 seconds
+  }
+
+  // Check individual channel health
+  private checkChannelHealth(channelName: string): void {
+    const channelData = this.activeChannels.get(channelName);
+    if (!channelData || !channelData.channel) return;
+
+    try {
+      // Try to access a property to check if the channel is still valid
+      if (channelData.channel && typeof channelData.channel.subscribe === 'function') {
+        // Channel appears healthy
+        channelData.lastRetryTime = Date.now();
+      } else {
+        console.warn(`[Realtime] Channel '${channelName}' appears unhealthy, will retry on next error`);
+        channelData.isReconnecting = true;
+      }
+    } catch (error) {
+      console.warn(`[Realtime] Channel '${channelName}' health check failed:`, error);
+      channelData.isReconnecting = true;
     }
   }
 
@@ -118,9 +177,18 @@ class RealtimeConnectionManager {
     try {
       // Remove the old channel
       if (channelData.channel && typeof channelData.channel.unsubscribe === 'function') {
-        channelData.channel.unsubscribe();
+        try {
+          channelData.channel.unsubscribe();
+        } catch (unsubError) {
+          console.warn(`[Realtime] Error unsubscribing from old channel '${channelName}':`, unsubError);
+        }
       }
-      supabase.removeChannel(channelData.channel);
+      
+      try {
+        supabase.removeChannel(channelData.channel);
+      } catch (removeError) {
+        console.warn(`[Realtime] Error removing channel '${channelName}' from Supabase:`, removeError);
+      }
 
       // Create new channel
       const newChannel = supabase.channel(channelName);
@@ -156,9 +224,11 @@ class RealtimeConnectionManager {
           channelData.isReconnecting = false;
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn(`[Realtime] Channel '${channelName}' resubscription error:`, status, error);
-          this.handleChannelError(channelName, error);
+          // Don't immediately retry on resubscription error, let the main error handler deal with it
+          channelData.isReconnecting = false;
         } else if (status === 'CLOSED') {
           console.info(`[Realtime] Channel '${channelName}' closed after retry`);
+          channelData.isReconnecting = false;
         }
       });
 
@@ -170,7 +240,9 @@ class RealtimeConnectionManager {
 
     } catch (error) {
       console.error(`[Realtime] Failed to retry channel '${channelName}' subscription:`, error);
-      this.handleChannelError(channelName, error);
+      channelData.isReconnecting = false;
+      // Don't call handleChannelError here to avoid infinite loops
+      // Just log and let the next error event handle it
     }
   }
 
@@ -179,30 +251,122 @@ class RealtimeConnectionManager {
     const channelData = this.activeChannels.get(channelName);
     if (!channelData) return;
 
+    // Categorize the error to determine appropriate handling
+    const isNetworkError = this.isNetworkRelatedError(error);
+    const isAuthError = this.isAuthRelatedError(error);
+    const isRateLimitError = this.isRateLimitError(error);
+
     // Log detailed error information
     console.error(`[Realtime] Channel '${channelName}' error:`, {
       channelName,
       error: error?.message || error,
+      errorType: isNetworkError ? 'network' : isAuthError ? 'auth' : isRateLimitError ? 'rate_limit' : 'unknown',
       retryCount: channelData.retryCount,
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
       connectionStatus: this.connectionStatus
     });
 
-    // Set reconnecting status
-    channelData.isReconnecting = true;
-    this.setConnectionStatus('reconnecting');
-
-    // Attempt retry if not already reconnecting
-    if (!channelData.isReconnecting) {
-      this.retryChannelSubscription(channelName, Array.from(channelData.callbacks)[0], {
-        event: 'postgres_changes',
-        schema: 'public',
-        table: channelName.includes('notifications') ? 'notifications' : 
-               channelName.includes('points') ? 'user_points' : 
-               channelName.includes('profile') ? 'profiles' : 'unknown'
-      });
+    // Handle different error types appropriately
+    if (isAuthError) {
+      console.warn(`[Realtime] Auth error for channel '${channelName}', not retrying`);
+      this.setConnectionStatus('disconnected');
+      return;
     }
+
+    if (isRateLimitError) {
+      console.warn(`[Realtime] Rate limit error for channel '${channelName}', waiting before retry`);
+      // Wait longer for rate limit errors
+      setTimeout(() => {
+        if (channelData.isReconnecting) {
+          this.retryChannelSubscription(channelName, Array.from(channelData.callbacks)[0], this.getChannelConfig(channelName));
+        }
+      }, 10000); // Wait 10 seconds for rate limit
+      return;
+    }
+
+    // Set reconnecting status for network errors
+    if (isNetworkError) {
+      channelData.isReconnecting = true;
+      this.setConnectionStatus('reconnecting');
+    }
+
+    // Get the first callback to retry with
+    const firstCallback = Array.from(channelData.callbacks)[0];
+    if (!firstCallback) {
+      console.warn(`[Realtime] No callbacks found for channel '${channelName}', cannot retry`);
+      return;
+    }
+
+    // Attempt retry if not already reconnecting and retry count is within limits
+    if (channelData.retryCount < MAX_RETRY_ATTEMPTS) {
+      const config = this.getChannelConfig(channelName);
+      console.log(`[Realtime] Retrying channel '${channelName}' with config:`, config);
+      this.retryChannelSubscription(channelName, firstCallback, config);
+    } else {
+      console.error(`[Realtime] Channel '${channelName}' exceeded max retry attempts (${MAX_RETRY_ATTEMPTS}), giving up`);
+      this.setConnectionStatus('disconnected');
+    }
+  }
+
+  // Helper method to get channel configuration based on channel name
+  private getChannelConfig(channelName: string): any {
+    if (channelName.includes('notifications')) {
+      return {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${channelName.split('-')[2]}`
+      };
+    } else if (channelName.includes('user-points')) {
+      return {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'user_points',
+        filter: `user_id=eq.${channelName.split('-')[2]}`
+      };
+    } else if (channelName.includes('user-profile-points')) {
+      return {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: `user_id=eq.${channelName.split('-')[2]}`
+      };
+    }
+    return {};
+  }
+
+  // Helper method to categorize network-related errors
+  private isNetworkRelatedError(error: any): boolean {
+    if (!error) return false;
+    const errorStr = error.toString().toLowerCase();
+    return errorStr.includes('network') || 
+           errorStr.includes('connection') || 
+           errorStr.includes('timeout') ||
+           errorStr.includes('offline') ||
+           errorStr.includes('fetch') ||
+           errorStr.includes('websocket');
+  }
+
+  // Helper method to categorize auth-related errors
+  private isAuthRelatedError(error: any): boolean {
+    if (!error) return false;
+    const errorStr = error.toString().toLowerCase();
+    return errorStr.includes('auth') || 
+           errorStr.includes('unauthorized') || 
+           errorStr.includes('forbidden') ||
+           errorStr.includes('token') ||
+           errorStr.includes('jwt');
+  }
+
+  // Helper method to categorize rate limit errors
+  private isRateLimitError(error: any): boolean {
+    if (!error) return false;
+    const errorStr = error.toString().toLowerCase();
+    return errorStr.includes('rate') || 
+           errorStr.includes('limit') || 
+           errorStr.includes('too many') ||
+           errorStr.includes('429');
   }
 
   public subscribeToChannel(
