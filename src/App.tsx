@@ -8,6 +8,7 @@ import { usePerformanceMonitor, usePreload } from "@/hooks/usePerformance";
 import { useAppStore } from "@/store";
 import { Suspense, lazy, useEffect } from "react";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { ConnectionResilienceProvider } from "./components/ConnectionResilienceProvider";
 
 // Retry mechanism for lazy loading
 const retry = (fn: () => Promise<any>, retriesLeft: number = 3, interval: number = 1000): Promise<any> => {
@@ -162,40 +163,49 @@ const App = (): JSX.Element => {
         }
       >
         <TooltipProvider>
-          <RealtimeStatusBanner />
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Suspense fallback={<LoadingSpinner />}>
-              <ErrorBoundary
-                onError={(error, errorInfo) => {
-                  console.error("Route loading error:", error, errorInfo);
-                  setError(error.message);
-                }}
-                fallback={<LazyErrorFallback error={new Error("Failed to load route")} retry={() => window.location.reload()} />}
-              >
-                <Routes>
-                  <Route path="/" element={<Landing />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/onboarding" element={<Onboarding />} />
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/privacy" element={<Privacy />} />
-                  <Route path="/terms" element={<Terms />} />
-                  <Route path="/demo" element={<Demo />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route 
-                    path="/dashboard" 
-                    element={
-                      <ProtectedRoute>
-                        <Index />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </ErrorBoundary>
-            </Suspense>
-          </BrowserRouter>
+          <ConnectionResilienceProvider
+            config={{
+              heartbeatInterval: process.env.NODE_ENV === 'development' ? 15000 : 30000,
+              showDebugPanel: process.env.NODE_ENV === 'development',
+              maxReconnectAttempts: process.env.NODE_ENV === 'production' ? 5 : 10,
+              alertAutoHide: 5000
+            }}
+          >
+            <RealtimeStatusBanner />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Suspense fallback={<LoadingSpinner />}>
+                <ErrorBoundary
+                  onError={(error, errorInfo) => {
+                    console.error("Route loading error:", error, errorInfo);
+                    setError(error.message);
+                  }}
+                  fallback={<LazyErrorFallback error={new Error("Failed to load route")} retry={() => window.location.reload()} />}
+                >
+                  <Routes>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/onboarding" element={<Onboarding />} />
+                    <Route path="/products" element={<Products />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/demo" element={<Demo />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route 
+                      path="/dashboard" 
+                      element={
+                        <ProtectedRoute>
+                          <Index />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </ErrorBoundary>
+              </Suspense>
+            </BrowserRouter>
+          </ConnectionResilienceProvider>
         </TooltipProvider>
       </ErrorBoundary>
     </ThemeProvider>

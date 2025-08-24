@@ -10,6 +10,7 @@ export { useWithdrawalRequests } from './useWithdrawalRequests';
 // WebSocket stability hooks
 export { useStableChannelSubscription } from './useStableChannelSubscription';
 export { useConnectionHealth } from './useConnectionHealth';
+export { useEnhancedConnectionHealth } from './useEnhancedConnectionHealth';
 export { useRealtimeStatus } from './useRealtimeStatus';
 
 // Utility hooks

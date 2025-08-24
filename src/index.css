@@ -4,6 +4,9 @@
 /* Leaflet CSS imports */
 @import 'leaflet/dist/leaflet.css';
 
+/* Connection Resilience CSS */
+@import './styles/connection-resilience.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
