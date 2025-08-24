@@ -37,6 +37,47 @@ const setBackgroundRefreshLock = (): void => {
   }
 };
 
+// Safe location handling to prevent geolocation violations
+const getLocationSafely = async (): Promise<{ lat: number; lng: number } | null> => {
+  try {
+    // Check if we have stored location
+    const storedLocation = localStorage.getItem('lastKnownLocation');
+    if (storedLocation) {
+      const location = JSON.parse(storedLocation);
+      console.log('BackgroundManager: Using stored location:', location);
+      return location;
+    }
+
+    // Only request fresh location if user gesture available
+    if (navigator.userActivation?.hasBeenActive) {
+      console.log('BackgroundManager: User gesture available, requesting fresh location');
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
+        });
+      });
+      
+      const location = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
+      
+      localStorage.setItem('lastKnownLocation', JSON.stringify(location));
+      console.log('BackgroundManager: Fresh location obtained:', location);
+      return location;
+    }
+
+    console.log('BackgroundManager: No user gesture for geolocation, using fallback');
+    // Use fallback location for Kenya
+    return { lat: -1.1424, lng: 36.7088 };
+  } catch (error) {
+    console.log('BackgroundManager: Using fallback location due to error:', error);
+    // Use fallback location for Kenya
+    return { lat: -1.1424, lng: 36.7088 };
+  }
+};
+
 interface BackgroundManagerProps {
   children: React.ReactNode;
 }
@@ -46,11 +87,34 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   const { theme } = useTheme();
   const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.webp');
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [safeCoordinates, setSafeCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Get weather data when coordinates are available
+  // Get safe coordinates without violating geolocation policies
+  useEffect(() => {
+    const initializeSafeLocation = async () => {
+      try {
+        const location = await getLocationSafely();
+        setSafeCoordinates(location);
+      } catch (error) {
+        console.warn('BackgroundManager: Failed to get safe location:', error);
+        // Use fallback location
+        setSafeCoordinates({ lat: -1.1424, lng: 36.7088 });
+      }
+    };
+
+    // Only initialize location when component mounts and user has interacted
+    if (document.hasFocus()) {
+      initializeSafeLocation();
+    } else {
+      // Use fallback location if no user interaction
+      setSafeCoordinates({ lat: -1.1424, lng: 36.7088 });
+    }
+  }, []);
+
+  // Get weather data when safe coordinates are available
   const { currentWeather } = useWeatherData({
-    latitude: airQualityData?.coordinates?.lat,
-    longitude: airQualityData?.coordinates?.lon,
+    latitude: safeCoordinates?.lat || airQualityData?.coordinates?.lat,
+    longitude: safeCoordinates?.lng || airQualityData?.coordinates?.lng,
     autoRefresh: true,
     refreshInterval: 900000 // 15 minutes
   });
@@ -100,74 +164,78 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
         conditionCode = 61; // Rain
       } else if (weatherCondition.includes('snow')) {
         conditionCode = 71; // Snow
-      } else if (weatherCondition.includes('thunder') || weatherCondition.includes('storm')) {
-        conditionCode = 95; // Thunderstorm
       } else if (weatherCondition.includes('fog') || weatherCondition.includes('mist')) {
-        conditionCode = 45; // Fog (separate from overcast)
+        conditionCode = 45; // Fog
       }
     }
-
-    const newBackground = getBackgroundImage(conditionCode, nightTime, isSunriseSunset);
     
-    // Debug logging for background selection
-    console.log('BackgroundManager: Background selection:', {
-      conditionCode,
-      nightTime,
-      isSunriseSunset,
-      selectedBackground: newBackground,
-      currentBackground
-    });
-    
-    // Set refresh lock when background changes
-    if (newBackground !== currentBackground) {
-      setBackgroundRefreshLock();
-      console.log('BackgroundManager: Background changed - refresh lock set');
+    // Priority order: sunrise/sunset > night time > weather conditions
+    if (isSunriseSunset) {
+      const isSunrise = new Date().getHours() < 12;
+      return isSunrise ? '/weather-backgrounds/sunrise.webp' : '/weather-backgrounds/sunset.webp';
+    } else if (nightTime) {
+      return '/weather-backgrounds/night.webp';
+    } else {
+      // Map weather condition codes to background images
+      return getBackgroundImage(conditionCode);
     }
-
-    return newBackground;
   }, [currentWeather, currentBackground]);
 
-  // Handle background transitions
+  // Update background when target changes
   useEffect(() => {
     if (targetBackground !== currentBackground) {
+      console.log('BackgroundManager: Changing background from', currentBackground, 'to', targetBackground);
+      
+      // Set refresh lock to prevent rapid changes
+      setBackgroundRefreshLock();
+      
+      // Start transition
       setIsTransitioning(true);
       
-      // Small delay to ensure smooth transition
-      const timer = setTimeout(() => {
+      // Change background after transition starts
+      setTimeout(() => {
         setCurrentBackground(targetBackground);
         setIsTransitioning(false);
-      }, 100);
-
-      return () => clearTimeout(timer);
+      }, 250); // Half of transition duration
     }
   }, [targetBackground, currentBackground]);
+
+  // Get overlay opacity based on theme
+  const overlayOpacity = theme === 'light' ? '0.2' : '0.4';
 
   return (
     <div className="relative min-h-screen">
       {/* Weather Background */}
       <div 
-        className="weather-background fixed inset-0 z-[-1] transition-opacity duration-500 ease-in-out"
-        style={{
-          backgroundImage: `url(${currentBackground})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          opacity: isTransitioning ? 0.7 : 1
+        className="fixed inset-0 z-[-1] transition-opacity duration-500"
+        style={{ 
+          opacity: isTransitioning ? 0.3 : 1 
         }}
       >
-        {/* Subtle overlay for better readability */}
+        <img
+          src={currentBackground}
+          alt="Weather background"
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            console.warn('BackgroundManager: Failed to load background image:', currentBackground);
+            // Fallback to default background
+            setCurrentBackground('/weather-backgrounds/partly-cloudy.webp');
+          }}
+        />
+        
+        {/* Overlay for better text readability */}
         <div 
-          className="absolute inset-0 transition-colors duration-500"
-          style={{
-            backgroundColor: theme === 'dark' 
-              ? 'rgba(0, 0, 0, 0.4)' 
-              : 'rgba(0, 0, 0, 0.2)'
+          className="absolute inset-0"
+          style={{ 
+            backgroundColor: `rgba(0, 0, 0, ${overlayOpacity})` 
           }}
         />
       </div>
 
       {/* Content */}
-      {children}
+      <div className="relative z-10">
+        {children}
+      </div>
     </div>
   );
 }

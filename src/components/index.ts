@@ -17,6 +17,7 @@ export { default as LazyHeader } from './LazyHeader';
 export { default as RealtimeStatusBanner } from './RealtimeStatusBanner';
 export { ConnectionResilienceProvider } from './ConnectionResilienceProvider';
 export { ConnectionStatus } from './ConnectionStatus';
+export { default as ConnectionNotification } from './ConnectionNotification';
 export { DeveloperTools } from './DeveloperTools';
 
 // Refactored UI Components

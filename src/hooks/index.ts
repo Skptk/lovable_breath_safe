@@ -11,6 +11,7 @@ export { useWithdrawalRequests } from './useWithdrawalRequests';
 export { useStableChannelSubscription } from './useStableChannelSubscription';
 export { useConnectionHealth } from './useConnectionHealth';
 export { useEnhancedConnectionHealth } from './useEnhancedConnectionHealth';
+export { useSimplifiedConnectionHealth } from './useSimplifiedConnectionHealth';
 export { useRealtimeStatus } from './useRealtimeStatus';
 
 // Utility hooks
