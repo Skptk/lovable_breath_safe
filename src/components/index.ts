@@ -15,6 +15,8 @@ export { default as BackgroundManager } from './BackgroundManager';
 export { Header } from './Header';
 export { default as LazyHeader } from './LazyHeader';
 export { default as RealtimeStatusBanner } from './RealtimeStatusBanner';
+export { ConnectionStatus } from './ConnectionStatus';
+export { DeveloperTools } from './DeveloperTools';
 
 // Refactored UI Components
 export { LoadingSkeleton } from './ui/LoadingSkeleton';

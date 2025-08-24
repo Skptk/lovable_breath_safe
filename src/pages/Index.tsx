@@ -5,6 +5,8 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
 import BackgroundManager from "@/components/BackgroundManager";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { DeveloperTools } from "@/components/DeveloperTools";
 import { cleanupAllChannels } from "@/lib/realtimeClient";
 
 // Lazy load heavy components
@@ -33,6 +35,7 @@ export default function Index(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentView, setCurrentView] = useState("dashboard");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showDeveloperTools, setShowDeveloperTools] = useState(false);
   
   // Listen for custom view change events
   useEffect(() => {
@@ -51,6 +54,23 @@ export default function Index(): JSX.Element {
       window.removeEventListener('viewChange', handleViewChange as EventListener);
     };
   }, []);
+
+  // Keyboard shortcut for developer tools (Ctrl+Shift+D)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+        event.preventDefault();
+        setShowDeveloperTools(prev => !prev);
+        console.log('🔧 [Index] Developer tools toggled:', !showDeveloperTools);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showDeveloperTools]);
 
   // Initialize current view from URL parameters on mount only
   useEffect(() => {
@@ -183,6 +203,15 @@ export default function Index(): JSX.Element {
   return (
     <BackgroundManager>
       <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex flex-col">
+        {/* Connection Status Indicator */}
+        <ConnectionStatus />
+        
+        {/* Developer Tools */}
+        <DeveloperTools 
+          isVisible={showDeveloperTools}
+          onToggle={() => setShowDeveloperTools(false)}
+        />
+        
         {/* Sidebar Navigation */}
         <Sidebar currentView={currentView} onViewChange={handleViewChange} />
         
