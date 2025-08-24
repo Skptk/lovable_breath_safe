@@ -54,6 +54,8 @@ interface UseAirQualityReturn {
   manualRefresh: () => void;
   hasUserConsent: boolean;
   hasRequestedPermission: boolean;
+  isUsingCachedData: boolean;
+  cachedData: AirQualityData | null;
 }
 
 // Helper function to check if refresh is locked
@@ -102,6 +104,10 @@ export const useAirQuality = (): UseAirQualityReturn => {
   const { hasUserConsent, hasRequestedPermission, getCurrentLocation } = useLocation();
   const [lastManualRefresh, setLastManualRefresh] = useState<number>(0);
   
+  // Add state for cached data
+  const [cachedData, setCachedData] = useState<AirQualityData | null>(null);
+  const [isUsingCachedData, setIsUsingCachedData] = useState(false);
+
   // Track if this is the first load after a page refresh
   const isFirstLoad = useRef(true);
   const instanceId = useRef<string>(`useAirQuality_${Date.now()}_${Math.random()}`);
@@ -272,6 +278,52 @@ export const useAirQuality = (): UseAirQualityReturn => {
     }
   }, []);
 
+  // Function to retrieve the last stored reading from database
+  const getLastStoredReading = useCallback(async (): Promise<AirQualityData | null> => {
+    if (!user?.id) return null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('air_quality_readings')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error || !data) {
+        console.log('No stored readings found in database');
+        return null;
+      }
+
+      // Transform database record to AirQualityData format
+      const lastReading: AirQualityData = {
+        aqi: data.aqi,
+        pm25: data.pm25 || 0,
+        pm10: data.pm10 || 0,
+        no2: data.no2 || 0,
+        so2: data.so2 || 0,
+        co: data.co || 0,
+        o3: data.o3 || 0,
+        location: data.location_name || 'Your Location',
+        userLocation: data.location_name || 'Your Location',
+        coordinates: { lat: data.latitude, lon: data.longitude },
+        userCoordinates: { lat: data.latitude, lon: data.longitude },
+        timestamp: data.timestamp,
+        dataSource: 'Cached from database',
+        userPoints: 0,
+        currencyRewards: 0,
+        canWithdraw: false
+      };
+
+      console.log('Retrieved last stored reading from database:', lastReading);
+      return lastReading;
+    } catch (error) {
+      console.error('Error retrieving last stored reading:', error);
+      return null;
+    }
+  }, [user?.id]);
+
   // Manual refresh function that can use either API
   const manualRefresh = useCallback(async () => {
     if (!hasUserConsent) {
@@ -326,6 +378,7 @@ export const useAirQuality = (): UseAirQualityReturn => {
 
   // Enhanced fetch function that tries both APIs
   const fetchAirQualityData = useCallback(async (): Promise<AirQualityData> => {
+    // Check if geolocation is supported
     if (!navigator.geolocation) {
       throw new Error('Geolocation not supported by your browser');
     }
@@ -338,13 +391,25 @@ export const useAirQuality = (): UseAirQualityReturn => {
 
     // Check refresh lock to prevent duplicate pulls on manual refresh
     if (isRefreshLocked()) {
-      console.log('useAirQuality: Refresh locked - preventing duplicate data pull on manual refresh');
-      throw new Error('Data was recently fetched. Please wait for the next automatic refresh in 15 minutes.');
+      console.log('useAirQuality: Refresh locked - retrieving last stored reading from database');
+      
+      // Try to get the last stored reading from database
+      const lastReading = await getLastStoredReading();
+      if (lastReading) {
+        console.log('useAirQuality: Using cached data from database');
+        setCachedData(lastReading);
+        setIsUsingCachedData(true);
+        return lastReading;
+      } else {
+        console.log('useAirQuality: No cached data available, throwing error');
+        throw new Error('Data was recently fetched. Please wait for the next automatic refresh in 15 minutes.');
+      }
     }
 
     try {
       setLoading(true);
       setError(null);
+      setIsUsingCachedData(false);
 
       console.log('useAirQuality: Starting geolocation request with user consent');
 
@@ -432,15 +497,15 @@ export const useAirQuality = (): UseAirQualityReturn => {
           co: typedResponse.pollutants.co,
           o3: typedResponse.pollutants.o3,
           location: typedResponse.location,
-          userLocation: typedResponse.userLocation || 'Unknown Location',
-          coordinates: typedResponse.coordinates || { lat: 0, lon: 0 },
-          userCoordinates: typedResponse.userCoordinates || { lat: 0, lon: 0 },
-          timestamp: new Date(typedResponse.timestamp).toLocaleString(),
-          dataSource: typedResponse.dataSource || 'Unknown Source',
-          userPoints: typedResponse.userPoints,
-          currencyRewards: typedResponse.currencyRewards,
-          canWithdraw: typedResponse.canWithdraw,
-          environmental: typedResponse.environmental || null
+          userLocation: typedResponse.location,
+          coordinates: { lat: latitude, lon: longitude },
+          userCoordinates: { lat: latitude, lon: longitude },
+          timestamp: new Date().toLocaleString(),
+          dataSource: 'OpenWeatherMap API',
+          userPoints: typedResponse.userPoints || 0,
+          currencyRewards: typedResponse.currencyRewards || 0,
+          canWithdraw: typedResponse.canWithdraw || false,
+          environmental: typedResponse.environmental || undefined
         };
 
         // Save reading to database
@@ -453,23 +518,31 @@ export const useAirQuality = (): UseAirQualityReturn => {
         console.log('useAirQuality: Refresh lock set - preventing duplicate pulls for 14 minutes');
         
         return airQualityData;
-      } else if (openWeatherMapResponse.data && typeof openWeatherMapResponse.data === 'object' && 'list' in openWeatherMapResponse.data && Array.isArray((openWeatherMapResponse.data as any).list)) {
-        // Raw OpenWeatherMap format (fallback)
+      } else if (openWeatherMapResponse.data && typeof openWeatherMapResponse.data === 'object' && 'list' in openWeatherMapResponse.data) {
+        // Fallback format for older API responses
         const typedResponse = openWeatherMapResponse.data as any;
-        const currentData = typedResponse.list[0];
+        console.log('Using fallback format (OpenWeatherMap), AQI:', typedResponse.list?.[0]?.main?.aqi);
+        
+        const aqi = typedResponse.list?.[0]?.main?.aqi || 0;
+        const components = typedResponse.list?.[0]?.components || {};
+        
+        // Update global state
+        setCurrentAQI(aqi);
+        setCurrentLocation(typedResponse.location || 'Your Location');
+        throttledLocationUpdate(typedResponse.location || 'Your Location');
         
         const airQualityData = {
-          aqi: currentData.main.aqi,
-          pm25: currentData.components.pm2_5,
-          pm10: currentData.components.pm10,
-          no2: currentData.components.no2,
-          so2: currentData.components.so2,
-          co: currentData.components.co,
-          o3: currentData.components.o3,
-          location: typedResponse.location || 'Unknown Location',
-          userLocation: 'Location data unavailable',
-          coordinates: { lat: 0, lon: 0 },
-          userCoordinates: { lat: 0, lon: 0 },
+          aqi,
+          pm25: components.pm2_5 || 0,
+          pm10: components.pm10 || 0,
+          no2: components.no2 || 0,
+          so2: components.so2 || 0,
+          co: components.co || 0,
+          o3: components.o3 || 0,
+          location: typedResponse.location || 'Your Location',
+          userLocation: typedResponse.location || 'Your Location',
+          coordinates: { lat: latitude, lon: longitude },
+          userCoordinates: { lat: latitude, lon: longitude },
           timestamp: new Date().toLocaleString(),
           dataSource: 'Direct API response'
         };
@@ -520,7 +593,7 @@ export const useAirQuality = (): UseAirQualityReturn => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase, getCurrentLocation, fetchOpenWeatherMapAirQuality]);
+  }, [setLoading, setError, setCurrentAQI, setCurrentLocation, throttledLocationUpdate, hasUserConsent, saveReadingToDatabase, getCurrentLocation, fetchOpenWeatherMapAirQuality, getLastStoredReading]);
 
   const query = useQuery({
     queryKey: ['airQuality', hasUserConsent, hasRequestedPermission, user?.id],
@@ -564,6 +637,8 @@ export const useAirQuality = (): UseAirQualityReturn => {
     refetch: query.refetch,
     manualRefresh,
     hasUserConsent,
-    hasRequestedPermission
+    hasRequestedPermission,
+    isUsingCachedData,
+    cachedData
   };
 };
