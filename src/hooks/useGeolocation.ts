@@ -28,11 +28,24 @@ export interface GeolocationActions {
 
 export type UseGeolocationReturn = GeolocationState & GeolocationActions;
 
-// IP-based location service (ipapi.co)
+// IP-based location service (ipapi.co) with enhanced error handling
 const getIPBasedLocation = async (): Promise<LocationData> => {
   try {
     console.log('🌍 [Geolocation] Fetching IP-based location...');
-    const response = await fetch('https://ipapi.co/json/');
+    
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    const response = await fetch('https://ipapi.co/json/', {
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'BreathSafe/1.0'
+      }
+    });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`IP location service responded with ${response.status}`);
@@ -59,8 +72,15 @@ const getIPBasedLocation = async (): Promise<LocationData> => {
     localStorage.setItem('ipBasedLocation', JSON.stringify(locationData));
     
     return locationData;
-  } catch (error) {
-    console.warn('🌍 [Geolocation] IP-based location failed:', error);
+  } catch (error: any) {
+    // Handle specific error types
+    if (error.name === 'AbortError') {
+      console.warn('🌍 [Geolocation] IP location request timed out');
+    } else if (error.message?.includes('CSP')) {
+      console.warn('🌍 [Geolocation] IP location blocked by CSP, using fallback');
+    } else {
+      console.warn('🌍 [Geolocation] IP-based location failed:', error);
+    }
     
     // Return default fallback location (Nairobi, Kenya)
     const fallbackLocation: LocationData = {
