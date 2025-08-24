@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertCircle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ export function ConnectionStatus() {
   });
   
   const { toast } = useToast();
+  // CRITICAL FIX: Add ref to track previous state for comparison
+  const prevStateRef = useRef<ConnectionStatusState | null>(null);
 
   // CRITICAL FIX: Passive connection monitoring - don't force reconnection
   const checkConnection = () => {
@@ -37,20 +39,51 @@ export function ConnectionStatus() {
         newStatus = 'disconnected';
       }
       
-      setConnectionState(prev => ({
-        ...prev,
-        status: newStatus,
-        lastCheck: now,
-        showToast: newStatus === 'disconnected' && prev.status !== 'disconnected'
-      }));
+      // CRITICAL FIX: Use proper state update pattern with prevState parameter
+      setConnectionState(prevState => {
+        // CRITICAL FIX: Validate prevState parameter
+        if (typeof prevState === 'undefined') {
+          console.warn('⚠️ [ConnectionStatus] Previous state is undefined, using default');
+          prevState = {
+            status: 'connecting',
+            lastCheck: null,
+            showToast: false
+          };
+        }
+        
+        const newState = {
+          ...prevState,
+          status: newStatus,
+          lastCheck: now,
+          // CRITICAL FIX: Compare with previous state using ref
+          showToast: newStatus === 'disconnected' && prevStateRef.current?.status !== 'disconnected'
+        };
+        
+        // Update the ref with new state
+        prevStateRef.current = newState;
+        
+        return newState;
+      });
     } catch (error) {
       console.error('❌ [ConnectionStatus] Error checking connection:', error);
-      setConnectionState(prev => ({
-        ...prev,
-        status: 'disconnected',
-        lastCheck: now,
-        showToast: true
-      }));
+      setConnectionState(prevState => {
+        // CRITICAL FIX: Validate prevState parameter in error case too
+        if (typeof prevState === 'undefined') {
+          console.warn('⚠️ [ConnectionStatus] Previous state is undefined in error case, using default');
+          prevState = {
+            status: 'connecting',
+            lastCheck: null,
+            showToast: false
+          };
+        }
+        
+        return {
+          ...prevState,
+          status: 'disconnected',
+          lastCheck: now,
+          showToast: true
+        };
+      });
     }
   };
 
@@ -58,10 +91,22 @@ export function ConnectionStatus() {
   const handleReconnect = async () => {
     console.log('⚠️ [ConnectionStatus] Manual reconnection disabled - letting Supabase handle reconnection internally');
     
-    setConnectionState(prev => ({
-      ...prev,
-      status: 'reconnecting'
-    }));
+    setConnectionState(prevState => {
+      // CRITICAL FIX: Validate prevState parameter
+      if (typeof prevState === 'undefined') {
+        console.warn('⚠️ [ConnectionStatus] Previous state is undefined in handleReconnect, using default');
+        prevState = {
+          status: 'connecting',
+          lastCheck: null,
+          showToast: false
+        };
+      }
+      
+      return {
+        ...prevState,
+        status: 'reconnecting'
+      };
+    });
 
     // Don't attempt manual reconnection - let Supabase handle this
     // This prevents the transport constructor error
@@ -113,12 +158,29 @@ export function ConnectionStatus() {
         duration: 8000,
       });
       
-      setConnectionState(prev => ({
-        ...prev,
-        showToast: false
-      }));
+      setConnectionState(prevState => {
+        // CRITICAL FIX: Validate prevState parameter
+        if (typeof prevState === 'undefined') {
+          console.warn('⚠️ [ConnectionStatus] Previous state is undefined in toast effect, using default');
+          prevState = {
+            status: 'connecting',
+            lastCheck: null,
+            showToast: false
+          };
+        }
+        
+        return {
+          ...prevState,
+          showToast: false
+        };
+      });
     }
   }, [connectionState.showToast, connectionState.status, toast]);
+
+  // CRITICAL FIX: Initialize prevStateRef on mount
+  useEffect(() => {
+    prevStateRef.current = connectionState;
+  }, [connectionState]);
 
   // Don't show anything if connected
   if (connectionState.status === 'connected') return null;
@@ -138,7 +200,7 @@ export function ConnectionStatus() {
           icon: <RefreshCw className="h-4 w-4 animate-spin" />,
           text: "Supabase handling reconnection...",
           bgColor: "bg-yellow-100 border-yellow-400 text-yellow-700",
-          darkBgColor: "dark:bg-yellow-900/20 dark:border-yellow-500 dark:text-yellow-300"
+          darkBgColor: "dark:bg-yellow-900/20 dark:border-blue-500 dark:text-blue-300"
         };
       case 'disconnected':
         return {
