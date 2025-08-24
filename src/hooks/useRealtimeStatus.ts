@@ -4,17 +4,41 @@ import { getConnectionStatus, addConnectionStatusListener } from '@/lib/realtime
 export type RealtimeStatus = 'connected' | 'reconnecting' | 'disconnected';
 
 /**
- * 🚨 NUCLEAR DISABLE - Hook to monitor Supabase realtime connection status
- * Completely disabled to prevent infinite loops and performance issues
+ * Hook to monitor Supabase realtime connection status
+ * Provides real-time updates on connection health
  */
 export function useRealtimeStatus() {
-  // 🚨 NUCLEAR: Return static values - no effects, no state changes, no loops
-  console.log('🚨 NUCLEAR: useRealtimeStatus completely disabled - no monitoring, no effects, no loops');
-  
+  const [status, setStatus] = useState<RealtimeStatus>('connected');
+  const [isConnected, setIsConnected] = useState(true);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    // Get initial status
+    const initialStatus = getConnectionStatus();
+    setStatus(initialStatus);
+    setIsConnected(initialStatus === 'connected');
+    setIsReconnecting(initialStatus === 'reconnecting');
+    setLastUpdate(new Date());
+
+    // Add listener for status changes
+    const removeListener = addConnectionStatusListener((newStatus: RealtimeStatus) => {
+      setStatus(newStatus);
+      setIsConnected(newStatus === 'connected');
+      setIsReconnecting(newStatus === 'reconnecting');
+      setLastUpdate(new Date());
+    });
+
+    // Cleanup
+    return () => {
+      removeListener();
+    };
+  }, []);
+
   return {
-    status: 'connected' as const, // Always connected
-    isConnected: true, // Always connected
-    isReconnecting: false, // Never reconnecting
-    isDisconnected: false, // Never disconnected
+    status,
+    isConnected,
+    isReconnecting,
+    lastUpdate
   };
 }

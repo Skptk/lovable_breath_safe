@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../integrations/supabase/client';
 
-// 🚨 NUCLEAR DISABLE - Completely disable all connection monitoring
-const NUCLEAR_DISABLE_ALL = true;
-
 // Connection states to track
 export const connectionStates = {
   CONNECTING: 'connecting',
@@ -22,46 +19,127 @@ export interface ConnectionHealthState {
   reconnectAttempts: number;
 }
 
-export interface UseSimplifiedConnectionHealthOptions {
-  checkInterval?: number;
-  maxReconnectAttempts?: number;
-  enableAutoReconnect?: boolean;
-  onStateChange?: (state: ConnectionHealthState) => void;
-}
-
-export function useSimplifiedConnectionHealth({
-  checkInterval = 999999999, // NUCLEAR: Disabled with huge number
-  maxReconnectAttempts = 0, // NUCLEAR: No attempts
-  enableAutoReconnect = false, // NUCLEAR: Always false
-  onStateChange
-}: UseSimplifiedConnectionHealthOptions = {}): ConnectionHealthState & {
-  reconnect: () => Promise<void>;
-  resetErrors: () => void;
-} {
-  // 🚨 NUCLEAR: Return static values - no effects, no state changes, no loops
-  console.log('🚨 NUCLEAR: useSimplifiedConnectionHealth completely disabled - no effects, no state, no loops');
-  
-  const staticState: ConnectionHealthState = {
-    status: connectionStates.CONNECTED, // Always connected
-    isHealthy: true, // Always healthy
-    lastCheck: new Date().toISOString(),
+export function useSimplifiedConnectionHealth() {
+  const [state, setState] = useState<ConnectionHealthState>({
+    status: connectionStates.CONNECTING,
+    isHealthy: false,
+    lastCheck: null,
     reconnectAttempts: 0
-  };
+  });
 
-  // 🚨 NUCLEAR: All functions are no-ops
+  // Check connection status
+  const checkConnection = useCallback(() => {
+    try {
+      const now = new Date().toISOString();
+      const isConnected = supabase.realtime.isConnected();
+      const isConnecting = supabase.realtime.isConnecting();
+
+      let newStatus: ConnectionState;
+      let isHealthy = false;
+
+      if (isConnected) {
+        newStatus = connectionStates.CONNECTED;
+        isHealthy = true;
+      } else if (isConnecting) {
+        newStatus = connectionStates.CONNECTING;
+        isHealthy = false;
+      } else {
+        newStatus = connectionStates.DISCONNECTED;
+        isHealthy = false;
+      }
+
+      setState(prevState => ({
+        ...prevState,
+        status: newStatus,
+        isHealthy,
+        lastCheck: now
+      }));
+
+    } catch (error) {
+      console.error('❌ [SimplifiedConnection] Error checking connection:', error);
+      
+      setState(prevState => ({
+        ...prevState,
+        status: connectionStates.DISCONNECTED,
+        isHealthy: false,
+        lastCheck: new Date().toISOString()
+      }));
+    }
+  }, []);
+
+  // Reconnect function
   const reconnect = useCallback(async (): Promise<void> => {
-    console.log('🚨 NUCLEAR: Reconnect disabled - no-op function');
-    return Promise.resolve();
-  }, []);
+    try {
+      console.log('🔄 [SimplifiedConnection] Reconnection initiated');
+      
+      setState(prevState => ({
+        ...prevState,
+        status: connectionStates.RECONNECTING,
+        reconnectAttempts: prevState.reconnectAttempts + 1
+      }));
 
+      // Let Supabase handle reconnection automatically
+      // We just monitor the status
+      
+      // Check status after a delay
+      setTimeout(() => {
+        checkConnection();
+      }, 2000);
+
+    } catch (error) {
+      console.error('❌ [SimplifiedConnection] Reconnection failed:', error);
+      
+      setState(prevState => ({
+        ...prevState,
+        status: connectionStates.DISCONNECTED,
+        isHealthy: false
+      }));
+    }
+  }, [checkConnection]);
+
+  // Reset errors and reconnection attempts
   const resetErrors = useCallback(() => {
-    console.log('🚨 NUCLEAR: Reset errors disabled - no-op function');
+    setState(prevState => ({
+      ...prevState,
+      reconnectAttempts: 0
+    }));
   }, []);
 
-  // 🚨 NUCLEAR: No useEffect hooks - no monitoring, no loops
+  // Start monitoring
+  useEffect(() => {
+    // Initial check
+    checkConnection();
+
+    // Check every 15 seconds
+    const interval = setInterval(checkConnection, 15000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [checkConnection]);
+
+  // Auto-reconnect logic
+  useEffect(() => {
+    if (state.status === connectionStates.DISCONNECTED && 
+        state.reconnectAttempts < 3) {
+      
+      const delay = Math.min(2000 * Math.pow(2, state.reconnectAttempts), 10000);
+      
+      const timer = setTimeout(() => {
+        reconnect();
+      }, delay);
+
+      return () => clearTimeout(timer);
+    }
+  }, [state.status, state.reconnectAttempts, reconnect]);
+
   return {
-    ...staticState,
+    status: state.status,
+    isHealthy: state.isHealthy,
+    lastCheck: state.lastCheck,
+    reconnectAttempts: state.reconnectAttempts,
     reconnect,
-    resetErrors
+    resetErrors,
+    checkConnection
   };
 }

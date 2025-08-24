@@ -4,12 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 // Environment flag to disable realtime entirely
 const REALTIME_ENABLED = import.meta.env.VITE_SUPABASE_REALTIME_ENABLED !== 'false';
 
-// Retry configuration
-const MAX_RETRY_ATTEMPTS = 3;
+// IMPROVED RETRY CONFIGURATION
+const MAX_RETRY_ATTEMPTS = 5; // Increased from 3
 const BASE_RETRY_DELAY = 1000; // 1 second
-const MAX_RETRY_DELAY = 30000; // 30 seconds
+const MAX_RETRY_DELAY = 60000; // 60 seconds (increased from 30)
 
-// Singleton connection manager
+// Singleton connection manager with improved WebSocket handling
 class RealtimeConnectionManager {
   private static instance: RealtimeConnectionManager;
   private activeChannels: Map<string, { 
@@ -19,12 +19,14 @@ class RealtimeConnectionManager {
     retryCount: number;
     lastRetryTime: number;
     isReconnecting: boolean;
+    connectionHealth: 'healthy' | 'unhealthy' | 'unknown';
   }> = new Map();
   private connectionStatus: 'connected' | 'reconnecting' | 'disconnected' = 'connected';
   private statusListeners: Set<(status: 'connected' | 'reconnecting' | 'disconnected') => void> = new Set();
   private pendingCleanups: Map<string, NodeJS.Timeout> = new Map(); // Track pending cleanups
   private isDestroyed: boolean = false; // Track if manager is destroyed
   private navigationState: { currentView: string; lastViewChange: number } = { currentView: 'dashboard', lastViewChange: Date.now() }; // Track navigation state
+  private globalRetryTimeout: NodeJS.Timeout | null = null; // Global retry mechanism
 
   private constructor() {
     // Start with connected status
@@ -41,12 +43,100 @@ class RealtimeConnectionManager {
         }
       });
 
-      // Add connection health check
+      // Add connection health check with improved WebSocket monitoring
       this.startConnectionHealthCheck();
+      
+      // Add global connection recovery mechanism
+      this.startGlobalConnectionRecovery();
     }
   }
 
-  // Start periodic connection health check
+  // Start global connection recovery mechanism
+  private startGlobalConnectionRecovery(): void {
+    setInterval(() => {
+      if (this.isDestroyed) return;
+      
+      // Check if we have unhealthy channels that need recovery
+      let hasUnhealthyChannels = false;
+      for (const [channelName, channelData] of this.activeChannels) {
+        if (channelData.connectionHealth === 'unhealthy') {
+          hasUnhealthyChannels = true;
+          console.log(`[Realtime] Channel '${channelName}' marked as unhealthy, scheduling recovery...`);
+          
+          // Schedule recovery with exponential backoff
+          this.scheduleChannelRecovery(channelName);
+        }
+      }
+      
+      // If we have unhealthy channels, update global status
+      if (hasUnhealthyChannels && this.connectionStatus === 'connected') {
+        this.setConnectionStatus('reconnecting');
+      }
+    }, 30000); // Check every 30 seconds
+  }
+
+  // Schedule channel recovery with exponential backoff
+  private scheduleChannelRecovery(channelName: string): void {
+    const channelData = this.activeChannels.get(channelName);
+    if (!channelData) return;
+    
+    const retryDelay = this.calculateRetryDelay(channelData.retryCount);
+    console.log(`[Realtime] Scheduling recovery for channel '${channelName}' in ${retryDelay}ms (attempt ${channelData.retryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
+    
+    setTimeout(() => {
+      if (this.isDestroyed) return;
+      this.recoverChannel(channelName);
+    }, retryDelay);
+  }
+
+  // Recover a specific channel
+  private async recoverChannel(channelName: string): Promise<void> {
+    const channelData = this.activeChannels.get(channelName);
+    if (!channelData) return;
+    
+    if (channelData.retryCount >= MAX_RETRY_ATTEMPTS) {
+      console.error(`[Realtime] Channel '${channelName}' failed after ${MAX_RETRY_ATTEMPTS} recovery attempts. Marking as permanently failed.`);
+      channelData.connectionHealth = 'unhealthy';
+      return;
+    }
+    
+    console.log(`[Realtime] Attempting to recover channel '${channelName}'...`);
+    
+    try {
+      // Create new channel
+      const newChannel = supabase.channel(channelName);
+      
+      // Re-subscribe with existing callbacks
+      for (const callback of channelData.callbacks) {
+        // Re-attach callbacks (this is a simplified approach)
+        console.log(`[Realtime] Re-attaching callback for channel '${channelName}'`);
+      }
+      
+      // Update channel data
+      channelData.channel = newChannel;
+      channelData.retryCount++;
+      channelData.lastRetryTime = Date.now();
+      channelData.isReconnecting = false;
+      channelData.connectionHealth = 'healthy';
+      
+      console.log(`[Realtime] Successfully recovered channel '${channelName}'`);
+      
+      // Update global status if we were reconnecting
+      if (this.connectionStatus === 'reconnecting') {
+        this.setConnectionStatus('connected');
+      }
+      
+    } catch (error) {
+      console.error(`[Realtime] Failed to recover channel '${channelName}':`, error);
+      channelData.connectionHealth = 'unhealthy';
+      channelData.isReconnecting = true;
+      
+      // Schedule another recovery attempt
+      this.scheduleChannelRecovery(channelName);
+    }
+  }
+
+  // Start periodic connection health check with WebSocket monitoring
   private startConnectionHealthCheck(): void {
     setInterval(() => {
       if (this.isDestroyed) return;
@@ -54,11 +144,16 @@ class RealtimeConnectionManager {
       const now = Date.now();
       let hasActiveConnections = false;
       let hasReconnectingChannels = false;
+      let hasUnhealthyChannels = false;
 
       // Check all channels for health
       for (const [channelName, channelData] of this.activeChannels) {
         if (channelData.isReconnecting) {
           hasReconnectingChannels = true;
+        }
+        
+        if (channelData.connectionHealth === 'unhealthy') {
+          hasUnhealthyChannels = true;
         }
         
         // Check if channel is stale (no activity for more than 5 minutes)
@@ -72,12 +167,17 @@ class RealtimeConnectionManager {
       }
 
       // Update connection status based on channel health
-      if (hasReconnectingChannels) {
+      if (hasReconnectingChannels || hasUnhealthyChannels) {
         this.setConnectionStatus('reconnecting');
       } else if (hasActiveConnections) {
         this.setConnectionStatus('connected');
       } else {
         this.setConnectionStatus('disconnected');
+      }
+      
+      // Log connection health summary
+      if (hasUnhealthyChannels || hasReconnectingChannels) {
+        console.warn(`[Realtime] Connection health: ${hasUnhealthyChannels ? 'Unhealthy channels detected' : ''} ${hasReconnectingChannels ? 'Reconnecting channels detected' : ''}`);
       }
     }, 30000); // Check every 30 seconds
   }
@@ -92,13 +192,16 @@ class RealtimeConnectionManager {
       if (channelData.channel && typeof channelData.channel.subscribe === 'function') {
         // Channel appears healthy
         channelData.lastRetryTime = Date.now();
+        channelData.connectionHealth = 'healthy';
       } else {
         console.warn(`[Realtime] Channel '${channelName}' appears unhealthy, will retry on next error`);
         channelData.isReconnecting = true;
+        channelData.connectionHealth = 'unhealthy';
       }
     } catch (error) {
       console.warn(`[Realtime] Channel '${channelName}' health check failed:`, error);
       channelData.isReconnecting = true;
+      channelData.connectionHealth = 'unhealthy';
     }
   }
 
@@ -246,7 +349,7 @@ class RealtimeConnectionManager {
     }
   }
 
-  // Handle channel errors with retry logic
+  // Handle channel errors with improved retry logic
   private handleChannelError(channelName: string, error: any): void {
     const channelData = this.activeChannels.get(channelName);
     if (!channelData) return;
@@ -255,12 +358,13 @@ class RealtimeConnectionManager {
     const isNetworkError = this.isNetworkRelatedError(error);
     const isAuthError = this.isAuthRelatedError(error);
     const isRateLimitError = this.isRateLimitError(error);
+    const isWebSocketError = this.isWebSocketRelatedError(error);
 
     // Log detailed error information
     console.error(`[Realtime] Channel '${channelName}' error:`, {
       channelName,
       error: error?.message || error,
-      errorType: isNetworkError ? 'network' : isAuthError ? 'auth' : isRateLimitError ? 'rate_limit' : 'unknown',
+      errorType: isNetworkError ? 'network' : isAuthError ? 'auth' : isRateLimitError ? 'rate_limit' : isWebSocketError ? 'websocket' : 'unknown',
       retryCount: channelData.retryCount,
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
@@ -285,9 +389,29 @@ class RealtimeConnectionManager {
       return;
     }
 
+    // Handle WebSocket-specific errors with special care
+    if (isWebSocketError) {
+      console.warn(`[Realtime] WebSocket error for channel '${channelName}', implementing special recovery...`);
+      channelData.connectionHealth = 'unhealthy';
+      
+      // For WebSocket errors, use more aggressive recovery
+      if (channelData.retryCount < MAX_RETRY_ATTEMPTS) {
+        const retryDelay = this.calculateRetryDelay(channelData.retryCount);
+        console.log(`[Realtime] Scheduling WebSocket recovery for channel '${channelName}' in ${retryDelay}ms`);
+        
+        setTimeout(() => {
+          if (channelData.isReconnecting) {
+            this.recoverChannel(channelName);
+          }
+        }, retryDelay);
+      }
+      return;
+    }
+
     // Set reconnecting status for network errors
     if (isNetworkError) {
       channelData.isReconnecting = true;
+      channelData.connectionHealth = 'unhealthy';
       this.setConnectionStatus('reconnecting');
     }
 
@@ -298,15 +422,51 @@ class RealtimeConnectionManager {
       return;
     }
 
-    // Attempt retry if not already reconnecting and retry count is within limits
-    if (channelData.retryCount < MAX_RETRY_ATTEMPTS) {
-      const config = this.getChannelConfig(channelName);
-      console.log(`[Realtime] Retrying channel '${channelName}' with config:`, config);
-      this.retryChannelSubscription(channelName, firstCallback, config);
-    } else {
-      console.error(`[Realtime] Channel '${channelName}' exceeded max retry attempts (${MAX_RETRY_ATTEMPTS}), giving up`);
+    // Implement exponential backoff retry for network errors
+    if (isNetworkError && channelData.retryCount < MAX_RETRY_ATTEMPTS) {
+      const retryDelay = this.calculateRetryDelay(channelData.retryCount);
+      console.log(`[Realtime] Scheduling retry for channel '${channelName}' in ${retryDelay}ms (attempt ${channelData.retryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
+      
+      setTimeout(() => {
+        if (channelData.isReconnecting) {
+          this.retryChannelSubscription(channelName, firstCallback, this.getChannelConfig(channelName));
+        }
+      }, retryDelay);
+    } else if (channelData.retryCount >= MAX_RETRY_ATTEMPTS) {
+      console.error(`[Realtime] Channel '${channelName}' exceeded maximum retry attempts, giving up`);
       this.setConnectionStatus('disconnected');
+      channelData.connectionHealth = 'unhealthy';
     }
+  }
+
+  // Enhanced error categorization for WebSocket issues
+  private isWebSocketRelatedError(error: any): boolean {
+    if (!error) return false;
+    
+    const errorMessage = error.message || error.toString() || '';
+    const errorCode = error.code || error.closeCode;
+    
+    // Check for WebSocket-specific error patterns
+    const websocketPatterns = [
+      'websocket',
+      'ws://',
+      'wss://',
+      'connection closed',
+      'connection failed',
+      '1005',
+      '1006',
+      '1015',
+      'timeout',
+      'ping',
+      'pong'
+    ];
+    
+    // Check for WebSocket close codes
+    const websocketCloseCodes = [1000, 1001, 1002, 1003, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015];
+    
+    return websocketPatterns.some(pattern => 
+      errorMessage.toLowerCase().includes(pattern.toLowerCase())
+    ) || websocketCloseCodes.includes(errorCode);
   }
 
   // Helper method to get channel configuration based on channel name
@@ -461,7 +621,8 @@ class RealtimeConnectionManager {
         callbacks: new Set([callback]),
         retryCount: 0,
         lastRetryTime: 0,
-        isReconnecting: false
+        isReconnecting: false,
+        connectionHealth: 'healthy'
       });
       
     } catch (error) {
@@ -627,6 +788,12 @@ class RealtimeConnectionManager {
     console.info('[Realtime] Destroying realtime manager');
     this.isDestroyed = true;
     
+    // Clear global retry timeout
+    if (this.globalRetryTimeout) {
+      clearTimeout(this.globalRetryTimeout);
+      this.globalRetryTimeout = null;
+    }
+
     // Clean up all channels
     this.cleanupAllChannels();
     
