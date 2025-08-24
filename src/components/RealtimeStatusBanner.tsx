@@ -1,57 +1,71 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wifi, WifiOff, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
-import { useRealtime } from '@/contexts/RealtimeContext';
+import { useConnectionHealth } from '@/hooks/useConnectionHealth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 export default function RealtimeStatusBanner() {
-  const { connectionStatus, isConnected } = useRealtime();
+  const { 
+    isConnected, 
+    connectionQuality, 
+    reconnectAttempts, 
+    isReconnecting, 
+    canReconnect,
+    manualReconnect 
+  } = useConnectionHealth({
+    checkInterval: 30000, // 30 seconds
+    maxReconnectAttempts: 5,
+    enableAutoReconnect: true
+  });
+
   const [showBanner, setShowBanner] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
 
   // Show banner when connection status changes
   useEffect(() => {
-    if (connectionStatus === 'reconnecting' || connectionStatus === 'disconnected') {
+    if (connectionQuality === 'poor' || connectionQuality === 'disconnected' || isReconnecting) {
       setShowBanner(true);
-      if (connectionStatus === 'reconnecting') {
-        setRetryCount(prev => prev + 1);
-      }
-    } else if (connectionStatus === 'connected') {
-      // Hide banner after a delay when connected
+    } else if (connectionQuality === 'excellent' || connectionQuality === 'good') {
+      // Hide banner after a delay when connection is good
       const timer = setTimeout(() => {
         setShowBanner(false);
-        setRetryCount(0);
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [connectionStatus]);
+  }, [connectionQuality, isReconnecting]);
 
   // Auto-hide banner after 10 seconds for disconnected state
   useEffect(() => {
-    if (connectionStatus === 'disconnected' && showBanner) {
+    if (connectionQuality === 'disconnected' && showBanner) {
       const timer = setTimeout(() => {
         setShowBanner(false);
       }, 10000);
       return () => clearTimeout(timer);
     }
-  }, [connectionStatus, showBanner]);
+  }, [connectionQuality, showBanner]);
 
   const getStatusConfig = () => {
-    switch (connectionStatus) {
-      case 'connected':
+    switch (connectionQuality) {
+      case 'excellent':
         return {
           icon: <CheckCircle className="h-4 w-4" />,
           color: 'bg-green-500',
-          text: 'Connected',
-          description: 'Real-time updates are working'
+          text: 'Excellent Connection',
+          description: 'Real-time updates are working perfectly'
         };
-      case 'reconnecting':
+      case 'good':
         return {
-          icon: <RefreshCw className="h-4 w-4 animate-spin" />,
+          icon: <CheckCircle className="h-4 w-4" />,
+          color: 'bg-green-400',
+          text: 'Good Connection',
+          description: 'Real-time updates are working well'
+        };
+      case 'poor':
+        return {
+          icon: <AlertTriangle className="h-4 w-4" />,
           color: 'bg-yellow-500',
-          text: 'Reconnecting',
-          description: `Attempting to reconnect... (${retryCount}/3)`
+          text: 'Poor Connection',
+          description: 'Real-time updates may be delayed'
         };
       case 'disconnected':
         return {
@@ -72,9 +86,10 @@ export default function RealtimeStatusBanner() {
 
   const statusConfig = getStatusConfig();
 
-  const handleRetry = () => {
-    // Trigger a manual reconnection attempt
-    window.location.reload();
+  const handleRetry = async () => {
+    if (canReconnect) {
+      await manualReconnect();
+    }
   };
 
   const handleDismiss = () => {
@@ -98,9 +113,14 @@ export default function RealtimeStatusBanner() {
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-semibold">{statusConfig.text}</span>
-                {connectionStatus === 'reconnecting' && (
+                {isReconnecting && (
                   <Badge variant="secondary" className="text-xs">
-                    Retry {retryCount}/3
+                    Retry {reconnectAttempts}/5
+                  </Badge>
+                )}
+                {connectionQuality === 'poor' && (
+                  <Badge variant="secondary" className="text-xs bg-yellow-600">
+                    Poor Quality
                   </Badge>
                 )}
               </div>
@@ -109,15 +129,16 @@ export default function RealtimeStatusBanner() {
           </div>
           
           <div className="flex items-center space-x-2">
-            {connectionStatus === 'disconnected' && (
+            {(connectionQuality === 'disconnected' || connectionQuality === 'poor') && canReconnect && (
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={handleRetry}
                 className="text-xs h-8 px-3"
+                disabled={isReconnecting}
               >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Retry
+                <RefreshCw className={`h-3 w-3 mr-1 ${isReconnecting ? 'animate-spin' : ''}`} />
+                {isReconnecting ? 'Reconnecting...' : 'Retry'}
               </Button>
             )}
             <Button

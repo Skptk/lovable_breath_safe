@@ -29,9 +29,9 @@ let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
 
 export function getSupabaseClient() {
   if (!supabaseInstance) {
-    console.log('🔧 Creating Supabase client instance...');
+    console.log('🔧 Creating Supabase client instance with enhanced connection settings...');
     
-    // Create configuration object to avoid freezing issues
+    // Create configuration object with enhanced WebSocket stability settings
     const clientConfig = {
       auth: {
         autoRefreshToken: true,
@@ -42,8 +42,14 @@ export function getSupabaseClient() {
       },
       realtime: {
         params: {
-          eventsPerSecond: 10
-        }
+          eventsPerSecond: 10,
+        },
+        heartbeatIntervalMs: 30000, // 30 second heartbeat to keep connection alive
+        reconnectAfterMs: (tries: number) => Math.min(tries * 1000, 10000), // Exponential backoff with 10s max
+        timeout: 10000, // 10 second timeout for operations
+      },
+      db: {
+        schema: 'public',
       },
       global: {
         headers: {
@@ -57,7 +63,7 @@ export function getSupabaseClient() {
       SUPABASE_PUBLISHABLE_KEY!,
       clientConfig
     );
-    console.log('✅ Supabase client instance created');
+    console.log('✅ Supabase client instance created with enhanced WebSocket settings');
   }
   return supabaseInstance;
 }

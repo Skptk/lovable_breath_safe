@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRealtime } from '@/contexts/RealtimeContext';
+import { useStableChannelSubscription } from './useStableChannelSubscription';
 
 interface Notification {
   id: string;
@@ -42,7 +42,6 @@ interface NotificationPreferences {
 
 export const useNotifications = () => {
   const { user } = useAuth();
-  const { subscribeToNotifications } = useRealtime();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [settings, setSettings] = useState<NotificationSettings>({
     email_notifications: true,
@@ -55,6 +54,52 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Use stable channel subscription for notifications
+  const { isConnected: notificationsConnected } = useStableChannelSubscription({
+    channelName: `user-notifications-${user?.id || 'anonymous'}`,
+    userId: user?.id,
+    config: {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'notifications',
+      filter: `user_id=eq.${user?.id || 'anonymous'}`
+    },
+    onData: (payload) => {
+      console.log('New notification received:', payload);
+      
+      if (payload.eventType === 'INSERT') {
+        const newNotification = payload.new as Notification;
+        setNotifications(prev => [newNotification, ...prev]);
+        if (!newNotification.read) {
+          setUnreadCount(prev => prev + 1);
+        }
+      } else if (payload.eventType === 'UPDATE') {
+        const updatedNotification = payload.new as Notification;
+        setNotifications(prev => 
+          prev.map(n => 
+            n.id === updatedNotification.id ? updatedNotification : n
+          )
+        );
+        setUnreadCount(prev => {
+          const oldNotification = notifications.find(n => n.id === updatedNotification.id);
+          if (oldNotification && !oldNotification.read && updatedNotification.read) {
+            return prev - 1;
+          } else if (oldNotification && oldNotification.read && !updatedNotification.read) {
+            return prev + 1;
+          }
+          return prev;
+        });
+      } else if (payload.eventType === 'DELETE') {
+        const deletedNotification = payload.old as Notification;
+        setNotifications(prev => prev.filter(n => n.id !== deletedNotification.id));
+        if (!deletedNotification.read) {
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+      }
+    },
+    enabled: !!user?.id
+  });
 
   // Fetch notifications from database
   const fetchNotifications = useCallback(async () => {
@@ -342,53 +387,6 @@ export const useNotifications = () => {
     }
   }, [user]);
 
-  // Subscribe to realtime notifications
-  useEffect(() => {
-    if (!user) return;
-
-    let mounted = true;
-    const unsubscribe = subscribeToNotifications((payload) => {
-      if (!mounted) return;
-      
-      console.log('New notification received:', payload);
-      
-      if (payload.eventType === 'INSERT') {
-        const newNotification = payload.new as Notification;
-        setNotifications(prev => [newNotification, ...prev]);
-        if (!newNotification.read) {
-          setUnreadCount(prev => prev + 1);
-        }
-      } else if (payload.eventType === 'UPDATE') {
-        const updatedNotification = payload.new as Notification;
-        setNotifications(prev => 
-          prev.map(n => 
-            n.id === updatedNotification.id ? updatedNotification : n
-          )
-        );
-        setUnreadCount(prev => {
-          const oldNotification = notifications.find(n => n.id === updatedNotification.id);
-          if (oldNotification && !oldNotification.read && updatedNotification.read) {
-            return prev - 1;
-          } else if (oldNotification && oldNotification.read && !updatedNotification.read) {
-            return prev + 1;
-          }
-          return prev;
-        });
-      } else if (payload.eventType === 'DELETE') {
-        const deletedNotification = payload.old as Notification;
-        setNotifications(prev => prev.filter(n => n.id !== deletedNotification.id));
-        if (!deletedNotification.read) {
-          setUnreadCount(prev => Math.max(0, prev - 1));
-        }
-      }
-    });
-
-    return () => {
-      mounted = false;
-      unsubscribe();
-    };
-  }, [user, subscribeToNotifications, notifications]);
-
   // Initial data fetch
   useEffect(() => {
     if (user) {
@@ -412,6 +410,7 @@ export const useNotifications = () => {
     preferences,
     updatePreferences,
     initializePreferences,
-    isLoading
+    isLoading,
+    notificationsConnected
   };
 };

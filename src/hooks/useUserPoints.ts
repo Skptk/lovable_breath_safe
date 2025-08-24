@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRealtime } from '@/contexts/RealtimeContext';
+import { useStableChannelSubscription } from './useStableChannelSubscription';
 
 interface UserPoints {
   totalPoints: number;
@@ -29,7 +29,6 @@ interface PointRecord {
 
 export const useUserPoints = () => {
   const { user } = useAuth();
-  const { subscribeToUserPoints, subscribeToUserProfilePoints } = useRealtime();
   const [userPoints, setUserPoints] = useState<UserPoints>({
     totalPoints: 0,
     todayReadings: 0,
@@ -40,6 +39,61 @@ export const useUserPoints = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Use stable channel subscription for profile points updates
+  const { isConnected: profilePointsConnected } = useStableChannelSubscription({
+    channelName: `user-profile-points-${user?.id || 'anonymous'}`,
+    userId: user?.id,
+    config: {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'profiles',
+      filter: `user_id=eq.${user?.id || 'anonymous'}`
+    },
+    onData: (payload) => {
+      console.log('Profile points updated:', payload);
+      if (payload.eventType === 'UPDATE') {
+        const updatedProfile = payload.new as any;
+        setUserPoints(prev => ({
+          ...prev,
+          totalPoints: updatedProfile.total_points || 0
+        }));
+      }
+    },
+    enabled: !!user?.id
+  });
+
+  // Use stable channel subscription for user points inserts
+  const { isConnected: userPointsConnected } = useStableChannelSubscription({
+    channelName: `user-points-inserts-${user?.id || 'anonymous'}`,
+    userId: user?.id,
+    config: {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'user_points',
+      filter: `user_id=eq.${user?.id || 'anonymous'}`
+    },
+    onData: (payload) => {
+      console.log('New points earned:', payload);
+      if (payload.eventType === 'INSERT') {
+        const newPointRecord = payload.new as PointRecord;
+        
+        // Add to recent earnings
+        setUserPoints(prev => ({
+          ...prev,
+          pointsHistory: [newPointRecord, ...prev.pointsHistory],
+          recentEarnings: [newPointRecord, ...prev.recentEarnings.slice(0, 9)],
+          todayReadings: prev.todayReadings + 1,
+          weeklyReadings: prev.weeklyReadings + 1,
+          monthlyReadings: prev.monthlyReadings + 1
+        }));
+
+        // Refresh total points
+        fetchUserPoints();
+      }
+    },
+    enabled: !!user?.id
+  });
 
   // Fetch user points data
   const fetchUserPoints = useCallback(async () => {
@@ -126,58 +180,6 @@ export const useUserPoints = () => {
     }
   }, [user]);
 
-  // Subscribe to realtime updates
-  useEffect(() => {
-    if (!user) return;
-
-    let mounted = true;
-    const unsubscribeFunctions: (() => void)[] = [];
-
-    // Subscribe to profile points updates
-    const unsubscribeProfile = subscribeToUserProfilePoints((payload) => {
-      if (!mounted) return;
-      
-      console.log('Profile points updated:', payload);
-      if (payload.eventType === 'UPDATE') {
-        const updatedProfile = payload.new as any;
-        setUserPoints(prev => ({
-          ...prev,
-          totalPoints: updatedProfile.total_points || 0
-        }));
-      }
-    });
-    unsubscribeFunctions.push(unsubscribeProfile);
-
-    // Subscribe to user points inserts
-    const unsubscribePoints = subscribeToUserPoints((payload) => {
-      if (!mounted) return;
-      
-      console.log('New points earned:', payload);
-      if (payload.eventType === 'INSERT') {
-        const newPointRecord = payload.new as PointRecord;
-        
-        // Add to recent earnings
-        setUserPoints(prev => ({
-          ...prev,
-          pointsHistory: [newPointRecord, ...prev.pointsHistory],
-          recentEarnings: [newPointRecord, ...prev.recentEarnings.slice(0, 9)],
-          todayReadings: prev.todayReadings + 1,
-          weeklyReadings: prev.weeklyReadings + 1,
-          monthlyReadings: prev.monthlyReadings + 1
-        }));
-
-        // Refresh total points
-        fetchUserPoints();
-      }
-    });
-    unsubscribeFunctions.push(unsubscribePoints);
-
-    return () => {
-      mounted = false;
-      unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
-    };
-  }, [user, subscribeToUserProfilePoints, subscribeToUserPoints, fetchUserPoints]);
-
   // Initial data fetch
   useEffect(() => {
     if (user) {
@@ -241,6 +243,8 @@ export const useUserPoints = () => {
     currentBadge,
     nextBadge,
     pointsToNextBadge,
-    streaks: userPoints.streaks
+    streaks: userPoints.streaks,
+    profilePointsConnected,
+    userPointsConnected
   };
 };
