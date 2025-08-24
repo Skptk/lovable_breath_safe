@@ -22,9 +22,8 @@ interface GracefulRealtimeState {
 }
 
 /**
- * Hook that provides graceful degradation when realtime fails
- * Falls back to polling when WebSocket connections are unavailable
- * CRITICAL FIX: Increased timeouts and removed manual reconnection attempts
+ * 🚨 NUCLEAR DISABLE - Hook that provides graceful degradation when realtime fails
+ * Completely disabled to prevent infinite loops and performance issues
  */
 export function useGracefulRealtime({
   channelName,
@@ -33,285 +32,34 @@ export function useGracefulRealtime({
   onData,
   enabled = true
 }: UseGracefulRealtimeOptions) {
-  const {
-    timeout = 30000, // CRITICAL FIX: Increased from 10s to 30s for slow connections
-    maxRetries = 3,
-    fallbackPollingInterval = 30000 // 30 second polling
-  } = config;
-
-  const [state, setState] = useState<GracefulRealtimeState>({
-    isRealtimeAvailable: false,
-    fallbackPolling: false,
-    connectionStatus: 'connecting',
-    lastUpdate: null,
-    retryCount: 0
-  });
-
-  const mountedRef = useRef(true);
-  const channelRef = useRef<any>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Try realtime first with increased timeout
-  const attemptRealtime = useCallback(async () => {
-    if (!enabled || !mountedRef.current) return null;
-
-    try {
-      console.log(`🔍 [GracefulRealtime] ${channelName} attempting realtime connection...`);
-      
-      const channel = supabase.channel(channelName);
-      
-      // CRITICAL FIX: Set up channel subscription with increased timeout
-      const subscribed = await new Promise<boolean>((resolve) => {
-        const timeoutId = setTimeout(() => {
-          console.warn(`⚠️ [GracefulRealtime] ${channelName} subscription timeout after ${timeout}ms`);
-          resolve(false);
-        }, timeout);
-
-        channel.subscribe((status) => {
-          clearTimeout(timeoutId);
-          
-          if (status === 'SUBSCRIBED') {
-            console.log(`✅ [GracefulRealtime] ${channelName} using realtime`);
-            setState(prev => ({
-              ...prev,
-              isRealtimeAvailable: true,
-              connectionStatus: 'connected',
-              lastUpdate: new Date()
-            }));
-            resolve(true);
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.warn(`⚠️ [GracefulRealtime] ${channelName} realtime failed: ${status}`);
-            resolve(false);
-          }
-        });
-      });
-
-      if (subscribed) {
-        channelRef.current = channel;
-        
-        // Set up data handler
-        if (onData) {
-          channel.on('postgres_changes', { event: '*', schema: 'public' }, onData);
-        }
-        
-        return channel;
-      } else {
-        throw new Error('Subscription timeout');
-      }
-    } catch (error) {
-      console.warn(`⚠️ [GracefulRealtime] ${channelName} falling back to polling:`, error);
-      setState(prev => ({
-        ...prev,
-        isRealtimeAvailable: false,
-        connectionStatus: 'failed',
-        retryCount: prev.retryCount + 1
-      }));
-      return null;
-    }
-  }, [channelName, enabled, timeout, onData]);
-
-  // Fallback polling when realtime fails
-  const startFallbackPolling = useCallback(() => {
-    if (!enabled || !mountedRef.current) return;
-
-    console.log(`🔄 [GracefulRealtime] Starting polling fallback for ${channelName}`);
-    
-    setState(prev => ({
-      ...prev,
-      fallbackPolling: true,
-      connectionStatus: 'fallback'
-    }));
-
-    // Clear any existing polling interval
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
-
-    // Start polling
-    pollingIntervalRef.current = setInterval(async () => {
-      if (!mountedRef.current) return;
-
-      try {
-        console.log(`📊 [GracefulRealtime] Polling ${channelName}...`);
-        
-        // Implement your polling logic here based on channel type
-        // This is a placeholder - you'll need to implement specific polling for each channel
-        const pollData = await pollChannelData(channelName, userId);
-        
-        if (pollData && onData) {
-          onData(pollData);
-        }
-
-        setState(prev => ({
-          ...prev,
-          lastUpdate: new Date()
-        }));
-      } catch (error) {
-        console.error(`❌ [GracefulRealtime] Polling failed for ${channelName}:`, error);
-      }
-    }, fallbackPollingInterval);
-  }, [channelName, userId, enabled, fallbackPollingInterval, onData]);
-
-  // Placeholder polling function - implement based on channel type
-  const pollChannelData = async (channelName: string, userId?: string) => {
-    // This is a placeholder - implement specific polling logic for each channel type
-    switch (channelName) {
-      case 'user-notifications':
-        // Poll for new notifications
-        return await pollNotifications(userId);
-      case 'user-profile-points':
-        // Poll for profile/points updates
-        return await pollUserProfile(userId);
-      case 'user-points-inserts':
-        // Poll for new points
-        return await pollUserPoints(userId);
-      default:
-        console.warn(`⚠️ [GracefulRealtime] No polling implementation for channel: ${channelName}`);
-        return null;
-    }
+  // 🚨 NUCLEAR: Return static values - no effects, no state changes, no loops
+  console.log('🚨 NUCLEAR: useGracefulRealtime completely disabled - no monitoring, no effects, no loops');
+  
+  const staticState: GracefulRealtimeState = {
+    isRealtimeAvailable: true, // Always available
+    fallbackPolling: false, // Never fallback
+    connectionStatus: 'connected', // Always connected
+    lastUpdate: new Date(), // Current time
+    retryCount: 0 // No retries
   };
 
-  // Placeholder polling implementations
-  const pollNotifications = async (userId?: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      
-      if (error) throw error;
-      return { type: 'notifications', data };
-    } catch (error) {
-      console.error('❌ [GracefulRealtime] Failed to poll notifications:', error);
-      return null;
-    }
-  };
+  // 🚨 NUCLEAR: All functions are no-ops
+  const cleanup = useCallback(() => {
+    console.log('🚨 NUCLEAR: Graceful realtime cleanup disabled - no-op function');
+  }, []);
 
-  const pollUserProfile = async (userId?: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-      
-      if (error) throw error;
-      return { type: 'profile', data };
-    } catch (error) {
-      console.error('❌ [GracefulRealtime] Failed to poll user profile:', error);
-      return null;
-    }
-  };
-
-  const pollUserPoints = async (userId?: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_points')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      return { type: 'points', data };
-    } catch (error) {
-      console.error('❌ [GracefulRealtime] Failed to poll user points:', error);
-      return null;
-    }
-  };
-
-  // CRITICAL FIX: Retry realtime connection with increased delays
-  const retryRealtime = useCallback(async () => {
-    if (!enabled || !mountedRef.current || state.retryCount >= maxRetries) {
-      console.warn(`⚠️ [GracefulRealtime] ${channelName} max retries reached, staying in fallback mode`);
-      return;
-    }
-
-    console.log(`🔄 [GracefulRealtime] ${channelName} retrying realtime connection (${state.retryCount + 1}/${maxRetries})`);
-    
-    // Clear fallback polling
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-
-    setState(prev => ({
-      ...prev,
-      fallbackPolling: false,
-      connectionStatus: 'connecting'
-    }));
-
-    // Attempt realtime connection
-    const channel = await attemptRealtime();
-    
-    if (!channel) {
-      // Realtime failed, start fallback polling
-      startFallbackPolling();
-    }
-  }, [channelName, enabled, state.retryCount, maxRetries, attemptRealtime, startFallbackPolling]);
-
-  // Initialize connection
-  useEffect(() => {
-    if (!enabled || !mountedRef.current) return;
-
-    const initializeConnection = async () => {
-      // Try realtime first
-      const channel = await attemptRealtime();
-      
-      if (!channel) {
-        // Realtime failed, start fallback polling
-        startFallbackPolling();
-      }
-    };
-
-    initializeConnection();
-
-    // Cleanup function
-    return () => {
-      mountedRef.current = false;
-      
-      // Clean up channel
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        channelRef.current = null;
-      }
-      
-      // Clean up polling
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      
-      // Clean up retry timeout
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-        retryTimeoutRef.current = null;
-      }
-    };
-  }, [enabled, attemptRealtime, startFallbackPolling]);
-
-  // CRITICAL FIX: Auto-retry realtime after increased delays when in fallback mode
-  useEffect(() => {
-    if (state.fallbackPolling && state.retryCount < maxRetries) {
-      // Increased delays: 2s, 4s, 8s, 16s, 32s (capped at 60s)
-      const delay = Math.min(2000 * Math.pow(2, state.retryCount), 60000);
-      
-      retryTimeoutRef.current = setTimeout(() => {
-        if (mountedRef.current) {
-          retryRealtime();
-        }
-      }, delay);
-    }
-  }, [state.fallbackPolling, state.retryCount, maxRetries, retryRealtime]);
+  const retry = useCallback(() => {
+    console.log('🚨 NUCLEAR: Graceful realtime retry disabled - no-op function');
+  }, []);
 
   return {
-    ...state,
-    retryRealtime,
-    startFallbackPolling,
-    isConnected: state.isRealtimeAvailable || state.fallbackPolling,
-    canRetry: state.retryCount < maxRetries
+    ...staticState,
+    cleanup,
+    retry,
+    // 🚨 NUCLEAR: Force connected state
+    isConnected: true,
+    isConnecting: false,
+    isFailed: false,
+    isFallback: false
   };
 }

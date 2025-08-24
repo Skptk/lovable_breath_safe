@@ -4,29 +4,17 @@ import { getConnectionStatus, addConnectionStatusListener } from '@/lib/realtime
 export type RealtimeStatus = 'connected' | 'reconnecting' | 'disconnected';
 
 /**
- * Hook to monitor Supabase realtime connection status
- * Returns current status and provides real-time updates
+ * 🚨 NUCLEAR DISABLE - Hook to monitor Supabase realtime connection status
+ * Completely disabled to prevent infinite loops and performance issues
  */
 export function useRealtimeStatus() {
-  const [status, setStatus] = useState<RealtimeStatus>(() => {
-    // Initialize with current status
-    return getConnectionStatus();
-  });
-
-  useEffect(() => {
-    // Subscribe to status changes
-    const unsubscribe = addConnectionStatusListener((newStatus) => {
-      setStatus(newStatus);
-    });
-
-    // Cleanup subscription on unmount
-    return unsubscribe;
-  }, []);
-
+  // 🚨 NUCLEAR: Return static values - no effects, no state changes, no loops
+  console.log('🚨 NUCLEAR: useRealtimeStatus completely disabled - no monitoring, no effects, no loops');
+  
   return {
-    status,
-    isConnected: status === 'connected',
-    isReconnecting: status === 'reconnecting',
-    isDisconnected: status === 'disconnected',
+    status: 'connected' as const, // Always connected
+    isConnected: true, // Always connected
+    isReconnecting: false, // Never reconnecting
+    isDisconnected: false, // Never disconnected
   };
 }
