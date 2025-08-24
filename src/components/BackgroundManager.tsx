@@ -58,6 +58,7 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   // Determine the appropriate background image based on weather and time
   const targetBackground = useMemo(() => {
     if (!currentWeather) {
+      console.log('BackgroundManager: No weather data available, using default background');
       return '/weather-backgrounds/partly-cloudy.webp';
     }
 
@@ -72,6 +73,16 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     
     // Check if it's night time
     const nightTime = isNightTime(currentWeather.sunriseTime, currentWeather.sunsetTime);
+    
+    // Debug logging for time-based decisions
+    console.log('BackgroundManager: Time analysis:', {
+      currentTime: new Date().toLocaleTimeString(),
+      sunriseTime: currentWeather.sunriseTime,
+      sunsetTime: currentWeather.sunsetTime,
+      isSunriseSunset,
+      nightTime,
+      weatherCondition: currentWeather.weatherCondition
+    });
     
     // For OpenWeatherMap, we need to map the weather condition to Open-Meteo codes
     // OpenWeatherMap uses text descriptions, so we'll map them to our background system
@@ -97,6 +108,15 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     }
 
     const newBackground = getBackgroundImage(conditionCode, nightTime, isSunriseSunset);
+    
+    // Debug logging for background selection
+    console.log('BackgroundManager: Background selection:', {
+      conditionCode,
+      nightTime,
+      isSunriseSunset,
+      selectedBackground: newBackground,
+      currentBackground
+    });
     
     // Set refresh lock when background changes
     if (newBackground !== currentBackground) {

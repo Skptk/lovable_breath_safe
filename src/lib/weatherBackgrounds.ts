@@ -159,12 +159,15 @@ export function isNightTime(sunriseTime?: string, sunsetTime?: string): boolean 
     const sunriseMinutes = sunriseHour * 60 + sunriseMinute;
     const sunsetMinutes = sunsetHour * 60 + sunsetMinute;
     
-    // Check if current time is between sunset and sunrise (night time)
+    // Night time is from sunset until sunrise the next day
+    // This handles the case where we're after midnight but before sunrise
     if (sunsetMinutes < sunriseMinutes) {
-      // Sunset is before sunrise (normal day)
-      return currentTime < sunriseMinutes || currentTime > sunsetMinutes;
+      // Normal case: sunset is before sunrise (e.g., 6 PM to 6 AM)
+      // Night time: after sunset OR before sunrise
+      return currentTime > sunsetMinutes || currentTime < sunriseMinutes;
     } else {
-      // Sunset is after sunrise (crosses midnight)
+      // Edge case: sunset is after sunrise (e.g., in polar regions)
+      // Night time: before sunrise AND after sunset
       return currentTime < sunriseMinutes && currentTime > sunsetMinutes;
     }
   } catch (error) {
