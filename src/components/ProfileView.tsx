@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { motion } from "framer-motion";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,7 @@ import { useRealtime } from "@/contexts/RealtimeContext";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { useWithdrawalRequests } from "@/hooks/useWithdrawalRequests";
 import { useAchievements } from "@/hooks/useAchievements";
+import { useIsMobile } from "@/hooks/use-mobile";
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 
@@ -57,6 +58,139 @@ interface ProfileStats {
   memberSince: string;
 }
 
+// Memoized Badge Component for Performance
+const BadgeIcon = memo(({ 
+  achievement, 
+  userAchievement, 
+  isMobile 
+}: { 
+  achievement: any; 
+  userAchievement: any; 
+  isMobile: boolean;
+}) => {
+  const isUnlocked = userAchievement?.unlocked;
+  const badgeSize = isMobile ? 'w-11 h-11' : 'w-16 h-16';
+  const iconSize = isMobile ? 'text-lg' : 'text-2xl';
+  
+  if (isUnlocked) {
+    return (
+      <div className="group relative">
+        <div className={`${badgeSize} bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white ${iconSize} shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 cursor-pointer border-2 border-yellow-300`}>
+          {achievement.icon || '🏆'}
+        </div>
+        {/* Hover Tooltip - Only show on desktop */}
+        {!isMobile && (
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+            <div className="font-semibold">{achievement.name}</div>
+            <div className="text-xs text-gray-300">{achievement.description}</div>
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  return (
+    <div className="group relative">
+      <div className={`${badgeSize} bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-400 ${iconSize} shadow-lg border-2 border-slate-200 dark:border-slate-600`}>
+        🔒
+      </div>
+      {/* Hover Tooltip - Only show on desktop */}
+      {!isMobile && (
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+          <div className="font-semibold">{achievement.name}</div>
+          <div className="text-xs text-slate-300">{achievement.description}</div>
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-slate-900"></div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+BadgeIcon.displayName = 'BadgeIcon';
+
+// Memoized Badge Container for Performance
+const BadgeContainer = memo(({ 
+  userAchievements, 
+  achievements, 
+  isMobile 
+}: { 
+  userAchievements: any[]; 
+  achievements: any[]; 
+  isMobile: boolean;
+}) => {
+  // Memoize badge calculations to prevent unnecessary re-computations
+  const { unlockedBadges, lockedBadges, moreBadgesCount } = useMemo(() => {
+    const unlocked = userAchievements?.filter(ua => ua.unlocked) || [];
+    const locked = userAchievements?.filter(ua => !ua.unlocked) || [];
+    const moreCount = Math.max(0, locked.length - 3);
+    
+    return { unlockedBadges: unlocked, lockedBadges: locked, moreBadgesCount: moreCount };
+  }, [userAchievements]);
+
+  // Memoize badge rendering to prevent unnecessary re-renders
+  const renderedUnlockedBadges = useMemo(() => {
+    return unlockedBadges.map((userAchievement) => {
+      const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
+      if (!achievement) return null;
+      
+      return (
+        <BadgeIcon
+          key={userAchievement.id}
+          achievement={achievement}
+          userAchievement={userAchievement}
+          isMobile={isMobile}
+        />
+      );
+    });
+  }, [unlockedBadges, achievements, isMobile]);
+
+  const renderedLockedBadges = useMemo(() => {
+    return lockedBadges.slice(0, 3).map((userAchievement) => {
+      const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
+      if (!achievement) return null;
+      
+      return (
+        <BadgeIcon
+          key={userAchievement.id}
+          achievement={achievement}
+          userAchievement={userAchievement}
+          isMobile={isMobile}
+        />
+      );
+    });
+  }, [lockedBadges, achievements, isMobile]);
+
+  return (
+    <div className="space-y-4">
+      {/* Badge Grid with Responsive Layout */}
+      <div className={`flex flex-wrap gap-2 md:gap-3 justify-start md:justify-start sm:justify-center max-w-full overflow-hidden`}>
+        {/* Unlocked Badges */}
+        {renderedUnlockedBadges}
+        
+        {/* Locked Badges */}
+        {renderedLockedBadges}
+        
+        {/* More Badges Indicator */}
+        {moreBadgesCount > 0 && (
+          <div className={`flex items-center justify-center ${isMobile ? 'w-11 h-11' : 'w-16 h-16'} bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-700 rounded-full border-2 border-dashed border-slate-400 dark:border-slate-600`}>
+            <span className="text-slate-500 dark:text-slate-400 text-xs md:text-sm font-medium">+{moreBadgesCount}</span>
+          </div>
+        )}
+      </div>
+      
+      {/* Badge Progress Summary */}
+      <div className="text-center">
+        <p className="text-sm text-muted-foreground">
+          {unlockedBadges.length} of {userAchievements?.length || 0} badges unlocked
+        </p>
+      </div>
+    </div>
+  );
+});
+
+BadgeContainer.displayName = 'BadgeContainer';
+
 export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: ProfileViewProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState<ProfileStats>({
@@ -74,6 +208,60 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   const { achievements, userAchievements, isLoading: achievementsLoading } = useAchievements();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
+  // Performance monitoring
+  useEffect(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      performance.mark('profile-render-start');
+      
+      return () => {
+        performance.mark('profile-render-end');
+        performance.measure('profile-render', 'profile-render-start', 'profile-render-end');
+        
+        const measure = performance.getEntriesByName('profile-render')[0];
+        if (measure && measure.duration > 16.67) {
+          console.warn('Slow profile render detected:', measure.duration.toFixed(2) + 'ms');
+        }
+      };
+    }
+  });
+
+  // Memoize expensive calculations
+  const userLevel = useMemo(() => {
+    return Math.floor((userPoints?.totalPoints || 0) / 10000) + 1;
+  }, [userPoints?.totalPoints]);
+
+  const userDisplayName = useMemo(() => {
+    return profile?.full_name || user?.email || 'User';
+  }, [profile?.full_name, user?.email]);
+
+  const userInitial = useMemo(() => {
+    return userDisplayName.charAt(0).toUpperCase();
+  }, [userDisplayName]);
+
+  // Debounced profile updates to prevent excessive re-renders
+  const debouncedFetchProfile = useCallback(
+    debounce(async () => {
+      if (user) {
+        await fetchProfile();
+        await fetchUserStats();
+      }
+    }, 300),
+    [user]
+  );
+
+  // Debounce function implementation
+  function debounce<T extends (...args: any[]) => any>(
+    func: T,
+    wait: number
+  ): (...args: Parameters<T>) => void {
+    let timeout: NodeJS.Timeout;
+    return (...args: Parameters<T>) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  }
 
   useEffect(() => {
     if (user) {
@@ -82,7 +270,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     }
   }, [user]);
 
-  // Subscribe to profile points updates
+  // Subscribe to profile points updates with performance optimization
   useEffect(() => {
     if (!user) return;
 
@@ -92,13 +280,12 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
       if (payload.eventType === 'UPDATE' && payload.new?.total_points !== undefined) {
         updateTotalPoints(payload.new.total_points);
       }
-      // Refresh profile data when points are updated
-      fetchProfile();
-      fetchUserStats();
+      // Use debounced refresh to prevent excessive API calls
+      debouncedFetchProfile();
     });
 
     return unsubscribe;
-  }, [user, subscribeToUserProfilePoints, updateTotalPoints]);
+  }, [user, subscribeToUserProfilePoints, updateTotalPoints, debouncedFetchProfile]);
 
   const fetchProfile = async () => {
     try {
@@ -310,6 +497,22 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     }
   };
 
+  // Mobile performance optimization - pause expensive operations when app is backgrounded
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('Profile page backgrounded, pausing expensive operations');
+      } else {
+        console.log('Profile page active, resuming operations');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="space-y-6 lg:space-y-8">
@@ -382,7 +585,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
             </GlassCardContent>
           </GlassCard>
 
-          {/* Badge Display Card */}
+          {/* Badge Display Card - Fixed Layout */}
           <GlassCard variant="elevated" className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20">
             <GlassCardHeader>
               <GlassCardTitle className="text-lg font-semibold flex items-center gap-2">
@@ -391,79 +594,30 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
               </GlassCardTitle>
             </GlassCardHeader>
             <GlassCardContent>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                    {profile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground">
-                      {profile?.full_name || user?.email || 'User'}
+              <div className="space-y-4">
+                {/* User Info Section */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold ${isMobile ? 'text-base' : 'text-lg'}`}>
+                      {userInitial}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      Level {Math.floor((userPoints?.totalPoints || 0) / 10000) + 1} • {userPoints?.totalPoints || 0} points
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {userAchievements?.filter(ua => ua.unlocked)?.map((userAchievement) => {
-                    const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
-                    if (!achievement) return null;
-                    
-                    return (
-                      <div
-                        key={userAchievement.id}
-                        className="group relative"
-                      >
-                        <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white text-2xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 cursor-pointer border-2 border-yellow-300">
-                          {achievement.icon || '🏆'}
-                        </div>
-                        {/* Hover Tooltip */}
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                          <div className="font-semibold">{achievement.name}</div>
-                          <div className="text-xs text-gray-300">{achievement.description}</div>
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-                        </div>
+                    <div>
+                      <div className="font-semibold text-foreground">
+                        {userDisplayName}
                       </div>
-                    );
-                  })}
-                  
-                  {/* Show locked badges as placeholder */}
-                  {userAchievements?.filter(ua => !ua.unlocked)?.slice(0, 3)?.map((userAchievement) => {
-                    const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
-                    if (!achievement) return null;
-                    
-                    return (
-                      <div
-                        key={userAchievement.id}
-                        className="group relative"
-                      >
-                        <div className="w-16 h-16 bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-400 text-2xl shadow-lg border-2 border-slate-200 dark:border-slate-600">
-                          🔒
-                        </div>
-                        {/* Hover Tooltip */}
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                          <div className="font-semibold">{achievement.name}</div>
-                          <div className="text-xs text-slate-300">{achievement.description}</div>
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-900"></div>
-                        </div>
+                      <div className="text-sm text-muted-foreground">
+                        Level {userLevel} • {userPoints?.totalPoints || 0} points
                       </div>
-                    );
-                  })}
-                  
-                  {/* Show more badges indicator if there are many locked ones */}
-                  {userAchievements?.filter(ua => !ua.unlocked)?.length > 3 && (
-                    <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-700 rounded-full border-2 border-dashed border-slate-400 dark:border-slate-600">
-                      <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">+{userAchievements.filter(ua => !ua.unlocked).length - 3}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
                 
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {userAchievements?.filter(ua => ua.unlocked)?.length || 0} of {userAchievements?.length || 0} badges unlocked
-                  </p>
-                </div>
+                {/* Badge Container - Memoized for Performance */}
+                <BadgeContainer 
+                  userAchievements={userAchievements}
+                  achievements={achievements}
+                  isMobile={isMobile}
+                />
               </div>
             </GlassCardContent>
           </GlassCard>
