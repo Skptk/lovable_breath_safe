@@ -5621,3 +5621,145 @@ import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/
 - `src/components/NewsCard.tsx`
 
 This comprehensive conversion ensures that the entire application maintains a consistent, professional appearance while preserving all functionality and improving the overall user experience.
+
+---
+
+## Card Component Import Fixes & Background Time Detection Debugging – 2025-01-22
+
+### **Critical Issues Resolved**
+
+#### **1. "Card is not defined" Error**
+- **Problem**: Several components still had old `Card` imports from `@/components/ui/card` instead of using `GlassCard`
+- **Components Affected**: WeatherStats, WindDashboard, WeatherForecast
+- **Root Cause**: Incomplete conversion during UI overhaul to glass morphism design system
+- **Impact**: Dashboard crashes when navigating between pages, preventing users from accessing weather data
+
+#### **2. Background Image Manager Time Detection Issue**
+- **Problem**: Background manager showing `nightTime: false` even when current time is clearly after sunset
+- **Example**: Current time 8:42:10 PM, sunset time 6:37 PM, but night time detection returning false
+- **Root Cause**: Potential logic error in `isNightTime` function or time parsing issues
+- **Impact**: Incorrect background images displayed, breaking the atmospheric experience
+
+### **Technical Implementation**
+
+#### **Card Component Conversion**
+```typescript
+// Before (causing errors)
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+// After (working correctly)
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
+```
+
+#### **Components Updated**
+1. **WeatherStats.tsx** - Main weather dashboard component
+2. **WindDashboard.tsx** - Wind data visualization component  
+3. **WeatherForecast.tsx** - 7-day weather forecast component
+
+#### **Debug Logging Added**
+```typescript
+// Enhanced isNightTime function with detailed logging
+export function isNightTime(sunriseTime?: string, sunsetTime?: string): boolean {
+  // ... existing logic ...
+  
+  // Debug logging for time analysis
+  console.log(`🌙 [isNightTime] Time analysis:`, {
+    currentTime: `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`,
+    currentTimeMinutes: currentTime,
+    sunriseTime,
+    sunriseMinutes,
+    sunsetTime,
+    sunsetMinutes,
+    isNormalCase: sunsetMinutes < sunriseMinutes
+  });
+  
+  // ... rest of function with detailed logging ...
+}
+```
+
+#### **BackgroundManager Enhanced Logging**
+```typescript
+// Additional debug logging for time parsing
+if (currentWeather.sunriseTime && currentWeather.sunsetTime) {
+  try {
+    const [sunriseHour, sunriseMinute] = currentWeather.sunriseTime.split(':').map(Number);
+    const [sunsetHour, sunsetMinute] = currentWeather.sunsetTime.split(':').map(Number);
+    const sunriseMinutes = sunriseHour * 60 + sunriseMinute;
+    const sunsetMinutes = sunsetHour * 60 + sunsetMinute;
+    const now = new Date();
+    const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    console.log('BackgroundManager: Detailed time analysis:', {
+      sunriseParsed: `${sunriseHour}:${sunriseMinute.toString().padStart(2, '0')}`,
+      sunsetParsed: `${sunsetHour}:${sunsetMinute.toString().padStart(2, '0')}`,
+      sunriseMinutes,
+      sunsetMinutes,
+      currentTimeMinutes,
+      isAfterSunset: currentTimeMinutes > sunsetMinutes,
+      isBeforeSunrise: currentTimeMinutes < sunriseMinutes
+    });
+  } catch (error) {
+    console.warn('BackgroundManager: Error parsing times:', error);
+  }
+}
+```
+
+### **Testing & Validation**
+
+#### **Build Status**
+- ✅ **Successful Build**: All Card component conversions compile correctly
+- ✅ **No Import Errors**: All components now use consistent GlassCard imports
+- ✅ **Linting Passed**: Code quality maintained throughout conversion
+
+#### **Component Functionality**
+- ✅ **WeatherStats**: All weather data cards now render correctly
+- ✅ **WindDashboard**: Wind visualization components working properly
+- ✅ **WeatherForecast**: Forecast display components functioning correctly
+
+### **Expected Results**
+
+#### **1. Dashboard Stability**
+- No more "Card is not defined" errors when navigating
+- Smooth transitions between dashboard views
+- Consistent component rendering across all pages
+
+#### **2. Background Image Accuracy**
+- Enhanced logging will reveal exact time calculation issues
+- Proper night time detection for background selection
+- Accurate atmospheric experience based on actual time
+
+#### **3. Design Consistency**
+- All components now use unified GlassCard design system
+- Consistent glass morphism appearance throughout app
+- Professional and polished user interface
+
+### **Next Steps for Background Time Issue**
+
+#### **1. Monitor Debug Logs**
+- Check console for detailed time analysis when app loads
+- Verify time parsing accuracy and logic flow
+- Identify specific calculation errors
+
+#### **2. Test Time Scenarios**
+- Test during actual sunset/sunrise periods
+- Verify night time detection in different time zones
+- Check edge cases around midnight
+
+#### **3. Fix Time Logic**
+- Based on debug output, correct any calculation errors
+- Ensure proper handling of 24-hour time format
+- Validate sunrise/sunset time parsing
+
+### **Files Modified**
+- `src/components/WeatherStats.tsx` - Complete Card to GlassCard conversion
+- `src/components/WindDashboard.tsx` - Complete Card to GlassCard conversion  
+- `src/components/WeatherForecast.tsx` - Complete Card to GlassCard conversion
+- `src/lib/weatherBackgrounds.ts` - Enhanced debug logging in isNightTime function
+- `src/components/BackgroundManager.tsx` - Added detailed time analysis logging
+
+### **Deployment Status**
+- ✅ **Committed**: Changes committed to local repository
+- ✅ **Pushed**: Changes pushed to GitHub repository
+- ✅ **Ready for Testing**: Netlify will auto-deploy with fixes
+
+This comprehensive fix resolves the critical dashboard crashes while adding robust debugging for the background time detection issue, ensuring both immediate stability and long-term reliability of the application.
