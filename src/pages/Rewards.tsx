@@ -469,8 +469,8 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                         key={badge.id} 
                         className={`floating-card border-2 transition-all duration-200 ${
                           badge.unlocked 
-                            ? 'border-green-200 bg-green-50/50 shadow-lg scale-105' 
-                            : 'border-gray-200 bg-gray-50/50 opacity-75'
+                            ? 'border-green-200 shadow-lg scale-105' 
+                            : 'border-gray-200 opacity-75'
                         }`}
                       >
                         <CardContent className="p-4 text-center">
@@ -549,7 +549,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                 ) : (
                   achievements.map((achievement) => {
                     return (
-                      <Card key={achievement.id} className="floating-card border-2 border-blue-200 bg-blue-50/50">
+                      <Card key={achievement.id} className="floating-card border-2 border-blue-200">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-4">
                             <div className="text-4xl">{achievement.icon}</div>
@@ -629,14 +629,14 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-center p-4 floating-card border border-blue-200">
                     <div className="text-2xl font-bold text-blue-600">
                       {userPoints?.totalPoints || 0}
                     </div>
                     <p className="text-sm text-blue-700">Total Points Earned</p>
                   </div>
                   
-                  <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-center p-4 floating-card border border-green-200">
                     <div className="text-2xl font-bold text-green-600">
                       {nextBadge ? nextBadge.pointsRequired - (userPoints?.totalPoints || 0) : 0}
                     </div>
@@ -659,7 +659,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
               <CardContent className="space-y-4">
                 {canWithdraw ? (
                   <div className="space-y-4">
-                    <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="text-center p-4 floating-card border border-green-200">
                       <p className="text-sm text-green-700">
                         You have enough points to withdraw! Click the button below to request a withdrawal.
                       </p>
@@ -675,7 +675,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                     </Button>
                   </div>
                 ) : (
-                  <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="text-center p-4 floating-card border border-yellow-200">
                     <p className="text-sm text-yellow-700">
                       You need at least 500,000 points to withdraw funds. 
                       Current points: {profile.total_points.toLocaleString()}

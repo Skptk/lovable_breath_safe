@@ -192,7 +192,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
               >
                 <CarouselContent className="-ml-2 md:-ml-4">
                   <CarouselItem className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3">
-                    <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 rounded-lg border h-full">
+                    <div className="p-6 floating-card rounded-lg border h-full">
                       <div className="text-center space-y-3">
                         <Shield className="h-12 w-12 text-blue-600 mx-auto" />
                         <h4 className="font-semibold text-lg">Real-Time Air Quality</h4>
@@ -204,7 +204,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
                   </CarouselItem>
                   
                   <CarouselItem className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3">
-                    <div className="p-6 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/30 rounded-lg border h-full">
+                    <div className="p-6 floating-card rounded-lg border h-full">
                       <div className="text-center space-y-3">
                         <TrendingUp className="h-12 w-12 text-green-600 mx-auto" />
                         <h4 className="font-semibold text-lg">Comprehensive Monitoring</h4>
@@ -216,7 +216,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
                   </CarouselItem>
                   
                   <CarouselItem className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3">
-                    <div className="p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/30 rounded-lg border h-full">
+                    <div className="p-6 floating-card rounded-lg border h-full">
                       <div className="text-center space-y-3">
                         <Globe className="h-12 w-12 text-purple-600 mx-auto" />
                         <h4 className="font-semibold text-lg">Global Coverage</h4>

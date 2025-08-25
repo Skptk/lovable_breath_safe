@@ -83,7 +83,7 @@ export default function LocationPermissionBanner({
 
   return (
     <TooltipProvider>
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6 shadow-sm">
+      <div className="floating-card border border-blue-200 rounded-lg p-4 mb-6 shadow-sm">
         <div className="flex items-start justify-between">
           <div className="flex items-start space-x-3 flex-1">
             <div className="flex-shrink-0 mt-1">

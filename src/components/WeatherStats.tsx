@@ -513,7 +513,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
       {locationData && currentWeather && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Temperature & Feels Like */}
-          <Card className="floating-card bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30">
+          <Card className="floating-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Thermometer className="h-4 w-4" />
@@ -531,7 +531,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
           </Card>
 
           {/* Humidity & Pressure */}
-          <Card className="floating-card bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30">
+          <Card className="floating-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Droplets className="h-4 w-4" />
@@ -549,7 +549,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
           </Card>
 
           {/* Wind Information */}
-          <Card className="floating-card bg-gradient-to-br from-slate-50 to-slate-50 dark:from-slate-950/30 dark:to-slate-950/30">
+          <Card className="floating-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Wind className="h-4 w-4" />
@@ -567,7 +567,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
           </Card>
 
           {/* Visibility & UV */}
-          <Card className="floating-card bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30">
+          <Card className="floating-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Eye className="h-4 w-4" />
