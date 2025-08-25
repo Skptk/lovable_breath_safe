@@ -87,6 +87,13 @@ export function LocationProvider({ children }: LocationProviderProps) {
           permissionCheckedRef.current = true;
           console.log('📍 Permission check completed - no stored permission');
         }
+      } catch (error) {
+        console.error('📍 Error during permission check:', error);
+        // Mark as checked even if there was an error
+        setHasUserConsent(false);
+        setHasRequestedPermission(true);
+        setLocationPermission('unknown');
+        permissionCheckedRef.current = true;
       } finally {
         permissionCheckInProgressRef.current = false;
       }

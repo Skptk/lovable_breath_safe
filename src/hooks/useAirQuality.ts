@@ -50,6 +50,9 @@ export const useAirQuality = () => {
   const { locationData } = useGeolocation();
   const { toast } = useToast();
   
+  // Ref to track if we've already saved this data to prevent infinite loops
+  const savedDataRef = useRef<Set<string>>(new Set());
+  
   // Get coordinates from geolocation hook
   const safeCoordinates = locationData ? { lat: locationData.latitude, lng: locationData.longitude } : null;
   
@@ -66,17 +69,6 @@ export const useAirQuality = () => {
     autoRefresh: true,
     refreshInterval: 900000 // 15 minutes
   });
-
-  // Log global data status
-  if (globalEnvironmentalData) {
-    console.log('🌍 [useAirQuality] Global environmental data available:', {
-      city: globalEnvironmentalData.city_name,
-      aqi: globalEnvironmentalData.aqi,
-      pm25: globalEnvironmentalData.pm25,
-      pm10: globalEnvironmentalData.pm10,
-      timestamp: globalEnvironmentalData.collection_timestamp
-    });
-  }
 
   // Transform global data to AirQualityData format
   const transformGlobalData = useCallback((globalData: any): AirQualityData => {
@@ -230,9 +222,18 @@ export const useAirQuality = () => {
     }
   }, [globalEnvironmentalData, refetchGlobalData, legacyQuery, toast]);
 
-  // Save reading to user history when data is available
+  // Save reading to user history when data is available (with loop prevention)
   useEffect(() => {
     if (!user || !finalData || !safeCoordinates) return;
+
+    // Create a unique key for this data to prevent duplicate saves
+    const dataKey = `${user.id}-${finalData.aqi}-${finalData.pm25}-${finalData.pm10}-${finalData.timestamp}`;
+    
+    // Check if we've already saved this exact data
+    if (savedDataRef.current.has(dataKey)) {
+      console.log('🔄 [useAirQuality] Data already saved, skipping duplicate save');
+      return;
+    }
 
     const saveReading = async () => {
       try {
@@ -266,6 +267,14 @@ export const useAirQuality = () => {
           console.error('❌ [useAirQuality] Failed to save reading:', error);
         } else {
           console.log('✅ [useAirQuality] Reading saved to history');
+          // Mark this data as saved to prevent duplicate saves
+          savedDataRef.current.add(dataKey);
+          
+          // Clean up old keys to prevent memory leaks (keep only last 100)
+          if (savedDataRef.current.size > 100) {
+            const keysArray = Array.from(savedDataRef.current);
+            savedDataRef.current = new Set(keysArray.slice(-50));
+          }
         }
       } catch (error) {
         console.error('❌ [useAirQuality] Error saving reading:', error);
@@ -273,7 +282,7 @@ export const useAirQuality = () => {
     };
 
     saveReading();
-  }, [user, finalData, safeCoordinates]);
+  }, [user?.id, finalData?.aqi, finalData?.pm25, finalData?.pm10, finalData?.timestamp, finalData?.dataSource, finalData?.environmental, safeCoordinates?.lat, safeCoordinates?.lng]);
 
   return {
     data: finalData,
