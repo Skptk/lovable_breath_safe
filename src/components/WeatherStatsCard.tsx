@@ -182,21 +182,21 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
   // Show message if coordinates are not available
   if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
     return (
-      <Card className="floating-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <GlassCard className="floating-card">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5 text-blue-600" />
             <span className="font-bold">Weather Information</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
           <div className="text-center py-8 text-muted-foreground">
             <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
             <p>Weather data unavailable</p>
             <p className="text-sm">Location coordinates not available</p>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
