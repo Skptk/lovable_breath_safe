@@ -69,7 +69,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   const [editForm, setEditForm] = useState({ full_name: '' });
   const { user, signOut } = useAuth();
   const { subscribeToUserProfilePoints } = useRealtime();
-  const { userPoints, isLoading: pointsLoading } = useUserPoints();
+  const { userPoints, isLoading: pointsLoading, updateTotalPoints } = useUserPoints();
   const { withdrawalRequests, isLoading: withdrawalLoading } = useWithdrawalRequests();
   const { achievements, userAchievements, isLoading: achievementsLoading } = useAchievements();
   const { toast } = useToast();
@@ -88,13 +88,17 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
 
     const unsubscribe = subscribeToUserProfilePoints((payload) => {
       console.log('Profile points updated:', payload);
+      // Update user points hook with new total points
+      if (payload.eventType === 'UPDATE' && payload.new?.total_points !== undefined) {
+        updateTotalPoints(payload.new.total_points);
+      }
       // Refresh profile data when points are updated
       fetchProfile();
       fetchUserStats();
     });
 
     return unsubscribe;
-  }, [user, subscribeToUserProfilePoints]);
+  }, [user, subscribeToUserProfilePoints, updateTotalPoints]);
 
   const fetchProfile = async () => {
     try {

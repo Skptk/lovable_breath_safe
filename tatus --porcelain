@@ -1,1 +1,52 @@
 * [32mmaster[m a1b3031 [ahead 1] feat: Add glass aesthetic with news articles and improvements
+warning: in the working copy of 'src/components/WeatherStats.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/components/WeatherStats.tsx b/src/components/WeatherStats.tsx[m
+[1mindex 5155aa9..7b6fdfc 100644[m
+[1m--- a/src/components/WeatherStats.tsx[m
+[1m+++ b/src/components/WeatherStats.tsx[m
+[36m@@ -43,10 +43,19 @@[m [mexport default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem[m
+     hasUserConsent,[m
+     permissionStatus,[m
+     requestLocation,[m
+[31m-    useIPBasedLocation,[m
+[32m+[m[32m    getIPBasedLocationAsync,[m
+     isRequesting: isRequestingLocation[m
+   } = useGeolocation();[m
+ [m
+[32m+[m[32m  // Handle IP-based location at component level to avoid Rules of Hooks violation[m
+[32m+[m[32m  const handleIPBasedLocation = useCallback(async () => {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      await getIPBasedLocationAsync();[m
+[32m+[m[32m    } catch (error) {[m
+[32m+[m[32m      console.error('IP-based location failed:', error);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }, [getIPBasedLocationAsync]);[m
+[32m+[m
+   // Memoize location object to prevent unnecessary re-renders[m
+   const memoizedLocation = useMemo(() => {[m
+     if (!locationData) return null;[m
+[36m@@ -304,7 +313,7 @@[m [mexport default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem[m
+                 Try Again Now[m
+               </Button>[m
+               <Button [m
+[31m-                onClick={() => useIPBasedLocation()} [m
+[32m+[m[32m                onClick={handleIPBasedLocation}[m
+                 variant="secondary"[m
+                 className="w-full"[m
+               >[m
+[36m@@ -344,12 +353,9 @@[m [mexport default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem[m
+               console.error('Location request failed:', error);[m
+             }[m
+           }}[m
+[31m-          onSkip={async () => {[m
+[31m-            try {[m
+[31m-              await useIPBasedLocation();[m
+[31m-            } catch (error) {[m
+[31m-              console.error('IP-based location failed:', error);[m
+[31m-            }[m
+[32m+[m[32m          onSkip={() => {[m
+[32m+[m[32m            // Call useIPBasedLocation at component level, not in callback[m
+[32m+[m[32m            handleIPBasedLocation();[m
+           }}[m
+           permissionStatus={permissionStatus}[m
+           locationSource={locationData?.source}[m

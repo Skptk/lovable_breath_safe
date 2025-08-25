@@ -40,28 +40,16 @@ export const useUserPoints = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Use stable channel subscription for profile points updates
-  const { isConnected: profilePointsConnected } = useStableChannelSubscription({
-    channelName: `user-profile-points-${user?.id || 'anonymous'}`,
-    userId: user?.id,
-    config: {
-      event: 'UPDATE',
-      schema: 'public',
-      table: 'profiles',
-      filter: `user_id=eq.${user?.id || 'anonymous'}`
-    },
-    onData: (payload) => {
-      console.log('Profile points updated:', payload);
-      if (payload.eventType === 'UPDATE') {
-        const updatedProfile = payload.new as any;
-        setUserPoints(prev => ({
-          ...prev,
-          totalPoints: updatedProfile.total_points || 0
-        }));
-      }
-    },
-    enabled: !!user?.id
-  });
+  // Remove conflicting user-profile-points subscription - ProfileView handles this
+  // The profile points updates will come through the parent component's subscription
+
+  // Method to update total points from external sources (like ProfileView)
+  const updateTotalPoints = useCallback((newTotalPoints: number) => {
+    setUserPoints(prev => ({
+      ...prev,
+      totalPoints: newTotalPoints
+    }));
+  }, []);
 
   // Use stable channel subscription for user points inserts
   const { isConnected: userPointsConnected } = useStableChannelSubscription({
@@ -244,7 +232,8 @@ export const useUserPoints = () => {
     nextBadge,
     pointsToNextBadge,
     streaks: userPoints.streaks,
-    profilePointsConnected,
-    userPointsConnected
+    profilePointsConnected: undefined, // Removed as per edit hint
+    userPointsConnected,
+    updateTotalPoints
   };
 };
