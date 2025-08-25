@@ -80,17 +80,20 @@ export const useAirQuality = () => {
       city: globalData.city_name
     });
     
-    // Validate data source to prevent contamination - only reject actual mock/test data
+    // CRITICAL FIX: Enhanced data source validation to prevent "Initial Data" contamination
     // ACCEPT: OpenWeatherMap API, OpenAQ API, and other legitimate API sources
-    // REJECT: Only mock, test, placeholder, demo, fake data
+    // REJECT: Only mock, test, placeholder, demo, fake, and initial data
     if (globalData.data_source && 
         (globalData.data_source.toLowerCase().includes('mock') ||
          globalData.data_source.toLowerCase().includes('test') ||
          globalData.data_source.toLowerCase().includes('placeholder') ||
          globalData.data_source.toLowerCase().includes('demo') ||
          globalData.data_source.toLowerCase().includes('fake') ||
-         globalData.data_source.toLowerCase().includes('initial data'))) {
+         globalData.data_source === 'Initial Data' ||  // Exact match for Initial Data
+         globalData.data_source.toLowerCase().includes('initial data') ||  // Case-insensitive check
+         globalData.data_source.toLowerCase().includes('initial'))) {
       console.warn('🚨 [useAirQuality] Detected contaminated data source:', globalData.data_source);
+      console.warn('🚨 [useAirQuality] This data will be rejected to prevent contamination');
       return null; // Reject contaminated data
     }
     
@@ -148,16 +151,29 @@ export const useAirQuality = () => {
   // Use global data when available, fallback to legacy API if needed
   const airQualityData = globalEnvironmentalData ? transformGlobalData(globalEnvironmentalData) : null;
   
-  // Debug logging for data transformation
+  // CRITICAL FIX: Enhanced debugging and user feedback for data contamination
   if (globalEnvironmentalData && !airQualityData) {
     console.warn('⚠️ [useAirQuality] Global data was rejected during transformation:', {
       originalData: globalEnvironmentalData,
       dataSource: globalEnvironmentalData.data_source,
-      aqi: globalEnvironmentalData.aqi
+      aqi: globalEnvironmentalData.aqi,
+      city: globalEnvironmentalData.city_name,
+      timestamp: globalEnvironmentalData.collection_timestamp
     });
+    
+    // Show user-friendly error message for contaminated data
+    if (globalEnvironmentalData.data_source === 'Initial Data') {
+      console.warn('🚨 [useAirQuality] Detected "Initial Data" placeholder - this indicates database needs real data');
+      console.warn('🚨 [useAirQuality] The scheduled data collection system should populate the database with real OpenWeatherMap API data');
+    }
   }
   
-  // Legacy API fallback (only if global data is not available)
+  // Enhanced fallback logic: Only use legacy API if no legitimate global data is available
+  const shouldUseLegacyAPI = !globalEnvironmentalData || 
+                            (globalEnvironmentalData && !airQualityData && 
+                             globalEnvironmentalData.data_source === 'Initial Data');
+  
+  // Legacy API fallback (only when necessary)
   const legacyQuery = useQuery({
     queryKey: ['air-quality-legacy', safeCoordinates?.lat, safeCoordinates?.lng],
     queryFn: async () => {
@@ -166,6 +182,8 @@ export const useAirQuality = () => {
       }
 
       try {
+        console.log('🔄 [useAirQuality] Falling back to legacy API due to contaminated global data');
+        
         const { data, error } = await supabase.functions.invoke('get-air-quality', {
           body: { 
             lat: safeCoordinates.lat, 
@@ -190,7 +208,7 @@ export const useAirQuality = () => {
           coordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           userCoordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           timestamp: new Date().toISOString(),
-          dataSource: 'Legacy API',
+          dataSource: 'OpenWeatherMap API (Legacy)',
           environmental: data.list?.[0]?.main ? {
             temperature: data.list[0].main.temp,
             humidity: data.list[0].main.humidity,
@@ -198,13 +216,14 @@ export const useAirQuality = () => {
           } : undefined
         };
 
+        console.log('✅ [useAirQuality] Legacy API fallback successful:', transformedData);
         return transformedData;
       } catch (error) {
         console.error('❌ [useAirQuality] Legacy API fetch failed:', error);
         throw error;
       }
     },
-    enabled: !globalEnvironmentalData && !!safeCoordinates?.lat && !!safeCoordinates?.lng,
+    enabled: shouldUseLegacyAPI && !!safeCoordinates?.lat && !!safeCoordinates?.lng,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
     retry: 2,
