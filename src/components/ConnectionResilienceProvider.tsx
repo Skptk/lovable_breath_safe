@@ -28,7 +28,7 @@ export function ConnectionResilienceProvider({
   const { toast } = useToast();
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = config.maxReconnectAttempts ?? 5;
-  const heartbeatInterval = config.heartbeatInterval ?? 30000; // 30 seconds
+  const heartbeatInterval = config.heartbeatInterval ?? 120000; // 2 minutes (was 30 seconds)
   const enableAutoReconnect = config.enableAutoReconnect ?? true;
   
   // CRITICAL FIX: Prevent infinite dismiss callbacks

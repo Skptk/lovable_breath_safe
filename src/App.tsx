@@ -165,7 +165,7 @@ const App = (): JSX.Element => {
         <TooltipProvider>
           <ConnectionResilienceProvider
             config={{
-              heartbeatInterval: process.env.NODE_ENV === 'development' ? 15000 : 30000,
+              heartbeatInterval: process.env.NODE_ENV === 'development' ? 60000 : 120000, // 1 min dev, 2 min production
               showDebugPanel: process.env.NODE_ENV === 'development',
               maxReconnectAttempts: process.env.NODE_ENV === 'production' ? 5 : 10,
               alertAutoHide: 5000

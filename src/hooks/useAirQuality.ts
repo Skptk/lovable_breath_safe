@@ -11,6 +11,47 @@ import { useGlobalEnvironmentalData } from "@/hooks/useGlobalEnvironmentalData";
 const REFRESH_LOCK_KEY = 'breath_safe_refresh_lock';
 const REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes (slightly less than 15 to ensure smooth operation)
 
+// Helper function to check if refresh is locked
+const isRefreshLocked = (): boolean => {
+  try {
+    const lockData = localStorage.getItem(REFRESH_LOCK_KEY);
+    if (!lockData) return false;
+    
+    const { timestamp } = JSON.parse(lockData);
+    const now = Date.now();
+    const timeSinceLastRefresh = now - timestamp;
+    
+    // If less than 14 minutes have passed, refresh is locked
+    return timeSinceLastRefresh < REFRESH_LOCK_DURATION;
+  } catch {
+    return false;
+  }
+};
+
+// Helper function to set refresh lock
+const setRefreshLock = (): void => {
+  try {
+    const lockData = {
+      timestamp: Date.now(),
+      duration: REFRESH_LOCK_DURATION
+    };
+    localStorage.setItem(REFRESH_LOCK_KEY, JSON.stringify(lockData));
+    console.log('🔒 [useAirQuality] Refresh lock set for 14 minutes');
+  } catch (error) {
+    console.warn('Failed to set refresh lock:', error);
+  }
+};
+
+// Helper function to clear refresh lock
+const clearRefreshLock = (): void => {
+  try {
+    localStorage.removeItem(REFRESH_LOCK_KEY);
+    console.log('🔓 [useAirQuality] Refresh lock cleared');
+  } catch (error) {
+    console.warn('Failed to clear refresh lock:', error);
+  }
+};
+
 export interface AirQualityData {
   aqi: number;
   pm25: number;
@@ -240,22 +281,18 @@ export const useAirQuality = () => {
     console.log('🔄 [useAirQuality] Manual refresh requested');
     
     // Check refresh lock
-    const lockData = localStorage.getItem(REFRESH_LOCK_KEY);
-    if (lockData) {
-      const { timestamp } = JSON.parse(lockData);
-      if (Date.now() - timestamp < REFRESH_LOCK_DURATION) {
-        console.log('⏳ [useAirQuality] Refresh locked, waiting for cooldown');
-        toast({
-          title: "Refresh Cooldown",
-          description: "Please wait before refreshing again",
-          variant: "default",
-        });
-        return;
-      }
+    if (isRefreshLocked()) {
+      console.log('⏳ [useAirQuality] Refresh locked, waiting for cooldown');
+      toast({
+        title: "Refresh Cooldown",
+        description: "Please wait before refreshing again",
+        variant: "default",
+      });
+      return;
     }
 
     // Set refresh lock
-    localStorage.setItem(REFRESH_LOCK_KEY, JSON.stringify({ timestamp: Date.now() }));
+    setRefreshLock();
 
     try {
       if (globalEnvironmentalData) {
@@ -282,6 +319,9 @@ export const useAirQuality = () => {
         description: "Failed to refresh air quality data",
         variant: "destructive",
       });
+    } finally {
+      // Clear refresh lock after successful refresh
+      clearRefreshLock();
     }
   }, [globalEnvironmentalData, refetchGlobalData, legacyQuery, toast]);
 
@@ -354,6 +394,14 @@ export const useAirQuality = () => {
 
     saveReading();
   }, [user?.id, finalData?.aqi, finalData?.pm25, finalData?.pm10, finalData?.dataSource, safeCoordinates?.lat, safeCoordinates?.lng]);
+
+  // Set refresh lock when global environmental data is fetched
+  useEffect(() => {
+    if (globalEnvironmentalData && !isRefreshLocked()) {
+      console.log('🔒 [useAirQuality] Setting refresh lock for new global data');
+      setRefreshLock();
+    }
+  }, [globalEnvironmentalData]);
 
   return {
     data: finalData,
