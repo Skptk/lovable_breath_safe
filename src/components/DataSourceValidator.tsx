@@ -16,15 +16,37 @@ export default function DataSourceValidator({
   location, 
   timestamp 
 }: DataSourceValidatorProps) {
-  // Validate data source legitimacy
+  // Debug logging
+  console.log('🔍 [DataSourceValidator] Validating data:', {
+    dataSource,
+    aqi,
+    location,
+    timestamp
+  });
+  
+  // Validate data source legitimacy - recognize all legitimate sources
   const isLegitimateSource = dataSource && 
     (dataSource === 'OpenWeatherMap API' || 
      dataSource === 'Integrated Weather System' || 
      dataSource === 'Manual Fetch' ||
-     dataSource === 'Server-side Collection');
+     dataSource === 'Server-side Collection' ||
+     dataSource === 'Global Environmental Data' ||
+     dataSource === 'Legacy API' ||
+     // Only reject actual mock/test data sources
+     !(dataSource.toLowerCase().includes('mock') ||
+       dataSource.toLowerCase().includes('test') ||
+       dataSource.toLowerCase().includes('placeholder') ||
+       dataSource.toLowerCase().includes('demo') ||
+       dataSource.toLowerCase().includes('fake')));
+  
+  console.log('🔍 [DataSourceValidator] Validation result:', {
+    dataSource,
+    isLegitimateSource,
+    isSuspiciousAQI: aqi < 0 || aqi > 500 || aqi === 0
+  });
 
-  // Check for suspicious AQI values
-  const isSuspiciousAQI = aqi === 65 || aqi === 75 || aqi < 10;
+  // Check for suspicious AQI values - only flag truly invalid values
+  const isSuspiciousAQI = aqi < 0 || aqi > 500 || aqi === 0;
   
   // Determine validation status
   const getValidationStatus = () => {
@@ -37,7 +59,7 @@ export default function DataSourceValidator({
       };
     }
     
-    if (isSuspiciousAQI && dataSource !== 'OpenWeatherMap API') {
+    if (isSuspiciousAQI) {
       return {
         status: 'suspicious' as const,
         icon: <AlertTriangle className="h-4 w-4 text-yellow-500" />,
