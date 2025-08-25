@@ -2,6 +2,12 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from '@supabase/supabase-js'
 
+// ⚠️ TIMEZONE IMPORTANT: This function runs in UTC timezone
+// - GitHub Actions cron schedule runs in UTC
+// - All timestamps are logged in UTC (ISO format)
+// - Local time is also logged for debugging purposes
+// - Collection interval: 15 minutes (900,000 milliseconds)
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -233,8 +239,13 @@ async function storeEnvironmentalData(
 
 // Main data collection function
 async function collectAllEnvironmentalData(apiKey: string, supabase: any): Promise<void> {
+  const now = new Date();
+  const utcTime = now.toISOString();
+  const localTime = now.toString();
+  
   console.log('🚀 Starting scheduled environmental data collection...');
-  console.log(`📅 Collection time: ${new Date().toISOString()}`);
+  console.log(`📅 Collection time (UTC): ${utcTime}`);
+  console.log(`📅 Collection time (Local): ${localTime}`);
   console.log(`🌍 Collecting data for ${MAJOR_CITIES.length} cities...`);
 
   const collectedData: GlobalEnvironmentalData[] = [];
@@ -268,13 +279,24 @@ async function collectAllEnvironmentalData(apiKey: string, supabase: any): Promi
     console.error('❌ Errors encountered:', errors);
   }
 
-  // Log next scheduled collection
+  // Log next scheduled collection with explicit timezone information
   const nextCollection = new Date(Date.now() + COLLECTION_INTERVAL);
-  console.log(`⏰ Next scheduled collection: ${nextCollection.toISOString()}`);
+  const nextCollectionUTC = nextCollection.toISOString();
+  const nextCollectionLocal = nextCollection.toString();
+  
+  console.log(`⏰ Next scheduled collection (UTC): ${nextCollectionUTC}`);
+  console.log(`⏰ Next scheduled collection (Local): ${nextCollectionLocal}`);
+  console.log(`⏰ Collection interval: ${COLLECTION_INTERVAL / 1000 / 60} minutes`);
 }
 
 serve(async (req) => {
+  const functionStartTime = new Date();
+  const functionStartUTC = functionStartTime.toISOString();
+  const functionStartLocal = functionStartTime.toString();
+  
   console.log('=== SCHEDULED DATA COLLECTION FUNCTION STARTED ===');
+  console.log(`🕐 Function start time (UTC): ${functionStartUTC}`);
+  console.log(`🕐 Function start time (Local): ${functionStartLocal}`);
   console.log('Request method:', req.method);
   console.log('Request headers:', Object.fromEntries(req.headers.entries()));
 

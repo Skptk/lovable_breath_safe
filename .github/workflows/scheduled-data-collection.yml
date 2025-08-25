@@ -29,7 +29,9 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           echo "🕐 Triggering scheduled environmental data collection..."
-          echo "📅 Current time: $(date)"
+          echo "📅 Current time (UTC): $(date -u)"
+          echo "📅 Current time (Local): $(date)"
+          echo "🌍 GitHub Actions runs in UTC timezone"
           
           # Get the Edge Function URL from Supabase
           EDGE_FUNCTION_URL="$SUPABASE_URL/functions/v1/scheduled-data-collection"
@@ -61,4 +63,5 @@ jobs:
       - name: Log completion
         run: |
           echo "🏁 Scheduled environmental data collection job completed"
-          echo "⏰ Next scheduled run: $(date -d '+15 minutes' '+%Y-%m-%d %H:%M:%S')"
+          echo "⏰ Next scheduled run (UTC): $(date -u -d '+15 minutes' '+%Y-%m-%d %H:%M:%S')"
+          echo "⏰ Next scheduled run (Local): $(date -d '+15 minutes' '+%Y-%m-%d %H:%M:%S')"
