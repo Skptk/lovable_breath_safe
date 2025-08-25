@@ -2,198 +2,220 @@
 
 ## Overview
 
-This guide explains how to set up the scheduled data collection system to replace the "Initial Data" placeholder with real OpenWeatherMap API data. The system automatically collects environmental data every 15 minutes and stores it in the database for all users to access.
+This document explains the complete setup for automated environmental data collection in the Breath Safe application. The system uses **Supabase cron scheduling** as the primary method, with GitHub Actions as a manual trigger option.
 
-## Current Issue
+## Architecture
 
-The app is currently showing "Initial Data" placeholder instead of real air quality data because:
-1. The scheduled data collection Edge Function is not configured with required environment variables
-2. The GitHub Actions cron job is running but failing to collect real data
-3. The database contains placeholder records that need to be cleaned up
+### Primary Scheduler: Supabase Cron Jobs
+- **Frequency**: Every 15 minutes
+- **Method**: PostgreSQL cron extension (`pg_cron`)
+- **Reliability**: Built into Supabase infrastructure
+- **Security**: No external credentials required
 
-## Solution Steps
+### Backup Trigger: GitHub Actions
+- **Purpose**: Manual triggering for testing and emergency data collection
+- **Frequency**: On-demand only
+- **Inputs**: City-specific collection, force collection
+- **Security**: No sensitive credentials exposed
 
-### Step 1: Clean Up Database
+## Setup Instructions
 
-Run the cleanup script to remove any remaining placeholder data:
+### 1. Enable pg_cron Extension
+
+Run the migration file to set up cron scheduling:
 
 ```sql
--- Execute cleanup_initial_data.sql in your Supabase SQL editor
--- This removes all "Initial Data" records and prepares the database for real data
+-- This is handled by the migration file:
+-- supabase/migrations/20250123000001_setup_cron_scheduling.sql
+
+-- The migration will:
+-- 1. Enable pg_cron extension
+-- 2. Create scheduled job for every 15 minutes
+-- 3. Set up necessary permissions
 ```
 
-### Step 2: Configure Edge Function Environment Variables
+### 2. Configure Supabase Environment Variables
 
-The scheduled data collection Edge Function requires these environment variables:
-
-#### In Supabase Dashboard:
-1. Go to **Settings** → **Edge Functions**
-2. Find the `scheduled-data-collection` function
-3. Click **Settings** → **Environment Variables**
-4. Add these variables:
-
-```
-OPENWEATHERMAP_API_KEY=your_actual_api_key_here
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
-```
-
-#### How to Get OpenWeatherMap API Key:
-1. Go to [OpenWeatherMap](https://openweathermap.org/api)
-2. Sign up for a free account
-3. Navigate to **API keys** section
-4. Copy your API key
-5. Note: Free tier allows 1000 calls/day (sufficient for 8 cities × 96 times/day = 768 calls)
-
-### Step 3: Test Edge Function Manually
-
-Test the Edge Function to ensure it's working:
+Ensure these environment variables are set in your Supabase project:
 
 ```bash
-# Test manual data collection for Nairobi
+# Required for the Edge Function
+OPENWEATHERMAP_API_KEY=your_openweathermap_api_key
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
+
+### 3. Deploy the Edge Function
+
+The Edge Function will automatically run every 15 minutes via cron scheduling:
+
+```bash
+# Deploy to Supabase
+supabase functions deploy scheduled-data-collection
+```
+
+### 4. Verify Cron Job Setup
+
+Check if the cron job is running:
+
+```sql
+-- View all scheduled cron jobs
+SELECT * FROM cron.job;
+
+-- View cron job runs
+SELECT * FROM cron.job_run_details;
+
+-- Check the specific environmental data collection job
+SELECT * FROM cron.job WHERE jobname = 'environmental-data-collection';
+```
+
+## How It Works
+
+### Automatic Scheduling (Every 15 Minutes)
+1. **Cron Job Triggers**: PostgreSQL cron runs every 15 minutes
+2. **Function Execution**: Calls the scheduled data collection function
+3. **Data Collection**: Collects environmental data for all 8 Kenyan cities
+4. **Database Storage**: Stores data in `global_environmental_data` table
+5. **User Access**: Users access stored data instead of calling APIs directly
+
+### Manual Triggering (GitHub Actions)
+1. **Manual Execution**: Trigger via GitHub Actions workflow
+2. **City-Specific**: Option to collect data for a specific city
+3. **Emergency Use**: Force immediate data collection when needed
+4. **Testing**: Verify the system is working correctly
+
+## Benefits of This Approach
+
+### Security
+- ✅ **No exposed credentials** in GitHub Actions
+- ✅ **Supabase-managed** environment variables
+- ✅ **Internal scheduling** within Supabase infrastructure
+
+### Reliability
+- ✅ **Built-in scheduling** via PostgreSQL cron
+- ✅ **No external dependencies** for basic operation
+- ✅ **Automatic retry** and error handling
+
+### Flexibility
+- ✅ **Manual triggers** when needed
+- ✅ **City-specific collection** for testing
+- ✅ **Emergency data collection** capabilities
+
+## Monitoring and Troubleshooting
+
+### Check Cron Job Status
+```sql
+-- View recent cron job executions
+SELECT 
+  jobid,
+  job_pid,
+  database,
+  username,
+  command,
+  return_message,
+  start_time,
+  end_time,
+  total_runtime
+FROM cron.job_run_details 
+WHERE jobid = (
+  SELECT jobid FROM cron.job 
+  WHERE jobname = 'environmental-data-collection'
+)
+ORDER BY start_time DESC
+LIMIT 10;
+```
+
+### Check Data Collection Status
+```sql
+-- View recent environmental data
+SELECT 
+  city_name,
+  collection_timestamp,
+  aqi,
+  temperature,
+  is_active
+FROM global_environmental_data 
+WHERE is_active = true
+ORDER BY collection_timestamp DESC
+LIMIT 20;
+```
+
+### Common Issues and Solutions
+
+#### Issue: Cron job not running
+**Solution**: Check if pg_cron extension is enabled
+```sql
+SELECT * FROM pg_extension WHERE extname = 'pg_cron';
+```
+
+#### Issue: Edge Function not responding
+**Solution**: Check Supabase function logs and environment variables
+
+#### Issue: Data not being collected
+**Solution**: Verify OpenWeatherMap API key and rate limits
+
+## Testing
+
+### Test Cron Job Manually
+```sql
+-- Manually trigger the cron function
+SELECT cron.schedule_environmental_data_collection();
+```
+
+### Test Edge Function Directly
+```bash
+# Test the function endpoint
 curl -X POST https://your-project.supabase.co/functions/v1/scheduled-data-collection \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_anon_key" \
   -d '{"manual": true, "city": "Nairobi"}'
 ```
 
-Expected response:
-```json
-{
-  "success": true,
-  "message": "Data collected for Nairobi",
-  "data": {
-    "city_name": "Nairobi",
-    "aqi": 65,
-    "temperature": 22.5,
-    "data_source": "OpenWeatherMap API",
-    ...
-  }
-}
-```
+### Test GitHub Actions Workflow
+1. Go to GitHub Actions tab
+2. Select "Manual Environmental Data Collection Trigger"
+3. Click "Run workflow"
+4. Optionally specify a city
+5. Monitor execution logs
 
-### Step 4: Verify GitHub Actions Configuration
+## Maintenance
 
-The GitHub Actions workflow is already configured to run every 15 minutes:
+### Regular Checks
+- **Weekly**: Verify cron job is running
+- **Monthly**: Check data collection logs
+- **Quarterly**: Review API rate limits and quotas
 
-```yaml
-# .github/workflows/scheduled-data-collection.yml
-on:
-  schedule:
-    - cron: '*/15 * * * *'  # Every 15 minutes
-```
-
-Ensure these secrets are set in GitHub:
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-
-### Step 5: Monitor Data Collection
-
-Check the database to verify real data is being collected:
-
-```sql
--- Check recent environmental data
-SELECT 
-  city_name,
-  aqi,
-  temperature,
-  data_source,
-  collection_timestamp
-FROM public.global_environmental_data
-WHERE is_active = true
-ORDER BY collection_timestamp DESC;
-
--- Check data source distribution
-SELECT 
-  data_source,
-  COUNT(*) as record_count
-FROM public.global_environmental_data
-GROUP BY data_source;
-```
-
-## Expected Results
-
-After setup, you should see:
-
-1. **Real-time Data**: Air quality data updates every 15 minutes
-2. **Legitimate Sources**: `data_source` shows "OpenWeatherMap API"
-3. **Accurate Values**: Real AQI, temperature, humidity, and pollutant data
-4. **No More Placeholders**: Console shows successful data processing
-5. **User Experience**: Air quality cards display real environmental data
-
-## Troubleshooting
-
-### Edge Function Not Working
-
-1. **Check Environment Variables**: Ensure all required variables are set
-2. **Check API Key**: Verify OpenWeatherMap API key is valid and has quota
-3. **Check Logs**: View Edge Function logs in Supabase dashboard
-4. **Test Manually**: Use the manual trigger to test individual cities
-
-### GitHub Actions Failing
-
-1. **Check Secrets**: Ensure `SUPABASE_URL` and `SUPABASE_ANON_KEY` are set
-2. **Check Permissions**: Verify the workflow has access to secrets
-3. **Check Logs**: View GitHub Actions logs for error details
-4. **Test Edge Function**: Ensure Edge Function works before testing workflow
-
-### No Data in Database
-
-1. **Check Edge Function**: Verify it's running and collecting data
-2. **Check Database Permissions**: Ensure service role can insert data
-3. **Check Table Structure**: Verify `global_environmental_data` table exists
-4. **Check RLS Policies**: Ensure proper access policies are in place
-
-## Data Flow
-
-```
-GitHub Actions Cron (every 15 min)
-    ↓
-Edge Function (scheduled-data-collection)
-    ↓
-OpenWeatherMap APIs (air quality + weather)
-    ↓
-Database Storage (global_environmental_data)
-    ↓
-Frontend Queries (useGlobalEnvironmentalData)
-    ↓
-User Interface (Air Quality Dashboard)
-```
-
-## Performance Benefits
-
-1. **No Client-Side API Calls**: Eliminates 15-minute refresh loops
-2. **Centralized Data**: Single source of truth for all users
-3. **Reduced Rate Limiting**: Efficient server-side collection
-4. **Better User Experience**: Instant data access on login
-5. **Scalable Architecture**: Supports unlimited users without API limits
+### Updates
+- **Edge Function**: Deploy updates via Supabase CLI
+- **Cron Jobs**: Modify via SQL migrations
+- **GitHub Actions**: Update workflow files as needed
 
 ## Security Considerations
 
-1. **API Key Protection**: Stored securely in Edge Function environment
-2. **Service Role Access**: Limited database access for data collection
-3. **RLS Policies**: User data isolation maintained
-4. **Input Validation**: All API responses validated before storage
+### Environment Variables
+- ✅ **Never commit** API keys to version control
+- ✅ **Use Supabase** environment variable management
+- ✅ **Rotate keys** regularly
 
-## Next Steps
+### Access Control
+- ✅ **Service role key** for database operations
+- ✅ **RLS policies** for user data access
+- ✅ **Function-level** authentication
 
-After successful setup:
-
-1. **Monitor Performance**: Check data collection success rate
-2. **Expand Coverage**: Add more cities or data sources
-3. **Optimize Schedule**: Adjust collection frequency if needed
-4. **User Feedback**: Gather feedback on data accuracy and freshness
-
-## Support
-
-If you encounter issues:
-
-1. Check Edge Function logs in Supabase dashboard
-2. Verify GitHub Actions workflow execution
-3. Test Edge Function manually with curl
-4. Check database for data insertion errors
-5. Review environment variable configuration
+### Monitoring
+- ✅ **Log all operations** for audit trail
+- ✅ **Monitor API usage** and rate limits
+- ✅ **Alert on failures** or unusual patterns
 
 ---
 
-*This setup guide ensures the Breath Safe app transitions from placeholder data to real-time environmental monitoring with professional-grade data collection.*
+## Summary
+
+This setup provides a robust, secure, and reliable system for automated environmental data collection:
+
+1. **Primary**: Supabase cron scheduling (every 15 minutes)
+2. **Backup**: GitHub Actions manual triggers
+3. **Security**: No exposed credentials
+4. **Reliability**: Built-in infrastructure
+5. **Monitoring**: Comprehensive logging and status checks
+
+The system automatically collects environmental data for all users while maintaining security and providing manual override capabilities when needed.
