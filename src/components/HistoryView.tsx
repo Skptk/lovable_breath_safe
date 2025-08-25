@@ -561,7 +561,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
   return (
     <div className="page-container">
-      <div className="page-content space-y-4 md:space-y-6">
+      <div className="page-content space-y-4 md:space-y-6 w-full max-w-full overflow-x-hidden px-4 md:px-6">
       {/* Header */}
       <Header
         title="Air Quality History"
@@ -577,14 +577,14 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       />
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-2 justify-end">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 justify-end w-full max-w-full overflow-hidden">
           {selectedEntries.size > 0 && (
             <Button
               onClick={bulkDeleteSelected}
               variant="destructive"
               size="sm"
               disabled={bulkDeleting}
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               {bulkDeleting ? (
                 <>
@@ -604,7 +604,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
             variant="outline" 
             size="sm" 
             onClick={selectAllEntries}
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
           >
             {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
           </Button>
@@ -612,8 +612,8 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
       {/* Fetch AQI Data Button - Only shown after clearing history */}
       {showFetchButton && (
-        <GlassCard variant="elevated" className="border-2 border-primary/20">
-          <GlassCardContent className="p-6 text-center">
+        <GlassCard variant="elevated" className="border-2 border-primary/20 w-full max-w-full overflow-hidden">
+          <GlassCardContent className="p-4 md:p-6 text-center">
             <div className="space-y-4">
               <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
                 <MapPin className="w-8 h-8 text-primary" />
@@ -648,8 +648,8 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <GlassCard variant="subtle">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-full overflow-hidden">
+        <GlassCard variant="subtle" className="w-full max-w-full overflow-hidden">
           <GlassCardHeader className="pb-2">
             <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
@@ -666,7 +666,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           </GlassCardContent>
         </GlassCard>
 
-        <GlassCard variant="subtle">
+        <GlassCard variant="subtle" className="w-full max-w-full overflow-hidden">
           <GlassCardHeader className="pb-2">
             <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
               <Calendar className="h-4 w-4" />
@@ -681,7 +681,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           </GlassCardContent>
         </GlassCard>
 
-        <GlassCard variant="subtle">
+        <GlassCard variant="subtle" className="w-full max-w-full overflow-hidden sm:col-span-2 md:col-span-1">
           <GlassCardHeader className="pb-2">
             <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -698,8 +698,8 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       </div>
 
       {/* History List */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="space-y-3 w-full max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full max-w-full overflow-hidden">
           <h2 className="text-lg font-semibold">
             Recent Readings {history.length > 0 && `(${history.length})`}
           </h2>
@@ -711,8 +711,8 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         </div>
         
         {history.length === 0 ? (
-          <GlassCard variant="elevated" className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20">
-            <GlassCardContent className="p-8 text-center">
+          <GlassCard variant="elevated" className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 w-full max-w-full overflow-hidden">
+            <GlassCardContent className="p-6 md:p-8 text-center">
               <div className="space-y-2">
                 <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
                 <h3 className="text-lg font-semibold">No History Yet</h3>
@@ -727,142 +727,144 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
             <GlassCard 
               key={entry.id} 
               variant="default"
-              className="cursor-pointer hover:scale-[1.02] group"
+              className="cursor-pointer hover:scale-[1.02] group w-full max-w-full overflow-hidden"
               onClick={() => openEntryModal(entry)}
             >
-              <GlassCardContent className="p-4">
-                <div className="space-y-3">
+              <GlassCardContent className="p-3 md:p-4 w-full max-w-full overflow-hidden">
+                <div className="space-y-3 w-full max-w-full overflow-hidden">
                   {/* Header with AQI and Location */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full max-w-full overflow-hidden">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
                       <Checkbox
                         checked={selectedEntries.has(entry.id)}
                         onCheckedChange={() => toggleEntrySelection(entry.id)}
-                        className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        className="data-[state=checked]:bg-primary data-[state=checked]:border-primary flex-shrink-0 mt-1"
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                      <div className="space-y-1 min-w-0 flex-1 overflow-hidden">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0 overflow-hidden">
                           <Badge 
                             variant="secondary"
-                            className={`${getAQIBadgeColor(entry.aqi)} border-0 text-xs`}
+                            className={`${getAQIBadgeColor(entry.aqi)} border-0 text-xs flex-shrink-0`}
                           >
                             AQI {entry.aqi}
                           </Badge>
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-sm text-muted-foreground truncate">
                             {getAQILabel(entry.aqi)}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          <span>{entry.location_name || 'Unknown Location'}</span>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0 overflow-hidden">
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{entry.location_name || 'Unknown Location'}</span>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right flex items-center gap-2">
-                      <div className="text-xs text-muted-foreground">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0 overflow-hidden">
+                      <div className="text-xs text-muted-foreground truncate">
                         {formatRelativeTime(entry.timestamp)}
                       </div>
                       {entry.data_source && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs max-w-32 truncate">
                           {entry.data_source}
                         </Badge>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEntryModal(entry);
-                        }}
-                      >
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Reading</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete this air quality reading. 
-                              This cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteEntry(entry.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10 flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEntryModal(entry);
+                          }}
+                        >
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              Delete Reading
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Reading</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete this air quality reading. 
+                                This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteEntry(entry.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete Reading
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Pollutants Grid */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Pollutants Grid - Mobile Responsive */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-full overflow-hidden">
                     {entry.pm25 && entry.pm25 > 0 && (
-                      <div className="text-xs bg-muted/50 p-2 rounded">
-                        <span className="font-medium">PM2.5:</span> {entry.pm25.toFixed(1)} µg/m³
+                      <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
+                        <span className="font-medium">PM2.5:</span> <span className="truncate">{entry.pm25.toFixed(1)} µg/m³</span>
                       </div>
                     )}
                     {entry.pm10 && entry.pm10 > 0 && (
-                      <div className="text-xs bg-muted/50 p-2 rounded">
-                        <span className="font-medium">PM10:</span> {entry.pm10.toFixed(1)} µg/m³
+                      <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
+                        <span className="font-medium">PM10:</span> <span className="truncate">{entry.pm10.toFixed(1)} µg/m³</span>
                       </div>
                     )}
                     {entry.pm1 && entry.pm1 > 0 && (
-                      <div className="text-xs bg-muted/50 p-2 rounded">
-                        <span className="font-medium">PM1:</span> {entry.pm1.toFixed(1)} µg/m³
+                      <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
+                        <span className="font-medium">PM1:</span> <span className="truncate">{entry.pm1.toFixed(1)} µg/m³</span>
                       </div>
                     )}
                     {entry.no2 && entry.no2 > 0 && (
-                      <div className="text-xs bg-muted/50 p-2 rounded">
-                        <span className="font-medium">NO₂:</span> {entry.no2.toFixed(1)} µg/m³
+                      <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
+                        <span className="font-medium">NO₂:</span> <span className="truncate">{entry.no2.toFixed(1)} µg/m³</span>
                       </div>
                     )}
                     {entry.so2 && entry.so2 > 0 && (
-                      <div className="text-xs bg-muted/50 p-2 rounded">
-                        <span className="font-medium">SO₂:</span> {entry.so2.toFixed(1)} µg/m³
+                      <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
+                        <span className="font-medium">SO₂:</span> <span className="truncate">{entry.so2.toFixed(1)} µg/m³</span>
                       </div>
                     )}
                     {entry.co && entry.co > 0 && (
-                      <div className="text-xs bg-muted/50 p-2 rounded">
-                        <span className="font-medium">CO:</span> {entry.co.toFixed(1)} mg/m³
+                      <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
+                        <span className="font-medium">CO:</span> <span className="truncate">{entry.co.toFixed(1)} mg/m³</span>
                       </div>
                     )}
                     {entry.o3 && entry.o3 > 0 && (
-                      <div className="text-xs bg-muted/50 p-2 rounded">
-                        <span className="font-medium">O₃:</span> {entry.o3.toFixed(1)} µg/m³
+                      <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
+                        <span className="font-medium">O₃:</span> <span className="truncate">{entry.o3.toFixed(1)} µg/m³</span>
                       </div>
                     )}
                   </div>
 
                   {/* Environmental Data */}
                   {(entry.temperature || entry.humidity) && (
-                    <div className="flex items-center gap-4 pt-2 border-t border-border/50">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-2 border-t border-border/50 w-full max-w-full overflow-hidden">
                       {entry.temperature && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Thermometer className="h-3 w-3" />
+                          <Thermometer className="h-3 w-3 flex-shrink-0" />
                           <span>{entry.temperature}°C</span>
                         </div>
                       )}
                       {entry.humidity && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Droplets className="h-3 w-3" />
+                          <Droplets className="h-3 w-3 flex-shrink-0" />
                           <span>{entry.humidity}%</span>
                         </div>
                       )}

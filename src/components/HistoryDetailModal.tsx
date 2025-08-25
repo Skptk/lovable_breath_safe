@@ -164,10 +164,10 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-full max-w-full overflow-x-hidden px-4 md:px-6">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full max-w-full overflow-hidden">
+            <div className="min-w-0 flex-1 overflow-hidden">
               <DialogTitle className="text-xl font-semibold">
                 Air Quality Reading Details
               </DialogTitle>
@@ -180,7 +180,7 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
               disabled={exporting}
               variant="outline"
               size="sm"
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto flex-shrink-0"
             >
               {exporting ? (
                 "Exporting..."
@@ -194,43 +194,43 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 w-full max-w-full overflow-hidden">
           {/* Header Information */}
-          <Card>
+          <Card className="w-full max-w-full overflow-hidden">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full max-w-full overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0 flex-1 overflow-hidden">
                   <Badge 
                     variant="secondary"
-                    className={`${getAQIBadgeColor(entry.aqi)} border-0 text-sm`}
+                    className={`${getAQIBadgeColor(entry.aqi)} border-0 text-sm flex-shrink-0`}
                   >
                     AQI {entry.aqi}
                   </Badge>
-                  <span className="text-lg font-medium">
+                  <span className="text-lg font-medium truncate">
                     {getAQILabel(entry.aqi)}
                   </span>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground">
+                <div className="text-right min-w-0 overflow-hidden">
+                  <div className="text-sm text-muted-foreground truncate">
                     {formatDate(entry.timestamp)}
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground truncate">
                     {formatTime(entry.timestamp)}
                   </div>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span>{entry.location_name || 'Unknown Location'}</span>
-                <span className="text-xs">
+            <CardContent className="w-full max-w-full overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-muted-foreground min-w-0 overflow-hidden">
+                <MapPin className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">{entry.location_name || 'Unknown Location'}</span>
+                <span className="text-xs truncate">
                   ({entry.latitude.toFixed(4)}, {entry.longitude.toFixed(4)})
                 </span>
               </div>
               {entry.data_source && (
                 <div className="mt-2">
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs max-w-48 truncate">
                     Source: {entry.data_source}
                   </Badge>
                 </div>
@@ -239,52 +239,52 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
           </Card>
 
           {/* Air Quality Metrics */}
-          <Card>
+          <Card className="w-full max-w-full overflow-hidden">
             <CardHeader>
               <CardTitle className="text-lg">Air Quality Metrics</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <CardContent className="w-full max-w-full overflow-hidden">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full max-w-full overflow-hidden">
                 {entry.pm25 && entry.pm25 > 0 && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg">
-                    <div className="text-sm text-muted-foreground mb-1">PM2.5</div>
-                    <div className="text-lg font-semibold">{entry.pm25.toFixed(1)}</div>
-                    <div className="text-xs text-muted-foreground">µg/m³</div>
+                  <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
+                    <div className="text-sm text-muted-foreground mb-1 truncate">PM2.5</div>
+                    <div className="text-lg font-semibold truncate">{entry.pm25.toFixed(1)}</div>
+                    <div className="text-xs text-muted-foreground truncate">µg/m³</div>
                   </div>
                 )}
                 {entry.pm10 && entry.pm10 > 0 && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg">
-                    <div className="text-sm text-muted-foreground mb-1">PM10</div>
-                    <div className="text-lg font-semibold">{entry.pm10.toFixed(1)}</div>
-                    <div className="text-xs text-muted-foreground">µg/m³</div>
+                  <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
+                    <div className="text-sm text-muted-foreground mb-1 truncate">PM10</div>
+                    <div className="text-lg font-semibold truncate">{entry.pm10.toFixed(1)}</div>
+                    <div className="text-xs text-muted-foreground truncate">µg/m³</div>
                   </div>
                 )}
                 {entry.no2 && entry.no2 > 0 && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg">
-                    <div className="text-sm text-muted-foreground mb-1">NO₂</div>
-                    <div className="text-lg font-semibold">{entry.no2.toFixed(1)}</div>
-                    <div className="text-xs text-muted-foreground">µg/m³</div>
+                  <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
+                    <div className="text-sm text-muted-foreground mb-1 truncate">NO₂</div>
+                    <div className="text-lg font-semibold truncate">{entry.no2.toFixed(1)}</div>
+                    <div className="text-xs text-muted-foreground truncate">µg/m³</div>
                   </div>
                 )}
                 {entry.o3 && entry.o3 > 0 && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg">
-                    <div className="text-sm text-muted-foreground mb-1">O₃</div>
-                    <div className="text-lg font-semibold">{entry.o3.toFixed(1)}</div>
-                    <div className="text-xs text-muted-foreground">µg/m³</div>
+                  <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
+                    <div className="text-sm text-muted-foreground mb-1 truncate">O₃</div>
+                    <div className="text-lg font-semibold truncate">{entry.o3.toFixed(1)}</div>
+                    <div className="text-xs text-muted-foreground truncate">µg/m³</div>
                   </div>
                 )}
                 {entry.co && entry.co > 0 && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg">
-                    <div className="text-sm text-muted-foreground mb-1">CO</div>
-                    <div className="text-lg font-semibold">{entry.co.toFixed(2)}</div>
-                    <div className="text-xs text-muted-foreground">mg/m³</div>
+                  <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
+                    <div className="text-sm text-muted-foreground mb-1 truncate">CO</div>
+                    <div className="text-lg font-semibold truncate">{entry.co.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground truncate">mg/m³</div>
                   </div>
                 )}
                 {entry.so2 && entry.so2 > 0 && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg">
-                    <div className="text-sm text-muted-foreground mb-1">SO₂</div>
-                    <div className="text-lg font-semibold">{entry.so2.toFixed(1)}</div>
-                    <div className="text-xs text-muted-foreground">µg/m³</div>
+                  <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
+                    <div className="text-sm text-muted-foreground mb-1 truncate">SO₂</div>
+                    <div className="text-lg font-semibold truncate">{entry.so2.toFixed(1)}</div>
+                    <div className="text-xs text-muted-foreground truncate">µg/m³</div>
                   </div>
                 )}
               </div>
@@ -293,23 +293,23 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
 
           {/* Weather Data */}
           {(entry.temperature || entry.humidity || entry.wind_speed || entry.weather_condition) && (
-            <Card>
+            <Card className="w-full max-w-full overflow-hidden">
               <CardHeader>
                 <CardTitle className="text-lg">Weather Conditions</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <CardContent className="w-full max-w-full overflow-hidden">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full max-w-full overflow-hidden">
                   {entry.temperature && (
-                    <div className="text-center p-3 bg-muted/30 rounded-lg">
+                    <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <Thermometer className="h-4 w-4 text-orange-500" />
-                        <span className="text-sm font-medium">Temperature</span>
+                        <Thermometer className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">Temperature</span>
                       </div>
-                      <div className="text-lg font-semibold text-orange-600">
+                      <div className="text-lg font-semibold text-orange-600 truncate">
                         {entry.temperature}°C
                       </div>
                       {entry.feels_like_temperature && (
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground truncate">
                           Feels like {entry.feels_like_temperature}°C
                         </div>
                       )}
@@ -317,28 +317,28 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
                   )}
                   
                   {entry.humidity && (
-                    <div className="text-center p-3 bg-muted/30 rounded-lg">
+                    <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <Droplets className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm font-medium">Humidity</span>
+                        <Droplets className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">Humidity</span>
                       </div>
-                      <div className="text-lg font-semibold text-blue-600">
+                      <div className="text-lg font-semibold text-blue-600 truncate">
                         {entry.humidity}%
                       </div>
                     </div>
                   )}
 
                   {entry.wind_speed && (
-                    <div className="text-center p-3 bg-muted/30 rounded-lg">
+                    <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <Wind className="h-4 w-4 text-green-500" />
-                        <span className="text-sm font-medium">Wind Speed</span>
+                        <Wind className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">Wind Speed</span>
                       </div>
-                      <div className="text-lg font-semibold text-green-600">
+                      <div className="text-lg font-semibold text-green-600 truncate">
                         {entry.wind_speed} km/h
                       </div>
                       {entry.wind_direction && (
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground truncate">
                           {getWindDirection(entry.wind_direction)}
                         </div>
                       )}
@@ -346,48 +346,48 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
                   )}
 
                   {entry.air_pressure && (
-                    <div className="text-center p-3 bg-muted/30 rounded-lg">
+                    <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <Gauge className="h-4 w-4 text-purple-500" />
-                        <span className="text-sm font-medium">Pressure</span>
+                        <Gauge className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">Pressure</span>
                       </div>
-                      <div className="text-lg font-semibold text-purple-600">
+                      <div className="text-lg font-semibold text-purple-600 truncate">
                         {entry.air_pressure} hPa
                       </div>
                     </div>
                   )}
 
                   {entry.rain_probability && (
-                    <div className="text-center p-3 bg-muted/30 rounded-lg">
+                    <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <CloudRain className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm font-medium">Rain Chance</span>
+                        <CloudRain className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">Rain Chance</span>
                       </div>
-                      <div className="text-lg font-semibold text-blue-600">
+                      <div className="text-lg font-semibold text-blue-600 truncate">
                         {entry.rain_probability}%
                       </div>
                     </div>
                   )}
 
                   {entry.uv_index && (
-                    <div className="text-center p-3 bg-muted/30 rounded-lg">
+                    <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <Sun className="h-4 w-4 text-yellow-500" />
-                        <span className="text-sm font-medium">UV Index</span>
+                        <Sun className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">UV Index</span>
                       </div>
-                      <div className="text-lg font-semibold text-yellow-600">
+                      <div className="text-lg font-semibold text-yellow-600 truncate">
                         {entry.uv_index}
                       </div>
                     </div>
                   )}
 
                   {entry.visibility && (
-                    <div className="text-center p-3 bg-muted/30 rounded-lg">
+                    <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
                       <div className="flex items-center justify-center gap-2 mb-2">
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Visibility</span>
+                        <Eye className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">Visibility</span>
                       </div>
-                      <div className="text-lg font-semibold text-muted-foreground">
+                      <div className="text-lg font-semibold text-muted-foreground truncate">
                         {entry.visibility} km
                       </div>
                     </div>
@@ -395,32 +395,32 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
                 </div>
 
                 {entry.weather_condition && (
-                  <div className="mt-4 p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Cloud className="h-4 w-4 text-muted-foreground" />
+                  <div className="mt-4 p-3 bg-muted/30 rounded-lg w-full max-w-full overflow-hidden">
+                    <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                      <Cloud className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       <span className="font-medium">Weather:</span>
-                      <span className="capitalize">{entry.weather_condition}</span>
+                      <span className="capitalize truncate">{entry.weather_condition}</span>
                     </div>
                   </div>
                 )}
 
                 {(entry.sunrise_time || entry.sunset_time) && (
-                  <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 w-full max-w-full overflow-hidden">
                     {entry.sunrise_time && (
-                      <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
-                        <Sun className="h-4 w-4 text-yellow-500" />
-                        <div>
-                          <div className="text-sm font-medium">Sunrise</div>
-                          <div className="text-sm text-muted-foreground">{entry.sunrise_time}</div>
+                      <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
+                        <Sun className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="text-sm font-medium truncate">Sunrise</div>
+                          <div className="text-sm text-muted-foreground truncate">{entry.sunrise_time}</div>
                         </div>
                       </div>
                     )}
                     {entry.sunset_time && (
-                      <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
-                        <Sun className="h-4 w-4 text-orange-500" />
-                        <div>
-                          <div className="text-sm font-medium">Sunset</div>
-                          <div className="text-sm text-muted-foreground">{entry.sunset_time}</div>
+                      <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
+                        <Sun className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="text-sm font-medium truncate">Sunset</div>
+                          <div className="text-sm text-muted-foreground truncate">{entry.sunset_time}</div>
                         </div>
                       </div>
                     )}
@@ -431,23 +431,23 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
           )}
 
           {/* Additional Details */}
-          <Card>
+          <Card className="w-full max-w-full overflow-hidden">
             <CardHeader>
               <CardTitle className="text-lg">Additional Information</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
+            <CardContent className="w-full max-w-full overflow-hidden">
+              <div className="space-y-3 text-sm w-full max-w-full overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0 overflow-hidden">
                   <span className="text-muted-foreground">Reading ID:</span>
-                  <span className="font-mono text-xs">{entry.id}</span>
+                  <span className="font-mono text-xs truncate">{entry.id}</span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0 overflow-hidden">
                   <span className="text-muted-foreground">Created:</span>
-                  <span>{formatDate(entry.created_at)} at {formatTime(entry.created_at)}</span>
+                  <span className="truncate">{formatDate(entry.created_at)} at {formatTime(entry.created_at)}</span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0 overflow-hidden">
                   <span className="text-muted-foreground">Coordinates:</span>
-                  <span className="font-mono text-xs">
+                  <span className="font-mono text-xs truncate">
                     {entry.latitude.toFixed(6)}, {entry.longitude.toFixed(6)}
                   </span>
                 </div>
