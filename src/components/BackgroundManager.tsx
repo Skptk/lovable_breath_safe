@@ -151,6 +151,30 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
       weatherCondition: currentWeather.weatherCondition
     });
     
+    // Additional debug logging for time parsing
+    if (currentWeather.sunriseTime && currentWeather.sunsetTime) {
+      try {
+        const [sunriseHour, sunriseMinute] = currentWeather.sunriseTime.split(':').map(Number);
+        const [sunsetHour, sunsetMinute] = currentWeather.sunsetTime.split(':').map(Number);
+        const sunriseMinutes = sunriseHour * 60 + sunriseMinute;
+        const sunsetMinutes = sunsetHour * 60 + sunsetMinute;
+        const now = new Date();
+        const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
+        
+        console.log('BackgroundManager: Detailed time analysis:', {
+          sunriseParsed: `${sunriseHour}:${sunriseMinute.toString().padStart(2, '0')}`,
+          sunsetParsed: `${sunsetHour}:${sunsetMinute.toString().padStart(2, '0')}`,
+          sunriseMinutes,
+          sunsetMinutes,
+          currentTimeMinutes,
+          isAfterSunset: currentTimeMinutes > sunsetMinutes,
+          isBeforeSunrise: currentTimeMinutes < sunriseMinutes
+        });
+      } catch (error) {
+        console.warn('BackgroundManager: Error parsing times:', error);
+      }
+    }
+    
     // For OpenWeatherMap, we need to map the weather condition to Open-Meteo codes
     // OpenWeatherMap uses text descriptions, so we'll map them to our background system
     let conditionCode = 1; // Default to partly cloudy

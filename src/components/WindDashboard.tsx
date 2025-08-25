@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Wind, Gauge, Compass, TrendingUp, AlertTriangle, RefreshCw } from "lucide-react";
@@ -126,35 +126,35 @@ export default function WindDashboard({ latitude, longitude }: WindDashboardProp
 
   if (loading && !windData) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
             <Wind className="h-5 w-5" />
             Wind Dashboard
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
           <div className="flex items-center justify-center py-8">
             <div className="text-center space-y-2">
               <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
               <p className="text-muted-foreground">Loading wind data...</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   if (error && !windData) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
             <Wind className="h-5 w-5" />
             Wind Dashboard
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
           <div className="text-center py-8 space-y-4">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
             <p className="text-muted-foreground">{error}</p>
@@ -163,26 +163,26 @@ export default function WindDashboard({ latitude, longitude }: WindDashboardProp
               Retry
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <GlassCard>
+      <GlassCardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+          <GlassCardTitle className="flex items-center gap-2">
             <Wind className="h-5 w-5" />
             Wind Dashboard
-          </CardTitle>
+          </GlassCardTitle>
           <Button onClick={fetchWindData} size="sm" variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
         </div>
-      </CardHeader>
-      <CardContent>
+      </GlassCardHeader>
+      <GlassCardContent>
         {windData ? (
           <div className="space-y-6">
             {/* Wind Rose Visualization */}
@@ -278,7 +278,7 @@ export default function WindDashboard({ latitude, longitude }: WindDashboardProp
             No wind data available
           </div>
         )}
-      </CardContent>
-    </Card>
+      </GlassCardContent>
+    </GlassCard>
   );
 }

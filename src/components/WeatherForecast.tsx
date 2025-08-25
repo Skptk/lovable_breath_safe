@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Cloud, Sun, CloudRain, Thermometer, Droplets, Eye, RefreshCw, AlertTriangle } from "lucide-react";
@@ -123,35 +123,35 @@ export default function WeatherForecast({ latitude, longitude }: WeatherForecast
 
   if (loading && forecastData.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Weather Forecast
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
           <div className="flex items-center justify-center py-8">
             <div className="text-center space-y-2">
               <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
               <p className="text-muted-foreground">Loading forecast data...</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   if (error && forecastData.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Weather Forecast
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
           <div className="text-center py-8 space-y-4">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
             <p className="text-muted-foreground">{error}</p>
@@ -160,26 +160,26 @@ export default function WeatherForecast({ latitude, longitude }: WeatherForecast
               Retry
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <GlassCard>
+      <GlassCardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+          <GlassCardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
             Weather Forecast
-          </CardTitle>
+          </GlassCardTitle>
           <Button onClick={fetchForecastData} size="sm" variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
         </div>
-      </CardHeader>
-      <CardContent>
+      </GlassCardHeader>
+      <GlassCardContent>
         {forecastData.length > 0 ? (
           <div className="space-y-4">
             {/* 7-Day Forecast Grid */}
@@ -284,7 +284,7 @@ export default function WeatherForecast({ latitude, longitude }: WeatherForecast
             No forecast data available
           </div>
         )}
-      </CardContent>
-    </Card>
+      </GlassCardContent>
+    </GlassCard>
   );
 }

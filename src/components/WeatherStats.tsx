@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Layers, Loader2, AlertTriangle, Wind, Cloud, Sun, CloudRain, Thermometer, Droplets, Eye, Gauge, Compass } from "lucide-react";
@@ -396,14 +396,14 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
       {/* Weather Stats Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Air Quality Card */}
-        <Card className="floating-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Air Quality Index</CardTitle>
+        <GlassCard className="floating-card">
+          <GlassCardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <GlassCardTitle className="text-sm font-medium">Air Quality Index</GlassCardTitle>
             <Badge variant={airQualityData?.aqi && airQualityData.aqi <= 50 ? "default" : "destructive"}>
               {airQualityData?.aqi || 'N/A'}
             </Badge>
-          </CardHeader>
-          <CardContent>
+          </GlassCardHeader>
+          <GlassCardContent>
             <div className="text-2xl font-bold">
               {airQualityData?.aqi ? (
                 airQualityData.aqi <= 50 ? 'Good' :
@@ -416,16 +416,16 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             <p className="text-xs text-muted-foreground">
               {airQualityData?.location} • {airQualityData?.timestamp ? new Date(airQualityData.timestamp).toLocaleString() : 'N/A'}
             </p>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
 
         {/* Location Card */}
-        <Card className="floating-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Location</CardTitle>
+        <GlassCard className="floating-card">
+          <GlassCardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <GlassCardTitle className="text-sm font-medium">Current Location</GlassCardTitle>
             <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+          </GlassCardHeader>
+          <GlassCardContent>
             <div className="text-2xl font-bold">{locationData?.city || 'Unknown'}</div>
             <p className="text-xs text-muted-foreground">
               {locationData?.country}
@@ -433,13 +433,13 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             <p className="text-xs text-muted-foreground">
               {locationData?.latitude?.toFixed(4)}, {locationData?.longitude?.toFixed(4)}
             </p>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
 
         {/* Weather Conditions Card */}
-        <Card className="floating-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Weather Conditions</CardTitle>
+        <GlassCard className="floating-card">
+          <GlassCardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <GlassCardTitle className="text-sm font-medium">Weather Conditions</GlassCardTitle>
             {currentWeather?.weatherCondition === 'Rain' ? (
               <CloudRain className="h-4 w-4 text-muted-foreground" />
             ) : currentWeather?.weatherCondition === 'Clouds' ? (
@@ -447,8 +447,8 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             ) : (
               <Sun className="h-4 w-4 text-muted-foreground" />
             )}
-          </CardHeader>
-          <CardContent>
+          </GlassCardHeader>
+          <GlassCardContent>
             {weatherLoading ? (
               <div className="text-2xl font-bold">Loading...</div>
             ) : currentWeather ? (
@@ -505,84 +505,84 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                 Error: {weatherError || 'None'}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
       </div>
 
       {/* Comprehensive Weather Data */}
       {locationData && currentWeather && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Temperature & Feels Like */}
-          <Card className="floating-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <GlassCard className="floating-card">
+            <GlassCardHeader className="pb-2">
+              <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
                 <Thermometer className="h-4 w-4" />
                 Temperature
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="pt-0">
               <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                 {currentWeather.temperature}°C
               </div>
               <p className="text-xs text-muted-foreground">
                 Feels like {currentWeather.feelsLikeTemperature || currentWeather.temperature}°C
               </p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
           {/* Humidity & Pressure */}
-          <Card className="floating-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <GlassCard className="floating-card">
+            <GlassCardHeader className="pb-2">
+              <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
                 <Droplets className="h-4 w-4" />
                 Humidity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="pt-0">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {currentWeather.humidity}%
               </div>
               <p className="text-xs text-muted-foreground">
                 Dew point {currentWeather.airPressure || 'N/A'} hPa
               </p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
           {/* Wind Information */}
-          <Card className="floating-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <GlassCard className="floating-card">
+            <GlassCardHeader className="pb-2">
+              <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
                 <Wind className="h-4 w-4" />
                 Wind
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="pt-0">
               <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
                 {currentWeather.windSpeed} km/h
               </div>
               <div className="text-sm text-muted-foreground">
                 {currentWeather.windDirection}° {getWindDirection(currentWeather.windDirection)}
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
           {/* Visibility & UV */}
-          <Card className="floating-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <GlassCard className="floating-card">
+            <GlassCardHeader className="pb-2">
+              <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
                 <Eye className="h-4 w-4" />
                 Visibility
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="pt-0">
+              <div className="text-2xl font-bold text-purple-600 dark:text-orange-400">
                 {currentWeather.visibility || 'N/A'} km
               </div>
               <p className="text-xs text-muted-foreground">
                 UV index {currentWeather.uvIndex || 'N/A'}
               </p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </div>
       )}
 
@@ -605,8 +605,8 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
 
 
       {/* Map Container - Google Maps Style */}
-      <Card className="floating-card relative h-[calc(100vh-200px)] min-h-[600px] shadow-card overflow-hidden">
-        <CardContent className="p-0 h-full relative">
+      <GlassCard className="floating-card relative h-[calc(100vh-200px)] min-h-[600px] shadow-card overflow-hidden">
+        <GlassCardContent className="p-0 h-full relative">
           {/* Map Header - Fixed at top */}
           <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-r from-card/95 via-card/90 to-card/95 backdrop-blur-md border-b border-border/50">
             <div className="p-4">
@@ -655,19 +655,19 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
               airQualityData={airQualityData}
             />
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* Information Grid Beneath Map */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Location Information Card */}
         {locationData && (
-          <Card>
-            <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+          <GlassCard>
+            <GlassCardHeader className="flex flex-row items-center space-y-0 pb-2">
               <MapPin className="h-4 w-4 text-primary mr-2" />
-              <CardTitle className="text-sm font-medium">Location Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+              <GlassCardTitle className="text-sm font-medium">Location Details</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-3">
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">City:</span>
@@ -688,18 +688,18 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                   <span className="text-sm font-medium capitalize">{locationData.source}</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         )}
 
         {/* Weather Summary Card */}
         {currentWeather && (
-          <Card>
-            <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+          <GlassCard>
+            <GlassCardHeader className="flex flex-row items-center space-y-0 pb-2">
               <Cloud className="h-4 w-4 text-blue-500 mr-2" />
-              <CardTitle className="text-sm font-medium">Weather Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+              <GlassCardTitle className="text-sm font-medium">Weather Summary</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2">
                   <Thermometer className="h-3 w-3 text-red-500" />
@@ -729,17 +729,17 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                   <span className="font-medium">{currentWeather.feelsLikeTemperature}°C</span>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         )}
 
         {/* Map Legend Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+        <GlassCard>
+          <GlassCardHeader className="flex flex-row items-center space-y-0 pb-2">
             <Layers className="h-4 w-4 text-muted-foreground mr-2" />
-            <CardTitle className="text-sm font-medium">Map Legend</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+            <GlassCardTitle className="text-sm font-medium">Map Legend</GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent className="space-y-2">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-blue-500"></div>
@@ -758,8 +758,8 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                 <span className="text-xs text-muted-foreground">Poor Air Quality</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
       </div>
     </div>
   );

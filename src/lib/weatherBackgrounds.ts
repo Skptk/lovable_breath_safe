@@ -145,7 +145,9 @@ export function isNightTime(sunriseTime?: string, sunsetTime?: string): boolean 
   if (!sunriseTime || !sunsetTime) {
     // If we don't have sunrise/sunset data, estimate based on current hour
     const currentHour = new Date().getHours();
-    return currentHour < 6 || currentHour > 20; // Night: 8 PM - 6 AM
+    const isNight = currentHour < 6 || currentHour > 20; // Night: 8 PM - 6 AM
+    console.log(`🌙 [isNightTime] No sunrise/sunset data, using hour-based estimation: ${currentHour}:00, isNight: ${isNight}`);
+    return isNight;
   }
 
   try {
@@ -159,22 +161,39 @@ export function isNightTime(sunriseTime?: string, sunsetTime?: string): boolean 
     const sunriseMinutes = sunriseHour * 60 + sunriseMinute;
     const sunsetMinutes = sunsetHour * 60 + sunsetMinute;
     
+    // Debug logging
+    console.log(`🌙 [isNightTime] Time analysis:`, {
+      currentTime: `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`,
+      currentTimeMinutes: currentTime,
+      sunriseTime,
+      sunriseMinutes,
+      sunsetTime,
+      sunsetMinutes,
+              isNormalCase: sunsetMinutes < sunriseMinutes
+    });
+    
     // Night time is from sunset until sunrise the next day
     // This handles the case where we're after midnight but before sunrise
     if (sunsetMinutes < sunriseMinutes) {
       // Normal case: sunset is before sunrise (e.g., 6 PM to 6 AM)
       // Night time: after sunset OR before sunrise
-      return currentTime > sunsetMinutes || currentTime < sunriseMinutes;
+      const isNight = currentTime > sunsetMinutes || currentTime < sunriseMinutes;
+      console.log(`🌙 [isNightTime] Normal case: currentTime > sunsetMinutes (${currentTime} > ${sunsetMinutes}) OR currentTime < sunriseMinutes (${currentTime} < ${sunriseMinutes}) = ${isNight}`);
+      return isNight;
     } else {
       // Edge case: sunset is after sunrise (e.g., in polar regions)
       // Night time: before sunrise AND after sunset
-      return currentTime < sunriseMinutes && currentTime > sunsetMinutes;
+      const isNight = currentTime < sunriseMinutes && currentTime > sunsetMinutes;
+      console.log(`🌙 [isNightTime] Edge case: currentTime < sunriseMinutes (${currentTime} < ${sunriseMinutes}) AND currentTime > sunsetMinutes (${currentTime} > ${sunsetMinutes}) = ${isNight}`);
+      return isNight;
     }
   } catch (error) {
     console.warn('Error parsing sunrise/sunset times:', error);
     // Fallback to hour-based estimation
     const currentHour = new Date().getHours();
-    return currentHour < 6 || currentHour > 20;
+    const isNight = currentHour < 6 || currentHour > 20;
+    console.log(`🌙 [isNightTime] Error fallback: ${currentHour}:00, isNight: ${isNight}`);
+    return isNight;
   }
 }
 
