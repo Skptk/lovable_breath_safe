@@ -74,6 +74,28 @@ export const useAirQuality = () => {
   const transformGlobalData = useCallback((globalData: any): AirQualityData => {
     if (!globalData) return null;
     
+    // Validate data source to prevent contamination
+    if (globalData.data_source && 
+        (globalData.data_source.includes('Initial Data') || 
+         globalData.data_source.includes('Legacy Data') ||
+         globalData.data_source.includes('placeholder') ||
+         globalData.data_source.includes('mock') ||
+         globalData.data_source.includes('demo'))) {
+      console.warn('🚨 [useAirQuality] Detected contaminated data source:', globalData.data_source);
+      return null; // Reject contaminated data
+    }
+    
+    // Validate AQI values to prevent unrealistic data
+    if (globalData.aqi && (globalData.aqi === 65 || globalData.aqi === 75 || globalData.aqi < 10)) {
+      console.warn('🚨 [useAirQuality] Detected suspicious AQI value:', globalData.aqi, 'from source:', globalData.data_source);
+      // Only reject if it's not from OpenWeatherMap API
+      if (globalData.data_source !== 'OpenWeatherMap API') {
+        return null;
+      }
+    }
+    
+    console.log('✅ [useAirQuality] Using legitimate global data from:', globalData.data_source);
+    
     return {
       aqi: globalData.aqi || 0,
       pm25: globalData.pm25 || 0,

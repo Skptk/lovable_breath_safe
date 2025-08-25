@@ -64,28 +64,36 @@ export default function AQIDataCharts({
   const [selectedPollutant, setSelectedPollutant] = useState<PollutantData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Mock historical data for charts (in a real app, this would come from the database)
-  const generateHistoricalData = (currentValue: number, pollutantName: string) => {
-    const data = [];
-    const now = new Date();
-    
-    for (let i = 23; i >= 0; i--) {
-      const time = new Date(now.getTime() - i * 60 * 60 * 1000); // Last 24 hours
-      const variation = (Math.random() - 0.5) * 0.2; // ±10% variation
-      const value = Math.max(0, currentValue * (1 + variation));
-      
-      data.push({
-        time: time.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: false 
-        }),
-        value: Math.round(value * 100) / 100,
-        pollutant: pollutantName
-      });
-    }
-    
-    return data;
+  // Remove mock historical data generation - only use real data from database
+  // const generateHistoricalData = (currentValue: number, pollutantName: string) => {
+  //   const data = [];
+  //   const now = new Date();
+  //   
+  //   for (let i = 23; i >= 0; i--) {
+  //     const time = new Date(now.getTime() - i * 60 * 60 * 1000); // Last 24 hours
+  //     const variation = (Math.random() - 0.5) * 0.2; // ±10% variation
+  //     const value = Math.max(0, currentValue * (1 + variation));
+  //     
+  //     data.push({
+  //       time: time.toLocaleTimeString('en-US', { 
+  //         hour: '2-digit', 
+  //         minute: '2-digit',
+  //         hour12: false 
+  //       }),
+  //       value: Math.round(value * 100) / 100,
+  //       pollutant: pollutantName
+  //     });
+  //   }
+  //   
+  //   return data;
+  // };
+
+  // Function to get real historical data from database (to be implemented)
+  const getRealHistoricalData = async (pollutantName: string): Promise<any[]> => {
+    // TODO: Implement real historical data fetching from database
+    // This should query the air_quality_readings table for historical data
+    console.log(`[AQIDataCharts] Fetching real historical data for ${pollutantName}`);
+    return [];
   };
 
   const pollutants: PollutantData[] = [
@@ -297,7 +305,7 @@ export default function AQIDataCharts({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {pollutants.map((pollutant) => {
           const status = getPollutantStatus(pollutant.value, pollutant.name);
-          const historicalData = generateHistoricalData(pollutant.value, pollutant.name);
+          // const historicalData = generateHistoricalData(pollutant.value, pollutant.name);
           
           return (
             <GlassCard 
@@ -331,7 +339,7 @@ export default function AQIDataCharts({
                 {/* Mini Chart */}
                 <div className="h-24 mb-3">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={historicalData}>
+                    <AreaChart data={[]}>
                       <defs>
                         <linearGradient id={`gradient-${pollutant.name}`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor={pollutant.color} stopOpacity={0.3}/>
@@ -433,7 +441,7 @@ export default function AQIDataCharts({
                 <h3 className="text-lg font-semibold mb-4">24-Hour Trend</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={generateHistoricalData(selectedPollutant.value, selectedPollutant.name)}>
+                    <LineChart data={[]}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                       <XAxis 
                         dataKey="time" 

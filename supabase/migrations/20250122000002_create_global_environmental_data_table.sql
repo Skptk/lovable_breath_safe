@@ -263,16 +263,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Grant execute permission on the function
 GRANT EXECUTE ON FUNCTION public.get_all_active_environmental_data() TO authenticated;
 
--- Insert some initial data for major cities (placeholder data)
-INSERT INTO public.global_environmental_data (
-  id, city_name, country, latitude, longitude, aqi, 
-  pm25, pm10, no2, so2, co, o3, temperature, humidity,
-  wind_speed, wind_direction, data_source, collection_timestamp, is_active
-) VALUES 
-  ('nairobi-initial', 'Nairobi', 'Kenya', -1.2921, 36.8219, 65, 25, 45, 30, 15, 200, 45, 22, 65, 12, 180, 'Initial Data', now(), true),
-  ('mombasa-initial', 'Mombasa', 'Kenya', -4.0435, 39.6682, 55, 20, 35, 25, 10, 150, 40, 28, 75, 15, 200, 'Initial Data', now(), true),
-  ('kisumu-initial', 'Kisumu', 'Kenya', -0.1022, 34.7617, 60, 22, 40, 28, 12, 180, 42, 24, 70, 10, 190, 'Initial Data', now(), true)
-ON CONFLICT (id) DO NOTHING;
+-- Remove placeholder data insertion to prevent data contamination
+-- The table will be populated by the scheduled data collection system with real OpenWeatherMap data
+-- INSERT INTO public.global_environmental_data (
+--   id, city_name, country, latitude, longitude, aqi, 
+--   pm25, pm10, no2, so2, co, o3, temperature, humidity,
+--   wind_speed, wind_direction, data_source, collection_timestamp, is_active
+-- ) VALUES 
+--   ('nairobi-initial', 'Nairobi', 'Kenya', -1.2921, 36.8219, 65, 25, 45, 30, 15, 200, 45, 22, 65, 12, 180, 'Initial Data', now(), true),
+--   ('mombasa-initial', 'Mombasa', 'Kenya', -4.0435, 39.6682, 55, 20, 35, 25, 10, 150, 40, 28, 75, 15, 200, 'Initial Data', now(), true),
+--   ('kisumu-initial', 'Kisumu', 'Kenya', -0.1022, 34.7617, 60, 22, 40, 28, 12, 180, 42, 24, 70, 10, 190, 'Initial Data', now(), true)
+-- ON CONFLICT (id) DO NOTHING;
 
 -- Log the migration completion
 DO $$
@@ -280,5 +281,5 @@ BEGIN
   RAISE LOG 'Migration 20250122000002_create_global_environmental_data_table completed successfully';
   RAISE LOG 'Created global_environmental_data table with comprehensive environmental data storage';
   RAISE LOG 'Added indexes, views, functions, and RLS policies for optimal performance and security';
-  RAISE LOG 'Inserted initial placeholder data for major cities';
+  RAISE LOG 'Table ready for real data from scheduled OpenWeatherMap collection system';
 END $$;

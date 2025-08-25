@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import Header from "@/components/Header";
 import WeatherStatsCard from "./WeatherStatsCard";
+import DataSourceValidator from "./DataSourceValidator";
 
 interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
@@ -239,6 +240,16 @@ export default function AirQualityDashboard({
           onManualRefresh={handleRefresh}
           isUsingCachedData={isUsingCachedData}
         />
+
+        {/* Data Source Validator */}
+        {data && (
+          <DataSourceValidator
+            dataSource={data.dataSource}
+            aqi={data.aqi}
+            location={data.location}
+            timestamp={data.timestamp}
+          />
+        )}
 
         {/* Demo Mode Banner */}
         {isDemoMode && (

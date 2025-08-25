@@ -570,18 +570,13 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
           />
         </div>
       ) : (
-        // Show demo data for testing when no real data is available
+        // Show loading state instead of demo data to prevent data contamination
         <div className="mt-8">
-          <AQIDataCharts
-            aqi={75}
-            pm25={15.2}
-            pm10={28.5}
-            no2={45.8}
-            so2={12.3}
-            co={2.1}
-            o3={62.4}
-            timestamp={new Date().toISOString()}
-          />
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading air quality data...</p>
+            <p className="text-sm text-muted-foreground mt-2">Please ensure location permissions are enabled</p>
+          </div>
         </div>
       )}
     </div>
