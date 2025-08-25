@@ -461,12 +461,165 @@ export type Database = {
         }
         Relationships: []
       }
+      global_environmental_data: {
+        Row: {
+          id: string
+          city_name: string
+          country: string
+          latitude: number
+          longitude: number
+          aqi: number
+          pm25: number | null
+          pm10: number | null
+          no2: number | null
+          so2: number | null
+          co: number | null
+          o3: number | null
+          temperature: number | null
+          humidity: number | null
+          wind_speed: number | null
+          wind_direction: number | null
+          wind_gust: number | null
+          air_pressure: number | null
+          visibility: number | null
+          weather_condition: string | null
+          feels_like_temperature: number | null
+          sunrise_time: string | null
+          sunset_time: string | null
+          data_source: string
+          collection_timestamp: string
+          is_active: boolean
+        }
+        Insert: {
+          id?: string
+          city_name: string
+          country: string
+          latitude: number
+          longitude: number
+          aqi: number
+          pm25?: number | null
+          pm10?: number | null
+          no2?: number | null
+          so2?: number | null
+          co?: number | null
+          o3?: number | null
+          temperature?: number | null
+          humidity?: number | null
+          wind_speed?: number | null
+          wind_direction?: number | null
+          wind_gust?: number | null
+          air_pressure?: number | null
+          visibility?: number | null
+          weather_condition?: string | null
+          feels_like_temperature?: number | null
+          sunrise_time?: string | null
+          sunset_time?: string | null
+          data_source: string
+          collection_timestamp?: string
+          is_active?: boolean
+        }
+        Update: {
+          id?: string
+          city_name?: string
+          country?: string
+          latitude?: number
+          longitude?: number
+          aqi?: number
+          pm25?: number | null
+          pm10?: number | null
+          no2?: number | null
+          so2?: number | null
+          co?: number | null
+          o3?: number | null
+          temperature?: number | null
+          humidity?: number | null
+          wind_speed?: number | null
+          wind_direction?: number | null
+          wind_gust?: number | null
+          air_pressure?: number | null
+          visibility?: number | null
+          weather_condition?: string | null
+          feels_like_temperature?: number | null
+          sunrise_time?: string | null
+          sunset_time?: string | null
+          data_source?: string
+          collection_timestamp?: string
+          is_active?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_all_active_environmental_data: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          city_name: string
+          country: string
+          latitude: number
+          longitude: number
+          aqi: number
+          pm25: number | null
+          pm10: number | null
+          no2: number | null
+          so2: number | null
+          co: number | null
+          o3: number | null
+          temperature: number | null
+          humidity: number | null
+          wind_speed: number | null
+          wind_direction: number | null
+          wind_gust: number | null
+          air_pressure: number | null
+          visibility: number | null
+          weather_condition: string | null
+          feels_like_temperature: number | null
+          sunrise_time: string | null
+          sunset_time: string | null
+          data_source: string
+          collection_timestamp: string
+          is_active: boolean
+        }[]
+      }
+      get_nearest_environmental_data: {
+        Args: {
+          p_latitude: number
+          p_longitude: number
+          p_max_distance_km?: number
+        }
+        Returns: {
+          id: string
+          city_name: string
+          country: string
+          latitude: number
+          longitude: number
+          aqi: number
+          pm25: number | null
+          pm10: number | null
+          no2: number | null
+          so2: number | null
+          co: number | null
+          o3: number | null
+          temperature: number | null
+          humidity: number | null
+          wind_speed: number | null
+          wind_direction: number | null
+          wind_gust: number | null
+          air_pressure: number | null
+          visibility: number | null
+          weather_condition: string | null
+          feels_like_temperature: number | null
+          sunrise_time: string | null
+          sunset_time: string | null
+          data_source: string
+          collection_timestamp: string
+          is_active: boolean
+          distance_km: number
+        }[]
+      }
     }
     Enums: {
       app_role: "user" | "admin"

@@ -42,7 +42,65 @@ export const useGlobalEnvironmentalData = (
   const { user } = useAuth();
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  // Function to get nearest environmental data based on coordinates
+  // Function to get all active environmental data for all cities
+  const getAllCitiesEnvironmentalData = useCallback(async (): Promise<GlobalEnvironmentalData[]> => {
+    try {
+      console.log('🌍 [GlobalData] Fetching environmental data for all cities');
+      
+      // Try to use the database function first
+      try {
+        const { data, error } = await supabase
+          .rpc('get_all_active_environmental_data');
+
+        if (error) {
+          console.warn('⚠️ [GlobalData] Database function failed, trying direct table query:', error);
+          throw error; // This will trigger the fallback
+        }
+
+        if (data && data.length > 0) {
+          console.log(`✅ [GlobalData] Found data for ${data.length} cities via function`);
+          // Use the most recent timestamp as last updated
+          const mostRecent = data.reduce((latest, current) => 
+            new Date(current.collection_timestamp) > new Date(latest.collection_timestamp) ? current : latest
+          );
+          setLastUpdated(mostRecent.collection_timestamp);
+          return data as GlobalEnvironmentalData[];
+        }
+      } catch (functionError) {
+        console.log('🔄 [GlobalData] Falling back to direct table query...');
+      }
+
+      // Fallback: Direct table query if function doesn't exist
+      const { data, error } = await supabase
+        .from('global_environmental_data')
+        .select('*')
+        .eq('is_active', true)
+        .order('collection_timestamp', { ascending: false });
+
+      if (error) {
+        console.error('❌ [GlobalData] Error fetching all cities data:', error);
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        console.log(`✅ [GlobalData] Found data for ${data.length} cities via direct query`);
+        // Use the most recent timestamp as last updated
+        const mostRecent = data.reduce((latest, current) => 
+          new Date(current.collection_timestamp) > new Date(latest.collection_timestamp) ? current : latest
+        );
+        setLastUpdated(mostRecent.collection_timestamp);
+        return data as GlobalEnvironmentalData[];
+      }
+
+      console.log('⚠️ [GlobalData] No environmental data found for any cities');
+      return [];
+    } catch (error) {
+      console.error('❌ [GlobalData] Failed to fetch all cities data:', error);
+      throw error;
+    }
+  }, []);
+
+  // Function to get nearest environmental data for given coordinates
   const getNearestEnvironmentalData = useCallback(async (): Promise<GlobalEnvironmentalData | null> => {
     if (!latitude || !longitude) {
       console.log('useGlobalEnvironmentalData: No coordinates provided, cannot fetch nearest data');
@@ -52,12 +110,34 @@ export const useGlobalEnvironmentalData = (
     try {
       console.log(`🌍 [GlobalData] Fetching nearest environmental data for coordinates: ${latitude}, ${longitude}`);
       
+      // Try to use the database function first
+      try {
+        const { data, error } = await supabase
+          .rpc('get_nearest_environmental_data', {
+            p_latitude: latitude,
+            p_longitude: longitude,
+            p_max_distance_km: maxDistanceKm
+          });
+
+        if (error) {
+          console.warn('⚠️ [GlobalData] Database function failed, trying direct table query:', error);
+          throw error; // This will trigger the fallback
+        }
+
+        if (data && data.length > 0) {
+          console.log(`✅ [GlobalData] Found nearest data via function: ${data[0].city_name}`);
+          setLastUpdated(data[0].collection_timestamp);
+          return data[0] as GlobalEnvironmentalData;
+        }
+      } catch (functionError) {
+        console.log('🔄 [GlobalData] Falling back to direct table query...');
+      }
+
+      // Fallback: Direct table query with manual distance calculation
       const { data, error } = await supabase
-        .rpc('get_nearest_environmental_data', {
-          p_latitude: latitude,
-          p_longitude: longitude,
-          p_max_distance_km: maxDistanceKm
-        });
+        .from('global_environmental_data')
+        .select('*')
+        .eq('is_active', true);
 
       if (error) {
         console.error('❌ [GlobalData] Error fetching nearest environmental data:', error);
@@ -65,19 +145,56 @@ export const useGlobalEnvironmentalData = (
       }
 
       if (data && data.length > 0) {
-        const nearestData = data[0];
-        console.log(`✅ [GlobalData] Found nearest data for ${nearestData.city_name} (${nearestData.distance_km?.toFixed(1)}km away)`);
-        setLastUpdated(nearestData.collection_timestamp);
-        return nearestData as GlobalEnvironmentalData;
+        // Manual distance calculation using Haversine formula
+        const nearestData = data.reduce((nearest, current) => {
+          const currentDistance = calculateDistance(
+            latitude, longitude,
+            current.latitude, current.longitude
+          );
+          const nearestDistance = nearest ? calculateDistance(
+            latitude, longitude,
+            nearest.latitude, nearest.longitude
+          ) : Infinity;
+          
+          return currentDistance < nearestDistance ? current : nearest;
+        });
+
+        if (nearestData) {
+          const distance = calculateDistance(
+            latitude, longitude,
+            nearestData.latitude, nearestData.longitude
+          );
+          
+          if (distance <= maxDistanceKm) {
+            console.log(`✅ [GlobalData] Found nearest data via direct query: ${nearestData.city_name} (${distance.toFixed(1)}km)`);
+            setLastUpdated(nearestData.collection_timestamp);
+            return nearestData as GlobalEnvironmentalData;
+          } else {
+            console.log(`⚠️ [GlobalData] Nearest data too far: ${nearestData.city_name} (${distance.toFixed(1)}km > ${maxDistanceKm}km)`);
+          }
+        }
       }
 
-      console.log(`⚠️ [GlobalData] No environmental data found within ${maxDistanceKm}km of coordinates`);
+      console.log('⚠️ [GlobalData] No environmental data found within range');
       return null;
     } catch (error) {
       console.error('❌ [GlobalData] Failed to fetch nearest environmental data:', error);
       throw error;
     }
   }, [latitude, longitude, maxDistanceKm]);
+
+  // Helper function to calculate distance between two coordinates (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
 
   // Function to get environmental data for a specific city
   const getCityEnvironmentalData = useCallback(async (): Promise<GlobalEnvironmentalData | null> => {
@@ -114,37 +231,6 @@ export const useGlobalEnvironmentalData = (
       throw error;
     }
   }, [cityName]);
-
-  // Function to get all active environmental data for all cities
-  const getAllCitiesEnvironmentalData = useCallback(async (): Promise<GlobalEnvironmentalData[]> => {
-    try {
-      console.log('🌍 [GlobalData] Fetching environmental data for all cities');
-      
-      const { data, error } = await supabase
-        .rpc('get_all_active_environmental_data');
-
-      if (error) {
-        console.error('❌ [GlobalData] Error fetching all cities data:', error);
-        throw error;
-      }
-
-      if (data && data.length > 0) {
-        console.log(`✅ [GlobalData] Found data for ${data.length} cities`);
-        // Use the most recent timestamp as last updated
-        const mostRecent = data.reduce((latest, current) => 
-          new Date(current.collection_timestamp) > new Date(latest.collection_timestamp) ? current : latest
-        );
-        setLastUpdated(mostRecent.collection_timestamp);
-        return data as GlobalEnvironmentalData[];
-      }
-
-      console.log('⚠️ [GlobalData] No environmental data found for any cities');
-      return [];
-    } catch (error) {
-      console.error('❌ [GlobalData] Failed to fetch all cities data:', error);
-      throw error;
-    }
-  }, []);
 
   // Determine which query function to use based on options
   const queryFunction = useMemo(() => {

@@ -249,11 +249,17 @@ export const useAirQuality = () => {
             o3: finalData.o3,
             latitude: safeCoordinates.lat,
             longitude: safeCoordinates.lng,
-            location: finalData.location,
+            location_name: finalData.location || 'Unknown Location',
             timestamp: new Date().toISOString(),
-            data_source: finalData.dataSource,
-            temperature: finalData.environmental?.temperature,
-            humidity: finalData.environmental?.humidity
+            data_source: finalData.dataSource || 'Global Environmental Data',
+            // Add weather data if available
+            temperature: finalData.environmental?.temperature || null,
+            humidity: finalData.environmental?.humidity || null,
+            wind_speed: finalData.environmental?.windSpeed || null,
+            wind_direction: finalData.environmental?.windDirection || null,
+            air_pressure: finalData.environmental?.airPressure || null,
+            visibility: finalData.environmental?.visibility || null,
+            weather_condition: finalData.environmental?.weatherCondition || null
           });
 
         if (error) {
