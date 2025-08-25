@@ -227,7 +227,8 @@ export const useAirQuality = () => {
     if (!user || !finalData || !safeCoordinates) return;
 
     // Create a stable data signature that doesn't change on every render
-    const dataSignature = `${user.id}-${finalData.aqi}-${finalData.pm25}-${finalData.pm10}-${finalData.dataSource}`;
+    // Remove environmental data from signature as it changes object references
+    const dataSignature = `${user.id}-${finalData.aqi}-${finalData.pm25}-${finalData.pm10}-${finalData.dataSource}-${Math.floor(Date.now() / (5 * 60 * 1000))}`; // 5-minute window
     
     // Check if we've already saved this exact data signature
     if (savedDataRef.current.has(dataSignature)) {
@@ -289,7 +290,7 @@ export const useAirQuality = () => {
     };
 
     saveReading();
-  }, [user?.id, finalData?.aqi, finalData?.pm25, finalData?.pm10, finalData?.dataSource, finalData?.environmental, safeCoordinates?.lat, safeCoordinates?.lng]);
+  }, [user?.id, finalData?.aqi, finalData?.pm25, finalData?.pm10, finalData?.dataSource, safeCoordinates?.lat, safeCoordinates?.lng]);
 
   return {
     data: finalData,

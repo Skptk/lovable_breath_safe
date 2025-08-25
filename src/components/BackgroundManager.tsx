@@ -69,19 +69,19 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     hasUserConsent, 
     permissionStatus,
     requestLocation,
-    useIPBasedLocation
+    getIPBasedLocationAsync
   } = useGeolocation();
 
   // Update weather store coordinates when location data changes
   useEffect(() => {
-    if (locationData) {
+    if (locationData && !hasInitialData) {
       console.log('BackgroundManager: Location data updated, setting coordinates:', locationData);
       setCoordinates({ 
         latitude: locationData.latitude, 
         longitude: locationData.longitude 
       });
     }
-  }, [locationData, setCoordinates]);
+  }, [locationData?.latitude, locationData?.longitude, setCoordinates, hasInitialData]);
 
   // Implement immediate fetch on login and progressive loading
   useEffect(() => {
@@ -109,7 +109,7 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
       
       fetchInitialWeather();
     }
-  }, [user, hasInitialData, locationData, fetchWeatherData]);
+  }, [user, hasInitialData, locationData?.latitude, locationData?.longitude, fetchWeatherData]);
 
   // Update background state based on weather loading status
   useEffect(() => {

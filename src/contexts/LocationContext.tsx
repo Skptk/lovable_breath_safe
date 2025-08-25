@@ -102,6 +102,19 @@ export function LocationProvider({ children }: LocationProviderProps) {
     checkLocationPermission();
   }, []); // Empty dependency array to run only once on mount
 
+  // Ensure hasRequestedPermission is always set to true after a reasonable timeout
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (!hasRequestedPermission) {
+        console.log('📍 Location permission check timeout - forcing completion');
+        setHasRequestedPermission(true);
+        permissionCheckedRef.current = true;
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(timeoutId);
+  }, [hasRequestedPermission]);
+
   // Function to request location permission
   const requestLocationPermission = useCallback(async (): Promise<boolean> => {
     if (!navigator.geolocation) {

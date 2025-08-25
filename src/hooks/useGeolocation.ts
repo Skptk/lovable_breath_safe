@@ -139,6 +139,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
   
   const isRequestingRef = useRef(false);
   const hasInitializedRef = useRef(false);
+  const ipLocationFetchedRef = useRef(false); // Prevent multiple IP location fetches
 
   // Check permission status
   const checkPermissionStatus = useCallback(async (): Promise<'granted' | 'denied' | 'prompt' | 'unknown'> => {
@@ -194,11 +195,14 @@ export const useGeolocation = (): UseGeolocationReturn => {
           }
         }
         
-        // If no GPS location available, try IP-based location
-        console.log('🌍 [Geolocation] No GPS location available, trying IP-based location...');
-        const ipLocation = await getIPBasedLocation();
-        setLocationData(ipLocation);
-        setHasUserConsent(false);
+        // If no GPS location available and we haven't fetched IP location yet, try IP-based location
+        if (!ipLocationFetchedRef.current) {
+          console.log('🌍 [Geolocation] No GPS location available, trying IP-based location...');
+          ipLocationFetchedRef.current = true;
+          const ipLocation = await getIPBasedLocation();
+          setLocationData(ipLocation);
+          setHasUserConsent(false);
+        }
         
       } catch (error) {
         console.warn('🌍 [Geolocation] Failed to initialize location:', error);
