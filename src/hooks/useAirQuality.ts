@@ -81,19 +81,23 @@ export const useAirQuality = () => {
     });
     
     // Validate data source to prevent contamination - only reject actual mock/test data
+    // ACCEPT: OpenWeatherMap API, OpenAQ API, and other legitimate API sources
+    // REJECT: Only mock, test, placeholder, demo, fake data
     if (globalData.data_source && 
         (globalData.data_source.toLowerCase().includes('mock') ||
          globalData.data_source.toLowerCase().includes('test') ||
          globalData.data_source.toLowerCase().includes('placeholder') ||
          globalData.data_source.toLowerCase().includes('demo') ||
-         globalData.data_source.toLowerCase().includes('fake'))) {
+         globalData.data_source.toLowerCase().includes('fake') ||
+         globalData.data_source.toLowerCase().includes('initial data'))) {
       console.warn('🚨 [useAirQuality] Detected contaminated data source:', globalData.data_source);
       return null; // Reject contaminated data
     }
     
-    // Validate AQI values to prevent unrealistic data - but allow legitimate OpenWeatherMap values
+    // Validate AQI values - accept all legitimate OpenWeatherMap API values
     if (globalData.aqi !== undefined && globalData.aqi !== null) {
-      // Allow all AQI values from OpenWeatherMap API as they are legitimate
+      // OpenWeatherMap API returns AQI values 1-5, which get converted to standard AQI (50-300)
+      // These are legitimate values and should always be accepted
       if (globalData.data_source === 'OpenWeatherMap API') {
         console.log('✅ [useAirQuality] Using legitimate OpenWeatherMap API data with AQI:', globalData.aqi);
       } else if (globalData.aqi < 0 || globalData.aqi > 500) {
