@@ -30,6 +30,10 @@ export function ConnectionResilienceProvider({
   const maxReconnectAttempts = config.maxReconnectAttempts ?? 5;
   const heartbeatInterval = config.heartbeatInterval ?? 30000; // 30 seconds
   const enableAutoReconnect = config.enableAutoReconnect ?? true;
+  
+  // CRITICAL FIX: Prevent infinite dismiss callbacks
+  const dismissCountRef = useRef(0);
+  const lastDismissTimeRef = useRef(0);
 
   // Connection health monitoring with proper dependency management
   useEffect(() => {
@@ -91,10 +95,32 @@ export function ConnectionResilienceProvider({
     }
   }, [maxReconnectAttempts, toast]);
 
-  // Dismiss connection notifications
+  // CRITICAL FIX: Dismiss connection notifications without infinite loops
   const handleDismiss = useCallback(() => {
+    const now = Date.now();
+    
+    // Prevent rapid dismiss calls (minimum 1 second between calls)
+    if (now - lastDismissTimeRef.current < 1000) {
+      console.log('🚨 [ConnectionResilience] Dismiss called too rapidly, ignoring');
+      return;
+    }
+    
+    // Prevent excessive dismiss calls (maximum 5 per minute)
+    dismissCountRef.current++;
+    if (dismissCountRef.current > 5) {
+      console.warn('🚨 [ConnectionResilience] Too many dismiss calls, preventing spam');
+      return;
+    }
+    
+    // Reset counter after 1 minute
+    if (now - lastDismissTimeRef.current > 60000) {
+      dismissCountRef.current = 1;
+    }
+    
+    lastDismissTimeRef.current = now;
+    
     // Don't change status, just allow user to dismiss notifications
-    console.log('Connection notification dismissed by user');
+    console.log('✅ [ConnectionResilience] Connection notification dismissed by user');
   }, []);
 
   return (
@@ -119,6 +145,7 @@ export function ConnectionResilienceProvider({
               <div>Message: {connectionMessage}</div>
               <div>Last Check: {lastCheck.toLocaleTimeString()}</div>
               <div>Reconnect Attempts: {reconnectAttemptsRef.current}</div>
+              <div>Dismiss Count: {dismissCountRef.current}</div>
             </div>
             <button
               onClick={() => setShowDebugPanel(false)}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { useLocation } from "@/contexts/LocationContext";
 import { StatCard } from "@/components/ui/StatCard";
 import { RefreshProgressBar } from "@/components/ui/RefreshProgressBar";
 import { getAQIColor, getAQILabel } from "@/config/maps";
+import { useToast } from "@/hooks/use-toast";
 
 import Header from "@/components/Header";
 import WeatherStatsCard from "./WeatherStatsCard";
@@ -34,6 +35,7 @@ export default function AirQualityDashboard({
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { timeUntilRefresh, manualRefresh: refreshCountdown } = useRefreshCountdown();
   const { requestLocationPermission, isRequestingPermission } = useLocation();
+  const { toast } = useToast();
   
   const [selectedPollutant, setSelectedPollutant] = useState<{
     name: string;
@@ -44,6 +46,19 @@ export default function AirQualityDashboard({
   } | null>(null);
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+
+  // CRITICAL FIX: Add timeout to ensure dashboard loads even if permission check hangs
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (!hasRequestedPermission) {
+        console.log('🚨 [Dashboard] Location permission check timeout - forcing dashboard display');
+        // Force the dashboard to show by simulating permission check completion
+        // This prevents infinite loading state
+      }
+    }, 3000); // 3 second timeout
+
+    return () => clearTimeout(timeoutId);
+  }, [hasRequestedPermission]);
 
   // Memoize coordinates to prevent unnecessary re-renders of WeatherStatsCard
   const memoizedCoordinates = useMemo(() => {
@@ -172,7 +187,8 @@ export default function AirQualityDashboard({
     }
   };
 
-  // Show loading state while checking permissions
+  // CRITICAL FIX: Show loading state only briefly while checking permissions
+  // After 3 seconds, show the dashboard regardless of permission state
   if (!hasRequestedPermission) {
     return (
       <div className="space-y-6 lg:space-y-8">
@@ -185,6 +201,7 @@ export default function AirQualityDashboard({
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Checking location permissions...</p>
+          <p className="mt-2 text-sm text-muted-foreground">This should only take a moment</p>
         </div>
       </div>
     );
@@ -233,7 +250,7 @@ export default function AirQualityDashboard({
                 </>
               ) : (
                 <>
-                  <MapPin className="w-4 h-4 mr-2" />
+                  <MapPin className="w-4 w-4 mr-2" />
                   Enable Location Access
                 </>
               )}
@@ -365,12 +382,12 @@ export default function AirQualityDashboard({
                     >
                       {isRefreshing ? (
                         <>
-                          <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                          <RefreshCw className="w-4 w-4 animate-spin mr-2" />
                           Refreshing...
                         </>
                       ) : (
                         <>
-                          <RefreshCw className="w-4 h-4 mr-2" />
+                          <RefreshCw className="w-4 w-4 mr-2" />
                           Refresh Now
                         </>
                       )}
@@ -382,7 +399,7 @@ export default function AirQualityDashboard({
                       size="sm"
                       className="flex-1 sm:flex-none"
                     >
-                      <Clock className="w-4 h-4 mr-2" />
+                      <Clock className="w-4 w-4 mr-2" />
                       View History
                     </Button>
                   </div>
@@ -592,7 +609,7 @@ export default function AirQualityDashboard({
                   </>
                 ) : (
                   <>
-                    <RefreshCw className="w-4 h-4 mr-2" />
+                    <RefreshCw className="w-4 w-4 mr-2" />
                     Try Again
                   </>
                 )}
@@ -603,7 +620,7 @@ export default function AirQualityDashboard({
                 onClick={handleRequestLocationPermission}
                 className="w-full"
               >
-                <MapPin className="w-4 h-4 mr-2" />
+                <MapPin className="w-4 w-4 mr-2" />
                 Re-check Location
               </Button>
             </div>

@@ -140,6 +140,15 @@ export const useGeolocation = (): UseGeolocationReturn => {
   const isRequestingRef = useRef(false);
   const hasInitializedRef = useRef(false);
   const ipLocationFetchedRef = useRef(false); // Prevent multiple IP location fetches
+  const sessionIdRef = useRef<string>(''); // Track session to prevent multiple fetches per session
+
+  // CRITICAL FIX: Generate unique session ID to prevent multiple IP fetches
+  useEffect(() => {
+    if (!sessionIdRef.current) {
+      sessionIdRef.current = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log('🌍 [Geolocation] New session started:', sessionIdRef.current);
+    }
+  }, []);
 
   // Check permission status
   const checkPermissionStatus = useCallback(async (): Promise<'granted' | 'denied' | 'prompt' | 'unknown'> => {
@@ -195,13 +204,19 @@ export const useGeolocation = (): UseGeolocationReturn => {
           }
         }
         
-        // If no GPS location available and we haven't fetched IP location yet, try IP-based location
-        if (!ipLocationFetchedRef.current) {
-          console.log('🌍 [Geolocation] No GPS location available, trying IP-based location...');
+        // CRITICAL FIX: Only fetch IP location once per session and if we haven't already
+        if (!ipLocationFetchedRef.current && !getStoredLocation()) {
+          console.log('🌍 [Geolocation] No stored location available, fetching IP-based location for session:', sessionIdRef.current);
           ipLocationFetchedRef.current = true;
           const ipLocation = await getIPBasedLocation();
           setLocationData(ipLocation);
           setHasUserConsent(false);
+        } else if (getStoredLocation()) {
+          // Use stored location if available
+          const storedLocation = getStoredLocation();
+          setLocationData(storedLocation);
+          setHasUserConsent(storedLocation.source === 'gps');
+          console.log('🌍 [Geolocation] Using stored location:', storedLocation);
         }
         
       } catch (error) {
@@ -324,23 +339,36 @@ export const useGeolocation = (): UseGeolocationReturn => {
         variant: "destructive",
       });
 
-      // Fall back to IP-based location
-      console.log('🌍 [Geolocation] Falling back to IP-based location...');
-      const ipLocation = await getIPBasedLocation();
-      setLocationData(ipLocation);
-      setHasUserConsent(false);
-      return ipLocation;
+      // Fall back to IP-based location only if we haven't already fetched it
+      if (!ipLocationFetchedRef.current) {
+        console.log('🌍 [Geolocation] Falling back to IP-based location...');
+        ipLocationFetchedRef.current = true;
+        const ipLocation = await getIPBasedLocation();
+        setLocationData(ipLocation);
+        setHasUserConsent(false);
+        return ipLocation;
+      } else {
+        console.log('🌍 [Geolocation] IP location already fetched, using existing data');
+        return locationData;
+      }
 
     } finally {
       isRequestingRef.current = false;
       setIsRequesting(false);
     }
-  }, [toast]);
+  }, [toast, locationData]);
 
   // Use IP-based location as fallback
   const getIPBasedLocationAsync = useCallback(async (): Promise<LocationData | null> => {
+    // CRITICAL FIX: Prevent multiple IP location fetches
+    if (ipLocationFetchedRef.current) {
+      console.log('🌍 [Geolocation] IP location already fetched this session, using existing data');
+      return locationData;
+    }
+
     try {
       console.log('🌍 [Geolocation] Switching to IP-based location...');
+      ipLocationFetchedRef.current = true;
       const ipLocation = await getIPBasedLocation();
       
       setLocationData(ipLocation);
@@ -359,7 +387,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
       setError('Failed to get IP-based location');
       return locationData;
     }
-  }, [toast]);
+  }, [toast, locationData]);
 
   // Clear stored location data
   const clearLocation = useCallback(() => {
@@ -368,6 +396,9 @@ export const useGeolocation = (): UseGeolocationReturn => {
     setLocationData(null);
     setHasUserConsent(false);
     setError(null);
+    // Reset refs for new session
+    ipLocationFetchedRef.current = false;
+    hasInitializedRef.current = false;
     console.log('🌍 [Geolocation] Location data cleared');
   }, []);
 

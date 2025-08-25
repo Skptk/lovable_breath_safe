@@ -102,7 +102,8 @@ export function LocationProvider({ children }: LocationProviderProps) {
     checkLocationPermission();
   }, []); // Empty dependency array to run only once on mount
 
-  // Ensure hasRequestedPermission is always set to true after a reasonable timeout
+  // CRITICAL FIX: Ensure hasRequestedPermission is always set to true after a reasonable timeout
+  // This prevents the dashboard from being stuck on "checking location permissions"
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (!hasRequestedPermission) {
@@ -110,7 +111,7 @@ export function LocationProvider({ children }: LocationProviderProps) {
         setHasRequestedPermission(true);
         permissionCheckedRef.current = true;
       }
-    }, 5000); // 5 second timeout
+    }, 2000); // Reduced from 5 seconds to 2 seconds for better UX
 
     return () => clearTimeout(timeoutId);
   }, [hasRequestedPermission]);

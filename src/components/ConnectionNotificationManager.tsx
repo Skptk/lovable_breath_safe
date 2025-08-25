@@ -25,6 +25,7 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
   const [isTransitioning, setIsTransitioning] = useState(false);
   const transitionTimeoutRef = useRef<NodeJS.Timeout>();
   const statusHistoryRef = useRef<ConnectionState[]>([]);
+  const dismissCountRef = useRef(0); // Track dismiss count to prevent spam
 
   // Priority system for different connection statuses
   const getStatusPriority = (status: ConnectionStatus): number => {
@@ -98,8 +99,15 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
     }
   }, [connectionStatus, connectionMessage, transitionToNewStatus, isTransitioning]);
 
-  // Handle notification dismissal
+  // CRITICAL FIX: Handle notification dismissal without infinite loops
   const handleDismiss = useCallback(() => {
+    // Prevent infinite dismissal loops
+    dismissCountRef.current++;
+    if (dismissCountRef.current > 10) {
+      console.warn('🚨 [ConnectionNotification] Too many dismissals, preventing spam');
+      return;
+    }
+
     setIsTransitioning(true);
     
     if (transitionTimeoutRef.current) {
@@ -109,13 +117,27 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
     transitionTimeoutRef.current = setTimeout(() => {
       setCurrentNotification(null);
       setIsTransitioning(false);
-      onDismiss?.();
+      
+      // Only call onDismiss if it exists and hasn't been called recently
+      if (onDismiss && dismissCountRef.current <= 5) {
+        try {
+          onDismiss();
+        } catch (error) {
+          console.warn('🚨 [ConnectionNotification] Error in onDismiss:', error);
+        }
+      }
     }, 300);
   }, [onDismiss]);
 
   // Handle retry action
   const handleRetry = useCallback(() => {
-    onRetry?.();
+    if (onRetry) {
+      try {
+        onRetry();
+      } catch (error) {
+        console.warn('🚨 [ConnectionNotification] Error in onRetry:', error);
+      }
+    }
   }, [onRetry]);
 
   // Cleanup on unmount
