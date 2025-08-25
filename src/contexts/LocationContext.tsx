@@ -100,7 +100,7 @@ export function LocationProvider({ children }: LocationProviderProps) {
     };
 
     checkLocationPermission();
-  }, []);
+  }, []); // Empty dependency array to run only once on mount
 
   // Function to request location permission
   const requestLocationPermission = useCallback(async (): Promise<boolean> => {

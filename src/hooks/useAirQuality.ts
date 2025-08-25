@@ -226,12 +226,19 @@ export const useAirQuality = () => {
   useEffect(() => {
     if (!user || !finalData || !safeCoordinates) return;
 
-    // Create a unique key for this data to prevent duplicate saves
-    const dataKey = `${user.id}-${finalData.aqi}-${finalData.pm25}-${finalData.pm10}-${finalData.timestamp}`;
+    // Create a stable data signature that doesn't change on every render
+    const dataSignature = `${user.id}-${finalData.aqi}-${finalData.pm25}-${finalData.pm10}-${finalData.dataSource}`;
     
-    // Check if we've already saved this exact data
-    if (savedDataRef.current.has(dataKey)) {
+    // Check if we've already saved this exact data signature
+    if (savedDataRef.current.has(dataSignature)) {
       console.log('🔄 [useAirQuality] Data already saved, skipping duplicate save');
+      return;
+    }
+
+    // Only save if we have meaningful data changes (not just timestamp updates)
+    const hasMeaningfulData = finalData.aqi > 0 || finalData.pm25 > 0 || finalData.pm10 > 0;
+    if (!hasMeaningfulData) {
+      console.log('🔄 [useAirQuality] No meaningful data to save, skipping');
       return;
     }
 
@@ -267,13 +274,13 @@ export const useAirQuality = () => {
           console.error('❌ [useAirQuality] Failed to save reading:', error);
         } else {
           console.log('✅ [useAirQuality] Reading saved to history');
-          // Mark this data as saved to prevent duplicate saves
-          savedDataRef.current.add(dataKey);
+          // Mark this data signature as saved to prevent duplicate saves
+          savedDataRef.current.add(dataSignature);
           
-          // Clean up old keys to prevent memory leaks (keep only last 100)
-          if (savedDataRef.current.size > 100) {
-            const keysArray = Array.from(savedDataRef.current);
-            savedDataRef.current = new Set(keysArray.slice(-50));
+          // Clean up old signatures to prevent memory leaks (keep only last 50)
+          if (savedDataRef.current.size > 50) {
+            const signaturesArray = Array.from(savedDataRef.current);
+            savedDataRef.current = new Set(signaturesArray.slice(-25));
           }
         }
       } catch (error) {
@@ -282,7 +289,7 @@ export const useAirQuality = () => {
     };
 
     saveReading();
-  }, [user?.id, finalData?.aqi, finalData?.pm25, finalData?.pm10, finalData?.timestamp, finalData?.dataSource, finalData?.environmental, safeCoordinates?.lat, safeCoordinates?.lng]);
+  }, [user?.id, finalData?.aqi, finalData?.pm25, finalData?.pm10, finalData?.dataSource, finalData?.environmental, safeCoordinates?.lat, safeCoordinates?.lng]);
 
   return {
     data: finalData,
