@@ -5,7 +5,6 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
 import BackgroundManager from "@/components/BackgroundManager";
-import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { DeveloperTools } from "@/components/DeveloperTools";
 import { cleanupAllChannels } from "@/lib/realtimeClient";
 
@@ -214,9 +213,6 @@ export default function Index(): JSX.Element {
   return (
     <BackgroundManager>
       <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex flex-col">
-        {/* Connection Status Indicator */}
-        <ConnectionStatus />
-        
         {/* Developer Tools */}
         <DeveloperTools 
           isVisible={showDeveloperTools}

@@ -14,10 +14,9 @@ export { default as PollutantModal } from './PollutantModal';
 export { default as BackgroundManager } from './BackgroundManager';
 export { Header } from './Header';
 export { default as LazyHeader } from './LazyHeader';
-export { default as RealtimeStatusBanner } from './RealtimeStatusBanner';
 export { ConnectionResilienceProvider } from './ConnectionResilienceProvider';
-export { ConnectionStatus } from './ConnectionStatus';
 export { default as ConnectionNotification } from './ConnectionNotification';
+export { default as ConnectionNotificationManager } from './ConnectionNotificationManager';
 export { DeveloperTools } from './DeveloperTools';
 
 // Refactored UI Components

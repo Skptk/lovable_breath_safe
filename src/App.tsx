@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
-import { ErrorBoundary, RealtimeStatusBanner } from "@/components";
+import { ErrorBoundary } from "@/components";
 import { usePerformanceMonitor, usePreload } from "@/hooks/usePerformance";
 import { useAppStore } from "@/store";
 import { Suspense, lazy, useEffect } from "react";
@@ -171,7 +171,6 @@ const App = (): JSX.Element => {
               alertAutoHide: 5000
             }}
           >
-            <RealtimeStatusBanner />
             <Toaster />
             <Sonner />
             <BrowserRouter>

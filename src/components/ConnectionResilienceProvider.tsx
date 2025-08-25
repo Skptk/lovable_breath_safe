@@ -6,6 +6,7 @@ import { Badge } from './ui/badge';
 import { Card } from './ui/card';
 import { Separator } from './ui/separator';
 import { useToast } from '../hooks/use-toast';
+import ConnectionNotificationManager, { ConnectionStatus } from './ConnectionNotificationManager';
 
 interface ConnectionResilienceProviderProps {
   children: React.ReactNode;
@@ -25,68 +26,8 @@ export function ConnectionResilienceProvider({
   supabaseClient 
 }: ConnectionResilienceProviderProps) {
   const [showDebugPanel, setShowDebugPanel] = useState(config.showDebugPanel ?? process.env.NODE_ENV === 'development');
-  const [alerts, setAlerts] = useState<Array<{
-    id: string;
-    type: 'success' | 'info' | 'warning' | 'error';
-    message: string;
-    timestamp: number;
-    autoHide: boolean;
-  }>>([]);
-  
-  // Rate limiting constants
-  const NOTIFICATION_COOLDOWN = 15000; // 15 seconds between same notifications
-  const MAX_NOTIFICATIONS = 2; // Maximum 2 notifications shown at once
-  const [lastNotificationTime, setLastNotificationTime] = useState<Record<string, number>>({});
   
   const { toast } = useToast();
-
-  // Enhanced notification system with rate limiting
-  const addNotification = useCallback((type: 'success' | 'info' | 'warning' | 'error', message: string, priority: 'normal' | 'high' | 'low' = 'normal') => {
-    const now = Date.now();
-    const notificationKey = `${type}-${message}`;
-    
-    // Check rate limiting
-    if (lastNotificationTime[notificationKey] && 
-        now - lastNotificationTime[notificationKey] < NOTIFICATION_COOLDOWN) {
-      return; // Skip duplicate notification within cooldown
-    }
-
-    // Update last notification time
-    setLastNotificationTime(prev => ({
-      ...prev,
-      [notificationKey]: now
-    }));
-
-    // Add notification with auto-removal
-    const notification = {
-      id: `${type}-${now}`,
-      type,
-      message,
-      timestamp: now,
-      autoHide: true
-    };
-
-    setAlerts(prev => {
-      const updated = [notification, ...prev];
-      
-      // Keep only the most recent notifications
-      if (updated.length > MAX_NOTIFICATIONS) {
-        return updated.slice(0, MAX_NOTIFICATIONS);
-      }
-      
-      return updated;
-    });
-
-    // Auto-remove notification
-    const duration = priority === 'high' ? 8000 : 
-                    priority === 'low' ? 3000 : 5000;
-    
-    setTimeout(() => {
-      setAlerts(prev => 
-        prev.filter(n => n.id !== notification.id)
-      );
-    }, duration);
-  }, [lastNotificationTime]);
 
   // Enhanced connection health hook
   const connectionHealth = useEnhancedConnectionHealth({
@@ -94,61 +35,68 @@ export function ConnectionResilienceProvider({
     maxReconnectAttempts: config.maxReconnectAttempts,
     enableAutoReconnect: config.enableAutoReconnect,
     onStateChange: (state: ConnectionHealthState) => {
-      // Show notifications for important state changes
-      if (state.status === connectionStates.CONNECTED && state.isHealthy) {
-        addNotification('success', 'Connection restored', 'normal');
-      } else if (state.status === connectionStates.DISCONNECTED) {
-        addNotification('warning', 'Connection lost - attempting to reconnect', 'high');
-      } else if (state.status === connectionStates.RECONNECTING) {
-        addNotification('info', 'Reconnecting...', 'low');
-      }
+      // State changes are now handled by the unified notification system
+      console.log('Connection state changed:', state.status);
     },
     onError: (error: Error, context: string) => {
-      addNotification('error', `Connection error: ${error.message}`, 'high');
+      console.error('Connection error:', error.message, context);
     }
   });
 
-  // Add alert
-  const addAlert = useCallback((type: 'success' | 'info' | 'warning' | 'error', message: string, autoHide = false) => {
-    const id = Date.now().toString();
-    const alert = {
-      id,
-      type,
-      message,
-      timestamp: Date.now(),
-      autoHide
-    };
-
-    setAlerts(prev => [...prev, alert]);
-
-    // Auto-hide if configured
-    if (autoHide && config.alertAutoHide) {
-      setTimeout(() => {
-        removeAlert(id);
-      }, config.alertAutoHide);
+  // Convert connection health status to notification status
+  const getNotificationStatus = (): ConnectionStatus => {
+    switch (connectionHealth.status) {
+      case connectionStates.CONNECTED:
+        return 'connected';
+      case connectionStates.CONNECTING:
+        return 'connecting';
+      case connectionStates.RECONNECTING:
+        return 'reconnecting';
+      case connectionStates.DISCONNECTED:
+        return 'disconnected';
+      default:
+        return 'error';
     }
-  }, [config.alertAutoHide]);
+  };
 
-  // Remove alert
-  const removeAlert = useCallback((id: string) => {
-    setAlerts(prev => prev.filter(alert => alert.id !== id));
-  }, []);
-
-  // Clear all notifications function
-  const clearAllNotifications = useCallback(() => {
-    setAlerts([]);
-    console.log('Cleared all notifications');
-  }, []);
+  // Get notification message based on status
+  const getNotificationMessage = (): string | undefined => {
+    switch (connectionHealth.status) {
+      case connectionStates.CONNECTED:
+        return connectionHealth.isHealthy ? 'Real-time updates are now available' : 'Connection established but health check failed';
+      case connectionStates.CONNECTING:
+        return 'Establishing connection...';
+      case connectionStates.RECONNECTING:
+        return `Attempting to restore connection... (${connectionHealth.reconnectAttempts}/${connectionHealth.maxReconnectAttempts})`;
+      case connectionStates.DISCONNECTED:
+        return 'Real-time updates unavailable';
+      default:
+        return 'Connection status unknown';
+    }
+  };
 
   // Manual reconnection
   const handleManualReconnect = useCallback(async () => {
     try {
       await connectionHealth.reconnect();
-      addNotification('info', 'Manual reconnection initiated', 'normal');
+      toast({
+        title: "Reconnection Initiated",
+        description: "Attempting to restore connection...",
+        variant: "default",
+      });
     } catch (error) {
-      addNotification('error', 'Manual reconnection failed', 'high');
+      toast({
+        title: "Reconnection Failed",
+        description: "Failed to initiate reconnection. Please try again.",
+        variant: "destructive",
+      });
     }
-  }, [connectionHealth, addNotification]);
+  }, [connectionHealth, toast]);
+
+  // Handle notification dismissal
+  const handleNotificationDismiss = useCallback(() => {
+    console.log('Connection notification dismissed');
+  }, []);
 
   // Get status icon
   const getStatusIcon = () => {
@@ -212,6 +160,14 @@ export function ConnectionResilienceProvider({
 
   return (
     <>
+      {/* Unified Connection Notification System */}
+      <ConnectionNotificationManager
+        connectionStatus={getNotificationStatus()}
+        connectionMessage={getNotificationMessage()}
+        onRetry={handleManualReconnect}
+        onDismiss={handleNotificationDismiss}
+      />
+
       {/* Connection Status Indicator - Top Right */}
       <div className="fixed top-4 right-4 z-50">
         <Card className={`p-3 border ${getStatusColor()} backdrop-blur-sm`}>
@@ -225,54 +181,9 @@ export function ConnectionResilienceProvider({
                 {connectionHealth.networkQuality}
               </span>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={clearAllNotifications}
-              className="ml-2 h-6 px-2 text-xs"
-              title="Clear All Notifications"
-            >
-              <X className="w-3 h-3 mr-1" />
-              Clear
-            </Button>
           </div>
         </Card>
       </div>
-
-      {/* Connection Alerts */}
-      {alerts.length > 0 && (
-        <div className="fixed top-20 right-4 z-50 space-y-2">
-          {alerts.map((alert) => (
-            <Card
-              key={alert.id}
-              className={`p-3 border backdrop-blur-sm ${
-                alert.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400' :
-                alert.type === 'info' ? 'bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400' :
-                alert.type === 'warning' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400' :
-                'bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {alert.type === 'success' && <CheckCircle className="w-4 h-4" />}
-                  {alert.type === 'info' && <Info className="w-4 h-4" />}
-                  {alert.type === 'warning' && <AlertCircle className="w-4 h-4" />}
-                  {alert.type === 'error' && <AlertCircle className="w-4 h-4" />}
-                  <span className="text-sm">{alert.message}</span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => removeAlert(alert.id)}
-                  className="h-6 w-6 p-0 ml-2"
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
 
       {/* Debug Panel - Development Only */}
       {showDebugPanel && (

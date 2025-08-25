@@ -1,92 +1,185 @@
-import React from 'react';
-import { CheckCircle, RefreshCw, WifiOff, Info } from 'lucide-react';
-import { Button } from './ui/button';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Wifi, WifiOff, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
-interface ConnectionNotificationProps {
-  notification: {
-    id: string;
-    type: 'success' | 'info' | 'warning' | 'error';
-    message: string;
-    priority: 'normal' | 'high' | 'low';
-    timestamp: number;
-  };
-  onClose: () => void;
+export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'reconnecting' | 'error';
+
+export interface ConnectionNotificationProps {
+  status: ConnectionStatus;
+  message?: string;
+  onRetry?: () => void;
+  onDismiss?: () => void;
+  autoDismiss?: boolean;
+  dismissDelay?: number;
 }
 
-// User-friendly notification messages
-const getNotificationMessage = (status: string, technical = false) => {
-  if (technical && process.env.NODE_ENV === 'development') {
-    return technical; // Show technical details in development
-  }
+export const ConnectionNotification: React.FC<ConnectionNotificationProps> = ({
+  status,
+  message,
+  onRetry,
+  onDismiss,
+  autoDismiss = true,
+  dismissDelay = 5000
+}) => {
+  const [isVisible, setIsVisible] = useState(true);
+  const [isDismissing, setIsDismissing] = useState(false);
 
-  switch (status) {
-    case 'connected':
-      return 'You\'re back online';
-    case 'disconnected':
-      return 'Checking connection...';
-    case 'reconnecting':
-      return 'Reconnecting...';
-    default:
-      return 'Connecting...';
-  }
-};
+  // Auto-dismiss logic
+  useEffect(() => {
+    if (autoDismiss && status !== 'connecting' && status !== 'reconnecting') {
+      const timer = setTimeout(() => {
+        handleDismiss();
+      }, dismissDelay);
 
-// Get notification icon
-const getNotificationIcon = (type: string) => {
-  switch (type) {
-    case 'success':
-      return <CheckCircle className="w-4 h-4" />;
-    case 'error':
-      return <RefreshCw className="w-4 h-4" />;
-    case 'warning':
-      return <Info className="w-4 h-4" />;
-    case 'info':
-      return <Info className="w-4 h-4" />;
-    default:
-      return <Info className="w-4 h-4" />;
-  }
-};
+      return () => clearTimeout(timer);
+    }
+  }, [status, autoDismiss, dismissDelay]);
 
-// Get notification styling
-const getNotificationStyling = (type: string) => {
-  switch (type) {
-    case 'success':
-      return 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400';
-    case 'error':
-      return 'bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400';
-    case 'warning':
-      return 'bg-yellow-500/10 border-yellow-500/20 text-yellow-700 dark:text-yellow-400';
-    case 'info':
-      return 'bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400';
-    default:
-      return 'bg-gray-500/10 border-gray-500/20 text-gray-700 dark:text-gray-400';
-  }
-};
+  // Prevent showing multiple notifications for the same status
+  useEffect(() => {
+    // Reset visibility when status changes
+    setIsVisible(true);
+    setIsDismissing(false);
+  }, [status]);
 
-export default function ConnectionNotification({ notification, onClose }: ConnectionNotificationProps) {
-  const message = getNotificationMessage(notification.message, false);
-  const icon = getNotificationIcon(notification.type);
-  const styling = getNotificationStyling(notification.type);
+  const handleDismiss = useCallback(() => {
+    setIsDismissing(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      onDismiss?.();
+    }, 300); // Smooth fade out
+  }, [onDismiss]);
+
+  const handleRetry = useCallback(() => {
+    onRetry?.();
+  }, [onRetry]);
+
+  if (!isVisible) return null;
+
+  // Get status-specific styling and content
+  const getStatusConfig = () => {
+    switch (status) {
+      case 'connected':
+        return {
+          icon: <CheckCircle className="h-5 w-5 text-green-500" />,
+          bgColor: 'bg-green-500/10 border-green-500/20',
+          textColor: 'text-green-700 dark:text-green-300',
+          borderColor: 'border-green-500/20',
+          title: 'Connected',
+          defaultMessage: 'Real-time updates are now available'
+        };
+      case 'connecting':
+        return {
+          icon: <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />,
+          bgColor: 'bg-blue-500/10 border-blue-500/20',
+          textColor: 'text-blue-700 dark:text-blue-300',
+          borderColor: 'border-blue-500/20',
+          title: 'Connecting',
+          defaultMessage: 'Establishing connection...'
+        };
+      case 'reconnecting':
+        return {
+          icon: <RefreshCw className="h-5 w-5 text-yellow-500 animate-spin" />,
+          bgColor: 'bg-yellow-500/10 border-yellow-500/20',
+          textColor: 'text-yellow-700 dark:text-yellow-300',
+          borderColor: 'border-yellow-500/20',
+          title: 'Reconnecting',
+          defaultMessage: 'Attempting to restore connection...'
+        };
+      case 'disconnected':
+        return {
+          icon: <WifiOff className="h-5 w-5 text-red-500" />,
+          bgColor: 'bg-red-500/10 border-red-500/20',
+          textColor: 'text-red-700 dark:text-red-300',
+          borderColor: 'border-red-500/20',
+          title: 'Disconnected',
+          defaultMessage: 'Real-time updates unavailable'
+        };
+      case 'error':
+        return {
+          icon: <AlertCircle className="h-5 w-5 text-red-500" />,
+          bgColor: 'bg-red-500/10 border-red-500/20',
+          textColor: 'text-red-700 dark:text-red-300',
+          borderColor: 'border-red-500/20',
+          title: 'Connection Error',
+          defaultMessage: 'Failed to establish connection'
+        };
+      default:
+        return {
+          icon: <Wifi className="h-5 w-5 text-gray-500" />,
+          bgColor: 'bg-gray-500/10 border-gray-500/20',
+          textColor: 'text-gray-700 dark:text-gray-300',
+          borderColor: 'border-gray-500/20',
+          title: 'Unknown Status',
+          defaultMessage: 'Connection status unknown'
+        };
+    }
+  };
+
+  const config = getStatusConfig();
+  const displayMessage = message || config.defaultMessage;
 
   return (
-    <div className={`notification notification-${notification.type} border rounded-lg p-3 backdrop-blur-sm ${styling}`}>
-      <div className="notification-content flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="notification-icon">
-            {icon}
-          </span>
-          <span className="notification-message text-sm font-medium">
-            {message}
-          </span>
+    <div
+      className={cn(
+        'fixed top-4 left-1/2 transform -translate-x-1/2 z-50',
+        'w-full max-w-md mx-4',
+        'transition-all duration-300 ease-out',
+        isDismissing ? 'opacity-0 translate-y-[-100%]' : 'opacity-100 translate-y-0'
+      )}
+    >
+      <div
+        className={cn(
+          'floating-card border-2',
+          config.bgColor,
+          config.borderColor,
+          'p-4 shadow-lg'
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 mt-0.5">
+            {config.icon}
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className={cn('text-sm font-semibold', config.textColor)}>
+                {config.title}
+              </h3>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDismiss}
+                className="h-6 w-6 p-0 hover:bg-white/10"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <p className={cn('text-sm', config.textColor)}>
+              {displayMessage}
+            </p>
+            
+            {/* Action buttons for specific statuses */}
+            {(status === 'disconnected' || status === 'error') && onRetry && (
+              <div className="flex items-center gap-2 mt-3">
+                <Button
+                  size="sm"
+                  onClick={handleRetry}
+                  className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 h-7"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Retry
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-        <button 
-          onClick={onClose} 
-          className="notification-close text-lg hover:opacity-70 transition-opacity"
-          aria-label="Close notification"
-        >
-          ×
-        </button>
       </div>
     </div>
   );
-}
+};
+
+export default ConnectionNotification;
