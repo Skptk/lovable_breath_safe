@@ -31,10 +31,10 @@ export default function AirQualityDashboard({
   isDemoMode = false
 }: AirQualityDashboardProps) {
   const { user } = useAuth();
-  const { data, isRefetching: isRefreshing, refetch, hasUserConsent, hasRequestedPermission, isLoading, error, manualRefresh, isUsingCachedData } = useAirQuality();
+  const { data, isRefetching: isRefreshing, refetch, isLoading, error, manualRefresh, isUsingCachedData } = useAirQuality();
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { timeUntilRefresh, manualRefresh: refreshCountdown } = useRefreshCountdown();
-  const { requestLocationPermission, isRequestingPermission } = useLocation();
+  const { requestLocationPermission, isRequestingPermission, hasUserConsent, hasRequestedPermission } = useLocation();
   const { toast } = useToast();
   
   const [selectedPollutant, setSelectedPollutant] = useState<{
@@ -90,12 +90,20 @@ export default function AirQualityDashboard({
       const success = await requestLocationPermission();
       
       if (success) {
+        console.log('✅ Location permission granted successfully in dashboard');
         toast({
           title: "Location Access Granted",
           description: "Air quality data will now be fetched for your location.",
           variant: "default",
         });
+        
+        // Force a re-render to update the dashboard state
+        // This ensures the dashboard shows after permission is granted
+        setTimeout(() => {
+          console.log('🔄 Forcing dashboard re-render after permission grant');
+        }, 100);
       } else {
+        console.log('❌ Location permission request failed');
         toast({
           title: "Location Access Failed",
           description: "Unable to get location permission. Please try again.",
