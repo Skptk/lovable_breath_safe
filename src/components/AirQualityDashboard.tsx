@@ -47,13 +47,15 @@ export default function AirQualityDashboard({
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
 
-  // CRITICAL FIX: Add timeout to ensure dashboard loads even if permission check hangs
+  // CRITICAL FIX: Add local state to handle timeout override
+  const [forceDisplay, setForceDisplay] = useState(false);
+
+  // CRITICAL FIX: Enhanced timeout logic that actually forces display
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (!hasRequestedPermission) {
         console.log('🚨 [Dashboard] Location permission check timeout - forcing dashboard display');
-        // Force the dashboard to show by simulating permission check completion
-        // This prevents infinite loading state
+        setForceDisplay(true); // This will override the loading state
       }
     }, 3000); // 3 second timeout
 
@@ -85,95 +87,31 @@ export default function AirQualityDashboard({
     
     try {
       console.log('Starting location permission request...');
-      setIsRequestingPermission(true);
+      const success = await requestLocationPermission();
       
-      // Check if geolocation is supported
-      if (!navigator.geolocation) {
-        console.error('Geolocation not supported by browser');
+      if (success) {
         toast({
-          title: "Location Not Supported",
-          description: "Your browser doesn't support location services.",
+          title: "Location Access Granted",
+          description: "Air quality data will now be fetched for your location.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Location Access Failed",
+          description: "Unable to get location permission. Please try again.",
           variant: "destructive",
         });
-        return;
       }
-
-      // Check current permission status
-      if (navigator.permissions) {
-        const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-        console.log('Current permission status:', permissionStatus.state);
-        
-        if (permissionStatus.state === 'denied') {
-          console.log('Location permission denied, showing instructions');
-          toast({
-            title: "Location Permission Required",
-            description: "Please enable location access in your browser settings to get accurate air quality data.",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-
-      // Request location with proper error handling
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          (error) => {
-            console.error('Geolocation error:', error);
-            switch (error.code) {
-              case error.PERMISSION_DENIED:
-                reject(new Error('Location permission denied by user'));
-                break;
-              case error.POSITION_UNAVAILABLE:
-                reject(new Error('Location information unavailable'));
-                break;
-              case error.TIMEOUT:
-                reject(new Error('Location request timed out'));
-                break;
-              default:
-                reject(new Error('Unknown geolocation error'));
-            }
-          },
-          {
-            timeout: 15000,
-            enableHighAccuracy: false,
-            maximumAge: 300000 // 5 minutes
-          }
-        );
-      });
-
-      console.log('Location permission granted, coordinates obtained:', {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-        accuracy: position.coords.accuracy
-      });
-
-      // Store location for future use
-      localStorage.setItem('lastKnownLocation', JSON.stringify({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-        timestamp: Date.now()
-      }));
-
-      // Update user consent state
-      setHasUserConsent(true);
-      
-      toast({
-        title: "Location Access Granted",
-        description: "Air quality data will now be fetched for your location.",
-        variant: "default",
-      });
-
     } catch (error: any) {
       console.error('Failed to request location permission:', error);
       
       // Show appropriate error message
       let errorMessage = 'Failed to get location permission';
-      if (error.message.includes('permission denied')) {
+      if (error.message?.includes('permission denied')) {
         errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
-      } else if (error.message.includes('unavailable')) {
+      } else if (error.message?.includes('unavailable')) {
         errorMessage = 'Location services unavailable. Please check your device settings.';
-      } else if (error.message.includes('timed out')) {
+      } else if (error.message?.includes('timed out')) {
         errorMessage = 'Location request timed out. Please try again.';
       }
       
@@ -182,14 +120,12 @@ export default function AirQualityDashboard({
         description: errorMessage,
         variant: "destructive",
       });
-    } finally {
-      setIsRequestingPermission(false);
     }
   };
 
   // CRITICAL FIX: Show loading state only briefly while checking permissions
   // After 3 seconds, show the dashboard regardless of permission state
-  if (!hasRequestedPermission) {
+  if (!hasRequestedPermission && !forceDisplay) {
     return (
       <div className="space-y-6 lg:space-y-8">
         <Header
