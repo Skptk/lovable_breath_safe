@@ -1,0 +1,64 @@
+name: Scheduled Environmental Data Collection
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    # Allow manual triggering
+
+jobs:
+  collect-environmental-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Trigger Scheduled Data Collection
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "🕐 Triggering scheduled environmental data collection..."
+          echo "📅 Current time: $(date)"
+          
+          # Get the Edge Function URL from Supabase
+          EDGE_FUNCTION_URL="$SUPABASE_URL/functions/v1/scheduled-data-collection"
+          
+          # Trigger the Edge Function
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "$EDGE_FUNCTION_URL" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -d '{}')
+          
+          # Extract response body and status code
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+          RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          echo "📊 Response Status: $HTTP_STATUS"
+          echo "📄 Response Body: $RESPONSE_BODY"
+          
+          # Check if the request was successful
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Scheduled data collection triggered successfully"
+          else
+            echo "❌ Failed to trigger scheduled data collection"
+            echo "Status: $HTTP_STATUS"
+            echo "Response: $RESPONSE_BODY"
+            exit 1
+          fi
+
+      - name: Log completion
+        run: |
+          echo "🏁 Scheduled environmental data collection job completed"
+          echo "⏰ Next scheduled run: $(date -d '+15 minutes' '+%Y-%m-%d %H:%M:%S')"

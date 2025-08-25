@@ -284,6 +284,37 @@ export interface AnalyticsMetrics {
   points_earned: number;
 }
 
+// Global Environmental Data Types (Server-side collected)
+export interface GlobalEnvironmentalData {
+  id: string;
+  city_name: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  aqi: number;
+  pm25: number | null;
+  pm10: number | null;
+  no2: number | null;
+  so2: number | null;
+  co: number | null;
+  o3: number | null;
+  temperature: number | null;
+  humidity: number | null;
+  wind_speed: number | null;
+  wind_direction: number | null;
+  wind_gust: number | null;
+  air_pressure: number | null;
+  visibility: number | null;
+  weather_condition: string | null;
+  feels_like_temperature: number | null;
+  sunrise_time: string | null;
+  sunset_time: string | null;
+  data_source: string;
+  collection_timestamp: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 // Export all types
 export type {
   User,
@@ -311,4 +342,5 @@ export type {
   UserSettings,
   AnalyticsEvent,
   AnalyticsMetrics,
+  GlobalEnvironmentalData,
 };

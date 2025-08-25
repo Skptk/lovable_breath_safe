@@ -23,3 +23,4 @@ export { usePerformance } from './usePerformance';
 export { useMobile } from './use-mobile';
 export { useToast } from './use-toast';
 export { useGracefulRealtime } from './useGracefulRealtime';
+export { default as useGlobalEnvironmentalData } from './useGlobalEnvironmentalData';
