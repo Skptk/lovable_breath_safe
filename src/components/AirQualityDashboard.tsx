@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, RefreshCw, Award, Zap, Clock, MapPin, ArrowRight, User, Satellite } from "lucide-react";
@@ -305,8 +305,8 @@ export default function AirQualityDashboard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <Card className="floating-card">
-            <CardHeader className="text-center pb-4">
+          <GlassCard variant="elevated" className="p-6">
+            <GlassCardHeader className="text-center pb-4">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
                 <h2 className="text-2xl font-black text-primary">Current Air Quality</h2>
@@ -319,8 +319,8 @@ export default function AirQualityDashboard({
                   </span>
                 )}
               </p>
-            </CardHeader>
-            <CardContent className="text-center space-y-6">
+            </GlassCardHeader>
+            <GlassCardContent className="text-center space-y-6">
               {/* AQI Display with Emission Data Side by Side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                 {/* Left Side - AQI Value with Info Beneath */}
@@ -400,9 +400,10 @@ export default function AirQualityDashboard({
                       { name: 'CO', value: data.co, unit: 'μg/m³', color: 'text-purple-500' },
                       { name: 'O₃', value: data.o3, unit: 'μg/m³', color: 'text-yellow-500' }
                     ].map((pollutant) => (
-                      <div
+                      <GlassCard
                         key={pollutant.name}
-                        className="bg-card border border-border rounded-lg p-3 text-center cursor-pointer hover:bg-accent/50 transition-colors"
+                        variant="subtle"
+                        className="p-3 text-center cursor-pointer hover:scale-105 transition-transform"
                         onClick={() => setSelectedPollutant({
                           name: pollutant.name,
                           value: pollutant.value || 0,
@@ -420,13 +421,13 @@ export default function AirQualityDashboard({
                         <div className="text-xs text-muted-foreground">
                           {pollutant.unit}
                         </div>
-                      </div>
+                      </GlassCard>
                     ))}
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </motion.div>
 
         {/* User Points and Rewards */}
@@ -496,30 +497,32 @@ export default function AirQualityDashboard({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card border border-border rounded-lg p-6 max-w-md w-full"
+              className="max-w-md w-full"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-center space-y-4">
-                <div className={`text-4xl font-bold ${selectedPollutant.color}`}>
-                  {selectedPollutant.value.toFixed(1)}
+              <GlassCard variant="elevated" className="p-6">
+                <div className="text-center space-y-4">
+                  <div className={`text-4xl font-bold ${selectedPollutant.color}`}>
+                    {selectedPollutant.value.toFixed(1)}
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {selectedPollutant.name}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {selectedPollutant.unit}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedPollutant.description}
+                  </p>
+                  <Button 
+                    onClick={() => setSelectedPollutant(null)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Close
+                  </Button>
                 </div>
-                <div className="text-lg font-semibold">
-                  {selectedPollutant.name}
-                </div>
-                <div className="text-muted-foreground">
-                  {selectedPollutant.unit}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {selectedPollutant.description}
-                </p>
-                <Button 
-                  onClick={() => setSelectedPollutant(null)}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Close
-                </Button>
-              </div>
+              </GlassCard>
             </motion.div>
           </motion.div>
         )}

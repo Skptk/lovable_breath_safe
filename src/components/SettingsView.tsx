@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -171,14 +171,14 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
 
           {/* Appearance Tab */}
           <TabsContent value="appearance" className="space-y-4">
-            <Card className="floating-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <GlassCard variant="default">
+              <GlassCardHeader>
+                <GlassCardTitle className="flex items-center gap-2">
                   <Palette className="h-5 w-5" />
                   Appearance & Theme
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="theme">Theme Preference</Label>
                   <p className="text-sm text-muted-foreground">Your preferred theme (use sidebar toggle to change current theme)</p>
@@ -235,20 +235,20 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
                     </SelectContent>
                   </Select>
                 </div>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           </TabsContent>
 
           {/* Privacy Tab */}
           <TabsContent value="privacy" className="space-y-4">
-            <Card className="floating-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <GlassCard variant="default">
+              <GlassCardHeader>
+                <GlassCardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
                   Privacy & Security
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="share-data">Share Data for Research</Label>
@@ -284,18 +284,18 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
                     onCheckedChange={(checked) => updateLocalSetting('privacy', 'locationHistory', checked)}
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
 
             {/* Privacy Policy & Terms */}
-            <Card className="floating-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <GlassCard variant="default">
+              <GlassCardHeader>
+                <GlassCardTitle className="flex items-center gap-2">
                   <HelpCircle className="h-5 w-5" />
                   Legal & Documentation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Privacy Policy</Label>
                   <p className="text-sm text-muted-foreground">Read our privacy policy to understand how we protect your data</p>
@@ -321,20 +321,20 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
                     Read Terms of Service
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           </TabsContent>
 
           {/* Location Tab */}
           <TabsContent value="location" className="space-y-4">
-            <Card className="floating-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <GlassCard variant="default">
+              <GlassCardHeader>
+                <GlassCardTitle className="flex items-center gap-2">
                   <MapPin className="h-5 w-5" />
                   Location Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="auto-location">Auto Location</Label>
@@ -377,20 +377,20 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
                     onCheckedChange={(checked) => updateLocalSetting('location', 'locationHistory', checked)}
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           </TabsContent>
 
           {/* Data Tab */}
           <TabsContent value="data" className="space-y-4">
-            <Card className="floating-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <GlassCard variant="default">
+              <GlassCardHeader>
+                <GlassCardTitle className="flex items-center gap-2">
                   <Database className="h-5 w-5" />
                   Data Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="data-retention">Data Retention</Label>
                   <Select
@@ -423,8 +423,8 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
                     Export Settings
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           </TabsContent>
         </Tabs>
       </div>

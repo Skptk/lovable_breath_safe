@@ -21,7 +21,7 @@ export interface GeolocationState {
 
 export interface GeolocationActions {
   requestLocation: () => Promise<LocationData | null>;
-  useIPBasedLocation: () => Promise<LocationData | null>;
+  getIPBasedLocationAsync: () => Promise<LocationData | null>;
   clearLocation: () => void;
   checkPermissionStatus: () => Promise<'granted' | 'denied' | 'prompt' | 'unknown'>;
 }
@@ -334,7 +334,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
   }, [toast]);
 
   // Use IP-based location as fallback
-  const useIPBasedLocation = useCallback(async (): Promise<LocationData | null> => {
+  const getIPBasedLocationAsync = useCallback(async (): Promise<LocationData | null> => {
     try {
       console.log('🌍 [Geolocation] Switching to IP-based location...');
       const ipLocation = await getIPBasedLocation();
@@ -374,7 +374,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
     error,
     permissionStatus,
     requestLocation,
-    useIPBasedLocation,
+    getIPBasedLocationAsync,
     clearLocation,
     checkPermissionStatus,
   };

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -342,14 +342,14 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
 
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-4">
-          <Card className="floating-card shadow-card">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+          <GlassCard variant="elevated">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg font-semibold flex items-center gap-2">
                 <User className="h-5 w-5" />
                 Personal Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">Full Name</label>
@@ -375,18 +375,18 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                   Save Changes
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
           {/* Badge Display Card */}
-          <Card className="floating-card shadow-card bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+          <GlassCard variant="elevated" className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg font-semibold flex items-center gap-2">
                 <Award className="h-5 w-5" />
                 Your Badges
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
@@ -461,22 +461,22 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                   </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
           {/* Statistics Card */}
-          <Card className="floating-card shadow-card">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+          <GlassCard variant="elevated">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg font-semibold flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
                 Statistics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-primary">
-                    {userPoints?.totalReadings || 0}
+                    {stats.totalReadings || 0}
                   </div>
                   <div className="text-sm text-muted-foreground">Total Readings</div>
                 </div>
@@ -488,23 +488,23 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-primary">
-                    {userPoints?.memberSince ? new Date(userPoints.memberSince).getFullYear() : 'N/A'}
+                    {stats.memberSince ? new Date(stats.memberSince).getFullYear() : 'N/A'}
                   </div>
                   <div className="text-sm text-muted-foreground">Member Since</div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
           {/* Account Management Card */}
-          <Card className="floating-card shadow-card">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+          <GlassCard variant="elevated">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg font-semibold flex items-center gap-2">
                 <Shield className="h-5 w-5" />
                 Account Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Button variant="outline" onClick={handleExportData}>
                   <Download className="h-4 w-4 mr-2" />
@@ -518,20 +518,20 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
               <div className="text-sm text-muted-foreground text-center">
                 Export your data before deleting your account
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </TabsContent>
 
         {/* Rewards Tab */}
         <TabsContent value="rewards" className="space-y-4">
-          <Card className="floating-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <GlassCard variant="default">
+            <GlassCardHeader>
+              <GlassCardTitle className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-green-500" />
                 Currency Rewards
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4">
               <div className="text-center space-y-4">
                 <div className="text-4xl font-bold text-green-500">
                   ${((profile?.total_points || 0) / 1000 * 0.1).toFixed(2)}
@@ -549,18 +549,18 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                   </Badge>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
           {/* Withdrawal Requests */}
-          <Card className="floating-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <GlassCard variant="default">
+            <GlassCardHeader>
+              <GlassCardTitle className="flex items-center gap-2">
                 <Gift className="h-5 w-5 text-purple-600" />
                 Withdrawal Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent>
               {withdrawalLoading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -591,20 +591,20 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                   <p className="text-sm">Earn more points to make your first withdrawal</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </TabsContent>
 
         {/* Achievements Tab */}
         <TabsContent value="achievements" className="space-y-4">
-          <Card className="floating-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <GlassCard variant="default">
+            <GlassCardHeader>
+              <GlassCardTitle className="flex items-center gap-2">
                 <Award className="h-5 w-5 text-yellow-600" />
                 Your Achievements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent>
               {achievementsLoading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -631,20 +631,20 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                   <p className="text-sm">Keep monitoring air quality to earn achievements</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </TabsContent>
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-4">
-          <Card className="floating-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <GlassCard variant="default">
+            <GlassCardHeader>
+              <GlassCardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-blue-600" />
                 Account Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4">
               <Button 
                 variant="outline" 
                 onClick={signOut}
@@ -653,38 +653,38 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
-          <Card className="floating-card shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <GlassCard variant="elevated">
+            <GlassCardHeader>
+              <GlassCardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
                 Preferences
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Button variant="outline" onClick={() => navigate('/dashboard?view=settings')}>
                   <Settings className="h-4 w-4 mr-2" />
                   App Settings
                 </Button>
-                <Button variant="outline" onClick={() => navigate('/dashboard?view=rewards')}>
-                  <Award className="h-4 w-4 mr-2" />
-                  Rewards
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                                  <Button variant="outline" onClick={() => navigate('/dashboard?view=rewards')}>
+                    <Award className="h-4 w-4 mr-2" />
+                    Rewards
+                  </Button>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
 
-          <Card className="floating-card shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <GlassCard variant="elevated">
+            <GlassCardHeader>
+              <GlassCardTitle className="flex items-center gap-2">
                 <HelpCircle className="h-5 w-5" />
                 Support & Help
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Button variant="outline" onClick={() => window.open('/privacy', '_blank')}>
                   <Shield className="h-4 w-4 mr-2" />
@@ -695,8 +695,8 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                   Terms of Service
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </TabsContent>
       </Tabs>
     </div>

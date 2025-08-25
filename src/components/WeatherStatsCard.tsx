@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sun, Cloud, CloudRain, Thermometer, Droplets, Eye, RefreshCw, AlertTriangle, Wind, Gauge, Compass, Loader2 } from "lucide-react";
@@ -202,32 +202,32 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
 
   if (loading && !weatherData) {
     return (
-      <Card className="floating-card">
-        <CardHeader>
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
+      <GlassCard variant="subtle">
+        <GlassCardHeader>
+          <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading Weather Data...
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent className="pt-0">
           <div className="text-center py-4">
             <p className="text-sm text-muted-foreground">Fetching current weather conditions...</p>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   if (error && !weatherData) {
     return (
-      <Card className="floating-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <GlassCard variant="elevated">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
             <Thermometer className="h-5 w-5" />
             <span className="font-bold">Current Weather</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
           <div className="text-center py-8 space-y-4">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
             <p className="text-muted-foreground">{error}</p>
@@ -236,26 +236,26 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
               Retry
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   return (
-    <Card className="floating-card">
-      <CardHeader>
+    <GlassCard variant="default">
+      <GlassCardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Thermometer className="h-5 w-5" />
+          <GlassCardTitle className="flex items-center gap-2">
+            <Thermometer className="h-5 w-4" />
             <span className="font-bold">Current Weather</span>
-          </CardTitle>
+          </GlassCardTitle>
           <Button onClick={fetchWeatherData} size="sm" variant="outline" className="btn-modern">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
         </div>
-      </CardHeader>
-      <CardContent>
+      </GlassCardHeader>
+      <GlassCardContent>
         {weatherData ? (
           <div className="space-y-4">
             {/* Main Weather Display */}
@@ -280,7 +280,7 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
 
             {/* Weather Stats Grid */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border floating-card">
+              <GlassCard variant="subtle" className="text-center p-3">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Droplets className="h-4 w-4 text-blue-500" />
                   <span className="text-sm font-semibold">Humidity</span>
@@ -288,9 +288,9 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                 <div className="text-xl font-bold text-blue-600">
                   {weatherData.humidity}%
                 </div>
-              </div>
+              </GlassCard>
 
-              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border floating-card">
+              <GlassCard variant="subtle" className="text-center p-3">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <CloudRain className="h-4 w-4 text-blue-500" />
                   <span className="text-sm font-semibold">Rain Chance</span>
@@ -298,14 +298,14 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                 <div className="text-xl font-bold text-blue-600">
                   {weatherData.rainProbability.toFixed(0)}%
                 </div>
-              </div>
+              </GlassCard>
             </div>
 
             {/* Additional Weather Data */}
             {(weatherData.windSpeed || weatherData.airPressure || weatherData.visibility) && (
               <div className="grid grid-cols-2 gap-4">
                 {weatherData.windSpeed && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg border border-border floating-card">
+                  <GlassCard variant="subtle" className="text-center p-3">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Wind className="h-4 w-4 text-slate-500" />
                       <span className="text-sm font-semibold">Wind</span>
@@ -318,11 +318,11 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                         {weatherData.windDirection}° {getWindDirection(weatherData.windDirection)}
                       </div>
                     )}
-                  </div>
+                  </GlassCard>
                 )}
 
                 {weatherData.airPressure && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg border border-border floating-card">
+                  <GlassCard variant="subtle" className="text-center p-3">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Gauge className="h-4 w-4 text-purple-500" />
                       <span className="text-sm font-semibold">Pressure</span>
@@ -330,11 +330,11 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                     <div className="text-lg font-semibold text-purple-600">
                       {weatherData.airPressure} hPa
                     </div>
-                  </div>
+                  </GlassCard>
                 )}
 
                 {weatherData.visibility && (
-                  <div className="text-center p-3 bg-muted/30 rounded-lg border border-border floating-card">
+                  <GlassCard variant="subtle" className="text-center p-3">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <Eye className="h-4 w-4 text-indigo-500" />
                       <span className="text-sm font-semibold">Visibility</span>
@@ -342,14 +342,14 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                     <div className="text-lg font-semibold text-indigo-600">
                       {weatherData.visibility.toFixed(1)} km
                     </div>
-                  </div>
+                  </GlassCard>
                 )}
               </div>
             )}
 
             {/* Sunrise/Sunset */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border floating-card">
+              <GlassCard variant="subtle" className="text-center p-3">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Sun className="h-4 w-4 text-yellow-500" />
                   <span className="text-sm font-semibold">Sunrise</span>
@@ -357,9 +357,9 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                 <div className="text-lg font-semibold text-yellow-600">
                   {weatherData.sunrise}
                 </div>
-              </div>
+              </GlassCard>
 
-              <div className="text-center p-3 bg-muted/30 rounded-lg border border-border floating-card">
+              <GlassCard variant="subtle" className="text-center p-3">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Sun className="h-4 w-4 text-orange-500" />
                   <span className="text-sm font-semibold">Sunset</span>
@@ -367,7 +367,7 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                 <div className="text-lg font-semibold text-orange-600">
                   {weatherData.sunset}
                 </div>
-              </div>
+              </GlassCard>
             </div>
 
             {/* Last Updated */}
@@ -382,8 +382,8 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
             No weather data available
           </div>
         )}
-      </CardContent>
-    </Card>
+              </GlassCardContent>
+      </GlassCard>
   );
 });
 

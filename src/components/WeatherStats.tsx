@@ -43,9 +43,18 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
     hasUserConsent,
     permissionStatus,
     requestLocation,
-    useIPBasedLocation,
+    getIPBasedLocationAsync,
     isRequesting: isRequestingLocation
   } = useGeolocation();
+
+  // Handle IP-based location at component level to avoid Rules of Hooks violation
+  const handleIPBasedLocation = useCallback(async () => {
+    try {
+      await getIPBasedLocationAsync();
+    } catch (error) {
+      console.error('IP-based location failed:', error);
+    }
+  }, [getIPBasedLocationAsync]);
 
   // Memoize location object to prevent unnecessary re-renders
   const memoizedLocation = useMemo(() => {
@@ -304,7 +313,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                 Try Again Now
               </Button>
               <Button 
-                onClick={() => useIPBasedLocation()} 
+                onClick={handleIPBasedLocation}
                 variant="secondary"
                 className="w-full"
               >
@@ -344,12 +353,9 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
               console.error('Location request failed:', error);
             }
           }}
-          onSkip={async () => {
-            try {
-              await useIPBasedLocation();
-            } catch (error) {
-              console.error('IP-based location failed:', error);
-            }
+          onSkip={() => {
+            // Call useIPBasedLocation at component level, not in callback
+            handleIPBasedLocation();
           }}
           permissionStatus={permissionStatus}
           locationSource={locationData?.source}

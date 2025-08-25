@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -612,8 +612,8 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
       {/* Fetch AQI Data Button - Only shown after clearing history */}
       {showFetchButton && (
-        <Card className="floating-card border-0 border-2 border-primary/20">
-          <CardContent className="p-6 text-center">
+        <GlassCard variant="elevated" className="border-2 border-primary/20">
+          <GlassCardContent className="p-6 text-center">
             <div className="space-y-4">
               <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
                 <MapPin className="w-8 h-8 text-primary" />
@@ -643,58 +643,58 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                 )}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
       )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="floating-card border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+        <GlassCard variant="subtle">
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               7-Day Average
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
+            </GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent className="pt-0">
             <div className={`text-2xl font-bold ${getAQIColor(stats.avgAQI)}`}>
               {stats.avgAQI}
             </div>
             <p className="text-xs text-muted-foreground">
               {stats.avgAQI <= 50 ? 'Good air quality' : 'Moderate to poor air quality'}
             </p>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
 
-        <Card className="floating-card border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+        <GlassCard variant="subtle">
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Total Records
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
+            </GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent className="pt-0">
             <div className="text-2xl font-bold text-primary">{stats.totalReadings}</div>
             <p className="text-xs text-muted-foreground">
               {stats.totalReadings === 1 ? 'record' : 'records'} total
             </p>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
 
-        <Card className="floating-card border-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+        <GlassCard variant="subtle">
+          <GlassCardHeader className="pb-2">
+            <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
               <Clock className="h-4 w-4" />
               This Week
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
+            </GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent className="pt-0">
             <div className="text-2xl font-bold text-primary">{stats.recentReadings}</div>
             <p className="text-xs text-muted-foreground">
               readings this week
             </p>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
       </div>
 
       {/* History List */}
@@ -711,8 +711,8 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         </div>
         
         {history.length === 0 ? (
-          <Card className="bg-gradient-card shadow-card border-0">
-            <CardContent className="p-8 text-center">
+          <GlassCard variant="elevated" className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20">
+            <GlassCardContent className="p-8 text-center">
               <div className="space-y-2">
                 <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
                 <h3 className="text-lg font-semibold">No History Yet</h3>
@@ -720,16 +720,17 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                   Start tracking air quality to see your history here.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         ) : (
           history.map((entry) => (
-            <Card 
+            <GlassCard 
               key={entry.id} 
-              className="floating-card shadow-card border-0 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] group"
+              variant="default"
+              className="cursor-pointer hover:scale-[1.02] group"
               onClick={() => openEntryModal(entry)}
             >
-              <CardContent className="p-4">
+              <GlassCardContent className="p-4">
                 <div className="space-y-3">
                   {/* Header with AQI and Location */}
                   <div className="flex items-center justify-between">
@@ -876,8 +877,8 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           ))
         )}
       </div>
