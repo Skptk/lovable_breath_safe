@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard, GlassCardContent } from "@/components/ui/GlassCard";
 import { getPollutantInfo, createPollutantCards } from "@/lib/airQualityUtils";
 import { AirQualityData } from "@/hooks/useAirQuality";
 
@@ -17,28 +17,32 @@ export const PollutantCards = ({ data, onPollutantClick }: PollutantCardsProps):
         const isAboveThreshold = pollutant.threshold && pollutant.value > pollutant.threshold;
         
         return (
-          <Card 
+          <button
             key={pollutant.code}
-            className={`cursor-pointer transition-all hover:scale-105 ${
-              isAboveThreshold ? 'border-red-300 bg-red-50/50' : 'border-border'
-            }`}
+            className="w-full text-left"
             onClick={() => onPollutantClick(info.label, pollutant.value, info.unit)}
           >
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold mb-2">{info.label}</div>
-              <div className={`text-3xl font-bold ${isAboveThreshold ? 'text-red-600' : 'text-primary'}`}>
-                {pollutant.value !== null ? pollutant.value.toFixed(1) : 'N/A'}
-              </div>
-              <div className="text-sm text-muted-foreground">{info.unit}</div>
-              {pollutant.threshold && (
-                <div className={`text-xs mt-2 ${
-                  isAboveThreshold ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {isAboveThreshold ? 'Above threshold' : 'Below threshold'}
+            <GlassCard 
+              className={`cursor-pointer transition-all hover:scale-105 ${
+                isAboveThreshold ? 'border-red-300 bg-red-50/50' : 'border-border'
+              }`}
+            >
+              <GlassCardContent className="p-4 text-center">
+                <div className="text-2xl font-bold mb-2">{info.label}</div>
+                <div className={`text-3xl font-bold ${isAboveThreshold ? 'text-red-600' : 'text-primary'}`}>
+                  {pollutant.value !== null ? pollutant.value.toFixed(1) : 'N/A'}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <div className="text-sm text-muted-foreground">{info.unit}</div>
+                {pollutant.threshold && (
+                  <div className={`text-xs mt-2 ${
+                    isAboveThreshold ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {isAboveThreshold ? 'Above threshold' : 'Below threshold'}
+                  </div>
+                )}
+              </GlassCardContent>
+            </GlassCard>
+          </button>
         );
       })}
     </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { 
   Shield, 
@@ -193,7 +193,7 @@ export default function Landing(): JSX.Element {
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
-                <Card 
+                <GlassCard 
                   key={index}
                   className={`floating-card relative overflow-hidden transition-all duration-300 cursor-pointer group ${
                     isHovered === feature.title 
@@ -203,23 +203,23 @@ export default function Landing(): JSX.Element {
                   onMouseEnter={() => setIsHovered(feature.title)}
                   onMouseLeave={() => setIsHovered(null)}
                 >
-                  <CardHeader className="pb-4">
+                  <GlassCardHeader className="pb-4">
                     <div className={`w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
                       <Icon className={`h-6 w-6 ${feature.color}`} />
                     </div>
-                    <CardTitle className="text-xl font-semibold text-foreground">
+                    <GlassCardTitle className="text-xl font-semibold text-foreground">
                       {feature.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                    </GlassCardTitle>
+                  </GlassCardHeader>
+                  <GlassCardContent>
                     <p className="text-muted-foreground leading-relaxed">
                       {feature.description}
                     </p>
-                  </CardContent>
+                  </GlassCardContent>
                   
                   {/* Hover effect overlay */}
                   <div className={`absolute inset-0 bg-gradient-to-r from-primary/5 to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}></div>
-                </Card>
+                </GlassCard>
               );
             })}
           </div>

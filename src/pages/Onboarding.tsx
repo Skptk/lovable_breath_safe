@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -156,37 +156,37 @@ export default function Onboarding(): JSX.Element {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-              <Card className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
+              <GlassCard className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Account Created</h3>
                 <p className="text-sm text-muted-foreground">Your account has been successfully created</p>
-              </Card>
+              </GlassCard>
 
-              <Card className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
+              <GlassCard className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <MapPin className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Location Set</h3>
                 <p className="text-sm text-muted-foreground">Your region and city preferences are configured</p>
-              </Card>
+              </GlassCard>
 
-              <Card className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
+              <GlassCard className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Shield className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Privacy Protected</h3>
                 <p className="text-sm text-muted-foreground">Your data is secure and private</p>
-              </Card>
+              </GlassCard>
 
-              <Card className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
+              <GlassCard className="floating-card p-6 text-center hover:shadow-lg transition-shadow">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <TrendingUp className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Ready to Track</h3>
                 <p className="text-sm text-muted-foreground">Start monitoring your air quality journey</p>
-              </Card>
+              </GlassCard>
             </div>
           </div>
         );
@@ -366,8 +366,8 @@ export default function Onboarding(): JSX.Element {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex items-center justify-center p-4">
-      <Card className="floating-card w-full max-w-4xl mx-auto">
-        <CardHeader className="text-center pb-8">
+      <GlassCard className="floating-card w-full max-w-4xl mx-auto">
+        <GlassCardHeader className="text-center pb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
               <Shield className="w-4 h-4 text-primary-foreground" />
@@ -383,11 +383,11 @@ export default function Onboarding(): JSX.Element {
             </div>
             <Progress value={progress} className="h-2" />
           </div>
-        </CardHeader>
+        </GlassCardHeader>
 
-        <CardContent className="pb-8">
+        <GlassCardContent className="pb-8">
           {renderStep()}
-        </CardContent>
+        </GlassCardContent>
 
         {/* Navigation Buttons */}
         <div className="flex justify-between items-center px-6 pb-6">
@@ -422,7 +422,7 @@ export default function Onboarding(): JSX.Element {
             )}
           </div>
         </div>
-      </Card>
+      </GlassCard>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard, GlassCardContent } from "@/components/ui/GlassCard";
 import { getAQIColor, getAQILabel } from "@/lib/airQualityUtils";
 
 interface AQIDisplayProps {
@@ -7,8 +7,8 @@ interface AQIDisplayProps {
 }
 
 export const AQIDisplay = ({ aqi, timestamp }: AQIDisplayProps): JSX.Element => (
-  <Card className="floating-card shadow-card border-0">
-    <CardContent className="p-6">
+  <GlassCard className="floating-card shadow-card border-0">
+    <GlassCardContent className="p-6">
       <div className="text-center space-y-4">
         <div className={`text-8xl font-bold ${getAQIColor(aqi)}`}>
           {aqi}
@@ -20,6 +20,6 @@ export const AQIDisplay = ({ aqi, timestamp }: AQIDisplayProps): JSX.Element => 
           Last updated: {timestamp}
         </p>
       </div>
-    </CardContent>
-  </Card>
+    </GlassCardContent>
+  </GlassCard>
 );

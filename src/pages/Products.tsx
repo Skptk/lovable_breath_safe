@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Star, ExternalLink, MapPin } from 'lucide-react';
@@ -118,8 +118,8 @@ export default function Products() {
         </div>
 
       {/* Local Retailers Notice */}
-      <Card className="floating-card border-0">
-        <CardContent>
+      <GlassCard className="floating-card border-0">
+        <GlassCardContent>
           <div className="flex items-center gap-2 mb-2">
             <MapPin className="h-5 w-5 text-primary" />
             <h3 className="font-heading">Local Retailers</h3>
@@ -127,29 +127,29 @@ export default function Products() {
           <p className="body-md text-muted-foreground">
             Check local electronics stores, home improvement centers, and department stores near you for immediate availability and to avoid shipping costs.
           </p>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* Products Grid */}
       <div className="space-y-card-gap">
         {products.length === 0 ? (
-          <Card className="floating-card border-0">
-            <CardHeader>
-              <CardTitle className="text-lg">No Products Available</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <GlassCard className="floating-card border-0">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg">No Products Available</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent>
               <p className="text-muted-foreground">
                 We're currently updating our product recommendations. Please check back soon!
               </p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         ) : (
           products.map((product) => (
-            <Card key={product.id} className="floating-card border-0">
-              <CardHeader className="pb-3">
+            <GlassCard key={product.id} className="floating-card border-0">
+              <GlassCardHeader className="pb-3">
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1">
-                    <CardTitle className="text-lg mb-2">{product.name}</CardTitle>
+                    <GlassCardTitle className="text-lg mb-2">{product.name}</GlassCardTitle>
                     <p className="text-sm text-muted-foreground mb-3">
                       {product.description}
                     </p>
@@ -170,9 +170,9 @@ export default function Products() {
                     className="w-16 h-16 object-cover rounded-lg bg-muted"
                   />
                 </div>
-              </CardHeader>
+              </GlassCardHeader>
               
-              <CardContent className="pt-0">
+              <GlassCardContent className="pt-0">
                 <div className="flex justify-between items-center mb-3">
                   <div className="text-sm text-muted-foreground">
                     <div>Coverage: {product.coverage_area}</div>
@@ -187,21 +187,21 @@ export default function Products() {
                   View on {product.retailer}
                   <ExternalLink className="h-4 w-4" />
                 </Button>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           ))
         )}
       </div>
 
         {/* Disclaimer */}
-        <Card className="floating-card border-0">
-          <CardContent className="p-4">
+        <GlassCard className="floating-card border-0">
+          <GlassCardContent className="p-4">
             <p className="text-xs text-muted-foreground">
               * Prices and availability may vary. We may earn a commission from purchases made through affiliate links. 
               This helps support the development of this app while providing you with quality product recommendations.
             </p>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
       </div>
       
       {/* Footer */}

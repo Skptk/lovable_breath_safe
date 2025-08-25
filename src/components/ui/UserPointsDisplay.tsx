@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Trophy } from "lucide-react";
 
@@ -9,14 +9,14 @@ interface UserPointsDisplayProps {
 }
 
 export const UserPointsDisplay = ({ userPoints, currencyRewards, canWithdraw }: UserPointsDisplayProps): JSX.Element => (
-  <Card className="floating-card shadow-card border-0">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2">
+  <GlassCard className="floating-card shadow-card border-0">
+    <GlassCardHeader>
+      <GlassCardTitle className="flex items-center gap-2">
         <Trophy className="h-5 w-5 text-yellow-500" />
         Your Points
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-4">
+      </GlassCardTitle>
+    </GlassCardHeader>
+    <GlassCardContent className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="text-center">
           <div className="text-2xl font-bold text-primary">{userPoints.toLocaleString()}</div>
@@ -32,6 +32,6 @@ export const UserPointsDisplay = ({ userPoints, currencyRewards, canWithdraw }: 
           </Badge>
         </div>
       </div>
-    </CardContent>
-  </Card>
+    </GlassCardContent>
+  </GlassCard>
 );

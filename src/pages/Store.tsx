@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -358,8 +358,8 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
       {/* Products Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         {sortedProducts.map((product) => (
-          <Card key={product.id} className="floating-card group hover:shadow-lg transition-all duration-300 cursor-pointer">
-            <CardHeader className="pb-2">
+          <GlassCard key={product.id} className="floating-card group hover:shadow-lg transition-all duration-300 cursor-pointer">
+            <GlassCardHeader className="pb-2">
               <div className="relative">
                 <img
                   src={product.image}
@@ -383,9 +383,9 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
                   </Badge>
                 )}
               </div>
-            </CardHeader>
+                          </GlassCardHeader>
             
-            <CardContent className="space-y-3">
+            <GlassCardContent className="space-y-3">
               {/* Category and Store */}
               <div className="flex items-center justify-between">
                 <Badge variant="outline" className="text-xs">
@@ -449,8 +449,8 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
                 <ExternalLink className="h-4 w-4 mr-2" />
                 View on {product.store.charAt(0).toUpperCase() + product.store.slice(1)}
               </Button>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         ))}
       </div>
 

@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { GlassCard, GlassCardContent, GlassCardHeader } from "@/components/ui/GlassCard";
 
 interface BalanceChartProps {
   title: string;
@@ -26,14 +26,14 @@ export const BalanceChart = ({
   period
 }: BalanceChartProps): JSX.Element => {
   return (
-    <Card className="relative overflow-hidden col-span-2 bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+    <GlassCard className="relative overflow-hidden col-span-2 bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300">
       {/* Glowing border effect */}
       <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
       
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-lg"></div>
       
-      <CardHeader className="relative pb-4">
+      <GlassCardHeader className="relative pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="heading-md font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{title}</h3>
@@ -44,9 +44,9 @@ export const BalanceChart = ({
           </div>
           <div className="text-sm text-muted-foreground/80">{period}</div>
         </div>
-      </CardHeader>
+      </GlassCardHeader>
       
-      <CardContent className="relative pt-0">
+      <GlassCardContent className="relative pt-0">
         <div className="grid grid-cols-2 gap-6 mb-6">
           {/* Savings */}
           <div className="p-4 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20">
@@ -119,7 +119,7 @@ export const BalanceChart = ({
             <circle cx="350" cy="20" r="4" fill="hsl(var(--primary))" className="drop-shadow-md" />
           </svg>
         </div>
-      </CardContent>
-    </Card>
+      </GlassCardContent>
+    </GlassCard>
   );
 };

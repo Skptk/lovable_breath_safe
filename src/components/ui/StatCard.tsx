@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard, GlassCardContent } from "@/components/ui/GlassCard";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface StatCardProps {
@@ -56,14 +56,14 @@ export const StatCard = ({
         transition: { duration: 0.2 }
       }}
     >
-      <Card className={`relative overflow-hidden bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300 ${className}`}>
+      <GlassCard className={`relative overflow-hidden bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300 ${className}`}>
         {/* Glowing border effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
         
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-lg"></div>
         
-        <CardContent className="relative p-4 sm:p-6">
+        <GlassCardContent className="relative p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-3">
@@ -124,8 +124,8 @@ export const StatCard = ({
               </motion.div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     </motion.div>
   );
 };

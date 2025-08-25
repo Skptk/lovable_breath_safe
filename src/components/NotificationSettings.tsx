@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -80,18 +80,18 @@ export default function NotificationSettings({ className }: NotificationSettings
 
   if (isLoading) {
     return (
-      <Card className={cn("floating-card border-0", className)}>
-        <CardContent className="flex items-center justify-center p-8">
+      <GlassCard className={cn("floating-card border-0", className)}>
+        <GlassCardContent className="flex items-center justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   if (!localPreferences) {
     return (
-      <Card className={cn("floating-card border-0", className)}>
-        <CardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
+      <GlassCard className={cn("floating-card border-0", className)}>
+        <GlassCardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
           <Settings className="h-8 w-8 text-muted-foreground" />
           <div>
             <h3 className="font-semibold mb-2">Setting up notifications</h3>
@@ -99,8 +99,8 @@ export default function NotificationSettings({ className }: NotificationSettings
               Please wait while we initialize your notification preferences...
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
@@ -169,18 +169,18 @@ export default function NotificationSettings({ className }: NotificationSettings
   ];
 
   return (
-    <Card className={cn("floating-card border-0", className)}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <GlassCard className={cn("floating-card border-0", className)}>
+      <GlassCardHeader>
+        <GlassCardTitle className="flex items-center gap-2">
           <Bell className="h-5 w-5" />
           Notification Settings
-        </CardTitle>
+        </GlassCardTitle>
         <p className="text-sm text-muted-foreground">
           Customize how and when you receive notifications from Breath Safe.
         </p>
-      </CardHeader>
+      </GlassCardHeader>
 
-      <CardContent className="space-y-6">
+      <GlassCardContent className="space-y-6">
         {/* Delivery Methods */}
         <div className="space-y-4">
           <h3 className="font-semibold text-sm">Delivery Methods</h3>
@@ -275,7 +275,7 @@ export default function NotificationSettings({ className }: NotificationSettings
             </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </GlassCardContent>
+    </GlassCard>
   );
 }

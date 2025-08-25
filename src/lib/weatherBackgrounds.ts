@@ -169,21 +169,21 @@ export function isNightTime(sunriseTime?: string, sunsetTime?: string): boolean 
       sunriseMinutes,
       sunsetTime,
       sunsetMinutes,
-      isNormalCase: sunsetMinutes < sunriseMinutes
+      isNormalCase: sunsetMinutes > sunriseMinutes
     });
     
-    // Normal case: sunset is before sunrise (e.g., 6:37 PM to 6:32 AM next day)
-    // This is the typical day/night cycle where sunset < sunrise
-    if (sunsetMinutes < sunriseMinutes) {
+    // Normal case: sunset is after sunrise (e.g., 6:32 AM to 6:37 PM)
+    // This is the typical day/night cycle where sunset > sunrise
+    if (sunsetMinutes > sunriseMinutes) {
       // Night time: after sunset OR before sunrise
       const isNight = currentTime > sunsetMinutes || currentTime < sunriseMinutes;
       console.log(`🌙 [isNightTime] Normal case: currentTime > sunsetMinutes (${currentTime} > ${sunsetMinutes}) OR currentTime < sunriseMinutes (${currentTime} < ${sunriseMinutes}) = ${isNight}`);
       return isNight;
     } else {
-      // Edge case: sunset is after sunrise (e.g., in polar regions during summer)
-      // This would be very rare and indicates continuous daylight
-      const isNight = currentTime < sunriseMinutes && currentTime > sunsetMinutes;
-      console.log(`🌙 [isNightTime] Edge case (polar summer): currentTime < sunriseMinutes (${currentTime} < ${sunriseMinutes}) AND currentTime > sunsetMinutes (${currentTime} > ${sunsetMinutes}) = ${isNight}`);
+      // Edge case: sunset is before sunrise (e.g., in polar regions during winter)
+      // This would be very rare and indicates continuous darkness
+      const isNight = currentTime > sunsetMinutes && currentTime < sunriseMinutes;
+      console.log(`🌙 [isNightTime] Edge case (polar winter): currentTime > sunsetMinutes (${currentTime} > ${sunsetMinutes}) AND currentTime < sunriseMinutes (${currentTime} < ${sunriseMinutes}) = ${isNight}`);
       return isNight;
     }
   } catch (error) {

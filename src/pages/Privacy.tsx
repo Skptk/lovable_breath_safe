@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import Footer from '@/components/Footer';
 
 export default function Privacy() {
@@ -15,11 +15,11 @@ export default function Privacy() {
         </div>
 
         <div className="space-y-4">
-          <Card className="floating-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle className="text-lg">Information We Collect</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
+          <GlassCard className="floating-card shadow-card border-0">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg">Information We Collect</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4 text-sm">
               <div>
                 <h4 className="font-semibold mb-2">Personal Information</h4>
                 <p className="text-muted-foreground">
@@ -38,27 +38,27 @@ export default function Privacy() {
                   We automatically collect information about how you use our app, including air quality readings, points earned, and feature usage to improve our services.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
-          <Card className="floating-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle className="text-lg">How We Use Your Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <GlassCard className="floating-card shadow-card border-0">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg">How We Use Your Information</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-3 text-sm text-muted-foreground">
               <p>• Provide personalized air quality information for your location</p>
               <p>• Track your points and historical air quality exposure</p>
               <p>• Send you relevant product recommendations</p>
               <p>• Improve our services and develop new features</p>
               <p>• Communicate with you about your account and our services</p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
-          <Card className="floating-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle className="text-lg">Information Sharing</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
+          <GlassCard className="floating-card shadow-card border-0">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg">Information Sharing</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4 text-sm">
               <div>
                 <h4 className="font-semibold mb-2">Third-Party Services</h4>
                 <p className="text-muted-foreground">
@@ -77,38 +77,38 @@ export default function Privacy() {
                   We may disclose your information if required by law or to protect our rights, safety, or the rights and safety of others.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
-          <Card className="floating-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle className="text-lg">Data Security</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
+          <GlassCard className="floating-card shadow-card border-0">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg">Data Security</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="text-sm text-muted-foreground">
               <p>
                 We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. Your data is stored using industry-standard encryption and security practices through Supabase.
               </p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
-          <Card className="floating-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle className="text-lg">Your Rights</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <GlassCard className="floating-card shadow-card border-0">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg">Your Rights</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-3 text-sm text-muted-foreground">
               <p>• Access and review your personal information</p>
               <p>• Request correction of inaccurate data</p>
               <p>• Request deletion of your data</p>
               <p>• Opt out of marketing communications</p>
               <p>• Export your data in a portable format</p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
-          <Card className="floating-card shadow-card border-0">
-            <CardHeader>
-              <CardTitle className="text-lg">Contact Us</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
+          <GlassCard className="floating-card shadow-card border-0">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg">Contact Us</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="text-sm text-muted-foreground">
               <p>
                 If you have any questions about this Privacy Policy or our data practices, please contact us at:
               </p>
@@ -117,8 +117,8 @@ export default function Privacy() {
                 <strong>Address:</strong> [Your Company Address]<br />
                 <strong>Last Updated:</strong> {new Date().toLocaleDateString()}
               </p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </div>
       </div>
       

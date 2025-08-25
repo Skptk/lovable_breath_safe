@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -350,56 +350,56 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="floating-card border-0">
-            <CardContent className="p-4 text-center">
+          <GlassCard className="floating-card border-0">
+            <GlassCardContent className="p-4 text-center">
               <div className="text-3xl font-bold text-primary mb-2">
                 <Trophy className="w-8 h-8 mx-auto mb-2" />
                 {(userPoints?.totalPoints || 0).toLocaleString()}
               </div>
               <p className="text-sm text-muted-foreground">Total Points</p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
-          <Card className="floating-card border-0">
-            <CardContent className="p-4 text-center">
+          <GlassCard className="floating-card border-0">
+            <GlassCardContent className="p-4 text-center">
               <div className="text-3xl font-bold text-green-500 mb-2">
                 <DollarSign className="w-8 h-8 mx-auto mb-2" />
                 ${(currencyValue || 0).toFixed(2)}
               </div>
               <p className="text-sm text-muted-foreground">Currency Value</p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
-          <Card className="floating-card border-0">
-            <CardContent className="p-4 text-center">
+          <GlassCard className="floating-card border-0">
+            <GlassCardContent className="p-4 text-center">
               <div className="text-3xl font-bold text-purple-500 mb-2">
                 <Star className="w-8 h-8 mx-auto mb-2" />
                 {achievements ? achievements.length : 0}
               </div>
               <p className="text-sm text-muted-foreground">Achievements</p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
-          <Card className="floating-card border-0">
-            <CardContent className="p-4 text-center">
+          <GlassCard className="floating-card border-0">
+            <GlassCardContent className="p-4 text-center">
               <div className="text-3xl font-bold text-orange-500 mb-2">
                 <Crown className="w-8 h-8 mx-auto mb-2" />
                 {badges ? badges.filter(b => b.unlocked).length : 0}
               </div>
               <p className="text-sm text-muted-foreground">Badges Unlocked</p>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </div>
 
         {/* Current Badge Display */}
-        <Card className="floating-card border-0">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <GlassCard className="floating-card border-0">
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-yellow-500" />
               Current Badge
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
+            </GlassCardTitle>
+          </GlassCardHeader>
+          <GlassCardContent className="text-center space-y-4">
             <div className="text-6xl mb-4">{currentBadge.icon}</div>
             <div className="text-2xl font-bold text-primary">{currentBadge.name}</div>
             <p className="text-muted-foreground">
@@ -422,8 +422,8 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="badges" className="space-y-4">
@@ -436,14 +436,14 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
 
           {/* Badges Tab */}
           <TabsContent value="badges" className="space-y-4">
-            <Card className="floating-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <GlassCard className="floating-card border-0">
+              <GlassCardHeader>
+                <GlassCardTitle className="flex items-center gap-2">
                   <Medal className="h-5 w-5 text-yellow-500" />
                   Badge Collection
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 {!badges || badges.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-4xl mb-4">🎯</div>
@@ -465,7 +465,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {badges.map((badge) => (
-                      <Card 
+                      <GlassCard 
                         key={badge.id} 
                         className={`floating-card border-2 transition-all duration-200 ${
                           badge.unlocked 
@@ -473,7 +473,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                             : 'border-gray-200 opacity-75'
                         }`}
                       >
-                        <CardContent className="p-4 text-center">
+                        <GlassCardContent className="p-4 text-center">
                           <div className={`text-4xl mb-3 ${badge.unlocked ? '' : 'grayscale'}`}>
                             {badge.icon}
                           </div>
@@ -509,25 +509,25 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                               </div>
                             </div>
                           )}
-                        </CardContent>
-                      </Card>
+                        </GlassCardContent>
+                      </GlassCard>
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           </TabsContent>
 
           {/* Achievements Tab */}
           <TabsContent value="achievements" className="space-y-4">
-            <Card className="floating-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <GlassCard className="floating-card border-0">
+              <GlassCardHeader>
+                <GlassCardTitle className="flex items-center gap-2">
                   <Target className="h-5 w-5 text-blue-500" />
                   All Achievements
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 {!achievements || achievements.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-4xl mb-4">🎯</div>
@@ -549,8 +549,8 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                 ) : (
                   achievements.map((achievement) => {
                     return (
-                      <Card key={achievement.id} className="floating-card border-2 border-blue-200">
-                        <CardContent className="p-4">
+                      <GlassCard key={achievement.id} className="floating-card border-2 border-blue-200">
+                        <GlassCardContent className="p-4">
                           <div className="flex items-center gap-4">
                             <div className="text-4xl">{achievement.icon}</div>
                             <div className="flex-1">
@@ -568,26 +568,26 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                               </div>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </GlassCardContent>
+                      </GlassCard>
                     );
                   })
                 )}
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           </TabsContent>
 
           {/* Rewards Tab */}
           <TabsContent value="rewards" className="space-y-4">
             {/* Currency Rewards */}
-            <Card className="floating-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <GlassCard className="floating-card border-0">
+              <GlassCardHeader>
+                <GlassCardTitle className="flex items-center gap-2">
                   <DollarSign className="h-5 w-5 text-green-500" />
                   Currency Rewards
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 <div className="text-center space-y-4">
                   <div className="text-6xl font-bold text-green-500">
                     ${(currencyValue || 0).toFixed(2)}
@@ -605,18 +605,18 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                     </Badge>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
 
             {/* Badge Progress Summary */}
-            <Card className="floating-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <GlassCard className="floating-card border-0">
+              <GlassCardHeader>
+                <GlassCardTitle className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-yellow-500" />
                   Badge Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-primary mb-2">
                     {badges ? badges.filter(b => b.unlocked).length : 0} / {badges ? badges.length : 0}
@@ -643,20 +643,20 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                     <p className="text-sm text-green-700">Points to Next Badge</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           </TabsContent>
 
           {/* Withdrawals Tab */}
           <TabsContent value="withdrawals" className="space-y-4">
-            <Card className="floating-card border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <GlassCard className="floating-card border-0">
+              <GlassCardHeader>
+                <GlassCardTitle className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-blue-500" />
                   Withdrawal Requests
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 {canWithdraw ? (
                   <div className="space-y-4">
                     <div className="text-center p-4 floating-card border border-green-200">
@@ -687,8 +687,8 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                   <div className="space-y-3">
                     <h4 className="font-semibold">Recent Withdrawal Requests</h4>
                     {withdrawalRequests.map((request) => (
-                      <Card key={request.id} className="border">
-                        <CardContent className="p-3">
+                      <GlassCard key={request.id} className="border">
+                        <GlassCardContent className="p-3">
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="font-medium">${request.amount}</div>
@@ -702,13 +702,13 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                               {request.status}
                             </Badge>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </GlassCardContent>
+                      </GlassCard>
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           </TabsContent>
         </Tabs>
 

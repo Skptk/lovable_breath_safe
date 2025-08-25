@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Mail, Phone, MapPin, Clock, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -49,8 +49,8 @@ export default function Contact(): JSX.Element {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
             >
-              <Card className="floating-card">
-                <CardContent className="p-4">
+              <GlassCard className="floating-card">
+                <GlassCardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                       <Mail className="h-5 w-5 text-primary" />
@@ -60,11 +60,11 @@ export default function Contact(): JSX.Element {
                       <p className="text-sm text-muted-foreground">support@breathsafe.com</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </GlassCardContent>
+              </GlassCard>
 
-              <Card className="floating-card">
-                <CardContent className="p-4">
+              <GlassCard className="floating-card">
+                <GlassCardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                       <Phone className="h-5 w-5 text-primary" />
@@ -74,11 +74,11 @@ export default function Contact(): JSX.Element {
                       <p className="text-sm text-muted-foreground">+1 (555) 123-4567</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </GlassCardContent>
+              </GlassCard>
 
-              <Card className="floating-card">
-                <CardContent className="p-4">
+              <GlassCard className="floating-card">
+                <GlassCardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                       <Clock className="h-5 w-5 text-primary" />
@@ -88,8 +88,8 @@ export default function Contact(): JSX.Element {
                       <p className="text-sm text-muted-foreground">Monday - Friday: 9 AM - 6 PM EST</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </GlassCardContent>
+              </GlassCard>
             </motion.div>
           </div>
 
@@ -99,14 +99,14 @@ export default function Contact(): JSX.Element {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
           >
-            <Card className="floating-card">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold">Send us a Message</CardTitle>
+            <GlassCard className="floating-card">
+              <GlassCardHeader>
+                <GlassCardTitle className="text-xl font-semibold">Send us a Message</GlassCardTitle>
                 <p className="text-sm text-muted-foreground">
                   Fill out the form below and we'll get back to you within 24 hours.
                 </p>
-              </CardHeader>
-              <CardContent className="space-y-4">
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
@@ -169,8 +169,8 @@ export default function Contact(): JSX.Element {
                 <Button className="w-full bg-primary hover:bg-primary/90">
                   Send Message
                 </Button>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           </motion.div>
         </div>
 
@@ -181,8 +181,8 @@ export default function Contact(): JSX.Element {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut", delay: 0.3 }}
         >
-          <Card className="floating-card">
-            <CardContent className="p-6">
+          <GlassCard className="floating-card">
+            <GlassCardContent className="p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Frequently Asked Questions</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
                 <div>
@@ -202,8 +202,8 @@ export default function Contact(): JSX.Element {
                   <p>Absolutely. We never share your personal data or location information with third parties.</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </motion.div>
       </div>
 

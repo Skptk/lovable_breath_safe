@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Eye, EyeOff, Code, AlertTriangle, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
 
@@ -532,17 +532,17 @@ export default function Auth(): JSX.Element {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <div className="flex-1 flex items-center justify-center page-padding">
-        <Card className="w-full max-w-md floating-card">
-        <CardHeader className="text-center">
-          <CardTitle className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
+        <GlassCard className="w-full max-w-md floating-card">
+        <GlassCardHeader className="text-center">
+          <GlassCardTitle className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
             {isSignUp ? 'Create Account' : 'Welcome Back'}
-          </CardTitle>
+          </GlassCardTitle>
           <p className="body-md text-muted-foreground">
             {isSignUp ? 'Join Air Quality Tracker' : 'Sign in to your account'}
           </p>
-        </CardHeader>
+        </GlassCardHeader>
         
-        <CardContent>
+        <GlassCardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div className="space-y-2">
@@ -881,8 +881,8 @@ export default function Auth(): JSX.Element {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
       </div>
       
       {/* Footer */}
