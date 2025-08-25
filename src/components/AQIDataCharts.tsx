@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -258,8 +258,8 @@ export default function AQIDataCharts({
   return (
     <>
       {/* Main AQI Card */}
-      <Card className="floating-card shadow-card border-0 mb-6">
-        <CardHeader className="text-center pb-4">
+      <GlassCard className="floating-card shadow-card border-0 mb-6">
+        <GlassCardHeader className="text-center pb-4">
           <div className="flex items-center justify-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5 text-primary" />
             <h2 className="text-2xl font-black text-primary">Air Quality Index</h2>
@@ -267,8 +267,8 @@ export default function AQIDataCharts({
           <p className="text-muted-foreground">
             Last updated: {new Date(timestamp).toLocaleString()}
           </p>
-        </CardHeader>
-        <CardContent className="text-center space-y-6">
+        </GlassCardHeader>
+        <GlassCardContent className="text-center space-y-6">
           <div className="flex items-center justify-center gap-8">
             <div className="text-center">
               <div 
@@ -290,8 +290,8 @@ export default function AQIDataCharts({
               </Badge>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
 
       {/* Pollutant Charts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -300,12 +300,12 @@ export default function AQIDataCharts({
           const historicalData = generateHistoricalData(pollutant.value, pollutant.name);
           
           return (
-            <Card 
+            <GlassCard 
               key={pollutant.name}
               className="shadow-card hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105"
               onClick={() => handlePollutantClick(pollutant)}
             >
-              <CardHeader className="pb-3">
+              <GlassCardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="p-2 rounded-lg" style={{ backgroundColor: `${pollutant.color}20` }}>
@@ -314,7 +314,7 @@ export default function AQIDataCharts({
                       </div>
                     </div>
                     <div>
-                      <CardTitle className="text-lg font-bold">{pollutant.name}</CardTitle>
+                      <GlassCardTitle className="text-lg font-bold">{pollutant.name}</GlassCardTitle>
                       <p className="text-sm text-muted-foreground">{pollutant.unit}</p>
                     </div>
                   </div>
@@ -326,8 +326,8 @@ export default function AQIDataCharts({
                     {status.status}
                   </Badge>
                 </div>
-              </CardHeader>
-              <CardContent className="pt-0">
+              </GlassCardHeader>
+              <GlassCardContent className="pt-0">
                 {/* Mini Chart */}
                 <div className="h-24 mb-3">
                   <ResponsiveContainer width="100%" height="100%">
@@ -358,8 +358,8 @@ export default function AQIDataCharts({
                     Current reading
                   </p>
                 </div>
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           );
         })}
       </div>

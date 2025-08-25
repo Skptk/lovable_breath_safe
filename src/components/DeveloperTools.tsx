@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlassCard, GlassCardContent, GlassCardDescription, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -123,18 +123,18 @@ export function DeveloperTools({ isVisible = false, onToggle }: DeveloperToolsPr
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-96 max-h-[80vh] overflow-y-auto">
-      <Card className="shadow-lg border-2">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center space-x-2 text-lg">
+      <GlassCard className="shadow-lg border-2">
+        <GlassCardHeader className="pb-3">
+          <GlassCardTitle className="flex items-center space-x-2 text-lg">
             <Bug className="h-5 w-5" />
             <span>Developer Tools</span>
-          </CardTitle>
-          <CardDescription>
+          </GlassCardTitle>
+          <GlassCardDescription>
             WebSocket connection diagnostics and troubleshooting
-          </CardDescription>
-        </CardHeader>
+          </GlassCardDescription>
+        </GlassCardHeader>
         
-        <CardContent className="space-y-4">
+        <GlassCardContent className="space-y-4">
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2">
             <Button
@@ -290,8 +290,8 @@ export function DeveloperTools({ isVisible = false, onToggle }: DeveloperToolsPr
               Close Tools
             </Button>
           )}
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     </div>
   );
 }

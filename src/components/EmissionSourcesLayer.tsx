@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Cloud, MapPin, AlertTriangle, RefreshCw, Info, Shield, TrendingUp, Globe, Wind, Thermometer, Droplets } from "lucide-react";
@@ -171,15 +171,15 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
   // Show informational content when no emission data is available
   if (emissionSources.length === 0 && !loading) {
     return (
-      <Card className="floating-card mt-4">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <GlassCard className="floating-card mt-4">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
             Air Quality Monitoring
             <Badge variant="secondary">OpenWeatherMap</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
           <div className="space-y-6">
             {/* Informational Carousel */}
             <div className="relative">
@@ -268,41 +268,41 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   if (loading && emissionSources.length === 0) {
     return (
-      <Card className="floating-card mt-4">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <GlassCard className="floating-card mt-4">
+        <GlassCardHeader>
+          <GlassCardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
             Air Quality Monitoring
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
           <div className="flex items-center justify-center py-8">
             <div className="text-center space-y-2">
               <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
               <p className="text-muted-foreground">Loading air quality data...</p>
           </div>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   return (
-    <Card className="floating-card mt-4">
-      <CardHeader>
+    <GlassCard className="floating-card mt-4">
+      <GlassCardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
+          <GlassCardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
             Air Quality Monitoring
             <Badge variant="secondary">OpenWeatherMap</Badge>
-          </CardTitle>
+          </GlassCardTitle>
           <div className="flex items-center gap-2">
             <Button
               variant={showDetails ? "default" : "outline"}
@@ -318,8 +318,8 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
             </Button>
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
+      </GlassCardHeader>
+      <GlassCardContent>
         {emissionSources.length > 0 && (
           <div className="space-y-6">
             {/* Air Quality Data Carousel */}
@@ -426,7 +426,7 @@ export default function EmissionSourcesLayer({ latitude, longitude }: EmissionSo
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </GlassCardContent>
+    </GlassCard>
   );
 }

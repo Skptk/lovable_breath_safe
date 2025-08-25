@@ -1,7 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 
 interface Props {
   children: ReactNode;
@@ -100,8 +100,8 @@ class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl">
-            <CardHeader className="text-center">
+          <GlassCard className="w-full max-w-2xl">
+            <GlassCardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
                 {isPromiseRejection ? (
                   <Bug className="h-8 w-8 text-destructive" />
@@ -109,17 +109,17 @@ class ErrorBoundary extends Component<Props, State> {
                   <AlertTriangle className="h-8 w-8 text-destructive" />
                 )}
               </div>
-              <CardTitle className="text-xl">
+              <GlassCardTitle className="text-xl">
                 {isPromiseRejection ? 'Promise Rejection Error' : 'Something went wrong'}
-              </CardTitle>
+              </GlassCardTitle>
               <p className="text-muted-foreground">
                 {isPromiseRejection 
                   ? 'An unhandled promise rejection occurred. This usually means there was an issue with an API call or async operation.'
                   : 'An error occurred while rendering this component. Please try again or contact support if the problem persists.'
                 }
               </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            </GlassCardHeader>
+            <GlassCardContent className="space-y-4">
               {/* Error Details */}
               <div className="rounded-lg bg-muted p-4">
                 <h4 className="font-semibold mb-2">Error Details:</h4>
@@ -165,8 +165,8 @@ class ErrorBoundary extends Component<Props, State> {
                   </p>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </div>
       );
     }

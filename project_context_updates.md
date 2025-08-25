@@ -5396,4 +5396,98 @@ const handleRequestLocationPermission = async () => {
 
 ---
 
-## Final Dashboard Loading Timeout Fix – 2025-01-22
+## GlassCard Design System Rule – 2025-01-22
+
+#### **Mandatory Use of GlassCard Components for Consistent Glass Morphism Design**
+
+##### **Overview**
+Established a critical design system rule that **ALL card components throughout the application MUST use GlassCard variants** instead of regular Card components to maintain the consistent glass morphism aesthetic.
+
+##### **Design System Rule**
+
+###### **1. GlassCard Mandatory Usage (CRITICAL)**
+- **Rule**: All `<Card>` components must be replaced with `<GlassCard>` components
+- **Reason**: Maintains consistent glass morphism design across the entire application
+- **Impact**: Ensures visual consistency and prevents design system fragmentation
+
+###### **2. Component Import Requirements**
+```typescript
+// ✅ CORRECT - Use GlassCard components
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
+
+// ❌ INCORRECT - Do not use regular Card components
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+```
+
+###### **3. Component Usage Patterns**
+```typescript
+// ✅ CORRECT - GlassCard usage
+<GlassCard variant="elevated" className="bg-gradient-card shadow-card border-0">
+  <GlassCardHeader>
+    <GlassCardTitle>Card Title</GlassCardTitle>
+  </GlassCardHeader>
+  <GlassCardContent>
+    Card content here
+  </GlassCardContent>
+</GlassCard>
+
+// ❌ INCORRECT - Regular Card usage
+<Card className="bg-card/50 border-border hover:bg-card transition-colors">
+  <CardHeader>
+    <CardTitle>Card Title</CardTitle>
+  </CardHeader>
+  <CardContent>
+    Card content here
+  </CardContent>
+</Card>
+```
+
+##### **What This Rule Ensures**
+
+1. **✅ Visual Consistency**: All cards have the same glass morphism appearance
+2. **✅ Design System Unity**: No mixing of different card styles
+3. **✅ User Experience**: Consistent visual language across all components
+4. **✅ Maintainability**: Single source of truth for card styling
+5. **✅ Performance**: Optimized glass effect rendering
+
+##### **Components Already Converted**
+
+- **ProfileView**: ✅ Fully converted to GlassCard components
+- **AirQualityDashboard**: ✅ Already using GlassCard components
+- **HistoryView**: ✅ Already using GlassCard components
+- **NewsPage**: ✅ Already using GlassCard components
+- **SettingsView**: ✅ Already using GlassCard components
+
+##### **Components Requiring Conversion**
+
+- **MapView**: Contains regular Card components that need conversion
+- **WeatherStats**: Contains regular Card components that need conversion
+- **DeveloperTools**: Contains regular Card components that need conversion
+- **ErrorBoundary**: Contains regular Card components that need conversion
+- **Various UI components**: Some contain regular Card components
+
+##### **Implementation Guidelines**
+
+1. **Search and Replace**: Find all `<Card` usage and replace with `<GlassCard`
+2. **Import Updates**: Remove Card imports, ensure GlassCard imports exist
+3. **Variant Selection**: Choose appropriate GlassCard variant (elevated, default, subtle)
+4. **Testing**: Verify visual consistency after conversion
+5. **Documentation**: Update component documentation to reflect GlassCard usage
+
+##### **GlassCard Variants Available**
+
+- **`variant="elevated"`**: Enhanced shadows for important content
+- **`variant="default"**: Standard glass morphism appearance
+- **`variant="subtle"**: Minimal glass effect for secondary content
+
+##### **Next Steps**
+
+1. **Audit all components** for regular Card usage
+2. **Convert remaining components** to GlassCard
+3. **Update component documentation** to reflect new rule
+4. **Add linting rules** to prevent future Card usage
+5. **Update design system documentation** with GlassCard guidelines
+
+---
+
+## Location Permission Flow Fix – 2025-01-22

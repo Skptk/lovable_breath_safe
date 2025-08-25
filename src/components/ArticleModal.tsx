@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Clock, User, Calendar } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard, GlassCardContent } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Article } from "@/data/articles";
@@ -78,7 +78,7 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
       
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <Card 
+        <GlassCard 
           className={`w-full max-w-4xl max-h-[90vh] overflow-hidden glass-card transform transition-all duration-300 ${
             isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
           }`}
@@ -132,7 +132,7 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
             </div>
             
             {/* Content */}
-            <CardContent className="p-6 max-h-[60vh] overflow-y-auto">
+            <GlassCardContent className="p-6 max-h-[60vh] overflow-y-auto">
               <div className="prose prose-sm max-w-none">
                 {article.summary && (
                   <p className="text-lg text-muted-foreground mb-6 font-medium">
@@ -149,9 +149,9 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
                   <p className="text-muted-foreground">No content available for this article.</p>
                 )}
               </div>
-            </CardContent>
+            </GlassCardContent>
           </div>
-        </Card>
+        </GlassCard>
       </div>
     </>
   );

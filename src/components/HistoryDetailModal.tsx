@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { 
   Download, 
   MapPin, 
@@ -196,8 +196,8 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
 
         <div className="space-y-6 w-full max-w-full overflow-hidden">
           {/* Header Information */}
-          <Card className="w-full max-w-full overflow-hidden">
-            <CardHeader>
+          <GlassCard className="w-full max-w-full overflow-hidden">
+            <GlassCardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full max-w-full overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 min-w-0 flex-1 overflow-hidden">
                   <Badge 
@@ -219,8 +219,8 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
                   </div>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="w-full max-w-full overflow-hidden">
+            </GlassCardHeader>
+            <GlassCardContent className="w-full max-w-full overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-muted-foreground min-w-0 overflow-hidden">
                 <MapPin className="h-4 w-4 flex-shrink-0" />
                 <span className="truncate">{entry.location_name || 'Unknown Location'}</span>
@@ -235,15 +235,15 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
                   </Badge>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
           {/* Air Quality Metrics */}
-          <Card className="w-full max-w-full overflow-hidden">
-            <CardHeader>
-              <CardTitle className="text-lg">Air Quality Metrics</CardTitle>
-            </CardHeader>
-            <CardContent className="w-full max-w-full overflow-hidden">
+          <GlassCard className="w-full max-w-full overflow-hidden">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg">Air Quality Metrics</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="w-full max-w-full overflow-hidden">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full max-w-full overflow-hidden">
                 {entry.pm25 && entry.pm25 > 0 && (
                   <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
@@ -288,16 +288,16 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
 
           {/* Weather Data */}
           {(entry.temperature || entry.humidity || entry.wind_speed || entry.weather_condition) && (
-            <Card className="w-full max-w-full overflow-hidden">
-              <CardHeader>
-                <CardTitle className="text-lg">Weather Conditions</CardTitle>
-              </CardHeader>
-              <CardContent className="w-full max-w-full overflow-hidden">
+            <GlassCard className="w-full max-w-full overflow-hidden">
+              <GlassCardHeader>
+                <GlassCardTitle className="text-lg">Weather Conditions</GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="w-full max-w-full overflow-hidden">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full max-w-full overflow-hidden">
                   {entry.temperature && (
                     <div className="text-center p-3 bg-muted/30 rounded-lg min-w-0 overflow-hidden">
@@ -426,16 +426,16 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
                     )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </GlassCardContent>
+            </GlassCard>
           )}
 
           {/* Additional Details */}
-          <Card className="w-full max-w-full overflow-hidden">
-            <CardHeader>
-              <CardTitle className="text-lg">Additional Information</CardTitle>
-            </CardHeader>
-            <CardContent className="w-full max-w-full overflow-hidden">
+          <GlassCard className="w-full max-w-full overflow-hidden">
+            <GlassCardHeader>
+              <GlassCardTitle className="text-lg">Additional Information</GlassCardTitle>
+            </GlassCardHeader>
+            <GlassCardContent className="w-full max-w-full overflow-hidden">
               <div className="space-y-3 text-sm w-full max-w-full overflow-hidden">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0 overflow-hidden">
                   <span className="text-muted-foreground">Reading ID:</span>
@@ -452,8 +452,8 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
                   </span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </div>
       </DialogContent>
     </Dialog>

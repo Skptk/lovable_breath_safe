@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Layers, Loader2, AlertTriangle } from "lucide-react";
@@ -469,8 +469,8 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
 
         {/* Floating Header */}
         <div className="absolute top-4 left-4 right-4 z-10">
-          <Card className="floating-card">
-            <CardContent className="p-3">
+          <GlassCard className="floating-card">
+            <GlassCardContent className="p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-lg font-bold text-foreground">
@@ -486,8 +486,8 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
                   Layers
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </GlassCardContent>
+          </GlassCard>
         </div>
 
         {/* Bottom Sheet for Stations */}

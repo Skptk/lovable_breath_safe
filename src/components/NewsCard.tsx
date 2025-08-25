@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { GlassCard, GlassCardContent, GlassCardHeader } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Clock, User, ArrowRight } from "lucide-react";
 import { Article, getLatestArticles } from "@/data/articles";
@@ -30,10 +30,8 @@ function NewsCard() {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
-    }  );
-}
-
-export default React.memo(NewsCard);
+    });
+  };
 
   return (
     <>
@@ -42,14 +40,14 @@ export default React.memo(NewsCard);
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <Card className="relative overflow-hidden h-full min-h-[500px] floating-card hover:shadow-2xl transition-all duration-300">
+        <GlassCard className="relative overflow-hidden h-full min-h-[500px] floating-card hover:shadow-2xl transition-all duration-300">
           {/* Glowing border effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
           
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-lg"></div>
           
-          <CardHeader className="relative pb-4">
+          <GlassCardHeader className="relative pb-4">
             <motion.div 
               className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
               initial={{ opacity: 0, y: -10 }}
@@ -66,9 +64,9 @@ export default React.memo(NewsCard);
                 Updated daily
               </div>
             </motion.div>
-          </CardHeader>
+          </GlassCardHeader>
           
-          <CardContent className="relative pt-0 space-y-4 px-4 lg:px-6">
+          <GlassCardContent className="relative pt-0 space-y-4 px-4 lg:px-6">
             {latestArticles.map((article, index) => (
               <motion.div
                 key={article.id}
@@ -130,45 +128,32 @@ export default React.memo(NewsCard);
                       {article.summary}
                     </p>
                     
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center justify-center sm:justify-start gap-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
                         <User className="h-3 w-3" />
                         <span>{article.author}</span>
-                        <span>•</span>
-                        <span>{formatDate(article.publishDate)}</span>
                       </div>
-                      
-                      <motion.div
-                        whileHover={{ x: 3 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <ArrowRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-all duration-200 self-center sm:self-end" />
-                      </motion.div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{formatDate(article.publishedAt)}</span>
+                      </div>
                     </div>
+                  </div>
+                  
+                  {/* Arrow */}
+                  <div className="flex-shrink-0 self-center">
+                    <motion.div
+                      className="text-muted-foreground group-hover:text-primary transition-colors"
+                      whileHover={{ x: 3 }}
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                    </motion.div>
                   </div>
                 </div>
               </motion.div>
             ))}
-            
-            {/* View More Button */}
-            <motion.div 
-              className="pt-2"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.4 }}
-            >
-              <div className="text-center">
-                <motion.button 
-                  className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  View All Articles →
-                </motion.button>
-              </div>
-            </motion.div>
-          </CardContent>
-        </Card>
+          </GlassCardContent>
+        </GlassCard>
       </motion.div>
       
       {/* Article Modal */}
@@ -181,3 +166,5 @@ export default React.memo(NewsCard);
     </>
   );
 }
+
+export default React.memo(NewsCard);

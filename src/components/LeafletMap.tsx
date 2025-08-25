@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { GlassCard, GlassCardContent } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Loader2, AlertTriangle, Map } from 'lucide-react';
 import { getAQIColor, getAQILabel, LEAFLET_MAPS_CONFIG } from '@/config/maps';
@@ -301,8 +301,8 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
 
   if (mapError) {
     return (
-      <Card className="floating-card">
-        <CardContent className="p-6">
+      <GlassCard className="floating-card">
+        <GlassCardContent className="p-6">
           <div className="text-center space-y-3">
             <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
             <h3 className="text-lg font-semibold">Map Error</h3>
@@ -311,27 +311,27 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
               Please check your internet connection and try again.
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   if (!userLocation) {
     return (
-      <Card className="floating-card">
-        <CardContent className="p-6">
+      <GlassCard className="floating-card">
+        <GlassCardContent className="p-6">
           <div className="text-center space-y-3">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
             <p className="text-muted-foreground">Loading interactive map...</p>
           </div>
-        </CardContent>
-      </Card>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
       return (
-      <Card className="floating-card">
-        <CardContent className="p-0">
+      <GlassCard className="floating-card">
+        <GlassCardContent className="p-0">
         <div className="p-4 border-b border-border/50">
           <div className="flex items-center justify-between">
             <div>
@@ -366,7 +366,7 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
             <span>Colored markers: Monitoring stations (AQI-based colors)</span>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </GlassCardContent>
+    </GlassCard>
   );
 }
