@@ -10,6 +10,54 @@ const MAX_RETRY_ATTEMPTS = 5; // Increased from 3
 const BASE_RETRY_DELAY = 1000; // 1 second
 const MAX_RETRY_DELAY = 60000; // 60 seconds (increased from 30)
 
+// WebSocket-specific error handling configuration
+const WEBSOCKET_ERROR_CONFIG = {
+  // Code 1011 = "Internal Server Error" - server terminating connections
+  CODE_1011: {
+    maxRetries: 3,
+    baseDelay: 2000, // Start with 2 seconds for server errors
+    maxDelay: 30000, // Cap at 30 seconds
+    backoffFactor: 2.5, // More aggressive backoff for server errors
+    jitter: true,
+    requireTokenRefresh: true // Always refresh token before retry
+  },
+  // Code 1005 = "No Status" - connection issues
+  CODE_1005: {
+    maxRetries: 5,
+    baseDelay: 1000,
+    maxDelay: 60000,
+    backoffFactor: 2,
+    jitter: true,
+    requireTokenRefresh: false
+  },
+  // Code 1006 = "Abnormal Closure" - network issues
+  CODE_1006: {
+    maxRetries: 4,
+    baseDelay: 1500,
+    maxDelay: 45000,
+    backoffFactor: 2.2,
+    jitter: true,
+    requireTokenRefresh: false
+  },
+  // Default configuration
+  DEFAULT: {
+    maxRetries: 3,
+    baseDelay: 1000,
+    maxDelay: 30000,
+    backoffFactor: 2,
+    jitter: true,
+    requireTokenRefresh: false
+  }
+} as const;
+
+// Connection pooling and rate limiting
+const CONNECTION_POOL_CONFIG = {
+  maxConcurrentConnections: 3,
+  connectionCooldown: 5000, // 5 seconds between connection attempts
+  maxRetriesPerMinute: 10,
+  retryWindowMs: 60000 // 1 minute window
+} as const;
+
 // Singleton connection manager with improved WebSocket handling
 class RealtimeConnectionManager {
   private static instance: RealtimeConnectionManager;
@@ -632,6 +680,194 @@ class RealtimeConnectionManager {
     return websocketPatterns.some(pattern => 
       errorMessage.toLowerCase().includes(pattern.toLowerCase())
     ) || websocketCloseCodes.includes(errorCode);
+  }
+
+  // Enhanced WebSocket error handling with code-specific strategies
+  private handleWebSocketError(error: any, channelName: string): void {
+    const errorCode = error.code || error.closeCode;
+    const errorMessage = error.message || error.toString();
+    
+    logConnection.error(`WebSocket error for channel '${channelName}'`, { 
+      errorCode, 
+      errorMessage,
+      channelName 
+    });
+
+    // Get error-specific configuration
+    let config: any = WEBSOCKET_ERROR_CONFIG.DEFAULT;
+    if (errorCode === 1011) {
+      config = WEBSOCKET_ERROR_CONFIG.CODE_1011;
+      logConnection.warn('Code 1011 detected - server terminating connections. Implementing aggressive retry strategy.');
+    } else if (errorCode === 1005) {
+      config = WEBSOCKET_ERROR_CONFIG.CODE_1005;
+      logConnection.warn('Code 1005 detected - connection issue. Implementing standard retry strategy.');
+    } else if (errorCode === 1006) {
+      config = WEBSOCKET_ERROR_CONFIG.CODE_1006;
+      logConnection.warn('Code 1006 detected - abnormal closure. Implementing moderate retry strategy.');
+    }
+
+    // Handle token refresh if required
+    if (config.requireTokenRefresh) {
+      this.refreshAuthTokenBeforeRetry(channelName, config);
+    } else {
+      this.scheduleRetryWithBackoff(channelName, config);
+    }
+  }
+
+  // Refresh authentication token before retry (for code 1011)
+  private async refreshAuthTokenBeforeRetry(channelName: string, config: any): Promise<void> {
+    try {
+      logConnection.info('Refreshing auth token before retry for code 1011');
+      
+      // Get current session and refresh if needed
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        logConnection.warn('Failed to get session, proceeding with retry', { error: error.message });
+        this.scheduleRetryWithBackoff(channelName, config);
+        return;
+      }
+
+      if (session) {
+        // Check if token is expired or close to expiring
+        const expiresAt = session.expires_at;
+        const now = Math.floor(Date.now() / 1000);
+        
+        if (expiresAt && (expiresAt - now) < 300) { // Less than 5 minutes until expiry
+          logConnection.info('Token expiring soon, refreshing...');
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          
+          if (refreshError) {
+            logConnection.warn('Token refresh failed, proceeding with retry', { error: refreshError.message });
+          } else {
+            logConnection.info('Token refreshed successfully');
+          }
+        }
+      }
+
+      // Schedule retry after token refresh
+      this.scheduleRetryWithBackoff(channelName, config);
+      
+    } catch (error) {
+      logConnection.warn('Error during token refresh, proceeding with retry', { error: error.message });
+      this.scheduleRetryWithBackoff(channelName, config);
+    }
+  }
+
+  // Enhanced retry scheduling with exponential backoff and jitter
+  private scheduleRetryWithBackoff(channelName: string, config: any): void {
+    const channelData = this.activeChannels.get(channelName);
+    if (!channelData) return;
+
+    // Check retry limits
+    if (channelData.retryCount >= config.maxRetries) {
+      logConnection.error(`Max retries (${config.maxRetries}) exceeded for channel '${channelName}'`);
+      channelData.connectionHealth = 'unhealthy';
+      return;
+    }
+
+    // Calculate delay with exponential backoff and jitter
+    const baseDelay = Math.min(
+      config.baseDelay * Math.pow(config.backoffFactor, channelData.retryCount),
+      config.maxDelay
+    );
+    
+    const jitter = config.jitter ? (Math.random() - 0.5) * 1000 : 0;
+    const finalDelay = Math.max(baseDelay + jitter, 1000); // Minimum 1 second
+
+    logConnection.info(`Scheduling retry for channel '${channelName}'`, {
+      retryCount: channelData.retryCount + 1,
+      delay: Math.round(finalDelay),
+      maxRetries: config.maxRetries
+    });
+
+    // Schedule retry
+    setTimeout(() => {
+      this.attemptChannelReconnection(channelName);
+    }, finalDelay);
+
+    channelData.retryCount++;
+    channelData.lastRetryTime = Date.now();
+  }
+
+  // Attempt channel reconnection with connection pooling respect
+  private attemptChannelReconnection(channelName: string): void {
+    const channelData = this.activeChannels.get(channelName);
+    if (!channelData || channelData.isReconnecting) return;
+
+    // Check connection pooling limits
+    const activeConnections = Array.from(this.activeChannels.values())
+      .filter(ch => ch.isReconnecting || ch.connectionHealth === 'healthy').length;
+    
+    if (activeConnections >= CONNECTION_POOL_CONFIG.maxConcurrentConnections) {
+      logConnection.warn(`Connection pool limit reached (${activeConnections}/${CONNECTION_POOL_CONFIG.maxConcurrentConnections}), deferring reconnection for '${channelName}'`);
+      
+      // Schedule retry after cooldown
+      setTimeout(() => {
+        this.attemptChannelReconnection(channelName);
+      }, CONNECTION_POOL_CONFIG.connectionCooldown);
+      return;
+    }
+
+    // Check rate limiting
+    const recentRetries = Array.from(this.activeChannels.values())
+      .filter(ch => Date.now() - ch.lastRetryTime < CONNECTION_POOL_CONFIG.retryWindowMs)
+      .reduce((sum, ch) => sum + ch.retryCount, 0);
+    
+    if (recentRetries >= CONNECTION_POOL_CONFIG.maxRetriesPerMinute) {
+      logConnection.warn(`Rate limit exceeded (${recentRetries}/${CONNECTION_POOL_CONFIG.maxRetriesPerMinute} retries per minute), deferring reconnection for '${channelName}'`);
+      
+      // Schedule retry after rate limit window
+      setTimeout(() => {
+        this.attemptChannelReconnection(channelName);
+      }, CONNECTION_POOL_CONFIG.retryWindowMs);
+      return;
+    }
+
+    logConnection.info(`Attempting reconnection for channel '${channelName}'`);
+    channelData.isReconnecting = true;
+
+    // Attempt reconnection
+    try {
+      // Create new channel subscription
+      const newChannel = supabase.channel(channelName);
+      
+      // Re-add all callbacks
+      channelData.callbacks.forEach(callback => {
+        (newChannel as any).on('*', callback);
+      });
+
+      // Subscribe with enhanced error handling
+      const subscription = newChannel.subscribe((status, error) => {
+        if (status === 'SUBSCRIBED') {
+          logConnection.info(`Channel '${channelName}' reconnected successfully`);
+          channelData.channel = newChannel;
+          channelData.isReconnecting = false;
+          channelData.connectionHealth = 'healthy';
+          channelData.retryCount = 0;
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          logConnection.warn(`Channel '${channelName}' reconnection failed`, { status, error });
+          channelData.isReconnecting = false;
+          channelData.connectionHealth = 'unhealthy';
+          
+          // Handle the error with enhanced error handling
+          if (error) {
+            this.handleWebSocketError(error, channelName);
+          }
+        }
+      });
+
+      // Store the subscription
+      channelData.channel = newChannel;
+      
+    } catch (error) {
+      logConnection.error(`Error during channel reconnection for '${channelName}'`, { error: error.message });
+      channelData.isReconnecting = false;
+      channelData.connectionHealth = 'unhealthy';
+      
+      // Schedule another retry
+      this.scheduleRetryWithBackoff(channelName, WEBSOCKET_ERROR_CONFIG.DEFAULT);
+    }
   }
 
   // Helper method to get channel configuration based on channel name

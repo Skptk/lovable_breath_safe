@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAirQuality } from '../hooks/useAirQuality';
 import { useWeatherStore } from '../store/weatherStore';
 import { useTheme } from '../contexts/ThemeContext';
@@ -54,6 +54,9 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasInitialData, setHasInitialData] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
+
+  // Time analysis cache to prevent duplicate logging
+  const timeAnalysisCache = useRef<Record<string, string>>({});
 
   // Use centralized weather store instead of useWeatherData hook
   const { 
@@ -142,38 +145,17 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     // Check if it's night time
     const nightTime = isNightTime(currentWeather.sunriseTime, currentWeather.sunsetTime);
     
-    // Debug logging for time-based decisions
-    console.log('BackgroundManager: Time analysis:', {
-      currentTime: new Date().toLocaleTimeString(),
-      sunriseTime: currentWeather.sunriseTime,
-      sunsetTime: currentWeather.sunsetTime,
-      isSunriseSunset,
-      nightTime,
-      weatherCondition: currentWeather.weatherCondition
-    });
+    // Simplified time analysis logging - only log on significant changes
+    const currentTime = new Date();
+    const timeKey = `${currentTime.getHours()}:${currentTime.getMinutes()}`;
+    const dayNightKey = nightTime ? 'Night' : 'Day';
     
-    // Additional debug logging for time parsing
-    if (currentWeather.sunriseTime && currentWeather.sunsetTime) {
-      try {
-        const [sunriseHour, sunriseMinute] = currentWeather.sunriseTime.split(':').map(Number);
-        const [sunsetHour, sunsetMinute] = currentWeather.sunsetTime.split(':').map(Number);
-        const sunriseMinutes = sunriseHour * 60 + sunriseMinute;
-        const sunsetMinutes = sunsetHour * 60 + sunsetMinute;
-        const now = new Date();
-        const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
-        
-        console.log('BackgroundManager: Detailed time analysis:', {
-          sunriseParsed: `${sunriseHour}:${sunriseMinute.toString().padStart(2, '0')}`,
-          sunsetParsed: `${sunsetHour}:${sunsetMinute.toString().padStart(2, '0')}`,
-          sunriseMinutes,
-          sunsetMinutes,
-          currentTimeMinutes,
-          isAfterSunset: currentTimeMinutes > sunsetMinutes,
-          isBeforeSunrise: currentTimeMinutes < sunriseMinutes
-        });
-      } catch (error) {
-        console.warn('BackgroundManager: Error parsing times:', error);
-      }
+    // Only log if this is a new time period or day/night transition
+    if (!timeAnalysisCache.current[timeKey] || timeAnalysisCache.current[timeKey] !== dayNightKey) {
+      timeAnalysisCache.current[timeKey] = dayNightKey;
+      
+      // Single summary log instead of verbose analysis
+      console.log(`🌙 [BackgroundManager] Time: ${timeKey} (${dayNightKey}) | Sunrise: ${currentWeather.sunriseTime || 'N/A'} | Sunset: ${currentWeather.sunsetTime || 'N/A'}`);
     }
     
     // For OpenWeatherMap, we need to map the weather condition to Open-Meteo codes

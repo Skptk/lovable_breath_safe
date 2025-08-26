@@ -59,6 +59,23 @@ export function ConnectionResilienceProvider({
     return () => clearInterval(interval);
   }, [connectionStatus, enableAutoReconnect, heartbeatInterval]);
 
+  // Periodic dismissal pattern summary logging
+  useEffect(() => {
+    const logDismissalSummary = () => {
+      if (dismissCountRef.current > 0) {
+        console.log(`📊 [ConnectionResilience] Dismissal summary: ${dismissCountRef.current} dismissals in last minute`);
+        
+        // Reset counter for next period
+        dismissCountRef.current = 0;
+      }
+    };
+
+    // Log summary every 2 minutes
+    const summaryInterval = setInterval(logDismissalSummary, 2 * 60 * 1000);
+    
+    return () => clearInterval(summaryInterval);
+  }, []);
+
   // Manual reconnection function
   const handleRetry = useCallback(async () => {
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
@@ -99,16 +116,20 @@ export function ConnectionResilienceProvider({
   const handleDismiss = useCallback(() => {
     const now = Date.now();
     
-    // Prevent rapid dismiss calls (minimum 1 second between calls)
-    if (now - lastDismissTimeRef.current < 1000) {
-      console.log('🚨 [ConnectionResilience] Dismiss called too rapidly, ignoring');
+    // Enhanced rate limiting with dismissal cooldown (30 seconds)
+    const DISMISS_COOLDOWN = 30000; // 30 seconds
+    const MAX_DISMISS_PER_MINUTE = 3; // Reduced from 5 to 3
+    
+    // Check cooldown period
+    if (now - lastDismissTimeRef.current < DISMISS_COOLDOWN) {
+      console.log('⏳ [ConnectionResilience] Dismiss in cooldown, please wait');
       return;
     }
     
-    // Prevent excessive dismiss calls (maximum 5 per minute)
+    // Prevent excessive dismiss calls
     dismissCountRef.current++;
-    if (dismissCountRef.current > 5) {
-      console.warn('🚨 [ConnectionResilience] Too many dismiss calls, preventing spam');
+    if (dismissCountRef.current > MAX_DISMISS_PER_MINUTE) {
+      console.warn('🚨 [ConnectionResilience] Rate limit exceeded, preventing notification spam');
       return;
     }
     
@@ -119,8 +140,8 @@ export function ConnectionResilienceProvider({
     
     lastDismissTimeRef.current = now;
     
-    // Don't change status, just allow user to dismiss notifications
-    console.log('✅ [ConnectionResilience] Connection notification dismissed by user');
+    // Log dismissal with rate limiting info
+    console.log(`✅ [ConnectionResilience] Notification dismissed (${dismissCountRef.current}/${MAX_DISMISS_PER_MINUTE} per minute)`);
   }, []);
 
   return (

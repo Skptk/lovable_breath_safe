@@ -11,6 +11,10 @@ import { useGlobalEnvironmentalData } from "@/hooks/useGlobalEnvironmentalData";
 const REFRESH_LOCK_KEY = 'breath_safe_refresh_lock';
 const REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes (slightly less than 15 to ensure smooth operation)
 
+// Data validation caching to prevent duplicate validation logs
+const VALIDATION_CACHE_KEY = 'breath_safe_validation_cache';
+const VALIDATION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache duration
+
 // Helper function to check if refresh is locked
 const isRefreshLocked = (): boolean => {
   try {
@@ -49,6 +53,50 @@ const clearRefreshLock = (): void => {
     console.log('🔓 [useAirQuality] Refresh lock cleared');
   } catch (error) {
     console.warn('Failed to clear refresh lock:', error);
+  }
+};
+
+// Helper function to check validation cache
+const getValidationCache = (dataSignature: string): { timestamp: number; result: boolean } | null => {
+  try {
+    const cacheData = localStorage.getItem(VALIDATION_CACHE_KEY);
+    if (!cacheData) return null;
+    
+    const cache = JSON.parse(cacheData);
+    const cached = cache[dataSignature];
+    
+    if (cached && (Date.now() - cached.timestamp) < VALIDATION_CACHE_DURATION) {
+      return cached;
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+// Helper function to set validation cache
+const setValidationCache = (dataSignature: string, result: boolean): void => {
+  try {
+    const cacheData = localStorage.getItem(VALIDATION_CACHE_KEY);
+    const cache = cacheData ? JSON.parse(cacheData) : {};
+    
+    cache[dataSignature] = {
+      timestamp: Date.now(),
+      result
+    };
+    
+    // Clean up old cache entries (keep only last 100)
+    const entries = Object.entries(cache);
+    if (entries.length > 100) {
+      const sortedEntries = entries.sort((a, b) => (b[1] as any).timestamp - (a[1] as any).timestamp);
+      const cleanedCache = Object.fromEntries(sortedEntries.slice(0, 100));
+      localStorage.setItem(VALIDATION_CACHE_KEY, JSON.stringify(cleanedCache));
+    } else {
+      localStorage.setItem(VALIDATION_CACHE_KEY, JSON.stringify(cache));
+    }
+  } catch (error) {
+    console.warn('Failed to set validation cache:', error);
   }
 };
 
@@ -369,6 +417,19 @@ export const useAirQuality = () => {
           console.warn('⚠️ [useAirQuality] Could not check existing readings:', checkError);
         } else if (existingReadings && existingReadings.length > 0) {
           const latest = existingReadings[0];
+          
+          // Create data signature for caching
+          const dataSignature = `${finalData.aqi}-${finalData.pm25}-${finalData.pm10}-${finalData.no2}-${finalData.so2}-${finalData.co}-${finalData.o3}`;
+          
+          // Check validation cache first
+          const cachedValidation = getValidationCache(dataSignature);
+          if (cachedValidation) {
+            // Use cached result - no need to log again
+            if (!cachedValidation.result) {
+              return; // Skip save based on cached validation
+            }
+          }
+          
           // Check if the new data is significantly different from the latest reading
           const isSignificantlyDifferent = 
             Math.abs(latest.aqi - finalData.aqi) > 1 ||
@@ -380,9 +441,14 @@ export const useAirQuality = () => {
             Math.abs(latest.o3 - finalData.o3) > 0.01;
 
           if (!isSignificantlyDifferent) {
-            console.log('🔄 [useAirQuality] Data not significantly different from latest reading, skipping save');
+            // Cache the validation result and log only once per session
+            setValidationCache(dataSignature, false);
+            console.log('🔄 [useAirQuality] Data validation: skipping save (cached for 5 minutes)');
             return;
           }
+          
+          // Cache the positive validation result
+          setValidationCache(dataSignature, true);
         }
 
         const { error } = await supabase
@@ -444,6 +510,42 @@ export const useAirQuality = () => {
       setRefreshLock();
     }
   }, [globalEnvironmentalData]);
+
+  // Periodic validation summary logging (every 10 minutes)
+  useEffect(() => {
+    const logValidationSummary = () => {
+      try {
+        const cacheData = localStorage.getItem(VALIDATION_CACHE_KEY);
+        if (cacheData) {
+          const cache = JSON.parse(cacheData);
+          const now = Date.now();
+          const recentValidations = Object.entries(cache).filter(([_, data]: [string, any]) => 
+            (now - data.timestamp) < VALIDATION_CACHE_DURATION
+          );
+          
+          if (recentValidations.length > 0) {
+            const skippedCount = recentValidations.filter(([_, data]: [string, any]) => !data.result).length;
+            const savedCount = recentValidations.filter(([_, data]: [string, any]) => data.result).length;
+            
+            console.log(`📊 [useAirQuality] Validation summary (last 5 min): ${savedCount} saved, ${skippedCount} skipped`);
+          }
+        }
+      } catch (error) {
+        // Silently handle cache read errors
+      }
+    };
+
+    // Log summary every 10 minutes
+    const summaryInterval = setInterval(logValidationSummary, 10 * 60 * 1000);
+    
+    // Initial summary after 1 minute
+    const initialSummary = setTimeout(logValidationSummary, 60 * 1000);
+    
+    return () => {
+      clearInterval(summaryInterval);
+      clearTimeout(initialSummary);
+    };
+  }, []);
 
   return {
     data: finalData,

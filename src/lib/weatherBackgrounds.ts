@@ -161,29 +161,16 @@ export function isNightTime(sunriseTime?: string, sunsetTime?: string): boolean 
     const sunriseMinutes = sunriseHour * 60 + sunriseMinute;
     const sunsetMinutes = sunsetHour * 60 + sunsetMinute;
     
-    // Debug logging
-    console.log(`🌙 [isNightTime] Time analysis:`, {
-      currentTime: `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`,
-      currentTimeMinutes: currentTime,
-      sunriseTime,
-      sunriseMinutes,
-      sunsetTime,
-      sunsetMinutes,
-      isNormalCase: sunsetMinutes > sunriseMinutes
-    });
-    
     // Normal case: sunset is after sunrise (e.g., 6:32 AM to 6:37 PM)
     // This is the typical day/night cycle where sunset > sunrise
     if (sunsetMinutes > sunriseMinutes) {
       // Night time: after sunset OR before sunrise
       const isNight = currentTime > sunsetMinutes || currentTime < sunriseMinutes;
-      console.log(`🌙 [isNightTime] Normal case: currentTime > sunsetMinutes (${currentTime} > ${sunsetMinutes}) OR currentTime < sunriseMinutes (${currentTime} < ${sunriseMinutes}) = ${isNight}`);
       return isNight;
     } else {
       // Edge case: sunset is before sunrise (e.g., in polar regions during winter)
       // This would be very rare and indicates continuous darkness
       const isNight = currentTime > sunsetMinutes && currentTime < sunriseMinutes;
-      console.log(`🌙 [isNightTime] Edge case (polar winter): currentTime > sunsetMinutes (${currentTime} > ${sunsetMinutes}) AND currentTime < sunriseMinutes (${currentTime} < ${sunriseMinutes}) = ${isNight}`);
       return isNight;
     }
   } catch (error) {
