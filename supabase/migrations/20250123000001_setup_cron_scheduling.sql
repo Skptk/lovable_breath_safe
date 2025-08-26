@@ -92,6 +92,30 @@ GRANT SELECT, INSERT, UPDATE ON public.data_collection_schedule TO authenticated
 GRANT EXECUTE ON FUNCTION public.should_run_data_collection() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.trigger_data_collection() TO authenticated;
 
+-- Create RLS policies for the data_collection_schedule table
+-- Allow authenticated users to read the schedule
+CREATE POLICY "Users can read data collection schedule" 
+ON public.data_collection_schedule 
+FOR SELECT 
+TO authenticated 
+USING (true);
+
+-- Allow authenticated users to update the schedule (for manual triggers)
+CREATE POLICY "Users can update data collection schedule" 
+ON public.data_collection_schedule 
+FOR UPDATE 
+TO authenticated 
+USING (true)
+WITH CHECK (true);
+
+-- Allow service role to manage the schedule (for cron jobs)
+CREATE POLICY "Service role can manage data collection schedule" 
+ON public.data_collection_schedule 
+FOR ALL 
+TO service_role 
+USING (true)
+WITH CHECK (true);
+
 -- Create an index for better performance
 CREATE INDEX IF NOT EXISTS idx_data_collection_schedule_active 
 ON public.data_collection_schedule(is_active, next_run);

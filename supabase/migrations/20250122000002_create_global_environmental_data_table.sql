@@ -194,10 +194,7 @@ BEGIN
   ORDER BY distance_km ASC
   LIMIT 1;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Grant execute permission on the function
-GRANT EXECUTE ON FUNCTION public.get_nearest_environmental_data(DECIMAL, DECIMAL, DECIMAL) TO authenticated;
+$$ LANGUAGE plpgsql;
 
 -- Create a function to get all active environmental data
 CREATE OR REPLACE FUNCTION public.get_all_active_environmental_data()
@@ -235,8 +232,8 @@ BEGIN
     ged.latitude,
     ged.longitude,
     ged.aqi,
-    ged.pm25,
     ged.pm10,
+    ged.pm25,
     ged.no2,
     ged.so2,
     ged.co,
@@ -258,10 +255,7 @@ BEGIN
   WHERE ged.is_active = true
   ORDER BY ged.city_name;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Grant execute permission on the function
-GRANT EXECUTE ON FUNCTION public.get_all_active_environmental_data() TO authenticated;
+$$ LANGUAGE plpgsql;
 
 -- Remove placeholder data insertion to prevent data contamination
 -- The table will be populated by the scheduled data collection system with real OpenWeatherMap data
