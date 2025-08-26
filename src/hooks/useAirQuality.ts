@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store";
@@ -272,7 +272,16 @@ export const useAirQuality = () => {
   });
 
   // Combine global data with legacy fallback
-  const finalData = airQualityData || legacyQuery.data;
+  const finalData = useMemo(() => {
+    if (!airQualityData && !legacyQuery.data) return null;
+    
+    const data = airQualityData || legacyQuery.data;
+    return {
+      ...data,
+      // Ensure we have a stable timestamp
+      timestamp: data.timestamp || new Date().toISOString()
+    };
+  }, [airQualityData, legacyQuery.data]);
   const isLoading = globalDataLoading || (legacyQuery.isLoading && !globalEnvironmentalData);
   const error = globalDataError || legacyQuery.error;
 
@@ -348,6 +357,34 @@ export const useAirQuality = () => {
 
     const saveReading = async () => {
       try {
+        // Check if we already have the same data in the database
+        const { data: existingReadings, error: checkError } = await supabase
+          .from('air_quality_readings')
+          .select('aqi, pm25, pm10, no2, so2, co, o3')
+          .eq('user_id', user.id)
+          .order('timestamp', { ascending: false })
+          .limit(1);
+
+        if (checkError) {
+          console.warn('⚠️ [useAirQuality] Could not check existing readings:', checkError);
+        } else if (existingReadings && existingReadings.length > 0) {
+          const latest = existingReadings[0];
+          // Check if the new data is significantly different from the latest reading
+          const isSignificantlyDifferent = 
+            Math.abs(latest.aqi - finalData.aqi) > 1 ||
+            Math.abs(latest.pm25 - finalData.pm25) > 0.1 ||
+            Math.abs(latest.pm10 - finalData.pm10) > 0.1 ||
+            Math.abs(latest.no2 - finalData.no2) > 0.01 ||
+            Math.abs(latest.so2 - finalData.so2) > 0.01 ||
+            Math.abs(latest.co - finalData.co) > 0.01 ||
+            Math.abs(latest.o3 - finalData.o3) > 0.01;
+
+          if (!isSignificantlyDifferent) {
+            console.log('🔄 [useAirQuality] Data not significantly different from latest reading, skipping save');
+            return;
+          }
+        }
+
         const { error } = await supabase
           .from('air_quality_readings')
           .insert({
@@ -392,7 +429,12 @@ export const useAirQuality = () => {
       }
     };
 
-    saveReading();
+    // Add debounce to prevent rapid successive saves
+    const debounceTimer = setTimeout(() => {
+      saveReading();
+    }, 1000); // 1 second debounce
+
+    return () => clearTimeout(debounceTimer);
   }, [user?.id, finalData?.aqi, finalData?.pm25, finalData?.pm10, finalData?.dataSource, safeCoordinates?.lat, safeCoordinates?.lng]);
 
   // Set refresh lock when global environmental data is fetched

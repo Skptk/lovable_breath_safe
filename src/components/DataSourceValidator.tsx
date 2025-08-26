@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
@@ -16,42 +16,54 @@ export default function DataSourceValidator({
   location, 
   timestamp 
 }: DataSourceValidatorProps) {
-  // Debug logging
-  console.log('🔍 [DataSourceValidator] Validating data:', {
-    dataSource,
-    aqi,
-    location,
-    timestamp
-  });
-  
-  // Validate data source legitimacy - recognize all legitimate sources
-  const isLegitimateSource = dataSource && 
-    (dataSource === 'OpenWeatherMap API' || 
-     dataSource === 'Integrated Weather System' || 
-     dataSource === 'Manual Fetch' ||
-     dataSource === 'Server-side Collection' ||
-     dataSource === 'Global Environmental Data' ||
-     dataSource === 'Legacy API' ||
-     // Only reject actual mock/test data sources
-     !(dataSource.toLowerCase().includes('mock') ||
-       dataSource.toLowerCase().includes('test') ||
-       dataSource.toLowerCase().includes('placeholder') ||
-       dataSource.toLowerCase().includes('demo') ||
-       dataSource.toLowerCase().includes('fake')));
-  
-  console.log('🔍 [DataSourceValidator] Validation result:', {
-    dataSource,
-    isLegitimateSource,
-    isSuspiciousAQI: aqi < 0 || aqi > 500 || aqi === 0
-  });
+  // Memoize validation results to prevent unnecessary recalculations
+  const validationResults = useMemo(() => {
+    // Validate data source legitimacy - recognize all legitimate sources
+    const isLegitimateSource = dataSource && 
+      (dataSource === 'OpenWeatherMap API' || 
+       dataSource === 'Integrated Weather System' || 
+       dataSource === 'Manual Fetch' ||
+       dataSource === 'Server-side Collection' ||
+       dataSource === 'Global Environmental Data' ||
+       dataSource === 'Legacy API' ||
+       // Only reject actual mock/test data sources
+       !(dataSource.toLowerCase().includes('mock') ||
+         dataSource.toLowerCase().includes('test') ||
+         dataSource.toLowerCase().includes('placeholder') ||
+         dataSource.toLowerCase().includes('demo') ||
+         dataSource.toLowerCase().includes('fake')));
+    
+    // Check for suspicious AQI values - only flag truly invalid values
+    // AQI 0 is valid for legitimate sources (can indicate very low pollution or no data available)
+    const isSuspiciousAQI = aqi < 0 || aqi > 500 || (aqi === 0 && !isLegitimateSource);
+    
+    return { isLegitimateSource, isSuspiciousAQI };
+  }, [dataSource, aqi]);
 
-  // Check for suspicious AQI values - only flag truly invalid values
-  // AQI 0 is valid for legitimate sources (can indicate very low pollution or no data available)
-  const isSuspiciousAQI = aqi < 0 || aqi > 500 || (aqi === 0 && !isLegitimateSource);
-  
+  // Only log when data actually changes (using a stable reference)
+  const logData = useCallback(() => {
+    console.log('🔍 [DataSourceValidator] Validating data:', {
+      dataSource,
+      aqi,
+      location,
+      timestamp
+    });
+    
+    console.log('🔍 [DataSourceValidator] Validation result:', {
+      dataSource,
+      isLegitimateSource: validationResults.isLegitimateSource,
+      isSuspiciousAQI: validationResults.isSuspiciousAQI
+    });
+  }, [dataSource, aqi, location, timestamp, validationResults.isLegitimateSource, validationResults.isSuspiciousAQI]);
+
+  // Log data on mount and when it changes
+  React.useEffect(() => {
+    logData();
+  }, [logData]);
+
   // Determine validation status
-  const getValidationStatus = () => {
-    if (!isLegitimateSource) {
+  const getValidationStatus = useCallback(() => {
+    if (!validationResults.isLegitimateSource) {
       return {
         status: 'contaminated' as const,
         icon: <AlertTriangle className="h-4 w-4 text-red-500" />,
@@ -60,7 +72,7 @@ export default function DataSourceValidator({
       };
     }
     
-    if (isSuspiciousAQI) {
+    if (validationResults.isSuspiciousAQI) {
       return {
         status: 'suspicious' as const,
         icon: <AlertTriangle className="h-4 w-4 text-yellow-500" />,
@@ -75,9 +87,9 @@ export default function DataSourceValidator({
       color: 'bg-green-100 text-green-800 border-green-200',
       message: 'Data source verified'
     };
-  };
+  }, [validationResults.isLegitimateSource, validationResults.isSuspiciousAQI]);
 
-  const validation = getValidationStatus();
+  const validation = useMemo(() => getValidationStatus(), [getValidationStatus]);
 
   return (
     <GlassCard className="mb-4">
@@ -114,9 +126,9 @@ export default function DataSourceValidator({
           {/* AQI Value */}
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">AQI Value:</span>
-            <span className={`text-sm ${isSuspiciousAQI ? 'text-yellow-600 font-semibold' : 'text-foreground'}`}>
+            <span className={`text-sm ${validationResults.isSuspiciousAQI ? 'text-yellow-600 font-semibold' : 'text-foreground'}`}>
               {aqi}
-              {isSuspiciousAQI && (
+              {validationResults.isSuspiciousAQI && (
                 <span className="ml-2 text-xs text-yellow-600">
                   (Verify accuracy)
                 </span>
