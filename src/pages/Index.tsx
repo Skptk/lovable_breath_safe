@@ -7,6 +7,7 @@ import MobileNavigation from "@/components/MobileNavigation";
 import BackgroundManager from "@/components/BackgroundManager";
 import { DeveloperTools } from "@/components/DeveloperTools";
 import { cleanupAllChannels } from "@/lib/realtimeClient";
+import { logNavigation } from "@/lib/logger";
 
 // Lazy load heavy components
 const AirQualityDashboard = lazy(() => import("@/components/AirQualityDashboard"));
@@ -40,11 +41,11 @@ export default function Index(): JSX.Element {
   useEffect(() => {
     const handleViewChange = (event: CustomEvent) => {
       const newView = event.detail.view;
-      console.log('Index component - View change event received:', newView);
+      logNavigation.debug('View change event received', { newView });
       
       // Update view immediately without delay
       setCurrentView(newView);
-      console.log('Index component - Current view updated to:', newView);
+      logNavigation.debug('Current view updated', { newView });
     };
 
     window.addEventListener('viewChange', handleViewChange as EventListener);
@@ -60,7 +61,7 @@ export default function Index(): JSX.Element {
       if (event.ctrlKey && event.shiftKey && event.key === 'D') {
         event.preventDefault();
         setShowDeveloperTools(prev => !prev);
-        console.log('🔧 [Index] Developer tools toggled:', !showDeveloperTools);
+        logNavigation.debug('Developer tools toggled', { showDeveloperTools: !showDeveloperTools });
       }
     };
 
@@ -75,7 +76,7 @@ export default function Index(): JSX.Element {
   useEffect(() => {
     const view = searchParams.get("view") || "dashboard";
     if (view !== currentView) {
-      console.log('Index component - Initializing view from URL:', view);
+              logNavigation.debug('Initializing view from URL', { view });
       setCurrentView(view);
     }
   }, []); // Empty dependency array - only run on mount
@@ -84,7 +85,7 @@ export default function Index(): JSX.Element {
   useEffect(() => {
     const currentViewParam = searchParams.get("view") || "dashboard";
     if (currentView !== currentViewParam) {
-      console.log('Index component - Syncing URL with view state:', currentView);
+      logNavigation.debug('Syncing URL with view state', { currentView });
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.set('view', currentView);
       window.history.replaceState({}, '', newUrl.toString());
@@ -94,7 +95,7 @@ export default function Index(): JSX.Element {
   // Cleanup realtime channels on unmount
   useEffect(() => {
     return () => {
-      console.log('Index component unmounting - cleaning up realtime channels');
+      logNavigation.debug('Component unmounting - cleaning up realtime channels');
       cleanupAllChannels();
     };
   }, []);
@@ -109,7 +110,7 @@ export default function Index(): JSX.Element {
 
   // Debug logging
   useEffect(() => {
-    console.log('Index component - Current view:', currentView, 'URL:', location.pathname + location.search);
+    logNavigation.debug('Current view and URL', { currentView, url: location.pathname + location.search });
   }, [currentView, location]);
 
   const renderView = (): JSX.Element => {

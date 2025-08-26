@@ -1,5 +1,6 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { logConnection } from '@/lib/logger';
 
 // Environment flag to disable realtime entirely
 const REALTIME_ENABLED = import.meta.env.VITE_SUPABASE_REALTIME_ENABLED !== 'false';
@@ -222,7 +223,7 @@ class RealtimeConnectionManager {
           const isConnected = supabase.realtime.isConnected();
           
           if (!isConnected && this.connectionStatus === 'connected') {
-            console.log('🔍 [Diagnostics] WebSocket disconnected, attempting reconnection...');
+            logConnection.info('WebSocket disconnected, attempting reconnection');
             this.setConnectionStatus('reconnecting');
             
             // Attempt to reconnect the WebSocket
@@ -243,7 +244,7 @@ class RealtimeConnectionManager {
     if (this.isDestroyed) return;
     
     try {
-      console.log('🔄 [Realtime] Attempting WebSocket reconnection...');
+              logConnection.info('Attempting WebSocket reconnection');
       
       // Disconnect current connection
       await supabase.realtime.disconnect();
@@ -254,7 +255,7 @@ class RealtimeConnectionManager {
       // Attempt to reconnect
       await supabase.realtime.connect();
       
-      console.log('✅ [Realtime] WebSocket reconnection successful');
+              logConnection.info('WebSocket reconnection successful');
       this.setConnectionStatus('connected');
       
       // Recover all active channels after reconnection
@@ -266,7 +267,7 @@ class RealtimeConnectionManager {
       
       // Schedule another reconnection attempt with exponential backoff
       const retryDelay = Math.min(5000 * Math.pow(2, Math.min(this.getGlobalRetryCount(), 5)), 60000);
-      console.log(`🔄 [Realtime] Scheduling WebSocket reconnection in ${retryDelay / 1000} seconds...`);
+              logConnection.info('Scheduling WebSocket reconnection', { delaySeconds: retryDelay / 1000 });
       
       setTimeout(() => {
         if (!this.isDestroyed) {
@@ -286,7 +287,7 @@ class RealtimeConnectionManager {
   private async recoverAllChannels(): Promise<void> {
     if (this.isDestroyed) return;
     
-    console.log('🔄 [Realtime] Recovering all active channels after WebSocket reconnection...');
+            logConnection.info('Recovering all active channels after WebSocket reconnection');
     
     for (const [channelName, channelData] of this.activeChannels) {
       if (channelData.refs > 0) {
@@ -561,7 +562,7 @@ class RealtimeConnectionManager {
       // For WebSocket errors, use more aggressive recovery
       if (channelData.retryCount < MAX_RETRY_ATTEMPTS) {
         const retryDelay = this.calculateRetryDelay(channelData.retryCount);
-        console.log(`[Realtime] Scheduling WebSocket recovery for channel '${channelName}' in ${retryDelay}ms`);
+        logConnection.info('Scheduling WebSocket recovery for channel', { channelName, delayMs: retryDelay });
         
         setTimeout(() => {
           if (channelData.isReconnecting) {

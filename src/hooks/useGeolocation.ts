@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { logGeolocation } from '@/lib/logger';
 
 export interface LocationData {
   latitude: number;
@@ -31,7 +32,7 @@ export type UseGeolocationReturn = GeolocationState & GeolocationActions;
 // IP-based location service (ipapi.co) with enhanced error handling
 const getIPBasedLocation = async (): Promise<LocationData> => {
   try {
-    console.log('🌍 [Geolocation] Fetching IP-based location...');
+    logGeolocation.info('Fetching IP-based location');
     
     // Add timeout to prevent hanging requests
     const controller = new AbortController();
@@ -66,7 +67,7 @@ const getIPBasedLocation = async (): Promise<LocationData> => {
       timestamp: Date.now()
     };
     
-    console.log('🌍 [Geolocation] IP-based location obtained:', locationData);
+    logGeolocation.info('IP-based location obtained', { city: locationData.city, country: locationData.country });
     
     // Store for future use
     localStorage.setItem('ipBasedLocation', JSON.stringify(locationData));
@@ -75,11 +76,11 @@ const getIPBasedLocation = async (): Promise<LocationData> => {
   } catch (error: any) {
     // Handle specific error types
     if (error.name === 'AbortError') {
-      console.warn('🌍 [Geolocation] IP location request timed out');
+      logGeolocation.warn('IP location request timed out');
     } else if (error.message?.includes('CSP')) {
-      console.warn('🌍 [Geolocation] IP location blocked by CSP, using fallback');
+      logGeolocation.warn('IP location blocked by CSP, using fallback');
     } else {
-      console.warn('🌍 [Geolocation] IP-based location failed:', error);
+      logGeolocation.warn('IP-based location failed', { error: error.message });
     }
     
     // Return default fallback location (Nairobi, Kenya)
@@ -92,7 +93,7 @@ const getIPBasedLocation = async (): Promise<LocationData> => {
       timestamp: Date.now()
     };
     
-    console.log('🌍 [Geolocation] Using default fallback location:', fallbackLocation);
+    logGeolocation.info('Using default fallback location', { city: fallbackLocation.city, country: fallbackLocation.country });
     return fallbackLocation;
   }
 };
@@ -105,10 +106,10 @@ const getStoredLocation = (): LocationData | null => {
     if (gpsLocation) {
       const location = JSON.parse(gpsLocation);
       // Check if GPS location is still valid (within 1 hour)
-      if (Date.now() - location.timestamp < 3600000) {
-        console.log('🌍 [Geolocation] Using stored GPS location:', location);
-        return location;
-      }
+              if (Date.now() - location.timestamp < 3600000) {
+          logGeolocation.info('Using stored GPS location', { city: location.city, country: location.country });
+          return location;
+        }
     }
     
     // Check for IP-based location
@@ -116,15 +117,15 @@ const getStoredLocation = (): LocationData | null => {
     if (ipLocation) {
       const location = JSON.parse(ipLocation);
       // Check if IP location is still valid (within 24 hours)
-      if (Date.now() - location.timestamp < 86400000) {
-        console.log('🌍 [Geolocation] Using stored IP-based location:', location);
-        return location;
-      }
+              if (Date.now() - location.timestamp < 86400000) {
+          logGeolocation.info('Using stored IP-based location', { city: location.city, country: location.country });
+          return location;
+        }
     }
     
     return null;
   } catch (error) {
-    console.warn('🌍 [Geolocation] Failed to parse stored location:', error);
+    logGeolocation.warn('Failed to parse stored location', { error: error.message });
     return null;
   }
 };
@@ -146,7 +147,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
   useEffect(() => {
     if (!sessionIdRef.current) {
       sessionIdRef.current = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log('🌍 [Geolocation] New session started:', sessionIdRef.current);
+      logGeolocation.debug('New session started', { sessionId: sessionIdRef.current });
     }
   }, []);
 
@@ -157,12 +158,12 @@ export const useGeolocation = (): UseGeolocationReturn => {
         const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
         const status = permissionStatus.state as 'granted' | 'denied' | 'prompt';
         
-        console.log('🌍 [Geolocation] Permission status:', status);
+        logGeolocation.debug('Permission status', { status });
         
         // Listen for permission changes
         permissionStatus.onchange = () => {
           const newStatus = permissionStatus.state as 'granted' | 'denied' | 'prompt';
-          console.log('🌍 [Geolocation] Permission status changed to:', newStatus);
+          logGeolocation.info('Permission status changed', { newStatus });
           setPermissionStatus(newStatus);
           
           if (newStatus === 'denied') {
@@ -173,11 +174,11 @@ export const useGeolocation = (): UseGeolocationReturn => {
         
         return status;
       } else {
-        console.log('🌍 [Geolocation] Permissions API not supported');
+        logGeolocation.debug('Permissions API not supported');
         return 'unknown';
       }
     } catch (error) {
-      console.warn('🌍 [Geolocation] Failed to check permission status:', error);
+      logGeolocation.warn('Failed to check permission status', { error: error.message });
       return 'unknown';
     }
   }, []);
@@ -199,14 +200,14 @@ export const useGeolocation = (): UseGeolocationReturn => {
           if (storedLocation && storedLocation.source === 'gps') {
             setLocationData(storedLocation);
             setHasUserConsent(true);
-            console.log('🌍 [Geolocation] Initialized with stored GPS location');
+            logGeolocation.info('Initialized with stored GPS location');
             return;
           }
         }
         
         // CRITICAL FIX: Only fetch IP location once per session and if we haven't already
         if (!ipLocationFetchedRef.current && !getStoredLocation()) {
-          console.log('🌍 [Geolocation] No stored location available, fetching IP-based location for session:', sessionIdRef.current);
+          logGeolocation.info('No stored location available, fetching IP-based location for session', { sessionId: sessionIdRef.current });
           ipLocationFetchedRef.current = true;
           const ipLocation = await getIPBasedLocation();
           setLocationData(ipLocation);
@@ -216,11 +217,11 @@ export const useGeolocation = (): UseGeolocationReturn => {
           const storedLocation = getStoredLocation();
           setLocationData(storedLocation);
           setHasUserConsent(storedLocation.source === 'gps');
-          console.log('🌍 [Geolocation] Using stored location:', storedLocation);
+          logGeolocation.info('Using stored location', { city: storedLocation.city, country: storedLocation.country });
         }
         
       } catch (error) {
-        console.warn('🌍 [Geolocation] Failed to initialize location:', error);
+        logGeolocation.warn('Failed to initialize location', { error: error.message });
         // Use default fallback
         const fallbackLocation: LocationData = {
           latitude: -1.2921,
@@ -241,7 +242,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
   // Request GPS location (only call this from user interactions)
   const requestLocation = useCallback(async (): Promise<LocationData | null> => {
     if (isRequestingRef.current) {
-      console.log('🌍 [Geolocation] Location request already in progress');
+      logGeolocation.debug('Location request already in progress');
       return locationData;
     }
 
@@ -261,7 +262,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
       setIsRequesting(true);
       setError(null);
       
-      console.log('🌍 [Geolocation] Requesting GPS location...');
+      logGeolocation.info('Requesting GPS location');
       
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
@@ -308,7 +309,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
       setHasUserConsent(true);
       setPermissionStatus('granted');
       
-      console.log('🌍 [Geolocation] GPS location obtained successfully:', newLocationData);
+      logGeolocation.info('GPS location obtained successfully', { latitude: newLocationData.latitude, longitude: newLocationData.longitude });
       
       toast({
         title: "Location Access Granted",
@@ -319,7 +320,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
       return newLocationData;
 
     } catch (error: any) {
-      console.error('🌍 [Geolocation] GPS location request failed:', error);
+      logGeolocation.error('GPS location request failed', { error: error.message });
       
       let errorMessage = 'Failed to get location permission';
       if (error.message.includes('permission denied')) {
@@ -341,14 +342,14 @@ export const useGeolocation = (): UseGeolocationReturn => {
 
       // Fall back to IP-based location only if we haven't already fetched it
       if (!ipLocationFetchedRef.current) {
-        console.log('🌍 [Geolocation] Falling back to IP-based location...');
+        logGeolocation.info('Falling back to IP-based location');
         ipLocationFetchedRef.current = true;
         const ipLocation = await getIPBasedLocation();
         setLocationData(ipLocation);
         setHasUserConsent(false);
         return ipLocation;
       } else {
-        console.log('🌍 [Geolocation] IP location already fetched, using existing data');
+        logGeolocation.debug('IP location already fetched, using existing data');
         return locationData;
       }
 
@@ -362,12 +363,12 @@ export const useGeolocation = (): UseGeolocationReturn => {
   const getIPBasedLocationAsync = useCallback(async (): Promise<LocationData | null> => {
     // CRITICAL FIX: Prevent multiple IP location fetches
     if (ipLocationFetchedRef.current) {
-      console.log('🌍 [Geolocation] IP location already fetched this session, using existing data');
+      logGeolocation.debug('IP location already fetched this session, using existing data');
       return locationData;
     }
 
     try {
-      console.log('🌍 [Geolocation] Switching to IP-based location...');
+      logGeolocation.info('Switching to IP-based location');
       ipLocationFetchedRef.current = true;
       const ipLocation = await getIPBasedLocation();
       
@@ -383,7 +384,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
 
       return ipLocation;
     } catch (error) {
-      console.error('🌍 [Geolocation] IP-based location failed:', error);
+      logGeolocation.error('IP-based location failed', { error: error.message });
       setError('Failed to get IP-based location');
       return locationData;
     }
@@ -399,7 +400,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
     // Reset refs for new session
     ipLocationFetchedRef.current = false;
     hasInitializedRef.current = false;
-    console.log('🌍 [Geolocation] Location data cleared');
+    logGeolocation.info('Location data cleared');
   }, []);
 
   return {

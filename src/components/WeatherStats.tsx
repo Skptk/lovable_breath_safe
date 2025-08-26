@@ -15,6 +15,7 @@ import LocationPermissionBanner from "./LocationPermissionBanner";
 // Use centralized weather store instead of useWeatherData hook
 import { useWeatherStore } from "@/store/weatherStore";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { logGeolocation, logData } from "@/lib/logger";
 
 // UserLocation interface is now handled by LocationData from useGeolocation hook
 
@@ -52,7 +53,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
     try {
       await getIPBasedLocationAsync();
     } catch (error) {
-      console.error('IP-based location failed:', error);
+      logGeolocation.error('IP-based location failed', { error: error.message });
     }
   }, [getIPBasedLocationAsync]);
 
@@ -79,11 +80,11 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
   // Debug logging for weather data (reduced frequency)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('WeatherStats: locationData changed:', locationData);
-      console.log('WeatherStats: weather store state:', {
+      logGeolocation.debug('Location data changed', { city: locationData?.city, country: locationData?.country });
+      logData.debug('Weather store state', {
         loading: weatherLoading,
         error: weatherError,
-        currentWeather: currentWeather
+        hasCurrentWeather: !!currentWeather
       });
     }
   }, [locationData, weatherLoading, weatherError, currentWeather]);
@@ -93,7 +94,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
     if (!locationData?.latitude || !locationData?.longitude) return;
     
     if (!currentWeather && !weatherLoading) {
-      console.log('WeatherStats: Location available, triggering weather data fetch for coordinates:', locationData.latitude, locationData.longitude);
+      logGeolocation.debug('Location available, triggering weather data fetch for coordinates', { latitude: locationData.latitude, longitude: locationData.longitude });
       
       // Update weather store coordinates
       setCoordinates({ latitude: locationData.latitude, longitude: locationData.longitude });

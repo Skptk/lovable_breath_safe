@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
+import { logGeolocation } from '@/lib/logger';
 
 // Refresh lock mechanism for weather backgrounds
 const BACKGROUND_REFRESH_LOCK_KEY = 'breath_safe_background_refresh_lock';
@@ -75,7 +76,7 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   // Update weather store coordinates when location data changes
   useEffect(() => {
     if (locationData && !hasInitialData) {
-      console.log('BackgroundManager: Location data updated, setting coordinates:', locationData);
+      logGeolocation.debug('Location data updated, setting coordinates', { city: locationData.city, country: locationData.country });
       setCoordinates({ 
         latitude: locationData.latitude, 
         longitude: locationData.longitude 
@@ -86,7 +87,7 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
   // Implement immediate fetch on login and progressive loading
   useEffect(() => {
     if (user && !hasInitialData && locationData) {
-      console.log('BackgroundManager: User authenticated, fetching initial weather data...');
+      logGeolocation.info('User authenticated, fetching initial weather data');
       setBackgroundState('loading');
       
       // Set a flag to indicate we have initial data
@@ -99,10 +100,10 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
             latitude: locationData.latitude, 
             longitude: locationData.longitude 
           });
-          console.log('BackgroundManager: Initial weather data fetched successfully');
+          logGeolocation.info('Initial weather data fetched successfully');
           setBackgroundState('success');
         } catch (error) {
-          console.log('BackgroundManager: Initial weather data failed, using fallback');
+          logGeolocation.warn('Initial weather data failed, using fallback');
           setBackgroundState('error');
         }
       };

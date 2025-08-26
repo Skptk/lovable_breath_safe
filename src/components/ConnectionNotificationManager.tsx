@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ConnectionNotification, { ConnectionStatus } from './ConnectionNotification';
+import { logConnection } from '@/lib/logger';
 
 export interface ConnectionState {
   status: ConnectionStatus;
@@ -104,7 +105,7 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
     // Prevent infinite dismissal loops
     dismissCountRef.current++;
     if (dismissCountRef.current > 10) {
-      console.warn('🚨 [ConnectionNotification] Too many dismissals, preventing spam');
+              logConnection.warn('Too many dismissals, preventing spam');
       return;
     }
 
@@ -123,7 +124,7 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
         try {
           onDismiss();
         } catch (error) {
-          console.warn('🚨 [ConnectionNotification] Error in onDismiss:', error);
+          logConnection.warn('Error in onDismiss', { error: error.message });
         }
       }
     }, 300);
@@ -135,7 +136,7 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
       try {
         onRetry();
       } catch (error) {
-        console.warn('🚨 [ConnectionNotification] Error in onRetry:', error);
+        logConnection.warn('Error in onRetry', { error: error.message });
       }
     }
   }, [onRetry]);
