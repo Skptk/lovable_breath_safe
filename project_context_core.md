@@ -111,6 +111,12 @@ src/
 - **notifications** - User notification system
 - **achievements** - Achievement definitions and user progress
 
+### Database Management
+- **Migrations**: SQL files in `supabase/migrations/` directory
+- **Deployment**: Use `supabase db push --include-all` to apply migrations
+- **CLI Tool**: Supabase CLI for direct remote database connection (no Docker required)
+- **Version Control**: Migration files tracked in Git for schema history
+
 ### RLS Policies
 - **User Data Isolation**: Users can only access their own data
 - **Public Read Access**: Air quality data publicly readable
