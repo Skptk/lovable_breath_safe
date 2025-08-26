@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from '@supabase/supabase-js'
 
 // ⚠️ TIMEZONE IMPORTANT: This function runs in UTC timezone
-// - GitHub Actions cron schedule runs in UTC
+// - Supabase cron jobs run in UTC timezone
 // - All timestamps are logged in UTC (ISO format)
 // - Local time is also logged for debugging purposes
 // - Collection interval: 15 minutes (900,000 milliseconds)
@@ -280,7 +280,8 @@ async function collectAllEnvironmentalData(apiKey: string, supabase: any): Promi
     console.error('❌ Errors encountered:', errors);
   }
 
-  // Log next scheduled collection with explicit timezone information
+  // Calculate next collection time properly
+  // Since this function runs every 15 minutes via cron, next collection is exactly 15 minutes from now
   const nextCollection = new Date(Date.now() + COLLECTION_INTERVAL);
   const nextCollectionUTC = nextCollection.toISOString();
   const nextCollectionLocal = nextCollection.toString();
@@ -288,6 +289,7 @@ async function collectAllEnvironmentalData(apiKey: string, supabase: any): Promi
   console.log(`⏰ Next scheduled collection (UTC): ${nextCollectionUTC}`);
   console.log(`⏰ Next scheduled collection (Local): ${nextCollectionLocal}`);
   console.log(`⏰ Collection interval: ${COLLECTION_INTERVAL / 1000 / 60} minutes`);
+  console.log(`⏰ Note: This function runs automatically every 15 minutes via Supabase cron`);
 }
 
 serve(async (req) => {
@@ -307,10 +309,11 @@ serve(async (req) => {
 
   try {
     // Check if this is a manual trigger or scheduled execution
-    const { manual = false, city = null } = await req.json().catch(() => ({}));
+    const { manual = false, scheduled = false, city = null } = await req.json().catch(() => ({}));
 
     if (manual && city) {
       // Manual collection for specific city
+      console.log(`🏙️ Manual collection requested for city: ${city}`);
       const cityData = MAJOR_CITIES.find(c => c.name.toLowerCase() === city.toLowerCase());
       if (!cityData) {
         return new Response(JSON.stringify({ error: 'City not found' }), {
@@ -359,7 +362,10 @@ serve(async (req) => {
       }
     }
 
-    // Regular scheduled collection
+    // Regular scheduled collection (either via cron or manual trigger)
+    const executionType = scheduled ? 'Scheduled (Cron)' : 'Manual (Direct)';
+    console.log(`🔄 Starting ${executionType} environmental data collection...`);
+    
     const apiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
     if (!apiKey) {
       console.error('❌ OpenWeatherMap API key not configured');
@@ -393,9 +399,10 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: 'Scheduled environmental data collection completed',
+      message: `${executionType} environmental data collection completed`,
       timestamp: new Date().toISOString(),
-      cities_processed: MAJOR_CITIES.length
+      cities_processed: MAJOR_CITIES.length,
+      execution_type: executionType
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

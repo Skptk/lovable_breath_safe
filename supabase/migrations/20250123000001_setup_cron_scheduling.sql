@@ -2,6 +2,9 @@
 -- Description: Creates a simple scheduling table and function for data collection
 -- Date: 2025-01-23
 
+-- Enable the pg_cron extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
 -- Create a simple scheduling table to track when data collection should run
 CREATE TABLE IF NOT EXISTS public.data_collection_schedule (
   id SERIAL PRIMARY KEY,
@@ -71,6 +74,18 @@ BEGIN
 END;
 $$;
 
+-- Create the actual cron job for environmental data collection
+-- This will run every 15 minutes and call the edge function
+SELECT cron.schedule(
+  'environmental-data-collection',
+  '*/15 * * * *', -- Every 15 minutes
+  'SELECT net.http_post(
+    url := ''https://bmqdbetupttlthpadseq.supabase.co/functions/v1/scheduled-data-collection'',
+    headers := ''{"Content-Type": "application/json", "Authorization": "Bearer " || current_setting(''app.settings.service_role_key'')}''::jsonb,
+    body := ''{"scheduled": true}''::jsonb
+  );'
+);
+
 -- Grant necessary permissions
 GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.data_collection_schedule TO authenticated;
@@ -84,8 +99,9 @@ ON public.data_collection_schedule(is_active, next_run);
 -- Log the setup completion
 DO $$
 BEGIN
-  RAISE LOG '✅ Simple scheduling setup completed successfully';
+  RAISE LOG '✅ Cron scheduling setup completed successfully';
   RAISE LOG '📅 Data collection schedule table created';
-  RAISE LOG '🔄 Next run scheduled for: %', NOW() + INTERVAL '15 minutes';
+  RAISE LOG '🔄 Cron job scheduled for every 15 minutes';
+  RAISE LOG '⏰ Next run scheduled for: %', NOW() + INTERVAL '15 minutes';
   RAISE LOG 'ℹ️  Use trigger_data_collection() to manually trigger collection';
 END $$;
