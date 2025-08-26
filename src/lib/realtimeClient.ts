@@ -1024,11 +1024,10 @@ class RealtimeConnectionManager {
         isReconnecting: false,
         connectionHealth: 'healthy',
         config: config || {}, // Store the config
-        healthCheckInterval: null, // Initialize health check interval
+        lastActivity: Date.now(), // Track last activity
+        lastLatency: 0, // Initialize last latency
+        lastError: null, // Initialize last error
         connectionStartTime: Date.now(), // Track connection start time
-        lastActivityTime: Date.now(), // Track last activity
-        backupChannel: undefined, // No backup channel initially
-        connectionPooling: false, // Not connection pooling for single channel
         refs: 1 // Track reference count for the channel
       });
       
