@@ -62,8 +62,8 @@ export const useNotifications = () => {
     config: {
       event: 'INSERT',
       schema: 'public',
-      table: 'notifications',
-      filter: `user_id=eq.${user?.id || 'anonymous'}`
+      table: 'notifications', // Correct table name
+      filter: `user_id=eq.${user?.id || 'anonymous'}` // Correct column name
     },
     onData: (payload) => {
       console.log('New notification received:', payload);

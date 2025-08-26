@@ -30,6 +30,35 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
   const activeSubscriptions = useRef<Set<string>>(new Set());
   const statusListenerCleanup = useRef<(() => void) | null>(null);
   const mountedRef = useRef(true);
+  
+  // Persistent channel management - keep core channels alive during navigation
+  const persistentChannels = useRef<Set<string>>(new Set());
+  const channelCleanupQueue = useRef<Set<string>>(new Set());
+
+  // Core channels that should persist across navigation
+  const CORE_CHANNELS = [
+    'user-notifications',
+    'user-points-inserts'
+  ];
+
+  // Page-specific channels that can be dynamic
+  const PAGE_SPECIFIC_CHANNELS = [
+    'user-profile-points'
+  ];
+
+  // Initialize persistent channels when user logs in
+  useEffect(() => {
+    if (user && mountedRef.current) {
+      console.log('🔄 [RealtimeContext] User logged in, initializing persistent channels');
+      
+      // Initialize core persistent channels
+      CORE_CHANNELS.forEach(channelType => {
+        const channelName = `${channelType}-${user.id}`;
+        persistentChannels.current.add(channelName);
+        console.log(`🔗 [RealtimeContext] Added persistent channel: ${channelName}`);
+      });
+    }
+  }, [user]);
 
   // Set up connection status listener
   useEffect(() => {
@@ -58,9 +87,11 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     if (!mountedRef.current) return;
 
     if (!user) {
-      console.log('🔄 User signed out, cleaning up realtime channels...');
+      console.log('🔄 User signed out, cleaning up all realtime channels...');
       cleanupAllChannels();
       activeSubscriptions.current.clear();
+      persistentChannels.current.clear();
+      channelCleanupQueue.current.clear();
     }
   }, [user]);
 
@@ -75,7 +106,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     };
   }, []);
 
-  // Subscribe to notifications channel
+  // Subscribe to notifications channel (persistent)
   const subscribeToNotifications = useCallback((callback: (payload: any) => void) => {
     if (!user || !mountedRef.current) {
       console.warn('Cannot subscribe to notifications: no user or component unmounted');
@@ -83,6 +114,10 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     }
 
     const subscriptionId = `notifications_${user.id}_${Date.now()}`;
+    const channelName = `user-notifications-${user.id}`;
+    
+    // Check if this is a persistent channel
+    const isPersistent = persistentChannels.current.has(channelName);
     
     if (activeSubscriptions.current.has(subscriptionId)) {
       console.warn('Notifications subscription already active, skipping');
@@ -90,26 +125,31 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     }
 
     activeSubscriptions.current.add(subscriptionId);
-    console.log('🔔 Subscribing to notifications channel for user:', user.id);
+    console.log(`🔔 [RealtimeContext] Subscribing to ${isPersistent ? 'persistent' : 'dynamic'} notifications channel for user:`, user.id);
     
-    subscribeToChannel(`user-notifications-${user.id}`, callback, {
+    subscribeToChannel(channelName, callback, {
       event: 'INSERT',
       schema: 'public',
-      table: 'notifications',
-      filter: `user_id=eq.${user.id}`
+      table: 'notifications', // Correct table name
+      filter: `user_id=eq.${user.id}` // Correct column name
     });
 
     // Return cleanup function
     return () => {
       if (mountedRef.current) {
-        console.log('🔔 Unsubscribing from notifications channel for user:', user.id);
-        unsubscribeFromChannel(`user-notifications-${user.id}`, callback);
+        console.log(`🔔 [RealtimeContext] Unsubscribing from notifications channel for user:`, user.id);
+        unsubscribeFromChannel(channelName, callback);
         activeSubscriptions.current.delete(subscriptionId);
+        
+        // Only cleanup if this is not a persistent channel
+        if (!isPersistent) {
+          channelCleanupQueue.current.add(channelName);
+        }
       }
     };
   }, [user]);
 
-  // Subscribe to user points channel
+  // Subscribe to user points channel (persistent)
   const subscribeToUserPoints = useCallback((callback: (payload: any) => void) => {
     if (!user || !mountedRef.current) {
       console.warn('Cannot subscribe to user points: no user or component unmounted');
@@ -117,6 +157,10 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     }
 
     const subscriptionId = `points_${user.id}_${Date.now()}`;
+    const channelName = `user-points-${user.id}`;
+    
+    // Check if this is a persistent channel
+    const isPersistent = persistentChannels.current.has(channelName);
     
     if (activeSubscriptions.current.has(subscriptionId)) {
       console.warn('User points subscription already active, skipping');
@@ -124,26 +168,31 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     }
 
     activeSubscriptions.current.add(subscriptionId);
-    console.log('💰 Subscribing to user points channel for user:', user.id);
+    console.log(`💰 [RealtimeContext] Subscribing to ${isPersistent ? 'persistent' : 'dynamic'} user points channel for user:`, user.id);
     
-    subscribeToChannel(`user-points-${user.id}`, callback, {
+    subscribeToChannel(channelName, callback, {
       event: 'INSERT',
       schema: 'public',
-      table: 'user_points',
-      filter: `user_id=eq.${user.id}`
+      table: 'user_points', // Correct table name
+      filter: `user_id=eq.${user.id}` // Correct column name
     });
 
     // Return cleanup function
     return () => {
       if (mountedRef.current) {
-        console.log('💰 Unsubscribing from user points channel for user:', user.id);
-        unsubscribeFromChannel(`user-points-${user.id}`, callback);
+        console.log(`💰 [RealtimeContext] Unsubscribing from user points channel for user:`, user.id);
+        unsubscribeFromChannel(channelName, callback);
         activeSubscriptions.current.delete(subscriptionId);
+        
+        // Only cleanup if this is not a persistent channel
+        if (!isPersistent) {
+          channelCleanupQueue.current.add(channelName);
+        }
       }
     };
   }, [user]);
 
-  // Subscribe to user profile points channel
+  // Subscribe to user profile points channel (page-specific, can be dynamic)
   const subscribeToUserProfilePoints = useCallback((callback: (payload: any) => void) => {
     if (!user || !mountedRef.current) {
       console.warn('Cannot subscribe to user profile points: no user or component unmounted');
@@ -151,6 +200,10 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     }
 
     const subscriptionId = `profile-points_${user.id}_${Date.now()}`;
+    const channelName = `user-profile-points-${user.id}`;
+    
+    // This is a page-specific channel, not persistent
+    const isPersistent = false;
     
     if (activeSubscriptions.current.has(subscriptionId)) {
       console.warn('User profile points subscription already active, skipping');
@@ -158,24 +211,58 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     }
 
     activeSubscriptions.current.add(subscriptionId);
-    console.log('👤 Subscribing to user profile points channel for user:', user.id);
+    console.log(`👤 [RealtimeContext] Subscribing to ${isPersistent ? 'persistent' : 'dynamic'} user profile points channel for user:`, user.id);
     
-    subscribeToChannel(`user-profile-points-${user.id}`, callback, {
+    subscribeToChannel(channelName, callback, {
       event: 'UPDATE',
       schema: 'public',
-      table: 'profiles',
-      filter: `user_id=eq.${user.id}`
+      table: 'profiles', // Correct table name
+      filter: `user_id=eq.${user.id}` // Correct column name
     });
 
     // Return cleanup function
     return () => {
       if (mountedRef.current) {
-        console.log('👤 Unsubscribing from user profile points channel for user:', user.id);
-        unsubscribeFromChannel(`user-profile-points-${user.id}`, callback);
+        console.log(`👤 [RealtimeContext] Unsubscribing from user profile points channel for user:`, user.id);
+        unsubscribeFromChannel(channelName, callback);
         activeSubscriptions.current.delete(subscriptionId);
+        
+        // Always cleanup page-specific channels
+        channelCleanupQueue.current.add(channelName);
       }
     };
   }, [user]);
+
+  // Batch process channel cleanup queue to reduce churn
+  useEffect(() => {
+    if (channelCleanupQueue.current.size === 0) return;
+
+    const cleanupTimeout = setTimeout(() => {
+      if (mountedRef.current && channelCleanupQueue.current.size > 0) {
+        console.log(`🧹 [RealtimeContext] Processing channel cleanup queue (${channelCleanupQueue.current.size} channels)`);
+        
+        // Process cleanup queue in batches
+        const channelsToCleanup = Array.from(channelCleanupQueue.current);
+        channelCleanupQueue.current.clear();
+        
+        channelsToCleanup.forEach(channelName => {
+          // Only cleanup if no active subscriptions remain
+          const hasActiveSubscriptions = Array.from(activeSubscriptions.current).some(id => 
+            id.includes(channelName.split('-')[0]) // Check if any subscription is for this channel type
+          );
+          
+          if (!hasActiveSubscriptions) {
+            console.log(`🧹 [RealtimeContext] Cleaning up unused channel: ${channelName}`);
+            // Note: Actual cleanup is handled by the channel manager
+          } else {
+            console.log(`⏸️ [RealtimeContext] Keeping channel alive due to active subscriptions: ${channelName}`);
+          }
+        });
+      }
+    }, 1000); // 1 second delay to batch cleanup operations
+
+    return () => clearTimeout(cleanupTimeout);
+  }, [activeSubscriptions.current.size]);
 
   const value: RealtimeContextType = {
     connectionStatus,

@@ -58,8 +58,8 @@ export const useUserPoints = () => {
     config: {
       event: 'INSERT',
       schema: 'public',
-      table: 'user_points',
-      filter: `user_id=eq.${user?.id || 'anonymous'}`
+      table: 'user_points', // Correct table name
+      filter: `user_id=eq.${user?.id || 'anonymous'}` // Correct column name
     },
     onData: (payload) => {
       console.log('New points earned:', payload);

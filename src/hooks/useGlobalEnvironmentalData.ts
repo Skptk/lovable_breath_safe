@@ -147,11 +147,11 @@ export const useGlobalEnvironmentalData = (
       if (data && data.length > 0) {
         // Manual distance calculation using Haversine formula
         const nearestData = data.reduce((nearest, current) => {
-          const currentDistance = calculateDistance(
+          const currentDistance = calculateHaversineDistance(
             latitude, longitude,
             current.latitude, current.longitude
           );
-          const nearestDistance = nearest ? calculateDistance(
+          const nearestDistance = nearest ? calculateHaversineDistance(
             latitude, longitude,
             nearest.latitude, nearest.longitude
           ) : Infinity;
@@ -160,7 +160,7 @@ export const useGlobalEnvironmentalData = (
         });
 
         if (nearestData) {
-          const distance = calculateDistance(
+          const distance = calculateHaversineDistance(
             latitude, longitude,
             nearestData.latitude, nearestData.longitude
           );
@@ -168,7 +168,11 @@ export const useGlobalEnvironmentalData = (
           if (distance <= maxDistanceKm) {
             console.log(`✅ [GlobalData] Found nearest data via direct query: ${nearestData.city_name} (${distance.toFixed(1)}km)`);
             setLastUpdated(nearestData.collection_timestamp);
-            return nearestData as GlobalEnvironmentalData;
+            // Convert to GlobalEnvironmentalData type by adding missing properties
+            return {
+              ...nearestData,
+              created_at: nearestData.created_at || new Date().toISOString()
+            } as GlobalEnvironmentalData;
           } else {
             console.log(`⚠️ [GlobalData] Nearest data too far: ${nearestData.city_name} (${distance.toFixed(1)}km > ${maxDistanceKm}km)`);
           }
@@ -184,7 +188,7 @@ export const useGlobalEnvironmentalData = (
   }, [latitude, longitude, maxDistanceKm]);
 
   // Helper function to calculate distance between two coordinates (Haversine formula)
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371; // Earth's radius in kilometers
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;

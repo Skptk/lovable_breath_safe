@@ -1017,14 +1017,19 @@ class RealtimeConnectionManager {
 
       // Store the channel with reference counting and retry tracking
       this.activeChannels.set(channelName, {
-        channel: subscription,
-        refs: 1,
+        channel: null,
         callbacks: new Set([callback]),
         retryCount: 0,
         lastRetryTime: 0,
         isReconnecting: false,
         connectionHealth: 'healthy',
-        config: config || {} // Store the config
+        config: config || {}, // Store the config
+        healthCheckInterval: null, // Initialize health check interval
+        connectionStartTime: Date.now(), // Track connection start time
+        lastActivityTime: Date.now(), // Track last activity
+        backupChannel: undefined, // No backup channel initially
+        connectionPooling: false, // Not connection pooling for single channel
+        refs: 1 // Track reference count for the channel
       });
       
     } catch (error) {
