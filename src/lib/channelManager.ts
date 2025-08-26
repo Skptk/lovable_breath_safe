@@ -289,11 +289,10 @@ export class ChannelManager {
     try {
       console.log(`[ChannelManager] Unsubscribing from ${channelName}`);
       
-      if (channelState.channel && typeof channelState.channel.unsubscribe === 'function') {
-        channelState.channel.unsubscribe();
+      if (channelState.channel) {
+        // Use the proper Supabase method instead of unsubscribe()
+        supabase.removeChannel(channelState.channel);
       }
-      
-      supabase.removeChannel(channelState.channel);
       this.channels.delete(channelName);
       
       console.log(`[ChannelManager] Successfully unsubscribed from ${channelName}`);
@@ -408,10 +407,10 @@ export class ChannelManager {
     
     for (const [channelName, channelState] of this.channels.entries()) {
       try {
-        if (channelState.channel && typeof channelState.channel.unsubscribe === 'function') {
-          channelState.channel.unsubscribe();
+        if (channelState.channel) {
+          // Use the proper Supabase method instead of unsubscribe()
+          supabase.removeChannel(channelState.channel);
         }
-        supabase.removeChannel(channelState.channel);
         console.log(`[ChannelManager] Removed channel ${channelName}`);
       } catch (error) {
         console.error(`[ChannelManager] Error cleaning up channel ${channelName}:`, error);

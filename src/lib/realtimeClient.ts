@@ -478,19 +478,14 @@ class RealtimeConnectionManager {
     console.log(`[Realtime] Retrying channel '${channelName}' subscription (attempt ${channelData.retryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
     
     try {
-      // Remove the old channel
-      if (channelData.channel && typeof channelData.channel.unsubscribe === 'function') {
+      // Remove the old channel using proper Supabase method
+      if (channelData.channel) {
         try {
-          channelData.channel.unsubscribe();
-        } catch (unsubError) {
-          console.warn(`[Realtime] Error unsubscribing from old channel '${channelName}':`, unsubError);
+          // Use the proper Supabase method instead of unsubscribe()
+          supabase.removeChannel(channelData.channel);
+        } catch (removeError) {
+          console.warn(`[Realtime] Error removing channel '${channelName}' from Supabase:`, removeError);
         }
-      }
-      
-      try {
-        supabase.removeChannel(channelData.channel);
-      } catch (removeError) {
-        console.warn(`[Realtime] Error removing channel '${channelName}' from Supabase:`, removeError);
       }
 
       // Create new channel
@@ -1090,10 +1085,10 @@ class RealtimeConnectionManager {
     
     try {
       // Check if channel is still active before removing
-      if (channelData.channel && typeof channelData.channel.unsubscribe === 'function') {
-        channelData.channel.unsubscribe();
+      if (channelData.channel) {
+        // Use the proper Supabase method instead of unsubscribe()
+        supabase.removeChannel(channelData.channel);
       }
-      supabase.removeChannel(channelData.channel);
       this.activeChannels.delete(channelName);
       this.pendingCleanups.delete(channelName);
       console.info(`[Realtime] Successfully removed channel '${channelName}'`);
@@ -1121,10 +1116,10 @@ class RealtimeConnectionManager {
     for (const [channelName, channelData] of this.activeChannels.entries()) {
       try {
         // Check if channel is still active before removing
-        if (channelData.channel && typeof channelData.channel.unsubscribe === 'function') {
-          channelData.channel.unsubscribe();
+        if (channelData.channel) {
+          // Use the proper Supabase method instead of unsubscribe()
+          supabase.removeChannel(channelData.channel);
         }
-        supabase.removeChannel(channelData.channel);
         console.info(`[Realtime] Removed channel '${channelName}'`);
       } catch (error) {
         console.error(`[Realtime] Error cleaning up channel '${channelName}':`, error);
