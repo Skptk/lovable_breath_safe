@@ -307,8 +307,8 @@ export const useAchievements = () => {
           unlocked_at: new Date().toISOString()
         })
         .eq('user_id', user.id)
-        .lt('progress', 'max_progress')
-        .gte('progress', 'max_progress');
+        .gte('progress', 'max_progress')
+        .eq('unlocked', false);
       
       // Refresh achievements data
       await fetchAchievements();

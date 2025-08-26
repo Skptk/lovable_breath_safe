@@ -75,6 +75,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
   const { 
     achievements, 
     badges, 
+    userAchievements,
     isLoading: achievementsLoading, 
     error: achievementsError, 
     refreshAchievements, 
@@ -198,6 +199,34 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
       toast({
         title: "Error",
         description: "Failed to refresh achievements",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResetAchievements = async () => {
+    if (!user) return;
+    
+    try {
+      // Call the database function to reset achievements to locked
+      const { error } = await supabase.rpc('reset_user_achievements_to_locked', {
+        p_user_id: user.id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Achievements Reset",
+        description: "All achievements have been reset to locked status for testing.",
+      });
+
+      // Refresh achievements to show updated status
+      await refreshAchievements();
+    } catch (error: any) {
+      console.error('Error resetting achievements:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reset achievements",
         variant: "destructive",
       });
     }
@@ -335,6 +364,20 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                 <RefreshCw className="h-4 w-4 mr-2" />
               )}
               Refresh Data
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetAchievements}
+              disabled={achievementsLoading}
+              className="floating-card"
+            >
+              {achievementsLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Reset Achievements
             </Button>
           </div>
           
@@ -546,33 +589,63 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
                       Initialize Achievements
                     </Button>
                   </div>
-                ) : (
-                  achievements.map((achievement) => {
-                    return (
-                      <GlassCard key={achievement.id} className="floating-card border-2 border-blue-200">
-                        <GlassCardContent className="p-4">
-                          <div className="flex items-center gap-4">
-                            <div className="text-4xl">{achievement.icon}</div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="font-semibold">{achievement.name}</div>
-                                <Badge variant="default" className="bg-green-100 text-green-700 border-green-300">
-                                  Unlocked
-                                </Badge>
-                              </div>
-                              <div className="text-sm text-muted-foreground mb-3">
-                                {achievement.description}
-                              </div>
-                              <div className="text-sm text-blue-600">
-                                Reward: +{achievement.points_reward} points
+                                  ) : (
+                    achievements.map((achievement) => {
+                      // Find the user's progress for this achievement
+                      const userAchievement = userAchievements?.find(ua => ua.achievement_id === achievement.id);
+                      const isUnlocked = userAchievement?.unlocked || false;
+                      const progress = userAchievement?.progress || 0;
+                      const maxProgress = userAchievement?.max_progress || achievement.criteria_value;
+                      
+                      return (
+                        <GlassCard key={achievement.id} className={`floating-card border-2 ${isUnlocked ? 'border-green-200' : 'border-gray-200'}`}>
+                          <GlassCardContent className="p-4">
+                            <div className="flex items-center gap-4">
+                              <div className="text-4xl">{achievement.icon}</div>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="font-semibold">{achievement.name}</div>
+                                  <Badge 
+                                    variant={isUnlocked ? "default" : "secondary"} 
+                                    className={isUnlocked ? "bg-green-100 text-green-700 border-green-300" : "bg-gray-100 text-gray-700 border-gray-300"}
+                                  >
+                                    {isUnlocked ? (
+                                      <>
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        Unlocked
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Lock className="h-3 w-3 mr-1" />
+                                        Locked
+                                      </>
+                                    )}
+                                  </Badge>
+                                </div>
+                                <div className="text-sm text-muted-foreground mb-3">
+                                  {achievement.description}
+                                </div>
+                                <div className="text-sm text-blue-600 mb-3">
+                                  Reward: +{achievement.points_reward} points
+                                </div>
+                                
+                                {/* Progress bar for all achievements */}
+                                <div className="mt-3">
+                                  <Progress 
+                                    value={(progress / maxProgress) * 100} 
+                                    className="h-2"
+                                  />
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {progress.toLocaleString()} / {maxProgress.toLocaleString()} {achievement.criteria_unit || 'units'}
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </GlassCardContent>
-                      </GlassCard>
-                    );
-                  })
-                )}
+                          </GlassCardContent>
+                        </GlassCard>
+                      );
+                    })
+                  )}
               </GlassCardContent>
             </GlassCard>
           </TabsContent>

@@ -620,6 +620,12 @@ export type Database = {
           distance_km: number
         }[]
       }
+      reset_user_achievements_to_locked: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "user" | "admin"
