@@ -1,10 +1,10 @@
 -- Add environmental data fields to air_quality_readings table
 ALTER TABLE public.air_quality_readings 
-ADD COLUMN temperature DECIMAL(5, 2),
-ADD COLUMN humidity DECIMAL(5, 2),
-ADD COLUMN pm1 DECIMAL(8, 2),
-ADD COLUMN pm003 DECIMAL(8, 2),
-ADD COLUMN data_source TEXT DEFAULT 'OpenAQ API';
+ADD COLUMN IF NOT EXISTS temperature DECIMAL(5, 2),
+ADD COLUMN IF NOT EXISTS humidity DECIMAL(5, 2),
+ADD COLUMN IF NOT EXISTS pm1 DECIMAL(8, 2),
+ADD COLUMN IF NOT EXISTS pm003 DECIMAL(8, 2),
+ADD COLUMN IF NOT EXISTS data_source TEXT DEFAULT 'OpenAQ API';
 
 -- Update existing records to have more realistic AQI values
 UPDATE public.air_quality_readings 

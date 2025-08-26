@@ -1,8 +1,17 @@
--- Add DELETE policy for air_quality_readings table
-CREATE POLICY "Users can delete their own readings" 
-ON public.air_quality_readings 
-FOR DELETE 
-USING (auth.uid() = user_id);
+-- Add DELETE policy for air_quality_readings table (if it doesn't exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'air_quality_readings' 
+    AND policyname = 'Users can delete their own readings'
+  ) THEN
+    CREATE POLICY "Users can delete their own readings" 
+    ON public.air_quality_readings 
+    FOR DELETE 
+    USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- Ensure the timestamp field is properly set for new readings
 ALTER TABLE public.air_quality_readings 
