@@ -152,6 +152,53 @@ src/
 - **Input Validation**: Server-side validation of all inputs
 - **SQL Injection Prevention**: Parameterized queries only
 
+### Supabase Security Advisor Compliance
+
+#### **Critical Security Rules - NEVER VIOLATE**
+- **SECURITY DEFINER Views**: NEVER create views with SECURITY DEFINER property
+  - **Risk**: Privilege escalation, RLS policy bypass
+  - **Rule**: All views must run with caller permissions
+  - **Exception**: Only use SECURITY DEFINER for functions that absolutely require elevated privileges
+
+- **Function Security**: Minimize SECURITY DEFINER usage in functions
+  - **Risk**: Functions running with creator permissions instead of user permissions
+  - **Rule**: Only use SECURITY DEFINER when function must bypass RLS for system operations
+  - **Alternative**: Use standard functions that respect RLS policies
+
+- **RLS Policy Enforcement**: Always ensure RLS policies are properly enforced
+  - **Risk**: Data leakage between users
+  - **Rule**: Test all database operations with RLS policies enabled
+  - **Validation**: Verify user isolation in multi-tenant scenarios
+
+#### **Security Advisor Categories to Monitor**
+- **SECURITY**: High-priority security vulnerabilities
+- **EXTERNAL**: Issues affecting external user access
+- **ERROR Level**: Critical issues requiring immediate attention
+- **WARNING Level**: Issues requiring prompt resolution
+
+#### **Security Best Practices**
+- **Principle of Least Privilege**: Users only access what they need
+- **Row-Level Security**: Always implement and test RLS policies
+- **Function Permissions**: Grant minimal required permissions
+- **View Security**: Ensure views respect user permissions
+- **Migration Security**: Review all migrations for security implications
+
+#### **Security Validation Checklist**
+Before deploying any database changes:
+- [ ] No unnecessary SECURITY DEFINER properties
+- [ ] RLS policies properly enforced
+- [ ] User data isolation verified
+- [ ] Function permissions minimized
+- [ ] View security validated
+- [ ] Security advisor warnings addressed
+
+#### **Reference: SECURITY DEFINER View Issue (Resolved 2025-01-23)**
+- **Issue**: `public.latest_environmental_data` view flagged with SECURITY DEFINER property
+- **Security Risk**: ERROR level - Privilege escalation and RLS bypass
+- **Solution**: Recreated view without SECURITY DEFINER, maintaining functionality
+- **Lesson**: Always verify views run with caller permissions, not creator permissions
+- **Migration**: `20250123000008_fix_security_definer_view.sql`
+
 ## Performance Optimization
 
 ### Frontend
