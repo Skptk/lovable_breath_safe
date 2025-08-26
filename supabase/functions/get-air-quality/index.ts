@@ -295,16 +295,21 @@ serve(async (req) => {
       const airQuality = airPollutionData.list[0];
       const aqi = airQuality.main.aqi;
       
+      console.log('Raw OpenWeatherMap AQI value:', aqi);
+      
       // Convert OpenWeatherMap AQI (1-5) to standard AQI (0-500)
       let standardAQI: number;
       switch (aqi) {
-        case 1: standardAQI = 50; break;   // Good
+        case 0: standardAQI = 25; break;  // No data/Very low - treat as very good
+        case 1: standardAQI = 50; break;  // Good
         case 2: standardAQI = 100; break;  // Moderate
         case 3: standardAQI = 150; break;  // Unhealthy for Sensitive Groups
         case 4: standardAQI = 200; break;  // Unhealthy
         case 5: standardAQI = 300; break;  // Very Unhealthy
-        default: standardAQI = 50;
+        default: standardAQI = 50;  // Default to good for unknown values
       }
+      
+      console.log('AQI conversion: OpenWeatherMap AQI', aqi, '→ Standard AQI', standardAQI);
       
       // Extract pollutant values (convert from μg/m³ to μg/m³ - no conversion needed)
       const pm25 = airQuality.components.pm2_5;

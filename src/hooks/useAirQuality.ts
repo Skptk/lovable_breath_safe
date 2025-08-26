@@ -237,23 +237,23 @@ export const useAirQuality = () => {
 
         // Transform legacy API response
         const transformedData: AirQualityData = {
-          aqi: data.list?.[0]?.main?.aqi || 0,
-          pm25: data.list?.[0]?.components?.pm2_5 || 0,
-          pm10: data.list?.[0]?.components?.pm10 || 0,
-          no2: data.list?.[0]?.components?.no2 || 0,
-          so2: data.list?.[0]?.components?.so2 || 0,
-          co: data.list?.[0]?.components?.co || 0,
-          o3: data.list?.[0]?.components?.o3 || 0,
+          aqi: data.aqi || 0,  // Use the converted AQI value directly
+          pm25: data.pollutants?.pm25 || 0,
+          pm10: data.pollutants?.pm10 || 0,
+          no2: data.pollutants?.no2 || 0,
+          so2: data.pollutants?.so2 || 0,
+          co: data.pollutants?.co || 0,
+          o3: data.pollutants?.o3 || 0,
           location: data.location || 'Unknown Location',
           userLocation: data.location || 'Unknown Location',
           coordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           userCoordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           timestamp: new Date().toISOString(),
           dataSource: 'OpenWeatherMap API (Legacy)',
-          environmental: data.list?.[0]?.main ? {
-            temperature: data.list[0].main.temp,
-            humidity: data.list[0].main.humidity,
-            airPressure: data.list[0].main.pressure
+          environmental: data.environmental ? {
+            temperature: data.environmental.temperature,
+            humidity: data.environmental.humidity,
+            airPressure: data.weather?.pressure
           } : undefined
         };
 

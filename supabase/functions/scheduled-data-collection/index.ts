@@ -112,12 +112,13 @@ interface GlobalEnvironmentalData {
 // Helper function to convert OpenWeatherMap AQI to standard AQI
 function convertAQI(openWeatherMapAQI: number): number {
   switch (openWeatherMapAQI) {
+    case 0: return 25;   // No data/Very low - treat as very good
     case 1: return 50;   // Good
     case 2: return 100;  // Moderate
     case 3: return 150;  // Unhealthy for Sensitive Groups
     case 4: return 200;  // Unhealthy
     case 5: return 300;  // Very Unhealthy
-    default: return 50;
+    default: return 50;  // Default to good for unknown values
   }
 }
 

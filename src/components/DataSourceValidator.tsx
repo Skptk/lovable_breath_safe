@@ -46,7 +46,8 @@ export default function DataSourceValidator({
   });
 
   // Check for suspicious AQI values - only flag truly invalid values
-  const isSuspiciousAQI = aqi < 0 || aqi > 500 || aqi === 0;
+  // AQI 0 is valid for legitimate sources (can indicate very low pollution or no data available)
+  const isSuspiciousAQI = aqi < 0 || aqi > 500 || (aqi === 0 && !isLegitimateSource);
   
   // Determine validation status
   const getValidationStatus = () => {
