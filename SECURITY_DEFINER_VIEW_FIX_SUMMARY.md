@@ -64,7 +64,7 @@ Created migration `20250123000008_fix_security_definer_view.sql` that:
 ## Commit Information
 - **Message**: "Fix SECURITY DEFINER issue with latest_environmental_data view - Addresses Supabase security advisor warning"
 - **Status**: ✅ Committed and pushed to GitHub
-- **Branch**: main
+- **Branch**: master
 
 ---
 
