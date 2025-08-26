@@ -85,6 +85,7 @@ src/
 - **Air Quality Data** - Supabase Edge Function integration
 - **Database Operations** - RLS policies and data integrity
 - **Rewards System** - Points calculation and achievements
+- **Security System** - RLS policies, function permissions, and access control
 
 ## Development Workflow
 
