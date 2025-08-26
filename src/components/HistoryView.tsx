@@ -344,30 +344,108 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   const bulkDeleteSelected = async (): Promise<void> => {
     if (selectedEntries.size === 0) return;
     
+    if (!user) {
+      console.error('Bulk delete: No user authenticated');
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to delete entries",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setBulkDeleting(true);
+      console.log(`🗑️ [Bulk Delete] Attempting to delete ${selectedEntries.size} entries for user ${user.id}`);
       
-      const { error } = await supabase
+      // First, verify all entries belong to the user
+      const { data: entriesToDelete, error: fetchError } = await supabase
+        .from('air_quality_readings')
+        .select('id, aqi, location_name, timestamp')
+        .in('id', Array.from(selectedEntries))
+        .eq('user_id', user.id);
+
+      if (fetchError) {
+        console.error('Bulk delete: Error fetching entries for verification:', fetchError);
+        throw new Error(`Failed to verify entries: ${fetchError.message}`);
+      }
+
+      if (!entriesToDelete || entriesToDelete.length === 0) {
+        console.error('Bulk delete: No entries found or none belong to user');
+        throw new Error('No entries found or you do not have permission to delete them');
+      }
+
+      const verifiedEntryIds = entriesToDelete.map(entry => entry.id);
+      const unverifiedCount = selectedEntries.size - verifiedEntryIds.length;
+      
+      if (unverifiedCount > 0) {
+        console.warn(`Bulk delete: ${unverifiedCount} entries could not be verified and will be skipped`);
+      }
+
+      console.log(`🗑️ [Bulk Delete] Verified ${verifiedEntryIds.length} entries for deletion`);
+
+      // Delete the verified entries
+      const { error: deleteError, count } = await supabase
         .from('air_quality_readings')
         .delete()
-        .in('id', Array.from(selectedEntries));
+        .in('id', verifiedEntryIds)
+        .eq('user_id', user.id);
 
-      if (error) {
-        throw error;
+      if (deleteError) {
+        console.error('Bulk delete: Database delete error:', deleteError);
+        throw new Error(`Database error: ${deleteError.message}`);
       }
+
+      if (count === 0) {
+        console.error('Bulk delete: No entries were deleted');
+        throw new Error('No entries were deleted. They may have already been removed.');
+      }
+
+      console.log(`✅ [Bulk Delete] Successfully deleted ${count} entries`);
+
+      // Show success message with actual count
+      const successMessage = count === selectedEntries.size 
+        ? `${count} readings deleted successfully`
+        : `${count} of ${selectedEntries.size} readings deleted successfully`;
 
       toast({
         title: "Success",
-        description: `${selectedEntries.size} readings deleted successfully`,
+        description: successMessage,
+        variant: "default",
       });
 
+      // Clear selection and refresh history
       setSelectedEntries(new Set());
-      await fetchHistory();
+      
+      // Force a refresh to ensure database is updated and points are recalculated
+      setTimeout(() => {
+        console.log('🔄 [Bulk Delete] Refreshing history after bulk deletion');
+        fetchHistory();
+      }, 1000); // Increased delay to ensure database triggers complete
+      
     } catch (error: any) {
-      console.error('Error bulk deleting entries:', error);
+      console.error('❌ [Bulk Delete] Error bulk deleting entries:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to delete selected readings';
+      let errorTitle = 'Error';
+      
+      if (error.message?.includes('permission')) {
+        errorTitle = 'Permission Denied';
+        errorMessage = 'You do not have permission to delete some of these entries. Please contact support if this persists.';
+      } else if (error.message?.includes('not found')) {
+        errorTitle = 'Entries Not Found';
+        errorMessage = 'Some of the entries you are trying to delete could not be found. They may have already been removed.';
+      } else if (error.message?.includes('Database error')) {
+        errorTitle = 'Database Error';
+        errorMessage = 'A database error occurred. Please try again or contact support if the problem persists.';
+      } else {
+        errorMessage = error.message || 'An unexpected error occurred while deleting the entries';
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to delete selected readings",
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -385,18 +463,57 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   };
 
   const deleteEntry = async (entryId: string): Promise<void> => {
-    if (!user) return;
+    if (!user) {
+      console.error('Delete entry: No user authenticated');
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to delete entries",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
-      const { error: deleteError } = await supabase
+      console.log(`🗑️ [Delete] Attempting to delete entry ${entryId} for user ${user.id}`);
+      
+      // First, verify the entry exists and belongs to the user
+      const { data: existingEntry, error: fetchError } = await supabase
+        .from('air_quality_readings')
+        .select('id, aqi, location_name, timestamp')
+        .eq('id', entryId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (fetchError) {
+        console.error('Delete entry: Error fetching entry for verification:', fetchError);
+        throw new Error(`Entry not found or access denied: ${fetchError.message}`);
+      }
+
+      if (!existingEntry) {
+        console.error('Delete entry: Entry not found or does not belong to user');
+        throw new Error('Entry not found or you do not have permission to delete it');
+      }
+
+      console.log(`🗑️ [Delete] Entry verified: AQI ${existingEntry.aqi} at ${existingEntry.location_name}`);
+
+      // Attempt to delete the entry
+      const { error: deleteError, count } = await supabase
         .from('air_quality_readings')
         .delete()
         .eq('id', entryId)
         .eq('user_id', user.id);
 
       if (deleteError) {
-        throw deleteError;
+        console.error('Delete entry: Database delete error:', deleteError);
+        throw new Error(`Database error: ${deleteError.message}`);
       }
+
+      if (count === 0) {
+        console.error('Delete entry: No rows were deleted');
+        throw new Error('No entries were deleted. The entry may have already been removed.');
+      }
+
+      console.log(`✅ [Delete] Successfully deleted entry ${entryId}`);
 
       // Remove from local state
       setHistory(prev => prev.filter(entry => entry.id !== entryId));
@@ -414,16 +531,35 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         variant: "default",
       });
       
-      // Force a refresh to ensure database is updated
+      // Force a refresh to ensure database is updated and points are recalculated
       setTimeout(() => {
+        console.log('🔄 [Delete] Refreshing history after deletion');
         fetchHistory();
-      }, 500);
+      }, 1000); // Increased delay to ensure database triggers complete
       
     } catch (error: any) {
-      console.error('Error deleting entry:', error);
+      console.error('❌ [Delete] Error deleting entry:', error);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to delete entry';
+      let errorTitle = 'Error';
+      
+      if (error.message?.includes('permission')) {
+        errorTitle = 'Permission Denied';
+        errorMessage = 'You do not have permission to delete this entry. Please contact support if this persists.';
+      } else if (error.message?.includes('not found')) {
+        errorTitle = 'Entry Not Found';
+        errorMessage = 'The entry you are trying to delete could not be found. It may have already been removed.';
+      } else if (error.message?.includes('Database error')) {
+        errorTitle = 'Database Error';
+        errorMessage = 'A database error occurred. Please try again or contact support if the problem persists.';
+      } else {
+        errorMessage = error.message || 'An unexpected error occurred while deleting the entry';
+      }
+      
       toast({
-        title: "Error",
-        description: error.message || 'Failed to delete entry',
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
       });
     }
