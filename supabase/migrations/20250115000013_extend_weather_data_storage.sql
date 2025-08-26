@@ -4,6 +4,9 @@
 
 -- Add new weather-related columns to air_quality_readings table
 ALTER TABLE public.air_quality_readings 
+ADD COLUMN IF NOT EXISTS data_source TEXT DEFAULT 'Integrated Weather System',
+ADD COLUMN IF NOT EXISTS temperature DECIMAL(5, 2),
+ADD COLUMN IF NOT EXISTS humidity DECIMAL(5, 2),
 ADD COLUMN IF NOT EXISTS wind_speed DECIMAL(5, 2),
 ADD COLUMN IF NOT EXISTS wind_direction INTEGER,
 ADD COLUMN IF NOT EXISTS wind_gust DECIMAL(5, 2),
@@ -18,6 +21,9 @@ ADD COLUMN IF NOT EXISTS sunrise_time TIME,
 ADD COLUMN IF NOT EXISTS sunset_time TIME;
 
 -- Add comments to explain the new fields
+COMMENT ON COLUMN public.air_quality_readings.data_source IS 'Source of the air quality and weather data';
+COMMENT ON COLUMN public.air_quality_readings.temperature IS 'Temperature in Celsius';
+COMMENT ON COLUMN public.air_quality_readings.humidity IS 'Relative humidity as percentage';
 COMMENT ON COLUMN public.air_quality_readings.wind_speed IS 'Wind speed in km/h';
 COMMENT ON COLUMN public.air_quality_readings.wind_direction IS 'Wind direction in degrees (0-360)';
 COMMENT ON COLUMN public.air_quality_readings.wind_gust IS 'Wind gust speed in km/h';
@@ -101,14 +107,4 @@ ALTER VIEW public.comprehensive_weather_readings SET (security_invoker = true);
 -- Note: Views with security_invoker = true automatically inherit RLS policies from the underlying table
 -- No need to create separate policies on the view itself
 
--- Update the existing data_source column to be more descriptive
-UPDATE public.air_quality_readings 
-SET data_source = CASE 
-  WHEN data_source = 'OpenAQ API' THEN 'OpenAQ + Weather APIs'
-  WHEN data_source = 'Legacy Data' THEN 'Legacy Data'
-  ELSE 'Integrated Weather System'
-END
-WHERE data_source IS NOT NULL;
-
--- Note: Migration logging removed as migrations_log table may not exist
--- Migration completion is tracked by Supabase automatically
+-- Note: Migration completion is tracked by Supabase automatically
