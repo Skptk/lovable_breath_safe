@@ -2,6 +2,21 @@
 -- Description: Addresses security issues identified by Supabase security advisor
 -- Date: 2025-01-23
 
+-- Add dependency checks and error handling for safer migration
+DO $$
+BEGIN
+  -- Check if required tables exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'global_environmental_data') THEN
+    RAISE EXCEPTION 'Required table global_environmental_data does not exist. Please run previous migrations first.';
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'data_collection_schedule') THEN
+    RAISE EXCEPTION 'Required table data_collection_schedule does not exist. Please run previous migrations first.';
+  END IF;
+  
+  RAISE LOG '✅ Dependency check passed - all required tables exist';
+END $$;
+
 -- Fix 1: Remove SECURITY DEFINER from functions that don't need elevated privileges
 -- This prevents the functions from running with the creator's permissions
 
@@ -155,10 +170,24 @@ $$ LANGUAGE plpgsql;
 -- Fix 2: Enable RLS on data_collection_schedule table and create proper policies
 -- This ensures proper access control for the scheduling table
 
--- Enable RLS on the scheduling table
-ALTER TABLE public.data_collection_schedule ENABLE ROW LEVEL SECURITY;
+-- Check if RLS is already enabled to avoid errors
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'data_collection_schedule' 
+    AND row_security = 'YES'
+  ) THEN
+    -- Enable RLS on the scheduling table
+    ALTER TABLE public.data_collection_schedule ENABLE ROW LEVEL SECURITY;
+    RAISE LOG '✅ RLS enabled on data_collection_schedule table';
+  ELSE
+    RAISE LOG 'ℹ️ RLS already enabled on data_collection_schedule table';
+  END IF;
+END $$;
 
--- Drop existing policies if they exist
+-- Drop existing policies if they exist (safe to do multiple times)
 DROP POLICY IF EXISTS "Users can read data collection schedule" ON public.data_collection_schedule;
 DROP POLICY IF EXISTS "Users can update data collection schedule" ON public.data_collection_schedule;
 DROP POLICY IF EXISTS "Service role can manage data collection schedule" ON public.data_collection_schedule;
