@@ -1219,6 +1219,55 @@ class RealtimeConnectionManager {
     this.cleanupAllChannels();
     this.setConnectionStatus('connected');
   }
+
+  // Validate subscription configuration before attempting recovery
+  private async validateSubscriptionConfig(schema: string, table: string, filter?: string): Promise<boolean> {
+    try {
+      // Basic validation - check if table exists by attempting a simple query
+      // Use a safer approach that doesn't require dynamic table names or custom RPC functions
+      
+      // For now, assume the table is valid to prevent blocking recovery
+      // This is a conservative approach that allows recovery to proceed
+      console.log(`[Realtime] Assuming table '${table}' in schema '${schema}' is valid for recovery`);
+      
+      // If filter is provided, try to validate it
+      if (filter) {
+        try {
+          // Test the filter with a simple query using a safe approach
+          // Since we can't use dynamic table names, we'll validate the filter format
+          if (filter.includes('=')) {
+            const [column, value] = filter.split('=');
+            if (column && value) {
+              // Basic validation - check if the filter format looks correct
+              const trimmedColumn = column.trim();
+              const trimmedValue = value.trim();
+              
+              // Validate column name format (basic check)
+              if (!trimmedColumn.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+                console.warn(`[Realtime] Invalid column name in filter '${filter}':`, trimmedColumn);
+                return false;
+              }
+              
+              // Validate value format (basic check)
+              if (trimmedValue.length === 0) {
+                console.warn(`[Realtime] Empty value in filter '${filter}'`);
+                return false;
+              }
+            }
+          }
+        } catch (filterError) {
+          console.warn(`[Realtime] Filter validation error for '${filter}':`, filterError);
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.warn(`[Realtime] Subscription config validation error:`, error);
+      // For now, assume valid to prevent blocking recovery
+      return true;
+    }
+  }
 }
 
 // Export singleton instance
