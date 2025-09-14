@@ -1,105 +1,20 @@
-import { useCallback, useState, useEffect, useRef, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAppStore } from "@/store";
-import { useAuth } from "@/contexts/AuthContext";
-import { useGeolocation } from "@/hooks/useGeolocation";
-import { useToast } from "@/hooks/use-toast";
-import { useGlobalEnvironmentalData } from "@/hooks/useGlobalEnvironmentalData";
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
+import { useGeolocation } from './useGeolocation';
+import { useToast } from './use-toast';
+import useGlobalEnvironmentalData from './useGlobalEnvironmentalData';
 
-// Refresh lock mechanism to prevent duplicate pulls on manual refresh
-const REFRESH_LOCK_KEY = 'breath_safe_refresh_lock';
-const REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes (slightly less than 15 to ensure smooth operation)
+// Validation cache constants
+const VALIDATION_CACHE_KEY = 'airquality_validation_cache';
+const VALIDATION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Data validation caching to prevent duplicate validation logs
-const VALIDATION_CACHE_KEY = 'breath_safe_validation_cache';
-const VALIDATION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache duration
+// Refresh lock constants
+const REFRESH_LOCK_KEY = 'airquality_refresh_lock';
+const REFRESH_LOCK_DURATION = 30 * 1000; // 30 seconds
 
-// Helper function to check if refresh is locked
-const isRefreshLocked = (): boolean => {
-  try {
-    const lockData = localStorage.getItem(REFRESH_LOCK_KEY);
-    if (!lockData) return false;
-    
-    const { timestamp } = JSON.parse(lockData);
-    const now = Date.now();
-    const timeSinceLastRefresh = now - timestamp;
-    
-    // If less than 14 minutes have passed, refresh is locked
-    return timeSinceLastRefresh < REFRESH_LOCK_DURATION;
-  } catch {
-    return false;
-  }
-};
-
-// Helper function to set refresh lock
-const setRefreshLock = (): void => {
-  try {
-    const lockData = {
-      timestamp: Date.now(),
-      duration: REFRESH_LOCK_DURATION
-    };
-    localStorage.setItem(REFRESH_LOCK_KEY, JSON.stringify(lockData));
-    console.log('🔒 [useAirQuality] Refresh lock set for 14 minutes');
-  } catch (error) {
-    console.warn('Failed to set refresh lock:', error);
-  }
-};
-
-// Helper function to clear refresh lock
-const clearRefreshLock = (): void => {
-  try {
-    localStorage.removeItem(REFRESH_LOCK_KEY);
-    console.log('🔓 [useAirQuality] Refresh lock cleared');
-  } catch (error) {
-    console.warn('Failed to clear refresh lock:', error);
-  }
-};
-
-// Helper function to check validation cache
-const getValidationCache = (dataSignature: string): { timestamp: number; result: boolean } | null => {
-  try {
-    const cacheData = localStorage.getItem(VALIDATION_CACHE_KEY);
-    if (!cacheData) return null;
-    
-    const cache = JSON.parse(cacheData);
-    const cached = cache[dataSignature];
-    
-    if (cached && (Date.now() - cached.timestamp) < VALIDATION_CACHE_DURATION) {
-      return cached;
-    }
-    
-    return null;
-  } catch {
-    return null;
-  }
-};
-
-// Helper function to set validation cache
-const setValidationCache = (dataSignature: string, result: boolean): void => {
-  try {
-    const cacheData = localStorage.getItem(VALIDATION_CACHE_KEY);
-    const cache = cacheData ? JSON.parse(cacheData) : {};
-    
-    cache[dataSignature] = {
-      timestamp: Date.now(),
-      result
-    };
-    
-    // Clean up old cache entries (keep only last 100)
-    const entries = Object.entries(cache);
-    if (entries.length > 100) {
-      const sortedEntries = entries.sort((a, b) => (b[1] as any).timestamp - (a[1] as any).timestamp);
-      const cleanedCache = Object.fromEntries(sortedEntries.slice(0, 100));
-      localStorage.setItem(VALIDATION_CACHE_KEY, JSON.stringify(cleanedCache));
-    } else {
-      localStorage.setItem(VALIDATION_CACHE_KEY, JSON.stringify(cache));
-    }
-  } catch (error) {
-    console.warn('Failed to set validation cache:', error);
-  }
-};
-
+// Interface for air quality data
 export interface AirQualityData {
   aqi: number;
   pm25: number;
@@ -132,6 +47,8 @@ export interface AirQualityData {
     sunriseTime?: string;
     sunsetTime?: string;
   };
+  error?: boolean;
+  message?: string;
 }
 
 export const useAirQuality = () => {
@@ -141,11 +58,14 @@ export const useAirQuality = () => {
   
   // Ref to track if we've already saved this data to prevent infinite loops
   const savedDataRef = useRef<Set<string>>(new Set());
-  
-  // Get coordinates from geolocation hook
-  const safeCoordinates = locationData ? { lat: locationData.latitude, lng: locationData.longitude } : null;
-  
-  // Get global environmental data from server-side collection
+
+  // Get safe coordinates (prevent infinite loops from changing objects)
+  const safeCoordinates = useMemo(() => {
+    if (!locationData?.lat || !locationData?.lng) return null;
+    return { lat: locationData.lat, lng: locationData.lng };
+  }, [locationData?.lat, locationData?.lng]);
+
+  // Fetch global environmental data
   const { 
     data: globalEnvironmentalData, 
     isLoading: globalDataLoading, 
@@ -153,10 +73,7 @@ export const useAirQuality = () => {
     refetch: refetchGlobalData 
   } = useGlobalEnvironmentalData({
     latitude: safeCoordinates?.lat,
-    longitude: safeCoordinates?.lng,
-    maxDistanceKm: 50,
-    autoRefresh: true,
-    refreshInterval: 900000 // 15 minutes
+    longitude: safeCoordinates?.lng
   });
 
   // Transform global data to AirQualityData format
@@ -169,33 +86,28 @@ export const useAirQuality = () => {
       city: globalData.city_name
     });
     
-    // CRITICAL FIX: Enhanced data source validation to prevent "Initial Data" contamination
-    // ACCEPT: OpenWeatherMap API, OpenAQ API, and other legitimate API sources
-    // REJECT: Only mock, test, placeholder, demo, fake, and initial data
+    // Enhanced data source validation to accept AQICN sources
     if (globalData.data_source && 
         (globalData.data_source.toLowerCase().includes('mock') ||
          globalData.data_source.toLowerCase().includes('test') ||
          globalData.data_source.toLowerCase().includes('placeholder') ||
          globalData.data_source.toLowerCase().includes('demo') ||
          globalData.data_source.toLowerCase().includes('fake') ||
-         globalData.data_source === 'Initial Data' ||  // Exact match for Initial Data
-         globalData.data_source.toLowerCase().includes('initial data') ||  // Case-insensitive check
+         globalData.data_source === 'Initial Data' ||
+         globalData.data_source.toLowerCase().includes('initial data') ||
          globalData.data_source.toLowerCase().includes('initial'))) {
       console.warn('🚨 [useAirQuality] Detected contaminated data source:', globalData.data_source);
-      console.warn('🚨 [useAirQuality] This data will be rejected to prevent contamination');
-      return null; // Reject contaminated data
+      return null;
     }
     
-    // Validate AQI values - accept all legitimate OpenWeatherMap API values
+    // Validate AQI values - accept AQICN and legitimate sources
     if (globalData.aqi !== undefined && globalData.aqi !== null) {
       // AQICN API returns direct AQI values (0-500 scale)
-      // These are legitimate values and should always be accepted
       if (globalData.data_source === 'AQICN' || globalData.data_source === 'AQICN + OpenWeatherMap API') {
         console.log('✅ [useAirQuality] Using legitimate AQICN data with AQI:', globalData.aqi, 'from:', globalData.data_source);
       } else if (globalData.data_source === 'OpenWeatherMap API') {
         console.log('✅ [useAirQuality] Using legitimate OpenWeatherMap data with AQI:', globalData.aqi, 'from:', globalData.data_source);
       } else if (globalData.aqi < 0 || globalData.aqi > 500) {
-        // Only reject if AQI is outside valid range (0-500) and not from legitimate APIs
         console.warn('🚨 [useAirQuality] Detected invalid AQI value:', globalData.aqi, 'from source:', globalData.data_source);
         return null;
       }
@@ -213,51 +125,28 @@ export const useAirQuality = () => {
       o3: globalData.o3 || 0,
       location: globalData.city_name || 'Unknown City',
       userLocation: globalData.city_name || 'Unknown City',
-      coordinates: { 
-        lat: globalData.latitude || 0, 
-        lon: globalData.longitude || 0 
-      },
-      userCoordinates: { 
-        lat: globalData.latitude || 0, 
-        lon: globalData.longitude || 0 
-      },
+      coordinates: { lat: globalData.latitude || 0, lon: globalData.longitude || 0 },
+      userCoordinates: { lat: globalData.latitude || 0, lon: globalData.longitude || 0 },
       timestamp: globalData.collection_timestamp || new Date().toISOString(),
-      dataSource: globalData.data_source || 'Server-side Collection',
-      environmental: globalData.temperature ? {
-        temperature: globalData.temperature,
-        humidity: globalData.humidity,
-        windSpeed: globalData.wind_speed,
-        windDirection: globalData.wind_direction,
-        windGust: globalData.wind_gust,
-        airPressure: globalData.air_pressure,
-        visibility: globalData.visibility,
-        weatherCondition: globalData.weather_condition,
-        feelsLikeTemperature: globalData.feels_like_temperature,
-        sunriseTime: globalData.sunrise_time,
-        sunsetTime: globalData.sunset_time
-      } : undefined
+      dataSource: globalData.data_source || 'Global Environmental Data',
+      environmental: {
+        temperature: globalData.temperature || 0,
+        humidity: globalData.humidity || 0,
+        windSpeed: globalData.wind_speed || 0,
+        windDirection: globalData.wind_direction || 0,
+        windGust: globalData.wind_gust || 0,
+        airPressure: globalData.air_pressure || 0,
+        visibility: globalData.visibility || 0,
+        weatherCondition: globalData.weather_condition || '',
+        feelsLikeTemperature: globalData.feels_like_temperature || 0,
+        sunriseTime: globalData.sunrise_time || '',
+        sunsetTime: globalData.sunset_time || ''
+      }
     };
   }, []);
 
-  // Use global data when available, fallback to legacy API if needed
+  // Use global data when available, fallback to AQICN API if needed
   const airQualityData = globalEnvironmentalData ? transformGlobalData(globalEnvironmentalData) : null;
-  
-  // CRITICAL FIX: Enhanced debugging and user feedback for data contamination
-  if (globalEnvironmentalData && !airQualityData) {
-    console.warn('⚠️ [useAirQuality] Global data was rejected during transformation:', {
-      originalData: globalEnvironmentalData,
-      dataSource: globalEnvironmentalData.data_source,
-      aqi: globalEnvironmentalData.aqi,
-      city: globalEnvironmentalData.city_name,
-      timestamp: globalEnvironmentalData.collection_timestamp
-    });
-    
-    // Show user-friendly error message for contaminated data
-    if (globalEnvironmentalData.data_source === 'Initial Data') {
-      console.warn('🚨 [useAirQuality] Detected "Initial Data" placeholder - this indicates database needs real data');
-      console.warn('🚨 [useAirQuality] The scheduled data collection system should populate the database with real AQICN + OpenWeatherMap API data');
-    }
-  }
   
   // Enhanced fallback logic: Only use AQICN API if no legitimate global data is available
   const shouldUseAQICNAPI = !globalEnvironmentalData || 
@@ -287,10 +176,26 @@ export const useAirQuality = () => {
 
         // Check if API returned an error
         if (data.error) {
-          throw new Error(data.message || 'AQICN API unavailable');
+          return {
+            aqi: 0,
+            pm25: 0,
+            pm10: 0,
+            no2: 0,
+            so2: 0,
+            co: 0,
+            o3: 0,
+            location: 'Unknown Location',
+            userLocation: 'Unknown Location',
+            coordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
+            userCoordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
+            timestamp: new Date().toISOString(),
+            dataSource: 'AQICN (Unavailable)',
+            error: true,
+            message: data.message || '⚠️ Live air quality data unavailable, please check back later.'
+          };
         }
 
-        // Transform AQICN API response
+        // Transform successful AQICN API response
         const transformedData: AirQualityData = {
           aqi: data.aqi || 0,
           pm25: data.pollutants?.pm25 || 0,
@@ -306,9 +211,9 @@ export const useAirQuality = () => {
           timestamp: data.timestamp || new Date().toISOString(),
           dataSource: 'AQICN',
           environmental: data.environmental ? {
-            temperature: data.environmental.temperature,
-            humidity: data.environmental.humidity,
-            airPressure: data.environmental.pressure
+            temperature: data.environmental.temperature || 0,
+            humidity: data.environmental.humidity || 0,
+            airPressure: data.environmental.pressure || 0
           } : undefined
         };
 
@@ -317,8 +222,24 @@ export const useAirQuality = () => {
         return transformedData;
       } catch (error) {
         console.error('❌ [useAirQuality] AQICN API fetch failed:', error);
-        // Don't throw, return null to allow error handling
-        return null;
+        // Return error state instead of throwing
+        return {
+          aqi: 0,
+          pm25: 0,
+          pm10: 0,
+          no2: 0,
+          so2: 0,
+          co: 0,
+          o3: 0,
+          location: 'Unknown Location',
+          userLocation: 'Unknown Location',
+          coordinates: { lat: safeCoordinates?.lat || 0, lon: safeCoordinates?.lng || 0 },
+          userCoordinates: { lat: safeCoordinates?.lat || 0, lon: safeCoordinates?.lng || 0 },
+          timestamp: new Date().toISOString(),
+          dataSource: 'AQICN (Error)',
+          error: true,
+          message: '⚠️ Live air quality data unavailable, please check back later.'
+        };
       }
     },
     enabled: shouldUseAQICNAPI && !!safeCoordinates?.lat && !!safeCoordinates?.lng,
@@ -330,28 +251,9 @@ export const useAirQuality = () => {
 
   // Combine global data with AQICN direct fetch
   const finalData = useMemo(() => {
-    if (!airQualityData && !aqicnQuery.data) {
-      // No data available - show error message instead of fallback
-      return {
-        aqi: 0,
-        pm25: 0,
-        pm10: 0,
-        no2: 0,
-        so2: 0,
-        co: 0,
-        o3: 0,
-        location: 'Unknown Location',
-        userLocation: 'Unknown Location',
-        coordinates: { lat: 0, lon: 0 },
-        userCoordinates: { lat: 0, lon: 0 },
-        timestamp: new Date().toISOString(),
-        dataSource: 'No Data Available',
-        error: true,
-        message: '⚠️ Live air quality data unavailable, please check back later.'
-      };
-    }
-    
     const data = airQualityData || aqicnQuery.data;
+    if (!data) return null;
+    
     return {
       ...data,
       // Ensure we have a stable timestamp
@@ -362,42 +264,21 @@ export const useAirQuality = () => {
   const isLoading = globalDataLoading || (aqicnQuery.isLoading && !globalEnvironmentalData);
   const error = globalDataError || aqicnQuery.error;
 
-  // Manual refresh function
+  // Simple refresh function
   const refreshData = useCallback(async () => {
     console.log('🔄 [useAirQuality] Manual refresh requested');
     
-    // Check refresh lock
-    if (isRefreshLocked()) {
-      console.log('⏳ [useAirQuality] Refresh locked, waiting for cooldown');
-      toast({
-        title: "Refresh Cooldown",
-        description: "Please wait before refreshing again",
-        variant: "default",
-      });
-      return;
-    }
-
-    // Set refresh lock
-    setRefreshLock();
-
     try {
       if (globalEnvironmentalData) {
-        // Refresh global data
         await refetchGlobalData();
-        toast({
-          title: "Data Refreshed",
-          description: "Air quality data has been updated",
-          variant: "default",
-        });
       } else {
-        // Refresh AQICN data
         await aqicnQuery.refetch();
-        toast({
-          title: "Data Refreshed",
-          description: "Air quality data has been updated",
-          variant: "default",
-        });
       }
+      toast({
+        title: "Data Refreshed",
+        description: "Air quality data has been updated",
+        variant: "default",
+      });
     } catch (error) {
       console.error('❌ [useAirQuality] Refresh failed:', error);
       toast({
@@ -405,183 +286,15 @@ export const useAirQuality = () => {
         description: "Failed to refresh air quality data",
         variant: "destructive",
       });
-    } finally {
-      // Clear refresh lock after successful refresh
-      clearRefreshLock();
     }
-  }, [globalEnvironmentalData, refetchGlobalData, legacyQuery, toast]);
-
-  // Save reading to user history when data is available (with loop prevention)
-  useEffect(() => {
-    if (!user || !finalData || !safeCoordinates) return;
-
-    // Create a stable data signature that doesn't change on every render
-    // Remove environmental data from signature as it changes object references
-    const dataSignature = `${user.id}-${finalData.aqi}-${finalData.pm25}-${finalData.pm10}-${finalData.dataSource}-${Math.floor(Date.now() / (5 * 60 * 1000))}`; // 5-minute window
-    
-    // Check if we've already saved this exact data signature
-    if (savedDataRef.current.has(dataSignature)) {
-      console.log('🔄 [useAirQuality] Data already saved, skipping duplicate save');
-      return;
-    }
-
-    // Only save if we have meaningful data changes (not just timestamp updates)
-    const hasMeaningfulData = finalData.aqi > 0 || finalData.pm25 > 0 || finalData.pm10 > 0;
-    if (!hasMeaningfulData) {
-      console.log('🔄 [useAirQuality] No meaningful data to save, skipping');
-      return;
-    }
-
-    const saveReading = async () => {
-      try {
-        // Check if we already have the same data in the database
-        const { data: existingReadings, error: checkError } = await supabase
-          .from('air_quality_readings')
-          .select('aqi, pm25, pm10, no2, so2, co, o3')
-          .eq('user_id', user.id)
-          .order('timestamp', { ascending: false })
-          .limit(1);
-
-        if (checkError) {
-          console.warn('⚠️ [useAirQuality] Could not check existing readings:', checkError);
-        } else if (existingReadings && existingReadings.length > 0) {
-          const latest = existingReadings[0];
-          
-          // Create data signature for caching
-          const dataSignature = `${finalData.aqi}-${finalData.pm25}-${finalData.pm10}-${finalData.no2}-${finalData.so2}-${finalData.co}-${finalData.o3}`;
-          
-          // Check validation cache first
-          const cachedValidation = getValidationCache(dataSignature);
-          if (cachedValidation) {
-            // Use cached result - no need to log again
-            if (!cachedValidation.result) {
-              return; // Skip save based on cached validation
-            }
-          }
-          
-          // Check if the new data is significantly different from the latest reading
-          const isSignificantlyDifferent = 
-            Math.abs(latest.aqi - finalData.aqi) > 1 ||
-            Math.abs(latest.pm25 - finalData.pm25) > 0.1 ||
-            Math.abs(latest.pm10 - finalData.pm10) > 0.1 ||
-            Math.abs(latest.no2 - finalData.no2) > 0.01 ||
-            Math.abs(latest.so2 - finalData.so2) > 0.01 ||
-            Math.abs(latest.co - finalData.co) > 0.01 ||
-            Math.abs(latest.o3 - finalData.o3) > 0.01;
-
-          if (!isSignificantlyDifferent) {
-            // Cache the validation result and log only once per session
-            setValidationCache(dataSignature, false);
-            console.log('🔄 [useAirQuality] Data validation: skipping save (cached for 5 minutes)');
-            return;
-          }
-          
-          // Cache the positive validation result
-          setValidationCache(dataSignature, true);
-        }
-
-        const { error } = await supabase
-          .from('air_quality_readings')
-          .insert({
-            user_id: user.id,
-            aqi: finalData.aqi,
-            pm25: finalData.pm25,
-            pm10: finalData.pm10,
-            no2: finalData.no2,
-            so2: finalData.so2,
-            co: finalData.co,
-            o3: finalData.o3,
-            latitude: safeCoordinates.lat,
-            longitude: safeCoordinates.lng,
-            location_name: finalData.location || 'Unknown Location',
-            timestamp: new Date().toISOString(),
-            data_source: finalData.dataSource || 'Global Environmental Data',
-            // Add weather data if available
-            temperature: finalData.environmental?.temperature || null,
-            humidity: finalData.environmental?.humidity || null,
-            wind_speed: finalData.environmental?.windSpeed || null,
-            wind_direction: finalData.environmental?.windDirection || null,
-            air_pressure: finalData.environmental?.airPressure || null,
-            visibility: finalData.environmental?.visibility || null,
-            weather_condition: finalData.environmental?.weatherCondition || null
-          });
-
-        if (error) {
-          console.error('❌ [useAirQuality] Failed to save reading:', error);
-        } else {
-          console.log('✅ [useAirQuality] Reading saved to history');
-          // Mark this data signature as saved to prevent duplicate saves
-          savedDataRef.current.add(dataSignature);
-          
-          // Clean up old signatures to prevent memory leaks (keep only last 50)
-          if (savedDataRef.current.size > 50) {
-            const signaturesArray = Array.from(savedDataRef.current);
-            savedDataRef.current = new Set(signaturesArray.slice(-25));
-          }
-        }
-      } catch (error) {
-        console.error('❌ [useAirQuality] Error saving reading:', error);
-      }
-    };
-
-    // Add debounce to prevent rapid successive saves
-    const debounceTimer = setTimeout(() => {
-      saveReading();
-    }, 1000); // 1 second debounce
-
-    return () => clearTimeout(debounceTimer);
-  }, [user?.id, finalData?.aqi, finalData?.pm25, finalData?.pm10, finalData?.dataSource, safeCoordinates?.lat, safeCoordinates?.lng]);
-
-  // Set refresh lock when global environmental data is fetched
-  useEffect(() => {
-    if (globalEnvironmentalData && !isRefreshLocked()) {
-      console.log('🔒 [useAirQuality] Setting refresh lock for new global data');
-      setRefreshLock();
-    }
-  }, [globalEnvironmentalData]);
-
-  // Periodic validation summary logging (every 10 minutes)
-  useEffect(() => {
-    const logValidationSummary = () => {
-      try {
-        const cacheData = localStorage.getItem(VALIDATION_CACHE_KEY);
-        if (cacheData) {
-          const cache = JSON.parse(cacheData);
-          const now = Date.now();
-          const recentValidations = Object.entries(cache).filter(([_, data]: [string, any]) => 
-            (now - data.timestamp) < VALIDATION_CACHE_DURATION
-          );
-          
-          if (recentValidations.length > 0) {
-            const skippedCount = recentValidations.filter(([_, data]: [string, any]) => !data.result).length;
-            const savedCount = recentValidations.filter(([_, data]: [string, any]) => data.result).length;
-            
-            console.log(`📊 [useAirQuality] Validation summary (last 5 min): ${savedCount} saved, ${skippedCount} skipped`);
-          }
-        }
-      } catch (error) {
-        // Silently handle cache read errors
-      }
-    };
-
-    // Log summary every 10 minutes
-    const summaryInterval = setInterval(logValidationSummary, 10 * 60 * 1000);
-    
-    // Initial summary after 1 minute
-    const initialSummary = setTimeout(logValidationSummary, 60 * 1000);
-    
-    return () => {
-      clearInterval(summaryInterval);
-      clearTimeout(initialSummary);
-    };
-  }, []);
+  }, [globalEnvironmentalData, refetchGlobalData, aqicnQuery, toast]);
 
   return {
     data: finalData,
     isLoading,
     error,
     refreshData,
-    isRefreshing: legacyQuery.isRefetching,
+    isRefreshing: aqicnQuery.isRefetching,
     lastUpdated: finalData?.timestamp,
     dataSource: finalData?.dataSource || 'Unknown',
     coordinates: finalData?.coordinates,
