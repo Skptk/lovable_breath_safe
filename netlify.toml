@@ -9,10 +9,58 @@
   # VITE_SUPABASE_ANON_KEY = "your_supabase_anon_key"
   # VITE_OPENWEATHERMAP_API_KEY = "your_openweathermap_api_key"
 
+# Asset routing - prevent assets from being redirected to index.html
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/js/*"
+  to = "/js/:splat"
+  status = 200
+
+# API routes (if any) - add specific patterns for API calls
+# [[redirects]]
+#   from = "/api/*"
+#   to = "/.netlify/functions/:splat"
+#   status = 200
+
+# SPA fallback - only for app routes (must be last)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# MIME type headers for assets
+[[headers]]
+  for = "*.css"
+  [headers.values]
+  Content-Type = "text/css; charset=utf-8"
+  Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+  Content-Type = "application/javascript; charset=utf-8"
+  Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.json"
+  [headers.values]
+  Content-Type = "application/json; charset=utf-8"
+
+[[headers]]
+  for = "*.woff2"
+  [headers.values]
+  Content-Type = "font/woff2"
+  Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.woff"
+  [headers.values]
+  Content-Type = "font/woff"
+  Cache-Control = "public, max-age=31536000, immutable"
 
 # Security headers
 [[headers]]

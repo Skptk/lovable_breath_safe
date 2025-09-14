@@ -6,6 +6,7 @@ import inspect from "vite-plugin-inspect";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: "/", // Ensure proper base path for Netlify
   server: {
     host: "::",
     port: 8080,
