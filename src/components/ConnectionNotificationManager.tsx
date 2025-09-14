@@ -27,6 +27,8 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
   const transitionTimeoutRef = useRef<NodeJS.Timeout>();
   const statusHistoryRef = useRef<ConnectionState[]>([]);
   const dismissCountRef = useRef(0); // Track dismiss count to prevent spam
+  const statusDebounceRef = useRef<NodeJS.Timeout>(); // Debounce rapid status changes
+  const lastStatusChangeRef = useRef<number>(0); // Track when status last changed
 
   // Priority system for different connection statuses
   const getStatusPriority = (status: ConnectionStatus): number => {
@@ -42,15 +44,28 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
 
   // Determine if we should show a new notification
   const shouldShowNotification = useCallback((newStatus: ConnectionStatus, newPriority: number): boolean => {
-    if (!currentNotification) return true;
+    if (!currentNotification) {
+      // For first notification, only show if it's an actual problem
+      return newStatus === 'disconnected' || newStatus === 'error';
+    }
     
     // Don't show lower priority notifications when higher priority ones are active
     if (newPriority < currentNotification.priority) return false;
     
+    // Don't show transient connection states during normal operations
+    if (newStatus === 'connecting' || newStatus === 'reconnecting') {
+      return false; // These are temporary states, no need to notify user
+    }
+    
+    // Don't show 'connected' notifications unless user was previously disconnected
+    if (newStatus === 'connected' && currentNotification.status !== 'disconnected' && currentNotification.status !== 'error') {
+      return false;
+    }
+    
     // Don't show the same status repeatedly unless it's been a while
     if (newStatus === currentNotification.status) {
       const timeSinceLast = Date.now() - currentNotification.timestamp;
-      return timeSinceLast > 10000; // 10 seconds minimum between same status
+      return timeSinceLast > 30000; // 30 seconds minimum between same status to reduce spam
     }
     
     return true;
@@ -93,11 +108,33 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
     }, 300); // Match the fade out duration
   }, [shouldShowNotification]);
 
-  // Update notification when connection status changes
+  // Update notification when connection status changes with debouncing
   useEffect(() => {
-    if (connectionStatus && !isTransitioning) {
-      transitionToNewStatus(connectionStatus, connectionMessage);
+    if (!connectionStatus || isTransitioning) return;
+    
+    // Track status change timing for smart notifications
+    const now = Date.now();
+    const timeSinceLastChange = now - lastStatusChangeRef.current;
+    lastStatusChangeRef.current = now;
+    
+    // Clear existing debounce timeout
+    if (statusDebounceRef.current) {
+      clearTimeout(statusDebounceRef.current);
     }
+    
+    // For quick reconnections (less than 3 seconds), use longer debounce to avoid spam
+    const debounceTime = timeSinceLastChange < 3000 ? 2000 : 500;
+    
+    // Debounce rapid status changes to prevent notification spam
+    statusDebounceRef.current = setTimeout(() => {
+      transitionToNewStatus(connectionStatus, connectionMessage);
+    }, debounceTime);
+    
+    return () => {
+      if (statusDebounceRef.current) {
+        clearTimeout(statusDebounceRef.current);
+      }
+    };
   }, [connectionStatus, connectionMessage, transitionToNewStatus, isTransitioning]);
 
   // CRITICAL FIX: Handle notification dismissal without infinite loops
@@ -147,6 +184,9 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
       if (transitionTimeoutRef.current) {
         clearTimeout(transitionTimeoutRef.current);
       }
+      if (statusDebounceRef.current) {
+        clearTimeout(statusDebounceRef.current);
+      }
     };
   }, []);
 
@@ -162,7 +202,7 @@ export const ConnectionNotificationManager: React.FC<ConnectionNotificationManag
       onRetry={handleRetry}
       onDismiss={handleDismiss}
       autoDismiss={currentNotification.status === 'connected'}
-      dismissDelay={currentNotification.status === 'connected' ? 3000 : 8000}
+      dismissDelay={currentNotification.status === 'connected' ? 2000 : 8000} // Quick dismiss for good news
     />
   );
 };

@@ -25,9 +25,9 @@ export const ConnectionNotification: React.FC<ConnectionNotificationProps> = ({
   const [isVisible, setIsVisible] = useState(true);
   const [isDismissing, setIsDismissing] = useState(false);
 
-  // Auto-dismiss logic
+  // Auto-dismiss logic - only for successful connections
   useEffect(() => {
-    if (autoDismiss && status !== 'connecting' && status !== 'reconnecting') {
+    if (autoDismiss && status === 'connected') {
       const timer = setTimeout(() => {
         handleDismiss();
       }, dismissDelay);
@@ -47,7 +47,10 @@ export const ConnectionNotification: React.FC<ConnectionNotificationProps> = ({
     setIsDismissing(true);
     setTimeout(() => {
       setIsVisible(false);
-      onDismiss?.();
+      // Delay the onDismiss callback to prevent immediate retriggering
+      setTimeout(() => {
+        onDismiss?.();
+      }, 100);
     }, 300); // Smooth fade out
   }, [onDismiss]);
 

@@ -44,8 +44,10 @@ export function ConnectionResilienceProvider({
         // Simple connection check without complex state updates
         setLastCheck(new Date());
         
-        // Basic health check - if we're here, connection is working
-        if (connectionStatus !== 'connected') {
+        // Only update status if there's a significant change
+        // Avoid frequent status changes that trigger notifications
+        if (connectionStatus === 'disconnected' || connectionStatus === 'error') {
+          // Only try to recover from actual problem states
           setConnectionStatus('connected');
           setConnectionMessage('Real-time updates are available');
         }
@@ -55,7 +57,8 @@ export function ConnectionResilienceProvider({
       }
     };
 
-    const interval = setInterval(checkConnectionHealth, heartbeatInterval);
+    // Reduced frequency to prevent excessive status changes
+    const interval = setInterval(checkConnectionHealth, heartbeatInterval * 2); // Double the interval
     return () => clearInterval(interval);
   }, [connectionStatus, enableAutoReconnect, heartbeatInterval]);
 
