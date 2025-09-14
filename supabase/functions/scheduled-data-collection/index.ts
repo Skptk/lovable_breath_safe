@@ -154,11 +154,10 @@ function timestampToTimeString(timestamp: number): string {
 async function collectCityData(
   city: { name: string; lat: number; lon: number; country: string },
   aqicnApiKey: string,
-  openWeatherApiKey: string,
   supabase: any
 ): Promise<GlobalEnvironmentalData | null> {
   try {
-    console.log(`🌍 Collecting data for ${city.name}, ${city.country}...`);
+    console.log(`🌍 Collecting AQICN-only data for ${city.name}, ${city.country}...`);
 
     // Get air quality data from AQICN
     const aqicnResponse = await fetch(
@@ -177,22 +176,10 @@ async function collectCityData(
       return null;
     }
 
-    // Get weather data from OpenWeatherMap (for weather details not in AQICN)
-    const weatherResponse = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&appid=${openWeatherApiKey}&units=metric`
-    );
-
-    if (!weatherResponse.ok) {
-      console.error(`❌ Weather API failed for ${city.name}:`, weatherResponse.status);
-      return null;
-    }
-
-    const weatherData: OpenWeatherMapWeather = await weatherResponse.json();
-
     // Process air quality data from AQICN
     const aqi = processAQICNAQI(aqicnData.data.aqi);
 
-    // Create environmental data object using AQICN for air quality + OpenWeatherMap for weather
+    // Create environmental data object using AQICN ONLY
     const environmentalData: GlobalEnvironmentalData = {
       id: `${city.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
       city_name: city.name,
@@ -200,36 +187,35 @@ async function collectCityData(
       latitude: city.lat,
       longitude: city.lon,
       aqi: aqi,
-      // Use AQICN pollutant data (more accurate)
+      // Use AQICN pollutant data
       pm25: extractPollutantValue(aqicnData.data.iaqi.pm25),
       pm10: extractPollutantValue(aqicnData.data.iaqi.pm10),
       no2: extractPollutantValue(aqicnData.data.iaqi.no2),
       so2: extractPollutantValue(aqicnData.data.iaqi.so2),
       co: extractPollutantValue(aqicnData.data.iaqi.co),
       o3: extractPollutantValue(aqicnData.data.iaqi.o3),
-      // Use AQICN temperature and humidity if available, otherwise OpenWeatherMap
-      temperature: extractPollutantValue(aqicnData.data.iaqi.t) || weatherData.main.temp || null,
-      humidity: extractPollutantValue(aqicnData.data.iaqi.h) || weatherData.main.humidity || null,
-      // Use OpenWeatherMap for detailed weather data
-      wind_speed: weatherData.wind.speed || null,
-      wind_direction: weatherData.wind.deg || null,
-      wind_gust: weatherData.wind.gust || null,
-      air_pressure: extractPollutantValue(aqicnData.data.iaqi.p) || weatherData.main.pressure || null,
-      visibility: weatherData.visibility ? weatherData.visibility / 1000 : null, // Convert m to km
-      weather_condition: weatherData.weather[0]?.main || null,
-      feels_like_temperature: weatherData.main.feels_like || null,
-      sunrise_time: weatherData.sys.sunrise ? timestampToTimeString(weatherData.sys.sunrise) : null,
-      sunset_time: weatherData.sys.sunset ? timestampToTimeString(weatherData.sys.sunset) : null,
-      data_source: 'AQICN + OpenWeatherMap API',
+      // Use AQICN environmental data (if available)
+      temperature: extractPollutantValue(aqicnData.data.iaqi.t),
+      humidity: extractPollutantValue(aqicnData.data.iaqi.h),
+      wind_speed: null, // AQICN doesn't provide detailed wind data
+      wind_direction: null,
+      wind_gust: null,
+      air_pressure: extractPollutantValue(aqicnData.data.iaqi.p),
+      visibility: null, // AQICN doesn't provide visibility
+      weather_condition: null, // AQICN doesn't provide weather conditions
+      feels_like_temperature: null,
+      sunrise_time: null,
+      sunset_time: null,
+      data_source: 'AQICN',
       collection_timestamp: new Date().toISOString(),
       is_active: true
     };
 
-    console.log(`✅ Data collected for ${city.name}: AQI ${aqi}, Temp ${environmentalData.temperature}°C`);
+    console.log(`✅ AQICN-only data collected for ${city.name}: AQI ${aqi}, Temp ${environmentalData.temperature}°C`);
 
     return environmentalData;
   } catch (error) {
-    console.error(`❌ Error collecting data for ${city.name}:`, error);
+    console.error(`❌ Error collecting AQICN data for ${city.name}:`, error);
     return null;
   }
 }
@@ -269,15 +255,15 @@ async function storeEnvironmentalData(
 }
 
 // Main data collection function
-async function collectAllEnvironmentalData(aqicnApiKey: string, openWeatherApiKey: string, supabase: any): Promise<void> {
+async function collectAllEnvironmentalData(aqicnApiKey: string, supabase: any): Promise<void> {
   const now = new Date();
   const utcTime = now.toISOString();
   const localTime = now.toString();
   
-  console.log('🚀 Starting scheduled environmental data collection...');
+  console.log('🚀 Starting scheduled AQICN-only environmental data collection...');
   console.log(`📅 Collection time (UTC): ${utcTime}`);
   console.log(`📅 Collection time (Local): ${localTime}`);
-  console.log(`🌍 Collecting data for ${MAJOR_CITIES.length} cities...`);
+  console.log(`🌍 Collecting AQICN data for ${MAJOR_CITIES.length} cities...`);
 
   const collectedData: GlobalEnvironmentalData[] = [];
   const errors: string[] = [];
@@ -285,7 +271,7 @@ async function collectAllEnvironmentalData(aqicnApiKey: string, openWeatherApiKe
   // Collect data for each city
   for (const city of MAJOR_CITIES) {
     try {
-      const cityData = await collectCityData(city, aqicnApiKey, openWeatherApiKey, supabase);
+      const cityData = await collectCityData(city, aqicnApiKey, supabase);
       if (cityData) {
         collectedData.push(cityData);
       } else {
@@ -353,17 +339,9 @@ serve(async (req) => {
       }
 
       const aqicnApiKey = Deno.env.get('AQICN_API_KEY');
-      const openWeatherApiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
       
       if (!aqicnApiKey) {
         return new Response(JSON.stringify({ error: 'AQICN API key not configured' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      
-      if (!openWeatherApiKey) {
-        return new Response(JSON.stringify({ error: 'OpenWeatherMap API key not configured' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -380,7 +358,7 @@ serve(async (req) => {
       }
 
       const supabase = createClient(supabaseUrl, supabaseKey);
-      const cityEnvironmentalData = await collectCityData(cityData, aqicnApiKey, openWeatherApiKey, supabase);
+      const cityEnvironmentalData = await collectCityData(cityData, aqicnApiKey, supabase);
 
       if (cityEnvironmentalData) {
         await storeEnvironmentalData([cityEnvironmentalData], supabase);
@@ -406,24 +384,12 @@ serve(async (req) => {
     console.log(`🔄 Starting ${executionType} environmental data collection...`);
     
     const aqicnApiKey = Deno.env.get('AQICN_API_KEY');
-    const openWeatherApiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
     
     if (!aqicnApiKey) {
       console.error('❌ AQICN API key not configured');
       return new Response(JSON.stringify({ 
         error: 'AQICN API key not configured',
         message: 'Scheduled data collection requires AQICN API key configuration'
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    if (!openWeatherApiKey) {
-      console.error('❌ OpenWeatherMap API key not configured');
-      return new Response(JSON.stringify({ 
-        error: 'OpenWeatherMap API key not configured',
-        message: 'Scheduled data collection requires OpenWeatherMap API key configuration'
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -447,7 +413,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Start data collection
-    await collectAllEnvironmentalData(aqicnApiKey, openWeatherApiKey, supabase);
+    await collectAllEnvironmentalData(aqicnApiKey, supabase);
 
     return new Response(JSON.stringify({ 
       success: true, 

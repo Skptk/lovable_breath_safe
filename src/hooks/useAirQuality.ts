@@ -188,11 +188,12 @@ export const useAirQuality = () => {
     
     // Validate AQI values - accept all legitimate OpenWeatherMap API values
     if (globalData.aqi !== undefined && globalData.aqi !== null) {
-      // OpenWeatherMap API returns AQI values 1-5, which get converted to standard AQI (50-300)
-      // AQICN API returns direct AQI values 0-500
+      // AQICN API returns direct AQI values (0-500 scale)
       // These are legitimate values and should always be accepted
-      if (globalData.data_source === 'OpenWeatherMap API' || globalData.data_source === 'AQICN + OpenWeatherMap API') {
-        console.log('✅ [useAirQuality] Using legitimate API data with AQI:', globalData.aqi, 'from:', globalData.data_source);
+      if (globalData.data_source === 'AQICN' || globalData.data_source === 'AQICN + OpenWeatherMap API') {
+        console.log('✅ [useAirQuality] Using legitimate AQICN data with AQI:', globalData.aqi, 'from:', globalData.data_source);
+      } else if (globalData.data_source === 'OpenWeatherMap API') {
+        console.log('✅ [useAirQuality] Using legitimate OpenWeatherMap data with AQI:', globalData.aqi, 'from:', globalData.data_source);
       } else if (globalData.aqi < 0 || globalData.aqi > 500) {
         // Only reject if AQI is outside valid range (0-500) and not from legitimate APIs
         console.warn('🚨 [useAirQuality] Detected invalid AQI value:', globalData.aqi, 'from source:', globalData.data_source);
@@ -258,23 +259,23 @@ export const useAirQuality = () => {
     }
   }
   
-  // Enhanced fallback logic: Only use legacy API if no legitimate global data is available
-  const shouldUseLegacyAPI = !globalEnvironmentalData || 
+  // Enhanced fallback logic: Only use AQICN API if no legitimate global data is available
+  const shouldUseAQICNAPI = !globalEnvironmentalData || 
                             (globalEnvironmentalData && !airQualityData && 
                              globalEnvironmentalData.data_source === 'Initial Data');
   
-  // Legacy API fallback (only when necessary)
-  const legacyQuery = useQuery({
-    queryKey: ['air-quality-legacy', safeCoordinates?.lat, safeCoordinates?.lng],
+  // AQICN API direct fetch (when necessary)
+  const aqicnQuery = useQuery({
+    queryKey: ['air-quality-aqicn', safeCoordinates?.lat, safeCoordinates?.lng],
     queryFn: async () => {
       if (!safeCoordinates?.lat || !safeCoordinates?.lng) {
         throw new Error('Coordinates not available');
       }
 
       try {
-        console.log('🔄 [useAirQuality] Falling back to legacy API due to contaminated global data');
+        console.log('🔄 [useAirQuality] Fetching AQICN data directly');
         
-        const { data, error } = await supabase.functions.invoke('get-air-quality', {
+        const { data, error } = await supabase.functions.invoke('fetchAQI', {
           body: { 
             lat: safeCoordinates.lat, 
             lon: safeCoordinates.lng 
@@ -284,55 +285,82 @@ export const useAirQuality = () => {
         if (error) throw error;
         if (!data) throw new Error('No data received');
 
-        // Transform legacy API response
+        // Check if API returned an error
+        if (data.error) {
+          throw new Error(data.message || 'AQICN API unavailable');
+        }
+
+        // Transform AQICN API response
         const transformedData: AirQualityData = {
-          aqi: data.aqi || 0,  // Use the converted AQI value directly
+          aqi: data.aqi || 0,
           pm25: data.pollutants?.pm25 || 0,
           pm10: data.pollutants?.pm10 || 0,
           no2: data.pollutants?.no2 || 0,
           so2: data.pollutants?.so2 || 0,
           co: data.pollutants?.co || 0,
           o3: data.pollutants?.o3 || 0,
-          location: data.location || 'Unknown Location',
-          userLocation: data.location || 'Unknown Location',
+          location: data.city || 'Unknown Location',
+          userLocation: data.city || 'Unknown Location',
           coordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           userCoordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
-          timestamp: new Date().toISOString(),
-          dataSource: 'OpenWeatherMap API (Legacy Fallback)',
+          timestamp: data.timestamp || new Date().toISOString(),
+          dataSource: 'AQICN',
           environmental: data.environmental ? {
             temperature: data.environmental.temperature,
             humidity: data.environmental.humidity,
-            airPressure: data.weather?.pressure
+            airPressure: data.environmental.pressure
           } : undefined
         };
 
-        console.log('✅ [useAirQuality] Legacy API fallback successful:', transformedData);
+        console.log('✅ [useAirQuality] AQICN API fetch successful:', transformedData);
+        console.log(`✅ [DataSourceValidator] dataSource: 'AQICN' - Location: ${transformedData.location}, AQI: ${transformedData.aqi}`);
         return transformedData;
       } catch (error) {
-        console.error('❌ [useAirQuality] Legacy API fetch failed:', error);
-        throw error;
+        console.error('❌ [useAirQuality] AQICN API fetch failed:', error);
+        // Don't throw, return null to allow error handling
+        return null;
       }
     },
-    enabled: shouldUseLegacyAPI && !!safeCoordinates?.lat && !!safeCoordinates?.lng,
+    enabled: shouldUseAQICNAPI && !!safeCoordinates?.lat && !!safeCoordinates?.lng,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
+    gcTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
     retryDelay: 1000,
   });
 
-  // Combine global data with legacy fallback
+  // Combine global data with AQICN direct fetch
   const finalData = useMemo(() => {
-    if (!airQualityData && !legacyQuery.data) return null;
+    if (!airQualityData && !aqicnQuery.data) {
+      // No data available - show error message instead of fallback
+      return {
+        aqi: 0,
+        pm25: 0,
+        pm10: 0,
+        no2: 0,
+        so2: 0,
+        co: 0,
+        o3: 0,
+        location: 'Unknown Location',
+        userLocation: 'Unknown Location',
+        coordinates: { lat: 0, lon: 0 },
+        userCoordinates: { lat: 0, lon: 0 },
+        timestamp: new Date().toISOString(),
+        dataSource: 'No Data Available',
+        error: true,
+        message: '⚠️ Live air quality data unavailable, please check back later.'
+      };
+    }
     
-    const data = airQualityData || legacyQuery.data;
+    const data = airQualityData || aqicnQuery.data;
     return {
       ...data,
       // Ensure we have a stable timestamp
       timestamp: data.timestamp || new Date().toISOString()
     };
-  }, [airQualityData, legacyQuery.data]);
-  const isLoading = globalDataLoading || (legacyQuery.isLoading && !globalEnvironmentalData);
-  const error = globalDataError || legacyQuery.error;
+  }, [airQualityData, aqicnQuery.data]);
+  
+  const isLoading = globalDataLoading || (aqicnQuery.isLoading && !globalEnvironmentalData);
+  const error = globalDataError || aqicnQuery.error;
 
   // Manual refresh function
   const refreshData = useCallback(async () => {
@@ -362,8 +390,8 @@ export const useAirQuality = () => {
           variant: "default",
         });
       } else {
-        // Refresh legacy data
-        await legacyQuery.refetch();
+        // Refresh AQICN data
+        await aqicnQuery.refetch();
         toast({
           title: "Data Refreshed",
           description: "Air quality data has been updated",
