@@ -189,11 +189,12 @@ export const useAirQuality = () => {
     // Validate AQI values - accept all legitimate OpenWeatherMap API values
     if (globalData.aqi !== undefined && globalData.aqi !== null) {
       // OpenWeatherMap API returns AQI values 1-5, which get converted to standard AQI (50-300)
+      // AQICN API returns direct AQI values 0-500
       // These are legitimate values and should always be accepted
-      if (globalData.data_source === 'OpenWeatherMap API') {
-        console.log('✅ [useAirQuality] Using legitimate OpenWeatherMap API data with AQI:', globalData.aqi);
+      if (globalData.data_source === 'OpenWeatherMap API' || globalData.data_source === 'AQICN + OpenWeatherMap API') {
+        console.log('✅ [useAirQuality] Using legitimate API data with AQI:', globalData.aqi, 'from:', globalData.data_source);
       } else if (globalData.aqi < 0 || globalData.aqi > 500) {
-        // Only reject if AQI is outside valid range (0-500) and not from OpenWeatherMap
+        // Only reject if AQI is outside valid range (0-500) and not from legitimate APIs
         console.warn('🚨 [useAirQuality] Detected invalid AQI value:', globalData.aqi, 'from source:', globalData.data_source);
         return null;
       }
@@ -253,7 +254,7 @@ export const useAirQuality = () => {
     // Show user-friendly error message for contaminated data
     if (globalEnvironmentalData.data_source === 'Initial Data') {
       console.warn('🚨 [useAirQuality] Detected "Initial Data" placeholder - this indicates database needs real data');
-      console.warn('🚨 [useAirQuality] The scheduled data collection system should populate the database with real OpenWeatherMap API data');
+      console.warn('🚨 [useAirQuality] The scheduled data collection system should populate the database with real AQICN + OpenWeatherMap API data');
     }
   }
   
@@ -297,7 +298,7 @@ export const useAirQuality = () => {
           coordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           userCoordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           timestamp: new Date().toISOString(),
-          dataSource: 'OpenWeatherMap API (Legacy)',
+          dataSource: 'OpenWeatherMap API (Legacy Fallback)',
           environmental: data.environmental ? {
             temperature: data.environmental.temperature,
             humidity: data.environmental.humidity,

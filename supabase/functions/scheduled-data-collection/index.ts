@@ -26,27 +26,48 @@ const MAJOR_CITIES = [
   { name: 'Kisii', lat: -0.6833, lon: 34.7667, country: 'Kenya' }
 ];
 
-interface OpenWeatherMapAirPollution {
-  coord: {
-    lat: number;
-    lon: number;
+interface AQICNResponse {
+  status: string;
+  data: {
+    aqi: number;
+    idx: number;
+    attributions: Array<{
+      url: string;
+      name: string;
+      logo?: string;
+    }>;
+    city: {
+      geo: [number, number]; // [lat, lon]
+      name: string;
+      url: string;
+    };
+    dominentpol: string;
+    iaqi: {
+      co?: { v: number };
+      h?: { v: number }; // humidity
+      no2?: { v: number };
+      o3?: { v: number };
+      p?: { v: number }; // pressure
+      pm10?: { v: number };
+      pm25?: { v: number };
+      so2?: { v: number };
+      t?: { v: number }; // temperature
+      w?: { v: number }; // wind speed
+      wd?: { v: number }; // wind direction
+    };
+    time: {
+      s: string; // ISO timestamp
+      tz: string;
+      v: number; // unix timestamp
+    };
+    forecast?: {
+      daily: {
+        o3: Array<{ avg: number; day: string; max: number; min: number }>;
+        pm10: Array<{ avg: number; day: string; max: number; min: number }>;
+        pm25: Array<{ avg: number; day: string; max: number; min: number }>;
+      };
+    };
   };
-  list: Array<{
-    dt: number;
-    main: {
-      aqi: number;
-    };
-    components: {
-      co: number;
-      no: number;
-      no2: number;
-      o3: number;
-      so2: number;
-      pm2_5: number;
-      pm10: number;
-      nh3: number;
-    };
-  }>;
 }
 
 interface OpenWeatherMapWeather {
@@ -109,17 +130,18 @@ interface GlobalEnvironmentalData {
   is_active: boolean;
 }
 
-// Helper function to convert OpenWeatherMap AQI to standard AQI
-function convertAQI(openWeatherMapAQI: number): number {
-  switch (openWeatherMapAQI) {
-    case 0: return 25;   // No data/Very low - treat as very good
-    case 1: return 50;   // Good
-    case 2: return 100;  // Moderate
-    case 3: return 150;  // Unhealthy for Sensitive Groups
-    case 4: return 200;  // Unhealthy
-    case 5: return 300;  // Very Unhealthy
-    default: return 50;  // Default to good for unknown values
-  }
+// Helper function to validate and process AQICN AQI values
+function processAQICNAQI(aqicnAQI: number): number {
+  // AQICN already provides standard AQI values (0-500 scale)
+  // Just validate and ensure reasonable bounds
+  if (aqicnAQI < 0) return 0;
+  if (aqicnAQI > 500) return 500;
+  return Math.round(aqicnAQI);
+}
+
+// Helper function to safely extract AQICN pollutant values
+function extractPollutantValue(pollutant: { v: number } | undefined): number | null {
+  return pollutant?.v ? Math.round(pollutant.v * 10) / 10 : null; // Round to 1 decimal
 }
 
 // Helper function to convert timestamp to time string
@@ -131,27 +153,33 @@ function timestampToTimeString(timestamp: number): string {
 // Collect environmental data for a specific city
 async function collectCityData(
   city: { name: string; lat: number; lon: number; country: string },
-  apiKey: string,
+  aqicnApiKey: string,
+  openWeatherApiKey: string,
   supabase: any
 ): Promise<GlobalEnvironmentalData | null> {
   try {
     console.log(`🌍 Collecting data for ${city.name}, ${city.country}...`);
 
-    // Get air quality data
-    const airPollutionResponse = await fetch(
-      `https://api.openweathermap.org/data/2.5/air_pollution?lat=${city.lat}&lon=${city.lon}&appid=${apiKey}`
+    // Get air quality data from AQICN
+    const aqicnResponse = await fetch(
+      `https://api.waqi.info/feed/geo:${city.lat};${city.lon}/?token=${aqicnApiKey}`
     );
 
-    if (!airPollutionResponse.ok) {
-      console.error(`❌ Air pollution API failed for ${city.name}:`, airPollutionResponse.status);
+    if (!aqicnResponse.ok) {
+      console.error(`❌ AQICN API failed for ${city.name}:`, aqicnResponse.status);
       return null;
     }
 
-    const airPollutionData: OpenWeatherMapAirPollution = await airPollutionResponse.json();
+    const aqicnData: AQICNResponse = await aqicnResponse.json();
 
-    // Get weather data
+    if (aqicnData.status !== 'ok') {
+      console.error(`❌ AQICN API error for ${city.name}:`, aqicnData.status);
+      return null;
+    }
+
+    // Get weather data from OpenWeatherMap (for weather details not in AQICN)
     const weatherResponse = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&appid=${apiKey}&units=metric`
+      `https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&appid=${openWeatherApiKey}&units=metric`
     );
 
     if (!weatherResponse.ok) {
@@ -161,11 +189,10 @@ async function collectCityData(
 
     const weatherData: OpenWeatherMapWeather = await weatherResponse.json();
 
-    // Process air quality data
-    const airQuality = airPollutionData.list[0];
-    const aqi = convertAQI(airQuality.main.aqi);
+    // Process air quality data from AQICN
+    const aqi = processAQICNAQI(aqicnData.data.aqi);
 
-    // Create environmental data object
+    // Create environmental data object using AQICN for air quality + OpenWeatherMap for weather
     const environmentalData: GlobalEnvironmentalData = {
       id: `${city.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
       city_name: city.name,
@@ -173,24 +200,27 @@ async function collectCityData(
       latitude: city.lat,
       longitude: city.lon,
       aqi: aqi,
-      pm25: airQuality.components.pm2_5 > 0 ? airQuality.components.pm2_5 : null,
-      pm10: airQuality.components.pm10 > 0 ? airQuality.components.pm10 : null,
-      no2: airQuality.components.no2 > 0 ? airQuality.components.no2 : null,
-      so2: airQuality.components.so2 > 0 ? airQuality.components.so2 : null,
-      co: airQuality.components.co > 0 ? airQuality.components.co : null,
-      o3: airQuality.components.o3 > 0 ? airQuality.components.o3 : null,
-      temperature: weatherData.main.temp || null,
-      humidity: weatherData.main.humidity || null,
+      // Use AQICN pollutant data (more accurate)
+      pm25: extractPollutantValue(aqicnData.data.iaqi.pm25),
+      pm10: extractPollutantValue(aqicnData.data.iaqi.pm10),
+      no2: extractPollutantValue(aqicnData.data.iaqi.no2),
+      so2: extractPollutantValue(aqicnData.data.iaqi.so2),
+      co: extractPollutantValue(aqicnData.data.iaqi.co),
+      o3: extractPollutantValue(aqicnData.data.iaqi.o3),
+      // Use AQICN temperature and humidity if available, otherwise OpenWeatherMap
+      temperature: extractPollutantValue(aqicnData.data.iaqi.t) || weatherData.main.temp || null,
+      humidity: extractPollutantValue(aqicnData.data.iaqi.h) || weatherData.main.humidity || null,
+      // Use OpenWeatherMap for detailed weather data
       wind_speed: weatherData.wind.speed || null,
       wind_direction: weatherData.wind.deg || null,
       wind_gust: weatherData.wind.gust || null,
-      air_pressure: weatherData.main.pressure || null,
+      air_pressure: extractPollutantValue(aqicnData.data.iaqi.p) || weatherData.main.pressure || null,
       visibility: weatherData.visibility ? weatherData.visibility / 1000 : null, // Convert m to km
       weather_condition: weatherData.weather[0]?.main || null,
       feels_like_temperature: weatherData.main.feels_like || null,
       sunrise_time: weatherData.sys.sunrise ? timestampToTimeString(weatherData.sys.sunrise) : null,
       sunset_time: weatherData.sys.sunset ? timestampToTimeString(weatherData.sys.sunset) : null,
-      data_source: 'OpenWeatherMap API',
+      data_source: 'AQICN + OpenWeatherMap API',
       collection_timestamp: new Date().toISOString(),
       is_active: true
     };
@@ -239,7 +269,7 @@ async function storeEnvironmentalData(
 }
 
 // Main data collection function
-async function collectAllEnvironmentalData(apiKey: string, supabase: any): Promise<void> {
+async function collectAllEnvironmentalData(aqicnApiKey: string, openWeatherApiKey: string, supabase: any): Promise<void> {
   const now = new Date();
   const utcTime = now.toISOString();
   const localTime = now.toString();
@@ -255,7 +285,7 @@ async function collectAllEnvironmentalData(apiKey: string, supabase: any): Promi
   // Collect data for each city
   for (const city of MAJOR_CITIES) {
     try {
-      const cityData = await collectCityData(city, apiKey, supabase);
+      const cityData = await collectCityData(city, aqicnApiKey, openWeatherApiKey, supabase);
       if (cityData) {
         collectedData.push(cityData);
       } else {
@@ -322,8 +352,17 @@ serve(async (req) => {
         });
       }
 
-      const apiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
-      if (!apiKey) {
+      const aqicnApiKey = Deno.env.get('AQICN_API_KEY');
+      const openWeatherApiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
+      
+      if (!aqicnApiKey) {
+        return new Response(JSON.stringify({ error: 'AQICN API key not configured' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      if (!openWeatherApiKey) {
         return new Response(JSON.stringify({ error: 'OpenWeatherMap API key not configured' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -341,7 +380,7 @@ serve(async (req) => {
       }
 
       const supabase = createClient(supabaseUrl, supabaseKey);
-      const cityEnvironmentalData = await collectCityData(cityData, apiKey, supabase);
+      const cityEnvironmentalData = await collectCityData(cityData, aqicnApiKey, openWeatherApiKey, supabase);
 
       if (cityEnvironmentalData) {
         await storeEnvironmentalData([cityEnvironmentalData], supabase);
@@ -366,8 +405,21 @@ serve(async (req) => {
     const executionType = scheduled ? 'Scheduled (Cron)' : 'Manual (Direct)';
     console.log(`🔄 Starting ${executionType} environmental data collection...`);
     
-    const apiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
-    if (!apiKey) {
+    const aqicnApiKey = Deno.env.get('AQICN_API_KEY');
+    const openWeatherApiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
+    
+    if (!aqicnApiKey) {
+      console.error('❌ AQICN API key not configured');
+      return new Response(JSON.stringify({ 
+        error: 'AQICN API key not configured',
+        message: 'Scheduled data collection requires AQICN API key configuration'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (!openWeatherApiKey) {
       console.error('❌ OpenWeatherMap API key not configured');
       return new Response(JSON.stringify({ 
         error: 'OpenWeatherMap API key not configured',
@@ -395,7 +447,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Start data collection
-    await collectAllEnvironmentalData(apiKey, supabase);
+    await collectAllEnvironmentalData(aqicnApiKey, openWeatherApiKey, supabase);
 
     return new Response(JSON.stringify({ 
       success: true, 
