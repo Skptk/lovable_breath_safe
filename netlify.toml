@@ -18,8 +18,8 @@
 [[headers]]
   for = "/*"
   [headers.values]
-  # CSP: Added https://ipapi.co for IP-based location services
-  Content-Security-Policy = "default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://api.openweathermap.org https://api.open-meteo.com https://api.openaq.org https://ipapi.co; img-src 'self' data: https://*; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none';"
+  # CSP: Added AQICN API and improved stylesheet handling
+  Content-Security-Policy = "default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://api.openweathermap.org https://api.open-meteo.com https://api.openaq.org https://api.waqi.info https://ipapi.co; img-src 'self' data: https://*; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none';"
   Referrer-Policy = "strict-origin-when-cross-origin"
   X-Content-Type-Options = "nosniff"
   X-Frame-Options = "DENY"

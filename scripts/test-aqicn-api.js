@@ -10,7 +10,7 @@
 const https = require('https');
 
 // Configuration - UPDATE THESE VALUES
-const AQICN_API_KEY = 'your_aqicn_api_key_here'; // Get from https://aqicn.org/data-platform/token/
+const AQICN_API_KEY = process.env.AQICN_API_KEY || 'your_aqicn_api_key_here'; // Get from https://aqicn.org/data-platform/token/
 const TEST_COORDINATES = [
   { name: 'Nairobi, Kenya', lat: -1.2921, lon: 36.8219 },
   { name: 'Mombasa, Kenya', lat: -4.0435, lon: 39.6682 },
@@ -130,7 +130,9 @@ async function runTests() {
   
   // Check if API key is configured
   if (AQICN_API_KEY === 'your_aqicn_api_key_here') {
-    log(colors.red, '❌ Please update the AQICN_API_KEY in this script!');
+    log(colors.red, '❌ Please set AQICN_API_KEY environment variable or update it in this script!');
+    log(colors.yellow, '   Option 1: Set environment variable: export AQICN_API_KEY=your_key');
+    log(colors.yellow, '   Option 2: Update AQICN_API_KEY variable in this script');
     log(colors.yellow, '   Get your API key from: https://aqicn.org/data-platform/token/');
     process.exit(1);
   }
