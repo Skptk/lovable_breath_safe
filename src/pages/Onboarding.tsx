@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,9 @@ import {
   Shield, 
   TrendingUp,
   Award,
-  Users
+  Users,
+  Mail,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -26,6 +29,12 @@ interface OnboardingData {
   region: string;
   city: string;
   country: string;
+}
+
+interface OnboardingState {
+  isSubmitting: boolean;
+  emailSent: boolean;
+  isResendingEmail: boolean;
 }
 
 const regions = [
@@ -52,7 +61,11 @@ export default function Onboarding(): JSX.Element {
     country: ""
   });
   const [errors, setErrors] = useState<Partial<OnboardingData>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [state, setState] = useState<OnboardingState>({
+    isSubmitting: false,
+    emailSent: false,
+    isResendingEmail: false
+  });
 
   // Auto-skip if user already authenticated
   useEffect(() => {
@@ -61,7 +74,7 @@ export default function Onboarding(): JSX.Element {
     }
   }, [user, loading, navigate]);
 
-  const totalSteps = 4;
+  const totalSteps = 5;
   const progress = (currentStep / totalSteps) * 100;
 
   const validateStep = (step: number): boolean => {
@@ -92,7 +105,10 @@ export default function Onboarding(): JSX.Element {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      if (currentStep === totalSteps) {
+      if (currentStep === 3) {
+        // Step 3 is location - after this, create account
+        handleCreateAccount();
+      } else if (currentStep === totalSteps) {
         handleComplete();
       } else {
         setCurrentStep(currentStep + 1);
@@ -106,27 +122,57 @@ export default function Onboarding(): JSX.Element {
     }
   };
 
-  const handleComplete = async () => {
+  const handleCreateAccount = async () => {
     if (!validateStep(currentStep)) return;
 
-    setIsSubmitting(true);
+    setState(prev => ({ ...prev, isSubmitting: true }));
     try {
       await signUp(formData.email, formData.password);
+      setState(prev => ({ ...prev, emailSent: true, isSubmitting: false }));
       toast({
         title: "Account Created!",
-        description: "Welcome to Breath Safe! Setting up your dashboard...",
+        description: "Please check your email to verify your account.",
       });
-      // Redirect to dashboard after successful signup
-      setTimeout(() => navigate("/dashboard?view=dashboard"), 2000);
+      // Move to email verification step
+      setCurrentStep(4);
     } catch (error) {
+      setState(prev => ({ ...prev, isSubmitting: false }));
       toast({
         title: "Signup Failed",
         description: error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
+  };
+
+  const handleResendEmail = async () => {
+    setState(prev => ({ ...prev, isResendingEmail: true }));
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: formData.email,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Email Sent!",
+        description: "A new verification email has been sent to your inbox.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to resend email",
+        variant: "destructive",
+      });
+    } finally {
+      setState(prev => ({ ...prev, isResendingEmail: false }));
+    }
+  };
+
+  const handleComplete = () => {
+    // This is called when user has verified their email and wants to go to dashboard
+    navigate("/dashboard?view=dashboard");
   };
 
   const updateFormData = (field: keyof OnboardingData, value: string) => {
@@ -312,6 +358,57 @@ export default function Onboarding(): JSX.Element {
         return (
           <div className="text-center space-y-8">
             <div className="space-y-4">
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Mail className="w-10 h-10 text-blue-600" />
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+                Check Your Email
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                We've sent a verification email to <strong>{formData.email}</strong>. 
+                Please click the link in the email to verify your account.
+              </p>
+            </div>
+
+            <div className="bg-card p-6 rounded-lg max-w-md mx-auto space-y-4">
+              <div className="flex items-center justify-center gap-3 text-blue-600">
+                <Mail className="h-5 w-5" />
+                <span className="font-medium">Verification Email Sent</span>
+              </div>
+              
+              <div className="space-y-3 text-left text-sm text-muted-foreground">
+                <p>• Check your inbox (and spam folder)</p>
+                <p>• Click the verification link</p>
+                <p>• Return here to continue setup</p>
+              </div>
+              
+              <div className="pt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleResendEmail}
+                  disabled={state.isResendingEmail}
+                  className="w-full flex items-center gap-2"
+                >
+                  {state.isResendingEmail ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4" />
+                  )}
+                  {state.isResendingEmail ? "Sending..." : "Resend Email"}
+                </Button>
+              </div>
+            </div>
+            
+            <div className="text-sm text-muted-foreground">
+              <p>After verifying your email, click "Next" to continue.</p>
+            </div>
+          </div>
+        );
+
+      case 5:
+        return (
+          <div className="text-center space-y-8">
+            <div className="space-y-4">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle className="w-10 h-10 text-green-600" />
               </div>
@@ -402,7 +499,16 @@ export default function Onboarding(): JSX.Element {
           </Button>
 
           <div className="flex gap-2">
-            {currentStep < totalSteps ? (
+            {currentStep === 3 ? (
+              <Button
+                onClick={handleNext}
+                disabled={state.isSubmitting}
+                className="flex items-center gap-2"
+              >
+                {state.isSubmitting ? "Creating Account..." : "Create Account"}
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            ) : currentStep < totalSteps ? (
               <Button
                 onClick={handleNext}
                 className="flex items-center gap-2"
@@ -413,10 +519,9 @@ export default function Onboarding(): JSX.Element {
             ) : (
               <Button
                 onClick={handleComplete}
-                disabled={isSubmitting}
                 className="flex items-center gap-2"
               >
-                {isSubmitting ? "Creating Account..." : "Complete Setup"}
+                Go to Dashboard
                 <CheckCircle className="w-4 h-4" />
               </Button>
             )}
