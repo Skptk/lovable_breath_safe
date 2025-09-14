@@ -10,6 +10,7 @@ interface AuthContextType {
   profileValidated: boolean;
   validationAttempted: boolean;
   signOut: () => Promise<void>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<void>;
   validateProfile: () => Promise<void>;
 }
 
@@ -201,6 +202,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  // Sign up function
+  const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
+    try {
+      console.log('🔐 Signing up user:', email);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName || ''
+          },
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (error) {
+        console.error('Error signing up:', error);
+        throw error;
+      } else {
+        console.log('✅ Signed up successfully');
+      }
+    } catch (error) {
+      console.error('Error in signUp:', error);
+      throw error;
+    }
+  }, []);
+
   const value: AuthContextType = {
     user,
     session,
@@ -209,6 +237,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     profileValidated,
     validationAttempted,
     signOut,
+    signUp,
     validateProfile
   };
 
