@@ -368,9 +368,41 @@ serve(async (req) => {
         
         // Try fallback if available
         if (fallback) {
-          console.log(`🔍 Trying fallback due to invalid primary data...`);
-          // Similar fallback logic as above
-          // ... (fallback implementation would go here)
+          console.log(`🔍 Trying fallback due to invalid primary data: ${fallback.name} (UID: ${fallback.uid})`);
+          const fallbackUrl = `https://api.waqi.info/feed/@${fallback.uid}/?token=${AQICN_API_KEY}`;
+          const fallbackResponse = await fetch(fallbackUrl);
+          
+          if (fallbackResponse.ok) {
+            const fallbackData: AQICNResponse = await fallbackResponse.json();
+            
+            if (fallbackData.status === 'ok' && fallbackData.data && fallbackData.data.aqi > 0) {
+              console.log(`✅ Fallback station successful due to invalid primary: ${fallback.name}`);
+              primary = fallback; // Use fallback as primary for processing
+              // Continue to final processing with valid fallback data
+            } else {
+              console.error('❌ Fallback station also returned invalid data');
+              return new Response(JSON.stringify({ 
+                error: true, 
+                message: '⚠️ Live air quality data unavailable for this location, please try a different area.',
+                code: 'ALL_STATIONS_INVALID'
+              }), {
+                status: 503,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+          } else {
+            console.error('❌ Fallback station request failed');
+            return new Response(JSON.stringify({ 
+              error: true, 
+              message: '⚠️ Live air quality data unavailable for this location, please try a different area.',
+              code: 'FALLBACK_REQUEST_FAILED'
+            }), {
+              status: 503,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        } else {
+          console.error('❌ Primary station returned invalid data and no fallback available');
         }
         
         return new Response(JSON.stringify({ 
