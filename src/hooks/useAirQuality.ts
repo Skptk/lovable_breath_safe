@@ -58,12 +58,15 @@ export const useAirQuality = () => {
   
   // Ref to track if we've already saved this data to prevent infinite loops
   const savedDataRef = useRef<Set<string>>(new Set());
+  
+  // Rate limiting for console logs to prevent spam
+  const lastLogTime = useRef<number>(0);
 
   // Get safe coordinates (prevent infinite loops from changing objects)
   const safeCoordinates = useMemo(() => {
-    if (!locationData?.lat || !locationData?.lng) return null;
-    return { lat: locationData.lat, lng: locationData.lng };
-  }, [locationData?.lat, locationData?.lng]);
+    if (!locationData?.latitude || !locationData?.longitude) return null;
+    return { lat: locationData.latitude, lng: locationData.longitude };
+  }, [locationData?.latitude, locationData?.longitude]);
 
   // Fetch global environmental data
   const { 
@@ -78,13 +81,25 @@ export const useAirQuality = () => {
 
   // Transform global data to AirQualityData format
   const transformGlobalData = useCallback((globalData: any): AirQualityData => {
-    if (!globalData) return null;
+    // Enhanced early return guards to prevent infinite loops with undefined data
+    if (!globalData || 
+        globalData.data_source === undefined || 
+        globalData.data_source === 'undefined' ||
+        globalData.aqi === undefined || 
+        globalData.city_name === undefined ||
+        Object.keys(globalData).length === 0) {
+      return null;
+    }
     
-    console.log('🔍 [useAirQuality] Transforming global data:', {
-      dataSource: globalData.data_source,
-      aqi: globalData.aqi,
-      city: globalData.city_name
-    });
+    // Rate-limited logging to prevent console spam  
+    if (Date.now() - lastLogTime.current > 2000) { // Log at most every 2 seconds
+      console.log('🔍 [useAirQuality] Transforming global data:', {
+        dataSource: globalData.data_source,
+        aqi: globalData.aqi,
+        city: globalData.city_name
+      });
+      lastLogTime.current = Date.now();
+    }
     
     // Enhanced data source validation to accept AQICN sources
     if (globalData.data_source && 
@@ -113,7 +128,11 @@ export const useAirQuality = () => {
       }
     }
     
-    console.log('✅ [useAirQuality] Using legitimate global data from:', globalData.data_source);
+    // Rate-limited success logging
+    if (Date.now() - lastLogTime.current > 2000) {
+      console.log('✅ [useAirQuality] Using legitimate global data from:', globalData.data_source);
+      lastLogTime.current = Date.now();
+    }
     
     return {
       aqi: globalData.aqi || 0,
@@ -145,8 +164,18 @@ export const useAirQuality = () => {
     };
   }, []);
 
-  // Use global data when available, fallback to AQICN API if needed
-  const airQualityData = globalEnvironmentalData ? transformGlobalData(globalEnvironmentalData) : null;
+  // Use global data when available with additional validation
+  const airQualityData = useMemo(() => {
+    // Only transform if globalEnvironmentalData has meaningful content
+    if (!globalEnvironmentalData || 
+        Object.keys(globalEnvironmentalData).length === 0 ||
+        (globalEnvironmentalData.data_source === undefined && 
+         globalEnvironmentalData.aqi === undefined && 
+         globalEnvironmentalData.city_name === undefined)) {
+      return null;
+    }
+    return transformGlobalData(globalEnvironmentalData);
+  }, [globalEnvironmentalData, transformGlobalData]);
   
   // Enhanced fallback logic: Only use AQICN API if no legitimate global data is available
   const shouldUseAQICNAPI = !globalEnvironmentalData || 

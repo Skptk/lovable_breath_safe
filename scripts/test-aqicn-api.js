@@ -11,7 +11,7 @@ import https from 'https';
 import process from 'process';
 
 // Configuration - UPDATE THESE VALUES
-const AQICN_API_KEY = process.env.AQICN_API_KEY || 'c3a0656354534822c5f985737f17cc133e5ada31'; // Get from https://aqicn.org/data-platform/token/
+const AQICN_API_KEY = process.env.AQICN_API_KEY || 'api_key_here'; // Get from https://aqicn.org/data-platform/token/
 const TEST_COORDINATES = [
   { name: 'Nairobi, Kenya', lat: -1.2921, lon: 36.8219 },
   { name: 'Mombasa, Kenya', lat: -4.0435, lon: 39.6682 },
