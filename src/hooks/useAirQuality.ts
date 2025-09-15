@@ -29,6 +29,7 @@ export interface AirQualityData {
   timestamp: string;
   dataSource: string;
   stationName?: string;
+  stationUid?: string | number; // Add station UID field
   distance?: string;
   country?: string;
   dominantPollutant?: string;
@@ -130,6 +131,7 @@ export const useAirQuality = () => {
           timestamp: data.timestamp || new Date().toISOString(),
           dataSource: 'AQICN',
           stationName: data.stationName,
+          stationUid: data.stationUid, // Include station UID from fetchAQI response
           distance: data.computedDistanceKm ? `${data.computedDistanceKm}` : undefined,
           country: data.meta?.userCountry,
           dominantPollutant: data.dominantPollutant,

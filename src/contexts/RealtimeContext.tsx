@@ -1,12 +1,8 @@
 import React, { createContext, useContext, useEffect, useRef, useCallback, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useCallback, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { 
-  subscribeToChannel, 
-  unsubscribeFromChannel, 
-  cleanupAllChannels,
-  getConnectionStatus,
-  addConnectionStatusListener
-} from '@/lib/realtimeClient';
+import { supabase } from '@/integrations/supabase/client';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface RealtimeContextType {
   connectionStatus: 'connected' | 'reconnecting' | 'disconnected';

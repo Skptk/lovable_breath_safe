@@ -128,8 +128,17 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
 
   // Determine the appropriate background image based on weather and time
   const targetBackground = useMemo(() => {
+    // Wait for WeatherStore to complete loading before making decisions
+    if (weatherLoading) {
+      console.log('BackgroundManager: WeatherStore still loading, using default background');
+      return '/weather-backgrounds/partly-cloudy.webp';
+    }
+    
     if (!currentWeather) {
-      console.log('BackgroundManager: No weather data available, using default background');
+      // Only log "no weather data" if we're not loading and truly have no data
+      if (!weatherLoading) {
+        console.log('BackgroundManager: No weather data available after loading completed, using default background');
+      }
       return '/weather-backgrounds/partly-cloudy.webp';
     }
 
@@ -189,7 +198,7 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
       // Map weather condition codes to background images
       return getBackgroundImage(conditionCode);
     }
-  }, [currentWeather, currentBackground]);
+  }, [currentWeather, currentBackground, weatherLoading]); // Add weatherLoading dependency
 
   // Update background when target changes
   useEffect(() => {
