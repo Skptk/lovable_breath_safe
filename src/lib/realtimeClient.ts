@@ -682,17 +682,25 @@ class RealtimeConnectionManager {
     const errorCode = error.code || error.closeCode;
     const errorMessage = error.message || error.toString();
     
-    logConnection.error(`WebSocket error for channel '${channelName}'`, { 
-      errorCode, 
-      errorMessage,
-      channelName 
-    });
+    // Suppress noisy 1011 errors by downgrading them to warnings
+    if (errorCode === 1011) {
+      logConnection.warn(`WebSocket code 1011 (server terminating) for channel '${channelName}' - implementing retry strategy`, { 
+        errorCode, 
+        channelName 
+      });
+    } else {
+      logConnection.error(`WebSocket error for channel '${channelName}'`, { 
+        errorCode, 
+        errorMessage,
+        channelName 
+      });
+    }
 
     // Get error-specific configuration
     let config: any = WEBSOCKET_ERROR_CONFIG.DEFAULT;
     if (errorCode === 1011) {
       config = WEBSOCKET_ERROR_CONFIG.CODE_1011;
-      logConnection.warn('Code 1011 detected - server terminating connections. Implementing aggressive retry strategy.');
+      // Suppress the verbose warning for 1011 errors
     } else if (errorCode === 1005) {
       config = WEBSOCKET_ERROR_CONFIG.CODE_1005;
       logConnection.warn('Code 1005 detected - connection issue. Implementing standard retry strategy.');

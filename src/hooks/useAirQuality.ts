@@ -205,6 +205,7 @@ export const useAirQuality = () => {
 
         // Check if API returned an error
         if (data.error) {
+          console.warn('⚠️ [useAirQuality] AQICN API returned error:', data.message);
           return {
             aqi: 0,
             pm25: 0,
@@ -246,7 +247,13 @@ export const useAirQuality = () => {
           } : undefined
         };
 
-        console.log('✅ [useAirQuality] AQICN API fetch successful:', transformedData);
+        console.log('✅ [useAirQuality] AQICN API fetch successful:', {
+          city: transformedData.location,
+          aqi: transformedData.aqi,
+          dominantPollutant: data.dominantPollutant,
+          pm25: transformedData.pm25,
+          dataSource: transformedData.dataSource
+        });
         console.log(`✅ [DataSourceValidator] dataSource: 'AQICN' - Location: ${transformedData.location}, AQI: ${transformedData.aqi}`);
         return transformedData;
       } catch (error) {

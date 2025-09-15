@@ -153,7 +153,8 @@ class WebSocketHealthMonitor {
    * Handle code 1011 (server endpoint going away)
    */
   private handleServerEndpointIssue(): void {
-    logConnection.info('Handling server endpoint issue (code 1011)');
+    // Downgrade to debug level to reduce noise - code 1011 is common and handled automatically
+    logConnection.debug('Handling server endpoint issue (code 1011) - automatic retry');
     
     this.healthStatus.status = 'reconnecting';
     this.healthStatus.lastError = 'Server endpoint going away';
@@ -254,7 +255,12 @@ class WebSocketHealthMonitor {
       clearTimeout(this.retryTimeout);
     }
 
-    logConnection.info('Scheduling connection retry', { delay, reason, retryCount: this.healthStatus.retryCount });
+    // Use debug level for code 1011 retries to reduce noise
+    if (this.healthStatus.errorCode === 1011) {
+      logConnection.debug('Scheduling connection retry for code 1011', { delay, reason, retryCount: this.healthStatus.retryCount });
+    } else {
+      logConnection.info('Scheduling connection retry', { delay, reason, retryCount: this.healthStatus.retryCount });
+    }
 
     this.retryTimeout = setTimeout(() => {
       if (this.isDestroyed) return;

@@ -3,7 +3,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Max-Age': '86400', // 24 hours
 };
 
 interface AQICNResponse {
@@ -53,10 +55,24 @@ serve(async (req) => {
   try {
     const { lat, lon } = await req.json();
     
-    if (!lat || !lon) {
+    // Enhanced coordinate validation
+    if (!lat || !lon || typeof lat !== 'number' || typeof lon !== 'number') {
+      console.error('❌ Missing or invalid coordinates:', { lat, lon });
       return new Response(JSON.stringify({ 
         error: true, 
-        message: '⚠️ Coordinates are required for air quality data.' 
+        message: '⚠️ Valid coordinates are required for air quality data.' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate coordinate ranges
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      console.error('❌ Coordinates out of valid range:', { lat, lon });
+      return new Response(JSON.stringify({ 
+        error: true, 
+        message: '⚠️ Coordinates must be valid latitude (-90 to 90) and longitude (-180 to 180).' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -107,7 +123,7 @@ serve(async (req) => {
       });
     }
 
-    // Validate AQI data
+    // Validate AQI data and reject zero values
     if (!aqicnData.data || typeof aqicnData.data.aqi !== 'number') {
       console.error(`❌ Invalid AQICN response structure`);
       return new Response(JSON.stringify({ 
@@ -119,10 +135,42 @@ serve(async (req) => {
       });
     }
 
-    // Process and clean the data
-    const aqi = Math.max(0, Math.min(500, Math.round(aqicnData.data.aqi))); // Ensure AQI is within valid range
+    // CRITICAL: Reject AQI values of 0 as they indicate unavailable data from AQICN
+    if (aqicnData.data.aqi === 0) {
+      console.warn(`⚠️ AQICN returned AQI of 0 for coordinates ${lat}, ${lon} - this indicates no data available`);
+      return new Response(JSON.stringify({ 
+        error: true, 
+        message: '⚠️ Live air quality data unavailable for this location, please try a different area.' 
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Process and clean the data - don't clamp 0 to 0 since we've already validated it's not 0
+    const aqi = Math.min(500, Math.round(aqicnData.data.aqi)); // Ensure AQI is within valid range (don't set minimum to 0)
     const city = aqicnData.data.city.name || 'Unknown Location';
     const timestamp = new Date().toISOString();
+
+    console.log(`✅ AQICN API Success - Location: ${city}, AQI: ${aqi}, Coordinates: ${lat}, ${lon}`);
+    console.log(`📊 Raw AQICN Response - AQI: ${aqicnData.data.aqi}, Dominant Pollutant: ${aqicnData.data.dominentpol}`);
+
+    // Determine dominant pollutant from AQICN response
+    let dominantPollutant = aqicnData.data.dominentpol || 'unknown';
+    
+    // Normalize pollutant names to match expected format
+    const pollutantMapping: Record<string, string> = {
+      'pm25': 'PM2.5',
+      'pm10': 'PM10', 
+      'no2': 'NO2',
+      'so2': 'SO2',
+      'co': 'CO',
+      'o3': 'O3'
+    };
+    
+    if (pollutantMapping[dominantPollutant]) {
+      dominantPollutant = pollutantMapping[dominantPollutant];
+    }
 
     // Extract pollutant data
     const pollutants = {
@@ -144,16 +192,18 @@ serve(async (req) => {
     const response = {
       aqi,
       city,
+      dominantPollutant,
       pollutants,
       environmental,
       timestamp,
       dataSource: 'AQICN'
     };
 
-    console.log(`✅ [DataSourceValidator] dataSource: 'AQICN' - Location: ${city}, AQI: ${aqi}`);
+    console.log(`✅ [DataSourceValidator] dataSource: 'AQICN' - Location: ${city}, AQI: ${aqi}, Dominant: ${dominantPollutant}`);
     console.log(`📊 AQICN data successfully processed:`, {
       city,
       aqi,
+      dominantPollutant,
       pm25: pollutants.pm25,
       pm10: pollutants.pm10,
       temperature: environmental.temperature
