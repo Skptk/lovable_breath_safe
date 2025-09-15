@@ -248,6 +248,10 @@ export default function AirQualityDashboard({
             aqi={data.aqi}
             location={data.location}
             timestamp={data.timestamp}
+            stationName={data.stationName}
+            distance={data.distance}
+            stationUid={data.stationUid}
+            country={data.country}
           />
         )}
 

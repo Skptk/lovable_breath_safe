@@ -71,16 +71,16 @@ export const useAirQuality = () => {
 
   // AQICN-only API fetch with enhanced station discovery
   const aqicnQuery = useQuery({
-    queryKey: ['air-quality-aqicn-enhanced', safeCoordinates?.lat, safeCoordinates?.lng],
+    queryKey: ['air-quality-fetchAQI-stations', safeCoordinates?.lat, safeCoordinates?.lng],
     queryFn: async () => {
       if (!safeCoordinates?.lat || !safeCoordinates?.lng) {
         throw new Error('Coordinates not available');
       }
 
       try {
-        console.log('🔄 [useAirQuality] Fetching AQICN data with enhanced station discovery');
+        console.log('🔄 [useAirQuality] Fetching AQICN data with station discovery from fetchAQI');
         
-        const { data, error } = await supabase.functions.invoke('enhanced-aqicn', {
+        const { data, error } = await supabase.functions.invoke('fetchAQI', {
           body: { 
             lat: safeCoordinates.lat, 
             lon: safeCoordinates.lng 
@@ -92,7 +92,7 @@ export const useAirQuality = () => {
 
         // Check if API returned an error
         if (data.error) {
-          console.warn('⚠️ [useAirQuality] Enhanced AQICN API returned error:', data.message);
+          console.warn('⚠️ [useAirQuality] fetchAQI API returned error:', data.message);
           return {
             aqi: 0,
             pm25: 0,
@@ -112,7 +112,7 @@ export const useAirQuality = () => {
           };
         }
 
-        // Transform successful Enhanced AQICN API response
+        // Transform successful fetchAQI API response
         const transformedData: AirQualityData = {
           aqi: data.aqi || 0,
           pm25: data.pollutants?.pm25 || 0,
@@ -123,17 +123,15 @@ export const useAirQuality = () => {
           o3: data.pollutants?.o3 || 0,
           location: data.city || 'Unknown Location',
           userLocation: data.city || 'Unknown Location',
-          coordinates: data.coordinates?.user ? 
-            { lat: data.coordinates.user.lat, lon: data.coordinates.user.lon } : 
+          coordinates: data.stationLat && data.stationLon ? 
+            { lat: data.stationLat, lon: data.stationLon } : 
             { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
-          userCoordinates: data.coordinates?.user ? 
-            { lat: data.coordinates.user.lat, lon: data.coordinates.user.lon } : 
-            { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
+          userCoordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           timestamp: data.timestamp || new Date().toISOString(),
           dataSource: 'AQICN',
           stationName: data.stationName,
-          distance: data.distance,
-          country: data.country,
+          distance: data.computedDistanceKm ? `${data.computedDistanceKm}` : undefined,
+          country: data.meta?.userCountry,
           dominantPollutant: data.dominantPollutant,
           environmental: data.environmental ? {
             temperature: data.environmental.temperature,
@@ -142,7 +140,7 @@ export const useAirQuality = () => {
           } : undefined
         };
 
-        console.log('✅ [useAirQuality] Enhanced AQICN API fetch successful:', {
+        console.log('✅ [useAirQuality] fetchAQI API fetch successful:', {
           city: transformedData.location,
           station: transformedData.stationName,
           distance: transformedData.distance,
@@ -150,12 +148,13 @@ export const useAirQuality = () => {
           aqi: transformedData.aqi,
           dominantPollutant: transformedData.dominantPollutant,
           pm25: transformedData.pm25,
-          dataSource: transformedData.dataSource
+          dataSource: transformedData.dataSource,
+          stationUid: data.stationUid
         });
-        console.log(`✅ [DataSourceValidator] dataSource: 'AQICN' - Station: ${transformedData.stationName}, Location: ${transformedData.location}, AQI: ${transformedData.aqi}, Distance: ${transformedData.distance}km`);
+        console.log(`✅ [DataSourceValidator] dataSource: 'AQICN' - Station: ${transformedData.stationName}, Location: ${transformedData.location}, AQI: ${transformedData.aqi}, Distance: ${transformedData.distance}km, uid: ${data.stationUid}`);
         return transformedData;
       } catch (error) {
-        console.error('❌ [useAirQuality] Enhanced AQICN API fetch failed:', error);
+        console.error('❌ [useAirQuality] fetchAQI API fetch failed:', error);
         // Return error state instead of throwing
         return {
           aqi: 0,
@@ -200,13 +199,13 @@ export const useAirQuality = () => {
 
   // Simple refresh function for AQICN data
   const refreshData = useCallback(async () => {
-    console.log('🔄 [useAirQuality] Manual refresh requested for enhanced AQICN');
+    console.log('🔄 [useAirQuality] Manual refresh requested for fetchAQI station discovery');
     
     try {
       await aqicnQuery.refetch();
       toast({
         title: "Data Refreshed",
-        description: "Air quality data has been updated from nearest monitoring station",
+        description: "Air quality data has been updated from nearest monitoring station with computed distance",
         variant: "default",
       });
     } catch (error) {

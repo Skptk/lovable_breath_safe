@@ -8,19 +8,28 @@ interface DataSourceValidatorProps {
   aqi: number;
   location: string;
   timestamp: string;
+  stationName?: string;
+  distance?: string;
+  stationUid?: string | number;
+  country?: string;
 }
 
 export default function DataSourceValidator({ 
   dataSource, 
   aqi, 
   location, 
-  timestamp 
+  timestamp,
+  stationName,
+  distance,
+  stationUid,
+  country
 }: DataSourceValidatorProps) {
   // Memoize validation results to prevent unnecessary recalculations
   const validationResults = useMemo(() => {
-    // Validate data source legitimacy - recognize all legitimate sources
+    // Validate data source legitimacy - recognize AQICN as legitimate
     const isLegitimateSource = dataSource && 
-      (dataSource === 'OpenWeatherMap API' || 
+      (dataSource === 'AQICN' ||
+       dataSource === 'OpenWeatherMap API' || 
        dataSource === 'Integrated Weather System' || 
        dataSource === 'Manual Fetch' ||
        dataSource === 'Server-side Collection' ||
@@ -46,15 +55,24 @@ export default function DataSourceValidator({
       dataSource,
       aqi,
       location,
-      timestamp
+      timestamp,
+      stationName,
+      distance,
+      stationUid,
+      country
     });
     
-    console.log('🔍 [DataSourceValidator] Validation result:', {
-      dataSource,
-      isLegitimateSource: validationResults.isLegitimateSource,
-      isSuspiciousAQI: validationResults.isSuspiciousAQI
-    });
-  }, [dataSource, aqi, location, timestamp, validationResults.isLegitimateSource, validationResults.isSuspiciousAQI]);
+    // Enhanced logging for AQICN data with station details
+    if (dataSource === 'AQICN' && stationName && distance && stationUid) {
+      console.log(`✅ [DataSourceValidator] dataSource: 'AQICN' - Station: ${stationName}, AQI: ${aqi}, Distance: ${distance}km, uid: ${stationUid}`);
+    } else {
+      console.log('🔍 [DataSourceValidator] Validation result:', {
+        dataSource,
+        isLegitimateSource: validationResults.isLegitimateSource,
+        isSuspiciousAQI: validationResults.isSuspiciousAQI
+      });
+    }
+  }, [dataSource, aqi, location, timestamp, stationName, distance, stationUid, country, validationResults.isLegitimateSource, validationResults.isSuspiciousAQI]);
 
   // Log data on mount and when it changes
   React.useEffect(() => {
@@ -142,6 +160,38 @@ export default function DataSourceValidator({
             <span className="text-sm text-foreground">{location}</span>
           </div>
 
+          {/* Station Information for AQICN */}
+          {dataSource === 'AQICN' && stationName && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Station:</span>
+              <span className="text-sm text-foreground">{stationName}</span>
+            </div>
+          )}
+
+          {/* Distance for AQICN */}
+          {dataSource === 'AQICN' && distance && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Distance:</span>
+              <span className="text-sm text-foreground">{distance}km</span>
+            </div>
+          )}
+
+          {/* Station UID for AQICN (staging only) */}
+          {dataSource === 'AQICN' && stationUid && import.meta.env.DEV && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Station UID:</span>
+              <span className="text-sm text-muted-foreground font-mono">{stationUid}</span>
+            </div>
+          )}
+
+          {/* Country for AQICN */}
+          {dataSource === 'AQICN' && country && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Country:</span>
+              <span className="text-sm text-foreground">{country}</span>
+            </div>
+          )}
+
           {/* Timestamp */}
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Last Updated:</span>
@@ -157,7 +207,10 @@ export default function DataSourceValidator({
                 <Info className="h-4 w-4 text-green-600 mt-0.5" />
                 <div className="text-sm text-green-700 dark:text-green-300">
                   <p className="font-medium">High Quality Data</p>
-                  <p>This air quality reading comes from verified OpenWeatherMap API sources and has been validated for accuracy.</p>
+                  <p>This air quality reading comes from verified {dataSource === 'AQICN' ? 'AQICN monitoring station' : 'OpenWeatherMap API'} sources and has been validated for accuracy.</p>
+                  {dataSource === 'AQICN' && stationName && distance && (
+                    <p className="mt-1 text-xs">Station: {stationName} ({distance}km away)</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -169,7 +222,7 @@ export default function DataSourceValidator({
                 <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
                 <div className="text-sm text-yellow-700 dark:text-yellow-300">
                   <p className="font-medium">Data Quality Warning</p>
-                  <p>This AQI value may not be accurate. Consider refreshing for updated data from OpenWeatherMap API.</p>
+                  <p>This AQI value may not be accurate. Consider refreshing for updated data from {dataSource === 'AQICN' ? 'AQICN monitoring stations' : 'OpenWeatherMap API'}.</p>
                 </div>
               </div>
             </div>
@@ -181,7 +234,7 @@ export default function DataSourceValidator({
                 <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
                 <div className="text-sm text-red-700 dark:text-red-300">
                   <p className="font-medium">Data Contamination Detected</p>
-                  <p>This data source may contain placeholder or mock data. Please refresh to get real-time data from OpenWeatherMap API.</p>
+                  <p>This data source may contain placeholder or mock data. Please refresh to get real-time data from {dataSource === 'AQICN' ? 'AQICN monitoring stations' : 'OpenWeatherMap API'}.</p>
                 </div>
               </div>
             </div>
