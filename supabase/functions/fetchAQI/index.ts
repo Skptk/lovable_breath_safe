@@ -406,12 +406,10 @@ serve(async (req: Request) => {
         // Extract station coordinates from various possible fields
         let sLat: number | null = null;
         let sLon: number | null = null;
-        
         if (s.station && s.station.geo && Array.isArray(s.station.geo) && s.station.geo.length >= 2) {
           sLat = s.station.geo[0];
           sLon = s.station.geo[1];
         }
-        
         // Parse AQI value
         let aqiValue = 0;
         if (typeof s.aqi === 'number') {
@@ -419,10 +417,8 @@ serve(async (req: Request) => {
         } else if (typeof s.aqi === 'string' && s.aqi !== '-' && !isNaN(Number(s.aqi))) {
           aqiValue = Number(s.aqi);
         }
-        
         const computedDistance = (sLat !== null && sLon !== null) ? 
           haversineKm(lat, lon, sLat, sLon) : Infinity;
-          
         return {
           uid: s.uid,
           name: s.station?.name || `Station ${s.uid}`,
@@ -435,15 +431,13 @@ serve(async (req: Request) => {
         };
       })
       .filter(c => {
-        // Filter out invalid candidates
-            const isValid = Number.isFinite(c.computedDistance) &&
-                           c.computedDistance < 10000 && // Defensive max distance
-                           c.aqi >= 0; // Accept AQI of 0 or higher
-                       
+        // Only allow stations within 1000km
+        const isValid = Number.isFinite(c.computedDistance) &&
+                       c.computedDistance <= 1000 && // Enforce 1000km max distance
+                       c.aqi >= 0; // Accept AQI of 0 or higher
         if (!isValid) {
           console.log(`⚠️ Skipping invalid candidate: ${c.name} (distance: ${c.computedDistance}km, aqi: ${c.aqi})`);
         }
-        
         return isValid;
       })
 // (removed duplicate/erroneous isValid assignment)
