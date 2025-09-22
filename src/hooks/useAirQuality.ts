@@ -189,6 +189,7 @@ export const useAirQuality = () => {
     retryDelay: 1000,
   });
 
+
   // Stale data retention: update staleData only if new data is valid and different
   useEffect(() => {
     const data = aqicnQuery.data;
@@ -204,16 +205,24 @@ export const useAirQuality = () => {
     // If data is error, do not update staleData
   }, [aqicnQuery.data]);
 
-  // Use staleData if current data is error or missing
+  // Improved fallback logic:
+  // - If there is no valid data (staleData is null), always show the latest (even if error)
+  // - If there is valid staleData, and the new data is error, show staleData
+  // - If there is valid staleData, and the new data is valid, show new data
   const finalData = useMemo(() => {
     const data = aqicnQuery.data;
-    if (!data) return staleData;
-    if (data.error) return staleData;
-    return {
-      ...data,
-      // Ensure we have a stable timestamp
-      timestamp: data.timestamp || new Date().toISOString()
-    };
+    if (!data && !staleData) return null; // No data at all
+    if (!data && staleData) return staleData;
+    if (data && !data.error) {
+      return {
+        ...data,
+        timestamp: data.timestamp || new Date().toISOString()
+      };
+    }
+    // data is error
+    if (staleData) return staleData;
+    // No valid data ever, show error
+    return data;
   }, [aqicnQuery.data, staleData]);
 
   const isLoading = aqicnQuery.isLoading;
