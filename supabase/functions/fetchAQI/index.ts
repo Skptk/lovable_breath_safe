@@ -1,3 +1,50 @@
+// Comprehensive global city lookup table for AQICN city slugs
+const CITY_LOOKUP_TABLE = [
+  { name: 'Nairobi', slug: 'nairobi', lat: -1.2921, lon: 36.8219 },
+  { name: 'New York', slug: 'newyork', lat: 40.7128, lon: -74.0060 },
+  { name: 'London', slug: 'london', lat: 51.5074, lon: -0.1278 },
+  { name: 'Delhi', slug: 'delhi', lat: 28.6139, lon: 77.2090 },
+  { name: 'Tokyo', slug: 'tokyo', lat: 35.6762, lon: 139.6503 },
+  { name: 'São Paulo', slug: 'saopaulo', lat: -23.5505, lon: -46.6333 },
+  { name: 'Beijing', slug: 'beijing', lat: 39.9042, lon: 116.4074 },
+  { name: 'Paris', slug: 'paris', lat: 48.8566, lon: 2.3522 },
+  { name: 'Los Angeles', slug: 'losangeles', lat: 34.0522, lon: -118.2437 },
+  { name: 'Cairo', slug: 'cairo', lat: 30.0444, lon: 31.2357 },
+  { name: 'Moscow', slug: 'moscow', lat: 55.7558, lon: 37.6173 },
+  { name: 'Sydney', slug: 'sydney', lat: -33.8688, lon: 151.2093 },
+  { name: 'Mexico City', slug: 'mexicocity', lat: 19.4326, lon: -99.1332 },
+  { name: 'Istanbul', slug: 'istanbul', lat: 41.0082, lon: 28.9784 },
+  { name: 'Johannesburg', slug: 'johannesburg', lat: -26.2041, lon: 28.0473 },
+  { name: 'Toronto', slug: 'toronto', lat: 43.6532, lon: -79.3832 },
+  { name: 'Bangkok', slug: 'bangkok', lat: 13.7563, lon: 100.5018 },
+  { name: 'Singapore', slug: 'singapore', lat: 1.3521, lon: 103.8198 },
+  { name: 'Lagos', slug: 'lagos', lat: 6.5244, lon: 3.3792 },
+  { name: 'Cape Town', slug: 'capetown', lat: -33.9249, lon: 18.4241 },
+  { name: 'Buenos Aires', slug: 'buenosaires', lat: -34.6037, lon: -58.3816 },
+  { name: 'Berlin', slug: 'berlin', lat: 52.52, lon: 13.405 },
+  { name: 'Madrid', slug: 'madrid', lat: 40.4168, lon: -3.7038 },
+  { name: 'Rome', slug: 'rome', lat: 41.9028, lon: 12.4964 },
+  { name: 'Seoul', slug: 'seoul', lat: 37.5665, lon: 126.9780 },
+  { name: 'Jakarta', slug: 'jakarta', lat: -6.2088, lon: 106.8456 },
+  { name: 'Hong Kong', slug: 'hongkong', lat: 22.3193, lon: 114.1694 },
+  { name: 'Dubai', slug: 'dubai', lat: 25.2048, lon: 55.2708 },
+  { name: 'Riyadh', slug: 'riyadh', lat: 24.7136, lon: 46.6753 },
+  { name: 'Kuala Lumpur', slug: 'kualalumpur', lat: 3.139, lon: 101.6869 },
+  // ...add more as needed for global coverage
+];
+
+function findNearestCity(lat: number, lon: number) {
+  let minDist = Infinity;
+  let nearest = null;
+  for (const city of CITY_LOOKUP_TABLE) {
+    const d = haversineKm(lat, lon, city.lat, city.lon);
+    if (d < minDist) {
+      minDist = d;
+      nearest = city;
+    }
+  }
+  return nearest;
+}
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -101,7 +148,11 @@ async function detectCountry(lat: number, lon: number): Promise<string> {
       }
     }
   } catch (error) {
-    console.warn(`⚠️ Reverse geocoding failed for ${lat}, ${lon}:`, error.message);
+    if (error instanceof Error) {
+      console.warn(`⚠️ Reverse geocoding failed for ${lat}, ${lon}:`, error.message);
+    } else {
+      console.warn(`⚠️ Reverse geocoding failed for ${lat}, ${lon}:`, error);
+    }
   }
   
   // Fallback to IP-based detection could be added here
@@ -114,7 +165,7 @@ function extractPollutantValue(pollutant: { v: number } | undefined): number | n
   return pollutant?.v ? Math.round(pollutant.v * 10) / 10 : null; // Round to 1 decimal
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   const startTime = Date.now();
   console.log('\n=== FETCHAQI WITH STATION DISCOVERY STARTED ===');
   console.log(`🕰️ Request timestamp: ${new Date().toISOString()}`);
@@ -178,46 +229,176 @@ serve(async (req) => {
     // Step 2: Get nearby stations using mapq/nearby endpoint
     console.log('🔍 Fetching nearby stations with mapq/nearby...');
     const nearbyUrl = `https://api.waqi.info/mapq/nearby/?latlng=${lat},${lon}&token=${AQICN_API_KEY}`;
-    const nearbyResponse = await fetch(nearbyUrl);
+    let stations: AQICNStation[] = [];
+    let usedFallback = false;
+    let nearbyData: any = null;
+    let country = '';
+    let status = '';
+    let searchData: any = null;
 
-    if (!nearbyResponse.ok) {
-      console.error(`❌ AQICN mapq/nearby API failed:`, nearbyResponse.status, nearbyResponse.statusText);
-      return new Response(JSON.stringify({ 
-        error: true, 
-        message: '⚠️ Live air quality data unavailable, please check back later.',
-        code: 'NEARBY_API_FAILED'
-      }), {
-        status: 503,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const nearbyResponse = await fetch(nearbyUrl);
+    if (nearbyResponse.ok) {
+      nearbyData = await nearbyResponse.json();
+      status = nearbyData.status;
+      console.log(`📊 Nearby stations response status: ${status}`);
+      if (status === 'ok' && nearbyData.data && nearbyData.data.length > 0) {
+        stations = nearbyData.data;
+        console.log(`📋 Found ${stations.length} nearby stations`);
+        stations.forEach((s, idx) => {
+          console.log(`[DEBUG] Station #${idx + 1}:`, {
+            uid: s.uid,
+            name: s.station?.name,
+            geo: s.station?.geo,
+            country: s.station?.country,
+            aqi: s.aqi
+          });
+        });
+      }
     }
 
-    const nearbyData = await nearbyResponse.json();
-    console.log(`📊 Nearby stations response status: ${nearbyData.status}`);
-    
-    if (nearbyData.status !== 'ok' || !nearbyData.data || nearbyData.data.length === 0) {
-      console.error(`❌ No nearby stations found:`, nearbyData.status);
+    // Fallback: If /mapq/nearby fails or returns no stations, try /search/?keyword=country
+    if (!stations.length) {
+      usedFallback = true;
+      country = await detectCountry(lat, lon);
+      console.log(`🔍 Fallback: Fetching stations with /search/?keyword=${country}`);
+      const searchUrl = `https://api.waqi.info/search/?token=${AQICN_API_KEY}&keyword=${country}`;
+      const searchResponse = await fetch(searchUrl);
+      if (searchResponse.ok) {
+        searchData = await searchResponse.json();
+        if (searchData.status === 'ok' && searchData.data && searchData.data.length > 0) {
+          stations = searchData.data;
+          console.log(`📋 Fallback found ${stations.length} stations in country search`);
+          stations.forEach((s, idx) => {
+            console.log(`[DEBUG] Fallback Station #${idx + 1}:`, {
+              uid: s.uid,
+              name: s.station?.name,
+              geo: s.station?.geo,
+              country: s.station?.country,
+              aqi: s.aqi
+            });
+          });
+        } else {
+          console.error(`❌ Fallback /search/ found no stations:`, searchData.status);
+        }
+      } else {
+        console.error(`❌ Fallback /search/ API failed:`, searchResponse.status, searchResponse.statusText);
+      }
+    }
+
+    if (!stations.length) {
+      // Final fallback: try direct geo lookup for the user's coordinates
+      console.log('🌍 Final fallback: trying direct /feed/geo:lat;lon/ for user coordinates');
+      const directUrl = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${AQICN_API_KEY}`;
+      const directResponse = await fetch(directUrl);
+      if (directResponse.ok) {
+        const directData = await directResponse.json();
+        if (directData.status === 'ok' && directData.data) {
+          console.log('✅ Final fallback succeeded: direct geo AQI data found');
+          // Return the direct AQI data in the same format as other responses
+          const aqi = Math.min(500, Math.round(directData.data.aqi));
+          const city = directData.data.city?.name || 'Unknown Location';
+          const pollutants = {
+            pm25: extractPollutantValue(directData.data.iaqi.pm25),
+            pm10: extractPollutantValue(directData.data.iaqi.pm10),
+            no2: extractPollutantValue(directData.data.iaqi.no2),
+            so2: extractPollutantValue(directData.data.iaqi.so2),
+            co: extractPollutantValue(directData.data.iaqi.co),
+            o3: extractPollutantValue(directData.data.iaqi.o3),
+          };
+          const environmental = {
+            temperature: extractPollutantValue(directData.data.iaqi.t),
+            humidity: extractPollutantValue(directData.data.iaqi.h),
+            pressure: extractPollutantValue(directData.data.iaqi.p),
+          };
+          const response = {
+            aqi,
+            city,
+            stationName: city,
+            distance: '0.0',
+            country: await detectCountry(lat, lon),
+            dominantPollutant: directData.data.dominentpol || 'unknown',
+            pollutants,
+            environmental,
+            timestamp: new Date().toISOString(),
+            dataSource: 'AQICN',
+            coordinates: {
+              user: { lat, lon },
+              station: { lat: directData.data.city?.geo?.[0] || lat, lon: directData.data.city?.geo?.[1] || lon }
+            },
+            meta: {
+              fallback: 'direct-geo',
+              processingTime: Date.now() - startTime
+            }
+          };
+          return new Response(JSON.stringify(response), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      // If even direct fails, try nearest city in lookup table
+      console.log('🌍 Final fallback: trying nearest city in global lookup table');
+      const nearestCity = findNearestCity(lat, lon);
+      if (nearestCity) {
+        const cityUrl = `https://api.waqi.info/feed/${nearestCity.slug}/?token=${AQICN_API_KEY}`;
+        const cityResponse = await fetch(cityUrl);
+        if (cityResponse.ok) {
+          const cityData = await cityResponse.json();
+          if (cityData.status === 'ok' && cityData.data) {
+            console.log(`✅ Final fallback succeeded: AQI data found for nearest city: ${nearestCity.name}`);
+            const aqi = Math.min(500, Math.round(cityData.data.aqi));
+            const city = cityData.data.city?.name || nearestCity.name;
+            const pollutants = {
+              pm25: extractPollutantValue(cityData.data.iaqi.pm25),
+              pm10: extractPollutantValue(cityData.data.iaqi.pm10),
+              no2: extractPollutantValue(cityData.data.iaqi.no2),
+              so2: extractPollutantValue(cityData.data.iaqi.so2),
+              co: extractPollutantValue(cityData.data.iaqi.co),
+              o3: extractPollutantValue(cityData.data.iaqi.o3),
+            };
+            const environmental = {
+              temperature: extractPollutantValue(cityData.data.iaqi.t),
+              humidity: extractPollutantValue(cityData.data.iaqi.h),
+              pressure: extractPollutantValue(cityData.data.iaqi.p),
+            };
+            const response = {
+              aqi,
+              city,
+              stationName: city,
+              distance: haversineKm(lat, lon, nearestCity.lat, nearestCity.lon).toFixed(2),
+              country: await detectCountry(lat, lon),
+              dominantPollutant: cityData.data.dominentpol || 'unknown',
+              pollutants,
+              environmental,
+              timestamp: new Date().toISOString(),
+              dataSource: 'AQICN',
+              coordinates: {
+                user: { lat, lon },
+                station: { lat: nearestCity.lat, lon: nearestCity.lon }
+              },
+              meta: {
+                fallback: 'city-lookup',
+                city: nearestCity.slug,
+                processingTime: Date.now() - startTime
+              }
+            };
+            return new Response(JSON.stringify(response), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+      }
+
+      // If all fallbacks fail, return error
       return new Response(JSON.stringify({ 
         error: true, 
         message: '⚠️ No air quality monitoring stations found for this location.',
-        code: 'NO_STATIONS_FOUND'
+        code: usedFallback ? 'NO_STATIONS_FOUND_SEARCH' : 'NO_STATIONS_FOUND_NEARBY'
       }), {
         status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const stations: AQICNStation[] = nearbyData.data;
-    console.log(`📋 Found ${stations.length} nearby stations`);
-    stations.forEach((s, idx) => {
-      console.log(`[DEBUG] Station #${idx + 1}:`, {
-        uid: s.uid,
-        name: s.station?.name,
-        geo: s.station?.geo,
-        country: s.station?.country,
-        aqi: s.aqi
-      });
-    });
 
     // Step 3: Compute distances server-side and filter candidates
     const candidates: StationCandidate[] = stations
@@ -521,7 +702,7 @@ serve(async (req) => {
       error: true, 
       message: '⚠️ Live air quality data unavailable, please check back later.',
       code: 'INTERNAL_ERROR',
-      details: error.message
+  details: error instanceof Error ? error.message : String(error)
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
