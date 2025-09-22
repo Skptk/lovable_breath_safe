@@ -250,7 +250,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       const { latitude, longitude } = position.coords;
       
       // Call the Supabase function to get air quality data
-      const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
+      const { data: response, error } = await supabase.functions.invoke('fetchAQI', {
         body: { lat: latitude, lon: longitude }
       });
 

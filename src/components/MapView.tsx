@@ -55,9 +55,30 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
   // Fetch air quality data when user location is available
   const fetchAirQualityData = async (lat: number, lon: number): Promise<void> => {
     try {
-      const response = await supabase.functions.invoke('get-air-quality', {
-        body: { latitude: lat, longitude: lon }
+
+      const { data: response, error } = await supabase.functions.invoke('fetchAQI', {
+        body: { lat, lon }
       });
+
+      if (error) {
+        console.error('Error fetching air quality data:', error);
+        setError('Failed to fetch air quality data');
+        return;
+      }
+
+      if (response) {
+        setAirQualityData({
+          aqi: response.aqi || 0,
+          pm25: response.pollutants?.pm25 || 0,
+          pm10: response.pollutants?.pm10 || 0,
+          no2: response.pollutants?.no2 || 0,
+          so2: response.pollutants?.so2 || 0,
+          co: response.pollutants?.co || 0,
+          o3: response.pollutants?.o3 || 0,
+          location: response.city || response.stationName || 'Your Location',
+          timestamp: response.timestamp || new Date().toISOString()
+        });
+      }
 
       if (response.error) {
         console.error('Error fetching air quality data:', response.error);

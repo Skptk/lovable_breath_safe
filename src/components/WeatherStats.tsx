@@ -134,7 +134,8 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
 
   const fetchAirQualityData = async (lat: number, lon: number): Promise<void> => {
     try {
-      const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
+
+      const { data: response, error } = await supabase.functions.invoke('fetchAQI', {
         body: { lat, lon }
       });
 

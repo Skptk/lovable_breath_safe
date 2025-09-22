@@ -62,7 +62,8 @@ export default function AirQualityDashboard(): JSX.Element {
 
     const { latitude, longitude } = position.coords;
     
-    const { data: response, error } = await supabase.functions.invoke('get-air-quality', {
+
+    const { data: response, error } = await supabase.functions.invoke('fetchAQI', {
       body: { lat: latitude, lon: longitude }
     });
 

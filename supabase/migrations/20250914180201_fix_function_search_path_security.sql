@@ -17,7 +17,21 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql
+
+
+
+
+
+
 SET search_path = public;
+-- Drop trigger before dropping function to avoid dependency error
+DROP TRIGGER IF EXISTS auto_sync_points ON public.air_quality_readings;
+DROP FUNCTION IF EXISTS public.sync_points_with_history();
+DROP FUNCTION IF EXISTS public.cleanup_stale_subscriptions();
+DROP FUNCTION IF EXISTS public.get_subscription_health();
+DROP FUNCTION IF EXISTS public.cleanup_invalid_subscriptions();
+DROP FUNCTION IF EXISTS public.log_realtime_subscription_attempts();
+DROP FUNCTION IF EXISTS public.get_all_active_environmental_data();
 
 CREATE OR REPLACE FUNCTION public.initialize_user_settings(p_user_id UUID)
 RETURNS VOID AS $$
@@ -109,6 +123,11 @@ $$ LANGUAGE plpgsql
 SET search_path = public;
 
 -- Fix 5: Environmental Data Functions
+DROP FUNCTION IF EXISTS public.get_nearest_environmental_data(
+  p_latitude DECIMAL(10, 8),
+  p_longitude DECIMAL(11, 8),
+  p_max_distance_km DECIMAL(10, 2)
+);
 CREATE OR REPLACE FUNCTION public.get_nearest_environmental_data(
   p_latitude DECIMAL(10, 8),
   p_longitude DECIMAL(11, 8),
@@ -388,8 +407,10 @@ $$ LANGUAGE plpgsql
 SET search_path = public;
 
 -- Fix 10: Points Synchronization Functions
+
+
 CREATE OR REPLACE FUNCTION public.sync_points_with_history()
-RETURNS VOID AS $$
+RETURNS TRIGGER AS $$
 BEGIN
   -- Sync points with history
   UPDATE public.user_points
@@ -398,9 +419,16 @@ BEGIN
     FROM public.air_quality_readings
     WHERE user_id = public.user_points.user_id
   );
+  RETURN NULL;
 END;
 $$ LANGUAGE plpgsql
 SET search_path = public;
+
+-- Recreate trigger after function is defined
+CREATE TRIGGER auto_sync_points
+  AFTER INSERT OR DELETE ON public.air_quality_readings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_points_with_history();
 
 CREATE OR REPLACE FUNCTION public.sync_all_user_points()
 RETURNS VOID AS $$
@@ -718,6 +746,7 @@ END;
 $$ LANGUAGE plpgsql
 SET search_path = public;
 
+DROP FUNCTION IF EXISTS public.initialize_all_existing_users();
 CREATE OR REPLACE FUNCTION public.initialize_all_existing_users()
 RETURNS VOID AS $$
 DECLARE
