@@ -159,6 +159,36 @@ export const useAirQuality = () => {
           globalSupport: 'worldwide'
         });
         console.log(`✅ [DataSourceValidator] Global AQICN Integration - Station: ${transformedData.stationName}, Location: ${transformedData.location}, AQI: ${transformedData.aqi}, Distance: ${transformedData.distance}km, Country: ${transformedData.country}, UID: ${data.stationUid}`);
+        // --- BEGIN: Record AQI check in history (if user is logged in) ---
+        if (user && !data.error) {
+          try {
+            // Prepare the reading record
+            const reading = {
+              user_id: user.id,
+              timestamp: new Date().toISOString(),
+              location_name: data.city || 'Unknown Location',
+              latitude: safeCoordinates.lat,
+              longitude: safeCoordinates.lng,
+              aqi: data.aqi,
+              pm25: data.pollutants?.pm25 || null,
+              pm10: data.pollutants?.pm10 || null,
+              no2: data.pollutants?.no2 || null,
+              so2: data.pollutants?.so2 || null,
+              co: data.pollutants?.co || null,
+              o3: data.pollutants?.o3 || null,
+              temperature: data.environmental?.temperature || null,
+              humidity: data.environmental?.humidity || null,
+              data_source: data.dataSource || 'AQICN',
+              created_at: new Date().toISOString(),
+              // Optionally add more fields as needed
+            };
+            // Insert into air_quality_readings
+            await supabase.from('air_quality_readings').insert(reading);
+          } catch (insertError) {
+            console.error('[useAirQuality] Failed to record AQI check in history:', insertError);
+          }
+        }
+        // --- END: Record AQI check in history ---
         return transformedData;
       } catch (error) {
         console.error('❌ [useAirQuality] fetchAQI API fetch failed:', error);
