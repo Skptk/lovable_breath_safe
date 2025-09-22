@@ -461,23 +461,87 @@ serve(async (req: Request) => {
     const userCountry = await detectCountry(lat, lon);
     
     // Step 5: Select primary and fallback stations with country preference
-    let primary = candidates[0];
-    let fallback = candidates.length > 1 ? candidates[1] : null;
-    
-    // If primary station is too far or in different country, try to find better options
-    if (primary.computedDistance > CONFIG.MAX_ACCEPTABLE_DISTANCE || 
-        (userCountry !== 'UNKNOWN' && primary.country && primary.country !== userCountry)) {
-      
-      // Look for stations in the same country
-      const sameCountryStations = candidates.filter(c => 
-        userCountry !== 'UNKNOWN' && c.country && c.country === userCountry
-      );
-      
-      if (sameCountryStations.length > 0) {
-        console.log(`🌍 Found ${sameCountryStations.length} stations in user's country (${userCountry})`);
-        primary = sameCountryStations[0];
-        fallback = sameCountryStations.length > 1 ? sameCountryStations[1] : candidates[1];
+    // Always prioritize stations in the user's country first
+    let primary = null;
+    let fallback = null;
+    let sameCountryStations: StationCandidate[] = [];
+    if (userCountry !== 'UNKNOWN') {
+      sameCountryStations = candidates.filter(c => c.country && c.country === userCountry);
+    }
+    if (sameCountryStations.length > 0) {
+      console.log(`🌍 Found ${sameCountryStations.length} stations in user's country (${userCountry})`);
+      primary = sameCountryStations[0];
+      fallback = sameCountryStations.length > 1 ? sameCountryStations[1] : null;
+    } else if (candidates.length > 0) {
+      primary = candidates[0];
+      fallback = candidates.length > 1 ? candidates[1] : null;
+    }
+
+    // If no valid country or nearby stations, fallback to city lookup table (within 1000km)
+    if (!primary) {
+      const nearestCity = findNearestCity(lat, lon);
+      if (nearestCity) {
+        const cityDistance = haversineKm(lat, lon, nearestCity.lat, nearestCity.lon);
+        if (cityDistance <= 1000) {
+          // Query AQICN for the city slug
+          const cityUrl = `https://api.waqi.info/feed/${nearestCity.slug}/?token=${AQICN_API_KEY}`;
+          const cityResponse = await fetch(cityUrl);
+          if (cityResponse.ok) {
+            const cityData = await cityResponse.json();
+            if (cityData.status === 'ok' && cityData.data) {
+              console.log(`✅ City lookup fallback: AQI data found for nearest city: ${nearestCity.name}`);
+              const aqi = Math.min(500, Math.round(cityData.data.aqi));
+              const city = cityData.data.city?.name || nearestCity.name;
+              const pollutants = {
+                pm25: extractPollutantValue(cityData.data.iaqi.pm25),
+                pm10: extractPollutantValue(cityData.data.iaqi.pm10),
+                no2: extractPollutantValue(cityData.data.iaqi.no2),
+                so2: extractPollutantValue(cityData.data.iaqi.so2),
+                co: extractPollutantValue(cityData.data.iaqi.co),
+                o3: extractPollutantValue(cityData.data.iaqi.o3),
+              };
+              const environmental = {
+                temperature: extractPollutantValue(cityData.data.iaqi.t),
+                humidity: extractPollutantValue(cityData.data.iaqi.h),
+                pressure: extractPollutantValue(cityData.data.iaqi.p),
+              };
+              const response = {
+                aqi,
+                city,
+                stationName: city,
+                distance: cityDistance.toFixed(2),
+                country: await detectCountry(lat, lon),
+                dominantPollutant: cityData.data.dominentpol || 'unknown',
+                pollutants,
+                environmental,
+                timestamp: new Date().toISOString(),
+                dataSource: 'AQICN',
+                coordinates: {
+                  user: { lat, lon },
+                  station: { lat: nearestCity.lat, lon: nearestCity.lon }
+                },
+                meta: {
+                  fallback: 'city-lookup',
+                  city: nearestCity.slug,
+                  processingTime: Date.now() - startTime
+                }
+              };
+              return new Response(JSON.stringify(response), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+          }
+        }
       }
+      // If no city within 1000km, return error
+      return new Response(JSON.stringify({ 
+        error: true, 
+        message: '⚠️ No air quality monitoring stations or cities found within 1000km of your location.',
+        code: 'NO_STATIONS_OR_CITIES_WITHIN_1000KM'
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
     
     const selectionReason = primary.computedDistance > CONFIG.MAX_ACCEPTABLE_DISTANCE ? 
