@@ -176,6 +176,7 @@ export const useAirQuality = () => {
               so2: data.pollutants?.so2 || null,
               co: data.pollutants?.co || null,
               o3: data.pollutants?.o3 || null,
+              points_awarded: 10, // Points awarded for this AQI check
               created_at: new Date().toISOString()
             };
             
