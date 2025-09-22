@@ -1,70 +1,34 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Get environment variables with better error handling
+// Get environment variables - fail fast if missing
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Enhanced validation function with detailed logging
-function validateSupabaseConfig(url: string | undefined, key: string | undefined): { isValid: boolean; error?: string } {
-  console.log('🔍 [Supabase Config] Validating environment variables...');
-  console.log('  - VITE_SUPABASE_URL:', url ? '✅ Set' : '❌ Missing');
-  console.log('  - VITE_SUPABASE_ANON_KEY:', key ? '✅ Set' : '❌ Missing');
-  
+// Validation function
+function validateSupabaseConfig(url: string | undefined, key: string | undefined): void {
   if (!url || url.trim() === '') {
-    const error = 'Missing VITE_SUPABASE_URL environment variable. Please set it in Netlify dashboard under Site Settings > Environment Variables.';
-    console.error('❌ [Supabase Config]', error);
-    return { isValid: false, error };
+    throw new Error('Missing Supabase environment variables. Set VITE_SUPABASE_URL in Netlify.');
   }
   
   if (!key || key.trim() === '') {
-    const error = 'Missing VITE_SUPABASE_ANON_KEY environment variable. Please set it in Netlify dashboard under Site Settings > Environment Variables.';
-    console.error('❌ [Supabase Config]', error);
-    return { isValid: false, error };
+    throw new Error('Missing Supabase environment variables. Set VITE_SUPABASE_ANON_KEY in Netlify.');
   }
 
   // Basic URL validation
   if (!url.startsWith('https://') || !url.includes('supabase.co')) {
-    const error = 'Invalid Supabase URL format. Expected https://*.supabase.co format.';
-    console.error('❌ [Supabase Config]', error);
-    return { isValid: false, error };
+    throw new Error('Invalid Supabase URL format. Expected https://*.supabase.co');
   }
-  
-  console.log('✅ [Supabase Config] Environment variables are valid');
-  return { isValid: true };
 }
 
-// Validate configuration with graceful error handling
-const configValidation = validateSupabaseConfig(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-
-// Create a fallback client for development/demo purposes
-const createFallbackClient = () => {
-  console.warn('⚠️ [Supabase] Creating fallback client - some features may not work');
-  return createClient(
-    'https://placeholder.supabase.co',
-    'placeholder-key',
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
-      },
-      realtime: {
-        heartbeatIntervalMs: 30000,
-        reconnectAfterMs: () => 5000,
-        timeout: 10000,
-      }
-    }
-  );
-};
+// Validate configuration before creating client
+validateSupabaseConfig(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 // Environment-specific realtime configuration with improved WebSocket handling
 const getRealtimeConfig = () => {
-  const isNetlify = typeof window !== 'undefined' && (
-    window.location.hostname.includes('netlify.app') || 
-    window.location.hostname.includes('netlify.com')
-  );
-  const isDevelopment = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+  const isNetlify = window.location.hostname.includes('netlify.app') || 
+                   window.location.hostname.includes('netlify.com');
+  const isDevelopment = window.location.hostname === 'localhost';
   
   console.log('🔍 [Config] Environment detected:', { isNetlify, isDevelopment });
   
@@ -96,51 +60,27 @@ const getRealtimeConfig = () => {
   return baseConfig;
 };
 
-// Create Supabase client with error handling
-let supabase: ReturnType<typeof createClient<Database>>;
-let supabaseError: string | null = null;
-
-if (configValidation.isValid) {
-  try {
-    supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
-      realtime: getRealtimeConfig(),
-      db: {
-        schema: 'public',
-      },
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
-      },
-    });
-    console.log('✅ [Supabase] Client created successfully');
-  } catch (error) {
-    console.error('❌ [Supabase] Failed to create client:', error);
-    supabaseError = `Failed to create Supabase client: ${error}`;
-    supabase = createFallbackClient();
-  }
-} else {
-  console.error('❌ [Supabase] Invalid configuration, using fallback client');
-  supabaseError = configValidation.error || 'Invalid Supabase configuration';
-  supabase = createFallbackClient();
-}
-
-// Export the client and error state
-export { supabase, supabaseError };
+// Create Supabase client with environment-specific realtime config
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  realtime: getRealtimeConfig(),
+  db: {
+    schema: 'public',
+  },
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
 
 // Enhanced connection diagnostics with WebSocket error handling
 export const diagnoseConnection = async (): Promise<void> => {
-  if (supabaseError) {
-    console.error('❌ [Diagnostics] Skipping diagnostics due to configuration error:', supabaseError);
-    return;
-  }
-  
   console.log('🔍 [Diagnostics] Starting WebSocket connection diagnosis...');
   
   // Check if Supabase URL is accessible
   try {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
-      headers: { 'apikey': SUPABASE_PUBLISHABLE_KEY! }
+      headers: { 'apikey': SUPABASE_PUBLISHABLE_KEY }
     });
     console.log('✅ [Diagnostics] REST API accessible:', response.status);
   } catch (error) {
@@ -148,7 +88,7 @@ export const diagnoseConnection = async (): Promise<void> => {
   }
   
   // Check WebSocket endpoint specifically with better error handling
-  const wsUrl = SUPABASE_URL!.replace('https://', 'wss://') + '/realtime/v1/websocket';
+  const wsUrl = SUPABASE_URL.replace('https://', 'wss://') + '/realtime/v1/websocket';
   console.log('🔍 [Diagnostics] Attempting WebSocket connection to:', wsUrl);
   
   try {
@@ -209,17 +149,5 @@ export const diagnoseConnection = async (): Promise<void> => {
   }
 };
 
-// Run diagnostics on app start only if configuration is valid
-if (configValidation.isValid) {
-  diagnoseConnection();
-}
-
-// Export a function to check if Supabase is properly configured
-export const isSupabaseConfigured = (): boolean => {
-  return configValidation.isValid && !supabaseError;
-};
-
-// Export the error message for UI display
-export const getSupabaseErrorMessage = (): string | null => {
-  return supabaseError;
-};
+// Run diagnostics on app start
+diagnoseConnection();

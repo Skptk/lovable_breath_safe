@@ -1027,10 +1027,6 @@ class RealtimeConnectionManager {
         isReconnecting: false,
         connectionHealth: 'healthy',
         config: config || {}, // Store the config
-        lastActivity: Date.now(), // Track last activity
-        lastLatency: 0, // Initialize last latency
-        lastError: null, // Initialize last error
-        connectionStartTime: Date.now(), // Track connection start time
         refs: 1 // Track reference count for the channel
       });
       
@@ -1340,3 +1336,4 @@ export function resetRealtimeManager(): void {
 
 // Export the manager instance for advanced usage
 export { getRealtimeManager as realtimeManager };
+

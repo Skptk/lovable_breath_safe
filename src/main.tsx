@@ -6,6 +6,7 @@ import Profiler from './devtools/Profiler'
 import { AuthProvider } from './contexts/AuthContext'
 import { RealtimeProvider } from './contexts/RealtimeContext'
 import { LocationProvider } from './contexts/LocationContext'
+import { SupabaseErrorBoundary } from './components/SupabaseErrorBoundary'
 
 // Global error handling for unhandled promise rejections
 if (typeof window !== 'undefined') {
@@ -66,14 +67,16 @@ const queryClient = new QueryClient({
 });
 
 createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <RealtimeProvider>
-        <LocationProvider>
-          {import.meta.env.DEV && <Profiler />}
-          <App />
-        </LocationProvider>
-      </RealtimeProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <SupabaseErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RealtimeProvider>
+          <LocationProvider>
+            {import.meta.env.DEV && <Profiler />}
+            <App />
+          </LocationProvider>
+        </RealtimeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </SupabaseErrorBoundary>
 );
