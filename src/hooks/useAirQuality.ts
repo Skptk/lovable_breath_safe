@@ -60,7 +60,7 @@ export const useAirQuality = () => {
   const { user } = useAuth();
   const { locationData } = useGeolocation();
   const { toast } = useToast();
-  
+
   // Rate limiting for console logs to prevent spam
   const lastLogTime = useRef<number>(0);
 
@@ -69,6 +69,9 @@ export const useAirQuality = () => {
     if (!locationData?.latitude || !locationData?.longitude) return null;
     return { lat: locationData.latitude, lng: locationData.longitude };
   }, [locationData?.latitude, locationData?.longitude]);
+
+  // Stale data retention: keep last valid data if fetch fails
+  const [staleData, setStaleData] = useState<AirQualityData | null>(null);
 
   // AQICN-only API fetch with enhanced station discovery
   const aqicnQuery = useQuery({
@@ -80,11 +83,11 @@ export const useAirQuality = () => {
 
       try {
         console.log('🔄 [useAirQuality] Fetching AQICN data with global station discovery and intelligent fallback');
-        
+
         const { data, error } = await supabase.functions.invoke('fetchAQI', {
-          body: { 
-            lat: safeCoordinates.lat, 
-            lon: safeCoordinates.lng 
+          body: {
+            lat: safeCoordinates.lat,
+            lon: safeCoordinates.lng
           }
         });
 
@@ -94,6 +97,7 @@ export const useAirQuality = () => {
         // Check if API returned an error
         if (data.error) {
           console.warn('⚠️ [useAirQuality] fetchAQI API returned error:', data.message);
+          // Do not update staleData here, just return error object
           return {
             aqi: 0,
             pm25: 0,
@@ -124,8 +128,8 @@ export const useAirQuality = () => {
           o3: data.pollutants?.o3 || 0,
           location: data.city || 'Unknown Location',
           userLocation: data.city || 'Unknown Location',
-          coordinates: data.stationLat && data.stationLon ? 
-            { lat: data.stationLat, lon: data.stationLon } : 
+          coordinates: data.stationLat && data.stationLon ?
+            { lat: data.stationLat, lon: data.stationLon } :
             { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           userCoordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           timestamp: data.timestamp || new Date().toISOString(),
@@ -158,7 +162,7 @@ export const useAirQuality = () => {
         return transformedData;
       } catch (error) {
         console.error('❌ [useAirQuality] fetchAQI API fetch failed:', error);
-        // Return error state instead of throwing
+        // Do not update staleData here, just return error object
         return {
           aqi: 0,
           pm25: 0,
@@ -185,25 +189,40 @@ export const useAirQuality = () => {
     retryDelay: 1000,
   });
 
-  // Use AQICN data directly (no global data dependency)
+  // Stale data retention: update staleData only if new data is valid and different
+  useEffect(() => {
+    const data = aqicnQuery.data;
+    if (data && !data.error) {
+      // Only update if data is valid and different
+      if (
+        !staleData ||
+        JSON.stringify({ ...staleData, timestamp: undefined }) !== JSON.stringify({ ...data, timestamp: undefined })
+      ) {
+        setStaleData(data);
+      }
+    }
+    // If data is error, do not update staleData
+  }, [aqicnQuery.data]);
+
+  // Use staleData if current data is error or missing
   const finalData = useMemo(() => {
     const data = aqicnQuery.data;
-    if (!data) return null;
-    
+    if (!data) return staleData;
+    if (data.error) return staleData;
     return {
       ...data,
       // Ensure we have a stable timestamp
       timestamp: data.timestamp || new Date().toISOString()
     };
-  }, [aqicnQuery.data]);
-  
+  }, [aqicnQuery.data, staleData]);
+
   const isLoading = aqicnQuery.isLoading;
   const error = aqicnQuery.error;
 
   // Enhanced refresh function for global AQICN data
   const refreshData = useCallback(async () => {
     console.log('🔄 [useAirQuality] Manual refresh requested - will discover nearest stations globally');
-    
+
     try {
       await aqicnQuery.refetch();
       toast({
