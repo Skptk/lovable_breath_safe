@@ -176,16 +176,31 @@ export const useAirQuality = () => {
               so2: data.pollutants?.so2 || null,
               co: data.pollutants?.co || null,
               o3: data.pollutants?.o3 || null,
-              temperature: data.environmental?.temperature || null,
-              humidity: data.environmental?.humidity || null,
-              data_source: data.dataSource || 'AQICN',
-              created_at: new Date().toISOString(),
-              // Optionally add more fields as needed
+              created_at: new Date().toISOString()
             };
+            
+            console.log('📝 [useAirQuality] Attempting to insert reading:', reading);
+            
             // Insert into air_quality_readings
-            await supabase.from('air_quality_readings').insert(reading);
+            const { data: insertData, error: insertError } = await supabase
+              .from('air_quality_readings')
+              .insert(reading);
+            
+            if (insertError) {
+              console.error('❌ [useAirQuality] Insert failed with error:', insertError);
+              throw insertError;
+            }
+            
+            console.log('✅ [useAirQuality] Successfully recorded AQI check in history:', insertData);
           } catch (insertError) {
-            console.error('[useAirQuality] Failed to record AQI check in history:', insertError);
+            // Comprehensive error logging for Supabase errors
+            console.error('❌ [useAirQuality] Failed to record AQI check in history:', {
+              error: insertError,
+              message: insertError?.message,
+              details: insertError?.details,
+              hint: insertError?.hint,
+              code: insertError?.code
+            });
           }
         }
         // --- END: Record AQI check in history ---
