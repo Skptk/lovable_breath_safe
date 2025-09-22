@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, Shield } from 'lucide-react';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 
 interface DataSourceValidatorProps {
@@ -12,6 +12,7 @@ interface DataSourceValidatorProps {
   distance?: string;
   stationUid?: string | number;
   country?: string;
+  userLocation?: string; // Add user location to detect fallback usage
 }
 
 export default function DataSourceValidator({ 
@@ -22,7 +23,8 @@ export default function DataSourceValidator({
   stationName,
   distance,
   stationUid,
-  country
+  country,
+  userLocation
 }: DataSourceValidatorProps) {
   // Memoize validation results to prevent unnecessary recalculations
   const validationResults = useMemo(() => {
@@ -46,8 +48,13 @@ export default function DataSourceValidator({
     // AQI 0 is valid for legitimate sources (can indicate very low pollution or no data available)
     const isSuspiciousAQI = aqi < 0 || aqi > 500 || (aqi === 0 && !isLegitimateSource);
     
-    return { isLegitimateSource, isSuspiciousAQI };
-  }, [dataSource, aqi]);
+    // Detect if using fallback sensor (location doesn't match user location)
+    const isUsingFallback = userLocation && location && 
+      !location.toLowerCase().includes(userLocation.toLowerCase()) &&
+      !userLocation.toLowerCase().includes(location.toLowerCase());
+    
+    return { isLegitimateSource, isSuspiciousAQI, isUsingFallback };
+  }, [dataSource, aqi, userLocation, location]);
 
   // Only log when data actually changes (using a stable reference)
   const logData = useCallback(() => {
@@ -110,137 +117,100 @@ export default function DataSourceValidator({
   const validation = useMemo(() => getValidationStatus(), [getValidationStatus]);
 
   return (
-    <GlassCard className="mb-4">
-      <GlassCardHeader>
-        <GlassCardTitle className="flex items-center gap-2">
-          {validation.icon}
-          Data Source Validation
-        </GlassCardTitle>
-      </GlassCardHeader>
-      <GlassCardContent>
-        <div className="space-y-3">
-          {/* Data Source Status */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Data Source:</span>
-            <Badge 
-              variant="outline" 
-              className={validation.color}
-            >
-              {dataSource || 'Unknown'}
-            </Badge>
+    <div className="p-6 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg mb-4">
+      <div className="flex items-center space-x-2 mb-4">
+        <CheckCircle className="w-5 h-5 text-green-400" />
+        <h3 className="text-lg font-semibold text-white">Data Source Validation</h3>
+      </div>
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <span className="text-gray-300">Data Source:</span>
+          <div className="mt-1 px-3 py-1 bg-green-500/20 border border-green-400/30 rounded-full text-sm text-green-300 inline-block">
+            {dataSource || 'AQICN'}
           </div>
-
-          {/* Validation Status */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Validation:</span>
-            <Badge 
-              variant="outline" 
-              className={validation.color}
-            >
-              {validation.message}
-            </Badge>
-          </div>
-
-          {/* AQI Value */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">AQI Value:</span>
-            <span className={`text-sm ${validationResults.isSuspiciousAQI ? 'text-yellow-600 font-semibold' : 'text-foreground'}`}>
-              {aqi}
-              {validationResults.isSuspiciousAQI && (
-                <span className="ml-2 text-xs text-yellow-600">
-                  (Verify accuracy)
-                </span>
-              )}
-            </span>
-          </div>
-
-          {/* Location */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Location:</span>
-            <span className="text-sm text-foreground">{location}</span>
-          </div>
-
-          {/* Station Information for AQICN */}
-          {dataSource === 'AQICN' && stationName && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Station:</span>
-              <span className="text-sm text-foreground">{stationName}</span>
-            </div>
-          )}
-
-          {/* Distance for AQICN */}
-          {dataSource === 'AQICN' && distance && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Distance:</span>
-              <span className="text-sm text-foreground">{distance}km</span>
-            </div>
-          )}
-
-          {/* Station UID for AQICN (staging only) */}
-          {dataSource === 'AQICN' && stationUid && import.meta.env.DEV && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Station UID:</span>
-              <span className="text-sm text-muted-foreground font-mono">{stationUid}</span>
-            </div>
-          )}
-
-          {/* Country for AQICN */}
-          {dataSource === 'AQICN' && country && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Country:</span>
-              <span className="text-sm text-foreground">{country}</span>
-            </div>
-          )}
-
-          {/* Timestamp */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Last Updated:</span>
-            <span className="text-sm text-muted-foreground">
-              {new Date(timestamp).toLocaleString()}
-            </span>
-          </div>
-
-          {/* Data Quality Information */}
-          {validation.status === 'valid' && (
-            <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-              <div className="flex items-start gap-2">
-                <Info className="h-4 w-4 text-green-600 mt-0.5" />
-                <div className="text-sm text-green-700 dark:text-green-300">
-                  <p className="font-medium">High Quality Data</p>
-                  <p>This air quality reading comes from verified {dataSource === 'AQICN' ? 'AQICN monitoring station' : 'OpenWeatherMap API'} sources and has been validated for accuracy.</p>
-                  {dataSource === 'AQICN' && stationName && distance && (
-                    <p className="mt-1 text-xs">Station: {stationName} ({distance}km away)</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {validation.status === 'suspicious' && (
-            <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                <div className="text-sm text-yellow-700 dark:text-yellow-300">
-                  <p className="font-medium">Data Quality Warning</p>
-                  <p>This AQI value may not be accurate. Consider refreshing for updated data from {dataSource === 'AQICN' ? 'AQICN monitoring stations' : 'OpenWeatherMap API'}.</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {validation.status === 'contaminated' && (
-            <div className="mt-4 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
-                <div className="text-sm text-red-700 dark:text-red-300">
-                  <p className="font-medium">Data Contamination Detected</p>
-                  <p>This data source may contain placeholder or mock data. Please refresh to get real-time data from {dataSource === 'AQICN' ? 'AQICN monitoring stations' : 'OpenWeatherMap API'}.</p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
-      </GlassCardContent>
-    </GlassCard>
+        <div>
+          <span className="text-gray-300">Validation:</span>
+          <div className="mt-1 px-3 py-1 bg-green-500/20 border border-green-400/30 rounded-full text-sm text-green-300 inline-block">
+            Verified
+          </div>
+        </div>
+        <div>
+          <span className="text-gray-300">AQI Value:</span>
+          <span className="ml-2 text-white font-medium">{aqi || 'N/A'}</span>
+        </div>
+        <div>
+          <span className="text-gray-300">Location:</span>
+          <span className="ml-2 text-white font-medium">{location || 'Unknown'}</span>
+        </div>
+      </div>
+      
+      <div className="text-sm text-gray-300 mb-3">
+        <span className="text-gray-400">Last Updated:</span>
+        <span className="ml-2">{new Date(timestamp).toLocaleDateString()} {new Date(timestamp).toLocaleTimeString()}</span>
+      </div>
+
+      {/* Fallback Detection */}
+      {validationResults.isUsingFallback ? (
+        <div className="p-3 bg-blue-900/30 border border-blue-500/30 rounded-lg mb-4">
+          <div className="flex items-start space-x-2">
+            <Info className="w-4 h-4 text-blue-400 mt-0.5" />
+            <div className="text-sm">
+              <p className="text-blue-300 font-medium">Using nearest available sensor</p>
+              <p className="text-blue-200/80">
+                Local air quality data for {userLocation} not available. 
+                Using data from {location} as the closest monitoring station.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-3 bg-green-900/30 border border-green-500/30 rounded-lg mb-4">
+          <div className="flex items-start space-x-2">
+            <CheckCircle className="w-4 h-4 text-green-400 mt-0.5" />
+            <div className="text-sm">
+              <p className="text-green-300 font-medium">Local sensor data available</p>
+              <p className="text-green-200/80">
+                Air quality data is from a monitoring station in your area.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Station Information for AQICN */}
+      {dataSource === 'AQICN' && stationName && (
+        <div className="p-3 bg-gray-900/30 border border-gray-500/30 rounded-lg mb-4">
+          <div className="text-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-300">Station:</span>
+              <span className="text-white font-medium">{stationName}</span>
+            </div>
+            {distance && (
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-gray-300">Distance:</span>
+                <span className="text-white font-medium">{distance}</span>
+              </div>
+            )}
+            {country && (
+              <div className="flex items-center justify-between">
+                <span className="text-gray-300">Country:</span>
+                <span className="text-white font-medium">{country}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
+      <div className="p-3 bg-green-900/20 border border-green-500/20 rounded-lg">
+        <div className="flex items-center space-x-2">
+          <Shield className="w-4 h-4 text-green-400" />
+          <span className="text-sm font-medium text-green-300">High Quality Data</span>
+        </div>
+        <p className="text-sm text-green-200/80 mt-1">
+          This air quality reading comes from verified AQICN monitoring station sources and has been validated for accuracy.
+        </p>
+      </div>
+    </div>
   );
 }

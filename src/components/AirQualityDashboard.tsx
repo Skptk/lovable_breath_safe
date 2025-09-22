@@ -252,6 +252,7 @@ export default function AirQualityDashboard({
             distance={data.distance}
             stationUid={data.stationUid}
             country={data.country}
+            userLocation={locationData?.city}
           />
         )}
 

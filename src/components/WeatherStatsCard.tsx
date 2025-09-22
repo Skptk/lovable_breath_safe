@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sun, Cloud, CloudRain, Thermometer, Droplets, Eye, RefreshCw, AlertTriangle, Wind, Gauge, Compass, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useWeatherData } from "@/hooks/useWeatherData";
+import { formatTemperature, formatWindSpeed, formatHumidity, formatVisibility, formatAirPressure } from "@/lib/formatters";
 
 interface WeatherData {
   temperature: number;
@@ -264,10 +265,10 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                 {getWeatherIcon(weatherData.weatherCode)}
                 <div>
                   <div className={`text-3xl font-bold ${getTemperatureColor(weatherData.temperature)}`}>
-                    {weatherData.temperature.toFixed(1)}°C
+                    {formatTemperature(weatherData.temperature)}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Feels like {weatherData.feelsLike.toFixed(1)}°C
+                    Feels like {formatTemperature(weatherData.feelsLike)}
                   </div>
                 </div>
               </div>
@@ -286,7 +287,7 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                   <span className="text-sm font-semibold">Humidity</span>
                 </div>
                 <div className="text-xl font-bold text-blue-600">
-                  {weatherData.humidity}%
+                  {formatHumidity(weatherData.humidity)}
                 </div>
               </GlassCard>
 
@@ -296,7 +297,7 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                   <span className="text-sm font-semibold">Rain Chance</span>
                 </div>
                 <div className="text-xl font-bold text-blue-600">
-                  {weatherData.rainProbability.toFixed(0)}%
+                  {formatHumidity(weatherData.rainProbability)}
                 </div>
               </GlassCard>
             </div>
@@ -311,7 +312,7 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                       <span className="text-sm font-semibold">Wind</span>
                     </div>
                     <div className="text-lg font-semibold text-slate-600">
-                      {weatherData.windSpeed.toFixed(1)} km/h
+                      {formatWindSpeed(weatherData.windSpeed)}
                     </div>
                     {weatherData.windDirection && (
                       <div className="text-xs text-muted-foreground">
@@ -328,7 +329,7 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                       <span className="text-sm font-semibold">Pressure</span>
                     </div>
                     <div className="text-lg font-semibold text-purple-600">
-                      {weatherData.airPressure} hPa
+                      {formatAirPressure(weatherData.airPressure)}
                     </div>
                   </GlassCard>
                 )}
@@ -340,7 +341,7 @@ const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardPr
                       <span className="text-sm font-semibold">Visibility</span>
                     </div>
                     <div className="text-lg font-semibold text-indigo-600">
-                      {weatherData.visibility.toFixed(1)} km
+                      {formatVisibility(weatherData.visibility)}
                     </div>
                   </GlassCard>
                 )}

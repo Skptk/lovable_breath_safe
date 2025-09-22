@@ -16,6 +16,7 @@ import LocationPermissionBanner from "./LocationPermissionBanner";
 import { useWeatherStore } from "@/store/weatherStore";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { logGeolocation, logData } from "@/lib/logger";
+import { formatTemperature, formatWindSpeed, formatHumidity, formatVisibility } from "@/lib/formatters";
 
 // UserLocation interface is now handled by LocationData from useGeolocation hook
 
@@ -705,22 +706,22 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                 <div className="flex items-center gap-2">
                   <Thermometer className="h-3 w-3 text-red-500" />
                   <span className="text-muted-foreground">Temp:</span>
-                  <span className="font-medium">{currentWeather.temperature}°C</span>
+                  <span className="font-medium">{formatTemperature(currentWeather.temperature)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Droplets className="h-3 w-3 text-blue-500" />
                   <span className="text-muted-foreground">Humidity:</span>
-                  <span className="font-medium">{currentWeather.humidity}%</span>
+                  <span className="font-medium">{formatHumidity(currentWeather.humidity)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Wind className="h-3 w-3 text-green-500" />
                   <span className="text-muted-foreground">Wind:</span>
-                  <span className="font-medium">{currentWeather.windSpeed} km/h</span>
+                  <span className="font-medium">{formatWindSpeed(currentWeather.windSpeed)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Eye className="h-3 w-3 text-purple-500" />
                   <span className="text-muted-foreground">Visibility:</span>
-                  <span className="font-medium">{currentWeather.visibility || 'N/A'} km</span>
+                  <span className="font-medium">{formatVisibility(currentWeather.visibility)}</span>
                 </div>
               </div>
               {currentWeather.feelsLikeTemperature && (

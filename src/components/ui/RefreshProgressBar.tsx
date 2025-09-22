@@ -40,50 +40,45 @@ export function RefreshProgressBar({
 
   return (
     <div className={cn(
-      "w-full bg-card border border-border rounded-lg p-4 space-y-3",
-      isUsingCachedData && "border-amber-200 bg-amber-50/10",
+      "w-full bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-4 space-y-3 shadow-lg",
+      isUsingCachedData && "border-amber-200/50 bg-amber-50/10",
       className
     )}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-muted-foreground">
+          <Clock className="w-4 h-4 text-gray-300" />
+          <span className="text-sm font-medium text-gray-300">
             {isUsingCachedData ? 'Showing cached data' : 'Next automatic refresh'}
           </span>
         </div>
         
         <div className="flex items-center gap-2">
-          <span className="text-sm font-mono text-muted-foreground">
+          <span className="text-sm font-mono text-white">
             {formatTime(timeUntilRefresh)}
           </span>
           
-          <Button
-            size="sm"
-            variant="outline"
+          <button
             onClick={onManualRefresh}
             disabled={isRefreshing}
-            className="h-8 px-3"
+            className="flex items-center gap-2 px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 rounded-md transition-colors disabled:opacity-50"
           >
-            {isRefreshing ? (
-              <RefreshCw className="w-3 h-3 animate-spin" />
-            ) : (
-              <RefreshCw className="w-3 h-3" />
-            )}
-            <span className="ml-1 text-xs">Refresh</span>
-          </Button>
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="text-sm text-white">Refresh</span>
+          </button>
         </div>
       </div>
       
       <div className="space-y-2">
-        <Progress 
-          value={progress} 
-          className="h-2"
-          indicatorClassName={getProgressColor()}
-        />
+        <div className="w-full bg-gray-700/30 rounded-full h-2">
+          <div 
+            className={cn("h-2 rounded-full transition-all duration-1000", getProgressColor())}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
         
         {isUsingCachedData && (
-          <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
-            <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+          <div className="flex items-center gap-2 text-xs text-amber-300">
+            <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
             <span>Data from last automatic refresh - fresh data available in {formatTime(timeUntilRefresh)}</span>
           </div>
         )}
