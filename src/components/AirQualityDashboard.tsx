@@ -371,9 +371,10 @@ export default function AirQualityDashboard({
                       { name: 'CO', value: data.co, unit: 'μg/m³', color: 'text-purple-500' },
                       { name: 'O₃', value: data.o3, unit: 'μg/m³', color: 'text-yellow-500' }
                     ].map((pollutant) => (
-                      <div
+                      <GlassCard
                         key={pollutant.name}
-                        className="p-3 text-center cursor-pointer hover:scale-105 transition-transform bg-white/10 rounded-lg shadow"
+                        variant="subtle"
+                        className="p-3 text-center cursor-pointer hover:scale-105 transition-transform"
                         onClick={() => setSelectedPollutant({
                           name: pollutant.name,
                           value: pollutant.value || 0,
@@ -391,7 +392,7 @@ export default function AirQualityDashboard({
                         <div className="text-xs text-muted-foreground">
                           {pollutant.unit}
                         </div>
-                      </div>
+                      </GlassCard>
                     ))}
                   </div>
                 </div>
