@@ -179,7 +179,8 @@ export const useAirQuality = () => {
               created_at: new Date().toISOString()
             };
             
-            console.log('📝 [useAirQuality] Attempting to insert reading:', reading);
+            console.log('📝 [useAirQuality] Attempting to insert reading:', JSON.stringify(reading, null, 2));
+            console.log('📝 [useAirQuality] User context:', { userId: user?.id, userEmail: user?.email });
             
             // Insert into air_quality_readings
             const { data: insertData, error: insertError } = await supabase
@@ -187,20 +188,29 @@ export const useAirQuality = () => {
               .insert(reading);
             
             if (insertError) {
-              console.error('❌ [useAirQuality] Insert failed with error:', insertError);
+              console.error('❌ [useAirQuality] Insert failed with detailed error:', {
+                message: insertError.message,
+                details: insertError.details,
+                hint: insertError.hint,
+                code: insertError.code,
+                fullError: insertError
+              });
+              console.error('❌ [useAirQuality] Data that failed to insert:', JSON.stringify(reading, null, 2));
               throw insertError;
             }
             
             console.log('✅ [useAirQuality] Successfully recorded AQI check in history:', insertData);
           } catch (insertError) {
             // Comprehensive error logging for Supabase errors
-            console.error('❌ [useAirQuality] Failed to record AQI check in history:', {
-              error: insertError,
-              message: insertError?.message,
-              details: insertError?.details,
-              hint: insertError?.hint,
-              code: insertError?.code
-            });
+            console.error('❌ [useAirQuality] CATCH BLOCK - Failed to record AQI check in history:');
+            console.error('❌ [useAirQuality] Error type:', typeof insertError);
+            console.error('❌ [useAirQuality] Error constructor:', insertError?.constructor?.name);
+            console.error('❌ [useAirQuality] Error message:', insertError?.message);
+            console.error('❌ [useAirQuality] Error details:', insertError?.details);
+            console.error('❌ [useAirQuality] Error hint:', insertError?.hint);
+            console.error('❌ [useAirQuality] Error code:', insertError?.code);
+            console.error('❌ [useAirQuality] Full error object:', insertError);
+            console.error('❌ [useAirQuality] Error stringified:', JSON.stringify(insertError, null, 2));
           }
         }
         // --- END: Record AQI check in history ---
