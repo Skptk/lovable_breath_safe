@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { GlassCard, GlassCardContent } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Loader2, AlertTriangle, Map } from 'lucide-react';
