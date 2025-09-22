@@ -32,7 +32,7 @@ export default function AirQualityDashboard({
   isDemoMode = false
 }: AirQualityDashboardProps) {
   const { user } = useAuth();
-  const { data, isRefetching: isRefreshing, refetch, isLoading, error, manualRefresh, isUsingCachedData } = useAirQuality();
+  const { data, isRefetching: isRefreshing, refetch, isLoading, error, refreshData, isUsingCachedData } = useAirQuality();
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { timeUntilRefresh, manualRefresh: refreshCountdown } = useRefreshCountdown();
   const { requestLocationPermission, isRequestingPermission, hasUserConsent, hasRequestedPermission } = useLocation();
@@ -74,7 +74,7 @@ export default function AirQualityDashboard({
 
   const handleRefresh = () => {
     if (hasUserConsent) {
-      manualRefresh();
+      refreshData();
     } else {
       console.log('Refresh skipped - user consent not granted');
     }
