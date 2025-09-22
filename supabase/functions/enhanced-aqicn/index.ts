@@ -142,34 +142,58 @@ serve(async (req) => {
       });
     }
     
-    // Find closest valid stations
-    const validStations = searchData.data
-      .filter(station => station.aqi && station.aqi !== '-' && !isNaN(Number(station.aqi)) && Number(station.aqi) > 0)
-      .map(station => ({ ...station, distance: calculateDistance(lat, lon, station.station.geo[0], station.station.geo[1]) }))
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, 2);
-    
-    if (validStations.length === 0) {
-      return new Response(JSON.stringify({ error: true, message: 'No monitoring stations available.' }), {
-        status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+
+    // Log and process all candidate stations
+    let lastKnownGood = null;
+    const candidates = [];
+    for (const station of searchData.data) {
+      let reason = '';
+      let distance = null;
+      if (!station.station || !station.station.geo || station.station.geo.length !== 2) {
+        reason = 'missing coordinates';
+      } else {
+        distance = calculateDistance(lat, lon, station.station.geo[0], station.station.geo[1]);
+        if (typeof station.aqi === 'undefined' || station.aqi === null) {
+          reason = 'AQI missing';
+        } else if (station.aqi === '-') {
+          reason = 'AQI is dash';
+        } else if (isNaN(Number(station.aqi))) {
+          reason = 'AQI not a number';
+        } else if (Number(station.aqi) < 0) {
+          reason = 'AQI negative';
+        }
+      }
+      console.log(`[CANDIDATE] UID: ${station.uid}, Name: ${station.station?.name}, AQI: ${station.aqi}, Distance: ${distance !== null ? distance.toFixed(2) : 'N/A'}km, Reason: ${reason || 'valid'}`);
+      candidates.push({ station, distance, reason });
     }
-    
+
+    // Relaxed filtering: include all stations with valid coordinates, even if AQI is 0 or '-'
+    const validStations = candidates
+      .filter(c => !c.reason || c.reason === 'AQI is dash' || c.reason === 'AQI missing' || c.reason === 'AQI not a number' || (Number(c.station.aqi) >= 0))
+      .map(c => ({ ...c.station, distance: c.distance }));
+
+    // Sort by distance and take top 2
+    validStations.sort((a, b) => a.distance - b.distance);
+    const closestStations = validStations.slice(0, 2);
+
     // Try to get detailed data from closest stations
-    for (const station of validStations) {
+    for (const station of closestStations) {
       try {
         const detailResponse = await fetch(`https://api.waqi.info/feed/@${station.uid}/?token=${AQICN_API_KEY}`);
         if (!detailResponse.ok) continue;
-        
         const detailData: AQICNResponse = await detailResponse.json();
-        if (detailData.status === 'ok' && detailData.data && detailData.data.aqi > 0) {
+        if (detailData.status === 'ok' && detailData.data) {
           const data = detailData.data;
-          
+          let aqiValue = (typeof data.aqi === 'number' && data.aqi >= 0) ? Math.min(500, Math.round(data.aqi)) : null;
+          let temporarilyUnavailable = false;
+          if (aqiValue === null || data.aqi === '-' || isNaN(Number(data.aqi))) {
+            temporarilyUnavailable = true;
+          }
           const response = {
-            aqi: Math.min(500, Math.round(data.aqi)),
+            aqi: aqiValue !== null ? aqiValue : 0,
             city: data.city.name || station.station.name,
             stationName: station.station.name,
-            distance: station.distance.toFixed(2),
+            distance: station.distance !== null ? station.distance.toFixed(2) : 'N/A',
             country: country,
             dominantPollutant: data.dominentpol || 'unknown',
             pollutants: {
@@ -190,19 +214,33 @@ serve(async (req) => {
             coordinates: {
               user: { lat, lon },
               station: { lat: data.city.geo[0], lon: data.city.geo[1] }
-            }
+            },
+            temporarilyUnavailable
           };
-
-          console.log(`Enhanced AQICN Success - Station: ${station.station.name}, AQI: ${response.aqi}`);
-          return new Response(JSON.stringify(response), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+          if (!temporarilyUnavailable) {
+            lastKnownGood = response;
+            console.log(`Enhanced AQICN Success - Station: ${station.station.name}, AQI: ${response.aqi}`);
+            return new Response(JSON.stringify(response), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } else {
+            console.log(`Station ${station.station.name} is temporarily unavailable (AQI missing or invalid)`);
+          }
         }
       } catch (error) {
         continue;
       }
     }
-    
+
+    // If no valid station, but we have a last known good, return it with a warning
+    if (lastKnownGood) {
+      lastKnownGood.temporarilyUnavailable = true;
+      lastKnownGood.message = 'Showing last known good data. Current data temporarily unavailable.';
+      return new Response(JSON.stringify(lastKnownGood), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     return new Response(JSON.stringify({ error: true, message: 'Data temporarily unavailable.' }), {
       status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
