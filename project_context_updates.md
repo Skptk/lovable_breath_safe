@@ -348,7 +348,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 ---
 
+```
 *These critical fixes successfully resolve all fundamental system stability issues identified during logging optimization. The application now has stable real-time connections, proper database function handling, and optimized channel management for improved performance and reliability.*
+
+### Bug Fix – 2025-09-22
+
+#### ReferenceError: locationData is not defined in AirQualityDashboard
+- **Problem**: Console and ErrorBoundary reported `ReferenceError: locationData is not defined` in `AirQualityDashboard.tsx`.
+- **Root Cause**: The variable `locationData` was referenced but never defined or initialized in the component.
+- **Solution**: Replaced `userLocation={locationData?.city}` with `userLocation={data.location}` in the `DataSourceValidator` props, using the correct value from the air quality data object. This resolves the runtime error and ensures the correct location is passed to the validator.
+- **Commit**: c736050
 
 ---
 

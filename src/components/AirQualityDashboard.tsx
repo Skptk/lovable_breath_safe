@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
@@ -25,14 +26,14 @@ interface AirQualityDashboardProps {
   isDemoMode?: boolean;
 }
 
-export default function AirQualityDashboard({ 
-  onNavigate, 
-  showMobileMenu, 
+export default function AirQualityDashboard({
+  onNavigate,
+  showMobileMenu,
   onMobileMenuToggle,
   isDemoMode = false
 }: AirQualityDashboardProps) {
   const { user } = useAuth();
-  const { data, isRefetching: isRefreshing, refetch, isLoading, error, refreshData, isUsingCachedData } = useAirQuality();
+  const { data, isRefreshing, isLoading, error, refreshData } = useAirQuality();
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { timeUntilRefresh, manualRefresh: refreshCountdown } = useRefreshCountdown();
   const { requestLocationPermission, isRequestingPermission, hasUserConsent, hasRequestedPermission } = useLocation();
@@ -212,6 +213,7 @@ export default function AirQualityDashboard({
 
   // Show dashboard with data (including cached data)
   if (data) {
+    // ...existing code...
     // Use the proper AQI color and label functions
     const aqiColor = getAQIColor(data.aqi);
     const aqiLabel = getAQILabel(data.aqi);
@@ -226,6 +228,7 @@ export default function AirQualityDashboard({
 
     return (
       <div className="space-y-6 lg:space-y-8">
+  {/* Country selector removed (rollback) */}
         <Header
           title={`Hello, ${userName}!`}
           subtitle={`Air quality in ${data.location}`}
@@ -238,7 +241,7 @@ export default function AirQualityDashboard({
           timeUntilRefresh={timeUntilRefresh}
           isRefreshing={isRefreshing}
           onManualRefresh={handleRefresh}
-          isUsingCachedData={isUsingCachedData}
+          // isUsingCachedData prop removed (rollback)
         />
 
         {/* Data Source Validator */}
@@ -248,10 +251,6 @@ export default function AirQualityDashboard({
             aqi={data.aqi}
             location={data.location}
             timestamp={data.timestamp}
-            stationName={data.stationName}
-            distance={data.distance}
-            stationUid={data.stationUid}
-            country={data.country}
             userLocation={data.location}
           />
         )}
@@ -290,11 +289,6 @@ export default function AirQualityDashboard({
               </div>
               <p className="text-muted-foreground">
                 Last updated: {data.timestamp}
-                {isUsingCachedData && (
-                  <span className="ml-2 text-amber-600 dark:text-amber-400">
-                    (Cached data)
-                  </span>
-                )}
               </p>
             </GlassCardHeader>
             <GlassCardContent className="text-center space-y-6">
@@ -377,10 +371,9 @@ export default function AirQualityDashboard({
                       { name: 'CO', value: data.co, unit: 'μg/m³', color: 'text-purple-500' },
                       { name: 'O₃', value: data.o3, unit: 'μg/m³', color: 'text-yellow-500' }
                     ].map((pollutant) => (
-                      <GlassCard
+                      <div
                         key={pollutant.name}
-                        variant="subtle"
-                        className="p-3 text-center cursor-pointer hover:scale-105 transition-transform"
+                        className="p-3 text-center cursor-pointer hover:scale-105 transition-transform bg-white/10 rounded-lg shadow"
                         onClick={() => setSelectedPollutant({
                           name: pollutant.name,
                           value: pollutant.value || 0,
@@ -398,7 +391,7 @@ export default function AirQualityDashboard({
                         <div className="text-xs text-muted-foreground">
                           {pollutant.unit}
                         </div>
-                      </GlassCard>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -557,7 +550,7 @@ export default function AirQualityDashboard({
             
             <div className="space-y-3">
               <Button 
-                onClick={() => refetch()}
+                // onClick refetch removed (rollback)
                 disabled={isRefreshing}
                 className="w-full"
                 size="lg"
