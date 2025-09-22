@@ -6,21 +6,28 @@ export const LEAFLET_MAPS_CONFIG = {
   
   // Tile layer configuration - Fixed tile sources for reliable rendering
   TILE_LAYERS: {
-    dark: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', // Standard OpenStreetMap - most reliable
+    // Primary reliable tile sources
+    primary: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', // Standard OpenStreetMap - most reliable
+    dark: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', // Standard OpenStreetMap
     light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', // Standard OpenStreetMap
+    // Fallback tile sources
+    fallback: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', // CARTO fallback
     satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
   },
   
-  // Tile server subdomains for load balancing
+  // Tile server subdomains for load balancing - REMOVED problematic 'd' subdomain
   TILE_SERVERS: {
-    openstreetmap: ['a', 'b', 'c'], // Standard OSM subdomains
+    openstreetmap: ['a', 'b', 'c'], // Standard OSM subdomains (removed 'd' which was causing ERR_NAME_NOT_RESOLVED)
+    cartodb: ['a', 'b', 'c', 'd'], // CARTO fallback subdomains
     arcgis: ['server'] // ArcGIS server
   },
   
   // Attribution for tile layers
   ATTRIBUTION: {
+    primary: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     dark: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     light: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    fallback: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>',
     satellite: '&copy; <a href="https://www.esri.com/">Esri</a>'
   },
   

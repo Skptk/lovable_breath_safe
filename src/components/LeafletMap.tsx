@@ -39,6 +39,8 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
   const [markers, setMarkers] = useState<any[]>([]);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [currentTileLayer, setCurrentTileLayer] = useState<any | null>(null);
+  const [tileErrorCount, setTileErrorCount] = useState(0);
+  const [usingFallback, setUsingFallback] = useState(false);
   
   const { isDark } = useTheme();
 
@@ -63,6 +65,73 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
     loadLeaflet();
   }, []);
 
+  // Helper function to create tile layer with error handling
+  const createTileLayer = useCallback((useFallback = false) => {
+    if (!L) return null;
+
+    let tileLayerUrl: string;
+    let attribution: string;
+    let subdomains: string[];
+    
+    if (useFallback) {
+      tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.fallback;
+      attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.fallback;
+      subdomains = LEAFLET_MAPS_CONFIG.TILE_SERVERS.cartodb;
+      setUsingFallback(true);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('LeafletMap: Using fallback tile layer:', tileLayerUrl);
+      }
+    } else {
+      tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.primary;
+      attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.primary;
+      subdomains = LEAFLET_MAPS_CONFIG.TILE_SERVERS.openstreetmap;
+      setUsingFallback(false);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('LeafletMap: Using primary tile layer:', tileLayerUrl);
+      }
+    }
+    
+    const tileLayer = L.tileLayer(tileLayerUrl, {
+      attribution: attribution,
+      subdomains: subdomains,
+      maxZoom: 19,
+      minZoom: 3,
+      // Add retry options for better tile loading
+      retry: 3,
+      retryDelay: 1000,
+      // Add error handling for tile loading failures
+      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+      // Performance optimizations
+      updateWhenIdle: true,
+      keepBuffer: 2,
+      updateWhenZooming: false
+    });
+
+    // Add error handling for tile loading
+    tileLayer.on('tileerror', (error: any) => {
+      console.warn('Tile loading error:', error);
+      const newErrorCount = tileErrorCount + 1;
+      setTileErrorCount(newErrorCount);
+      
+      // Switch to fallback after 3 tile errors
+      if (newErrorCount >= 3 && !usingFallback) {
+        console.warn('Too many tile errors, switching to fallback tile server');
+        if (mapInstance && currentTileLayer) {
+          mapInstance.removeLayer(currentTileLayer);
+          const fallbackLayer = createTileLayer(true);
+          if (fallbackLayer) {
+            fallbackLayer.addTo(mapInstance);
+            setCurrentTileLayer(fallbackLayer);
+          }
+        }
+      }
+    });
+
+    return tileLayer;
+  }, [L, tileErrorCount, usingFallback, mapInstance, currentTileLayer]);
+
   // Update map theme when theme changes
   useEffect(() => {
     if (!mapInstance || !L) return;
@@ -72,39 +141,12 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       mapInstance.removeLayer(currentTileLayer);
     }
 
-    // Add new tile layer based on current theme with enhanced fallback
-    let tileLayerUrl: string;
-    let attribution: string;
-    
-    try {
-      // Use the same reliable tile source for both themes to prevent rendering issues
-      tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light; // Most reliable source
-      attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('LeafletMap: Using reliable tile layer:', tileLayerUrl);
-      }
-    } catch (error) {
-      // Fallback to light theme if any issues occur
-      console.warn('LeafletMap: Tile layer configuration failed, using fallback');
-      tileLayerUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-      attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    // Create new tile layer with proper configuration
+    const newTileLayer = createTileLayer(usingFallback);
+    if (newTileLayer) {
+      newTileLayer.addTo(mapInstance);
+      setCurrentTileLayer(newTileLayer);
     }
-    
-    const newTileLayer = L.tileLayer(tileLayerUrl, {
-      attribution: attribution,
-      subdomains: 'abcd',
-      maxZoom: 19,
-      minZoom: 3,
-      // Add retry options for better tile loading
-      retry: 3,
-      retryDelay: 1000,
-      // Add error handling for tile loading failures
-      errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-    });
-
-    newTileLayer.addTo(mapInstance);
-    setCurrentTileLayer(newTileLayer);
 
     // Update map styling based on theme
     const style = document.createElement('style');
@@ -169,42 +211,13 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         zoomAnimation: false, // Reduce jank on low-end devices
       });
 
-      // Add initial tile layer based on current theme
-      let tileLayerUrl: string;
-      let attribution: string;
-      
-      try {
-        // Use the same reliable tile source for both themes to prevent rendering issues
-        tileLayerUrl = LEAFLET_MAPS_CONFIG.TILE_LAYERS.light; // Most reliable source
-        attribution = LEAFLET_MAPS_CONFIG.ATTRIBUTION.light;
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('LeafletMap: Initial map using reliable tile layer:', tileLayerUrl);
-        }
-      } catch (error) {
-        // Fallback to light theme if any issues occur
-        console.warn('LeafletMap: Initial tile layer configuration failed, using fallback');
-        tileLayerUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-        attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+      // Add initial tile layer with proper error handling
+      const initialTileLayer = createTileLayer(false);
+      if (initialTileLayer) {
+        initialTileLayer.addTo(map);
       }
-      
-      const tileLayer = L.tileLayer(tileLayerUrl, {
-        attribution: attribution,
-        subdomains: LEAFLET_MAPS_CONFIG.TILE_SERVERS.openstreetmap, // Use configured subdomains array
-        maxZoom: 19,
-        minZoom: 3,
-        // Add retry options for better tile loading
-        retry: 3,
-        retryDelay: 1000,
-        // Add error handling for tile loading failures
-        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-        // Performance optimizations
-        updateWhenIdle: true,
-        keepBuffer: 2,
-        updateWhenZooming: false
-      }).addTo(map);
 
-      setCurrentTileLayer(tileLayer);
+      setCurrentTileLayer(initialTileLayer);
       setMapInstance(map);
       setMapLoaded(true);
 
@@ -357,17 +370,70 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
           </div>
         </div>
         
-        <div 
-          ref={mapRef} 
-          className="w-full h-[600px] min-h-[500px] rounded-b-lg"
-        />
+        <div className="relative w-full h-[600px] min-h-[500px] rounded-b-lg">
+          {/* Map container */}
+          <div 
+            ref={mapRef} 
+            className="w-full h-full rounded-b-lg"
+          />
+          
+          {/* Loading overlay */}
+          {!mapLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-b-lg">
+              <div className="text-center space-y-3">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                <p className="text-sm text-muted-foreground">Loading map tiles...</p>
+              </div>
+            </div>
+          )}
+          
+          {/* Error overlay with retry button */}
+          {tileErrorCount >= 3 && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-b-lg">
+              <div className="text-center space-y-3 p-4">
+                <AlertTriangle className="h-8 w-8 mx-auto text-destructive" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Map temporarily unavailable</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {usingFallback ? 'Using backup map service' : 'Switching to backup map service...'}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setTileErrorCount(0);
+                    setUsingFallback(false);
+                    if (mapInstance && currentTileLayer) {
+                      mapInstance.removeLayer(currentTileLayer);
+                      const newTileLayer = createTileLayer(false);
+                      if (newTileLayer) {
+                        newTileLayer.addTo(mapInstance);
+                        setCurrentTileLayer(newTileLayer);
+                      }
+                    }
+                  }}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         
         <div className="p-4 bg-gradient-to-br from-muted/20 to-muted/10 border-t border-border/30">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground/80">
-            <MapPin className="h-4 w-4" />
-            <span>Blue marker: Your location</span>
-            <span className="mx-2">•</span>
-            <span>Colored markers: Monitoring stations (AQI-based colors)</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground/80">
+              <MapPin className="h-4 w-4" />
+              <span>Blue marker: Your location</span>
+              <span className="mx-2">•</span>
+              <span>Colored markers: Monitoring stations (AQI-based colors)</span>
+            </div>
+            {usingFallback && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
+                <AlertTriangle className="h-3 w-3" />
+                <span>Using backup map service</span>
+              </div>
+            )}
           </div>
         </div>
       </GlassCardContent>
