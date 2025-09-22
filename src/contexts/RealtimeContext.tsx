@@ -47,19 +47,28 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
     'user-profile-points'
   ];
 
-  // Initialize persistent channels when user logs in
+  // Initialize persistent channels when user logs in (with debouncing)
   useEffect(() => {
     if (user && mountedRef.current) {
-      console.log('🔄 [RealtimeContext] User logged in, initializing persistent channels');
+      // Debounce channel initialization to prevent rapid re-initialization
+      const timeoutId = setTimeout(() => {
+        if (user && mountedRef.current) {
+          console.log('🔄 [RealtimeContext] User logged in, initializing persistent channels');
+          
+          // Initialize core persistent channels only if not already initialized
+          CORE_CHANNELS.forEach(channelType => {
+            const channelName = `${channelType}-${user.id}`;
+            if (!persistentChannels.current.has(channelName)) {
+              persistentChannels.current.add(channelName);
+              console.log(`🔗 [RealtimeContext] Added persistent channel: ${channelName}`);
+            }
+          });
+        }
+      }, 500); // 500ms debounce
       
-      // Initialize core persistent channels
-      CORE_CHANNELS.forEach(channelType => {
-        const channelName = `${channelType}-${user.id}`;
-        persistentChannels.current.add(channelName);
-        console.log(`🔗 [RealtimeContext] Added persistent channel: ${channelName}`);
-      });
+      return () => clearTimeout(timeoutId);
     }
-  }, [user]);
+  }, [user?.id]); // Only depend on user ID to prevent unnecessary re-runs
 
   // Set up connection status listener
   useEffect(() => {

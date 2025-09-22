@@ -178,25 +178,27 @@ export const diagnoseConnection = async (): Promise<void> => {
     
     testWs.onclose = (event) => {
       clearTimeout(connectionTimeout);
-      console.log('🔍 [Diagnostics] WebSocket closed:', event.code, event.reason);
       
-      // Handle specific close codes
+      // Handle specific close codes with appropriate logging levels
       switch (event.code) {
         case 1000:
           console.log('✅ [Diagnostics] WebSocket closed normally');
           break;
         case 1005:
-          console.error('❌ [Diagnostics] WebSocket closed with code 1005 (no status) - this indicates a connection issue');
-          console.error('🔧 [Diagnostics] Possible causes: Network timeout, server rejection, or configuration issue');
+          console.warn('⚠️ [Diagnostics] WebSocket closed with code 1005 (no status) - connection issue');
           break;
         case 1006:
-          console.error('❌ [Diagnostics] WebSocket connection aborted abnormally');
+          console.warn('⚠️ [Diagnostics] WebSocket connection aborted abnormally');
+          break;
+        case 1011:
+          // Suppress noisy 1011 errors - this is a known Supabase issue
+          console.log('🔍 [Diagnostics] WebSocket closed with code 1011 (server endpoint going away) - known Supabase issue');
           break;
         case 1015:
           console.error('❌ [Diagnostics] TLS handshake failed - SSL configuration issue');
           break;
         default:
-          console.warn('⚠️ [Diagnostics] WebSocket closed with unexpected code:', event.code);
+          console.log('🔍 [Diagnostics] WebSocket closed with code:', event.code, event.reason);
       }
     };
     

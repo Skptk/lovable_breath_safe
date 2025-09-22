@@ -190,14 +190,18 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       
       const tileLayer = L.tileLayer(tileLayerUrl, {
         attribution: attribution,
-        subdomains: 'abcd',
+        subdomains: LEAFLET_MAPS_CONFIG.TILE_SERVERS.openstreetmap, // Use configured subdomains array
         maxZoom: 19,
         minZoom: 3,
         // Add retry options for better tile loading
         retry: 3,
         retryDelay: 1000,
         // Add error handling for tile loading failures
-        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+        errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+        // Performance optimizations
+        updateWhenIdle: true,
+        keepBuffer: 2,
+        updateWhenZooming: false
       }).addTo(map);
 
       setCurrentTileLayer(tileLayer);

@@ -11,6 +11,12 @@ export const LEAFLET_MAPS_CONFIG = {
     satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
   },
   
+  // Tile server subdomains for load balancing
+  TILE_SERVERS: {
+    openstreetmap: ['a', 'b', 'c'], // Standard OSM subdomains
+    arcgis: ['server'] // ArcGIS server
+  },
+  
   // Attribution for tile layers
   ATTRIBUTION: {
     dark: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',

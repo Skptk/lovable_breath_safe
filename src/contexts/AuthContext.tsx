@@ -100,6 +100,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
         
+        // Prevent duplicate SIGNED_IN events that occur rapidly
+        if (event === 'SIGNED_IN' && 
+            lastAuthEvent.current === 'SIGNED_IN' && 
+            lastUserId.current === userId) {
+          console.log('Auth state change: Skipping duplicate SIGNED_IN for user:', userId);
+          return;
+        }
+        
         console.log('Auth state change:', event, 'for user:', userId);
         
         // Update state
