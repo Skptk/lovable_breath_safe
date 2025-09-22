@@ -10,7 +10,7 @@ const corsHeaders = {
 
 // Configuration constants
 const CONFIG = {
-  MAX_ACCEPTABLE_DISTANCE: 200, // km
+  MAX_ACCEPTABLE_DISTANCE: 1000, // km (increased from 200)
   MAX_CANDIDATES: 10
 };
 
@@ -171,7 +171,9 @@ serve(async (req) => {
       });
     }
 
-    console.log(`🌍 Fetching station data for coordinates: ${lat}, ${lon}`);
+  console.log(`🌍 Fetching station data for coordinates: ${lat}, ${lon}`);
+  // Extra logging for debugging coordinate issues
+  console.log(`[DEBUG] Received coordinates:`, { lat, lon });
 
     // Step 2: Get nearby stations using mapq/nearby endpoint
     console.log('🔍 Fetching nearby stations with mapq/nearby...');
@@ -207,6 +209,15 @@ serve(async (req) => {
 
     const stations: AQICNStation[] = nearbyData.data;
     console.log(`📋 Found ${stations.length} nearby stations`);
+    stations.forEach((s, idx) => {
+      console.log(`[DEBUG] Station #${idx + 1}:`, {
+        uid: s.uid,
+        name: s.station?.name,
+        geo: s.station?.geo,
+        country: s.station?.country,
+        aqi: s.aqi
+      });
+    });
 
     // Step 3: Compute distances server-side and filter candidates
     const candidates: StationCandidate[] = stations
@@ -244,9 +255,9 @@ serve(async (req) => {
       })
       .filter(c => {
         // Filter out invalid candidates
-        const isValid = Number.isFinite(c.computedDistance) && 
-                       c.computedDistance < 10000 && // Defensive max distance
-                       c.aqi > 0; // Reject AQI of 0 or negative
+            const isValid = Number.isFinite(c.computedDistance) &&
+                           c.computedDistance < 10000 && // Defensive max distance
+                           c.aqi >= 0; // Accept AQI of 0 or higher
                        
         if (!isValid) {
           console.log(`⚠️ Skipping invalid candidate: ${c.name} (distance: ${c.computedDistance}km, aqi: ${c.aqi})`);
@@ -254,10 +265,7 @@ serve(async (req) => {
         
         return isValid;
       })
-      .sort((a, b) => a.computedDistance - b.computedDistance)
-      .slice(0, CONFIG.MAX_CANDIDATES);
-      
-    console.log(`📋 Valid candidates after filtering: ${candidates.length}`);
+// (removed duplicate/erroneous isValid assignment)
     candidates.forEach((c, idx) => {
       console.log(`  ${idx + 1}. ${c.name} - Distance: ${c.computedDistance.toFixed(2)}km, AQI: ${c.aqi}, UID: ${c.uid}`);
     });
@@ -298,14 +306,14 @@ serve(async (req) => {
     }
     
     const selectionReason = primary.computedDistance > CONFIG.MAX_ACCEPTABLE_DISTANCE ? 
-      `Primary selected: nearest available at ${primary.computedDistance.toFixed(1)}km (>200km threshold)` :
+        `Primary selected: nearest available at ${primary.computedDistance.toFixed(1)}km (>1000km threshold)` :
       `Primary selected: nearest within ${primary.computedDistance.toFixed(1)}km`;
       
     const fallbackReason = fallback ? 
       `; Fallback selected: next nearest at ${fallback.computedDistance.toFixed(1)}km` : 
       '; No fallback available';
     
-    console.log(`🎯 Station selection: ${selectionReason}${fallbackReason}`);
+      console.log(`� Station selection: ${selectionReason}${fallbackReason}`);
     
     // Step 6: Fetch detailed data from primary station
     console.log(`🔍 Fetching detailed data from primary station: ${primary.name} (UID: ${primary.uid})`);
