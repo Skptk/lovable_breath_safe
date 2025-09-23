@@ -6,13 +6,17 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Environment Variables**: Fixed Vite environment detection
+  - Replaced `process.env.NODE_ENV` with `import.meta.env.DEV`
+  - Fixed 'process is not defined' error in browser
+  - Ensured consistent environment checking across the application
+
 - **DevTools**: Improved development tools initialization
   - Made DevTools only load in development mode
   - Added better error handling and logging
   - Improved memory debug tools initialization
   - Added proper TypeScript types and null checks
   - Fixed potential memory leaks
-  - Added development environment detection
 
 - **TypeScript Build**: Resolved TypeScript errors in `withRenderLogging` HOC
   - Fixed type safety issues in `renderOptimization.ts`
