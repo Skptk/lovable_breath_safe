@@ -6,12 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- **DevTools**: Improved stability and type safety of development tools
-  - Fixed TypeScript errors in DevToolsWrapper component
-  - Added proper error handling for memory debug tools
-  - Improved type safety throughout the component
-  - Added development-only initialization for memory tools
-  - Added cleanup to prevent memory leaks
+- **DevTools**: Improved development tools initialization
+  - Made DevTools only load in development mode
+  - Added better error handling and logging
+  - Improved memory debug tools initialization
+  - Added proper TypeScript types and null checks
+  - Fixed potential memory leaks
+  - Added development environment detection
 
 - **TypeScript Build**: Resolved TypeScript errors in `withRenderLogging` HOC
   - Fixed type safety issues in `renderOptimization.ts`
