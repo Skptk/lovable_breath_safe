@@ -202,17 +202,14 @@ const AQICard: React.FC<{
   const locationSource = isUserLocation ? "Your Location" : "Nearest Sensor";
   const locationIcon = isUserLocation ? User : Satellite;
 
-  const pollutants = useMemo(
-    () => [
-      { name: "PM2.5", value: data?.pm25 ?? 0, unit: "μg/m³", color: "text-blue-500" },
-      { name: "PM10", value: data?.pm10 ?? 0, unit: "μg/m³", color: "text-green-500" },
-      { name: "NO₂", value: data?.no2 ?? 0, unit: "μg/m³", color: "text-orange-500" },
-      { name: "SO₂", value: data?.so2 ?? 0, unit: "μg/m³", color: "text-red-500" },
-      { name: "CO", value: data?.co ?? 0, unit: "μg/m³", color: "text-purple-500" },
-      { name: "O₃", value: data?.o3 ?? 0, unit: "μg/m³", color: "text-yellow-500" },
-    ],
-    [data?.pm25, data?.pm10, data?.no2, data?.so2, data?.co, data?.o3, data?.dataSource, data?.coordinates]
-  );
+  const pollutants = [
+    { name: "PM2.5", value: data?.pm25 ?? 0, unit: "μg/m³", color: "text-blue-500" },
+    { name: "PM10", value: data?.pm10 ?? 0, unit: "μg/m³", color: "text-green-500" },
+    { name: "NO₂", value: data?.no2 ?? 0, unit: "μg/m³", color: "text-orange-500" },
+    { name: "SO₂", value: data?.so2 ?? 0, unit: "μg/m³", color: "text-red-500" },
+    { name: "CO", value: data?.co ?? 0, unit: "μg/m³", color: "text-purple-500" },
+    { name: "O₃", value: data?.o3 ?? 0, unit: "μg/m³", color: "text-yellow-500" },
+  ];
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }}>
