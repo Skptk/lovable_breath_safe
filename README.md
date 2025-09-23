@@ -10,6 +10,7 @@ A React TypeScript mobile application that tracks real-time air quality data usi
 - **Responsive Design**: Mobile-first design with beautiful UI components
 - **Data Caching**: Efficient data fetching with React Query
 - **Error Handling**: Graceful error boundaries and user-friendly error messages
+- **Robust User Initialization**: Reliable user data initialization with proper transaction handling
 
 ## 🛠️ Tech Stack
 
@@ -19,6 +20,8 @@ A React TypeScript mobile application that tracks real-time air quality data usi
 - **Data Fetching**: React Query for caching and state management
 - **Build Tool**: Vite
 - **Deployment**: Supabase Edge Functions
+- **Database**: PostgreSQL with Row-Level Security (RLS)
+- **Authentication**: Supabase Auth with email/password and social providers
 
 ## 📱 Getting Started
 
@@ -27,6 +30,25 @@ A React TypeScript mobile application that tracks real-time air quality data usi
 - Node.js 18+ 
 - npm or yarn
 - Supabase account
+
+### Database Setup
+
+The application uses a PostgreSQL database with the following key tables:
+- `auth.users`: Stores user authentication data (managed by Supabase Auth)
+- `profiles`: Stores user profile information
+- `user_points`: Tracks user points and achievements
+- `user_settings`: Stores user preferences and settings
+
+#### Important Database Initialization Flow
+
+When a new user signs up, the following sequence occurs:
+
+1. User is created in `auth.users` (handled by Supabase Auth)
+2. A profile is created in `public.profiles`
+3. User points and settings are initialized
+4. Welcome notification is created
+
+This flow is managed by database triggers and functions to ensure data consistency.
 
 ### Installation
 

@@ -185,7 +185,7 @@ export default function Landing(): JSX.Element {
               Everything You Need to Breathe Better
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-light">
-              Our comprehensive platform combines cutting-edge technology with user-friendly design to keep you informed and healthy.
+              This webapp is currently under active development. Features may break and/or change regularly.
             </p>
           </div>
           
@@ -233,7 +233,7 @@ export default function Landing(): JSX.Element {
             Ready to Take Control of Your Air Quality?
           </h2>
           <p className="text-xl text-muted-foreground mb-8">
-            Join thousands of users who are already breathing cleaner air and living healthier lives.
+            Try the app now as I develop and roll out improvements and features.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
