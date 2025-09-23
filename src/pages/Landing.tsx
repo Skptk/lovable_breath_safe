@@ -93,8 +93,8 @@ export default function Landing(): JSX.Element {
   if (loading) {
     return (
       <div className={`min-h-screen flex flex-col ${theme}`}>
-        {/* Development Tools - Only in development */}
-        {import.meta.env.DEV && <DevToolsWrapper />}
+        {/* Development Tools */}
+        <DevToolsWrapper />
         
         {/* Main content */}
         <main className="flex-1">

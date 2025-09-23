@@ -1,16 +1,13 @@
 import { useEffect, lazy, Suspense } from 'react';
 
 // Lazy load the MemoryDevTools component
-const MemoryDevTools = import.meta.env.DEV 
-  ? lazy(() => import('./MemoryDevTools')) 
-  : () => null;
+const MemoryDevTools = lazy(() => import('./MemoryDevTools'));
 
 export function DevToolsWrapper() {
-  // Add memory debugging tools to window in development
+  // Add memory debugging tools to window
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      // Initialize memory debugging tools
-      import('@/utils/memory').then(({ memoryProfiler }) => {
+    // Initialize memory debugging tools
+    import('@/utils/memory').then(({ memoryProfiler }) => {
         // Add to window for easy access
         (window as any).__MEMORY_DEBUG__ = {
           gc: () => memoryProfiler.forceGarbageCollection(),
@@ -83,11 +80,8 @@ export function DevToolsWrapper() {
           'color: #4CAF50; font-weight: bold; padding: 4px; background: #f5f5f5;'
         );
       });
-    }
   }, []);
 
-  if (!import.meta.env.DEV) return null;
-  
   return (
     <Suspense fallback={null}>
       <MemoryDevTools defaultOpen={false} enableProfiler={false} />
