@@ -119,8 +119,13 @@ const AirQualityDashboardContent: React.FC<AirQualityDashboardContentProps> = ({
     };
   }, [hasLocation, locationContext.coordinates]);
 
-  // Handle refresh action
+  // Handle refresh action with consent check
   const handleRefresh = useCallback(async () => {
+    if (!hasUserConsent) {
+      console.log("Refresh skipped - user consent not granted");
+      return;
+    }
+    
     try {
       setIsRefreshing(true);
       await refreshData();
@@ -140,7 +145,7 @@ const AirQualityDashboardContent: React.FC<AirQualityDashboardContentProps> = ({
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshData, toast]);
+  }, [refreshData, toast, hasUserConsent]);
 
   // Handle permission request
   const handleRequestPermission = useCallback(async () => {
@@ -215,15 +220,6 @@ const AirQualityDashboardContent: React.FC<AirQualityDashboardContentProps> = ({
       });
     }
   }, [isRequestingPermission, requestLocationPermission, toast]);
-
-  // Manual refresh handler - respects consent
-  const handleRefresh = React.useCallback(() => {
-    if (hasUserConsent) {
-      refreshData();
-    } else {
-      console.log("Refresh skipped - user consent not granted");
-    }
-  }, [hasUserConsent, refreshData]);
 
   // Permission check UI - brief loading while waiting for permission or timeout
   if (!hasRequestedPermission && !permissionTimeoutReached) {
