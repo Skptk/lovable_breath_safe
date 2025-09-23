@@ -1,15 +1,21 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense, useState } from 'react';
 
 // Lazy load the MemoryDevTools component
 const MemoryDevTools = lazy(() => import('./MemoryDevTools'));
 
 export function DevToolsWrapper() {
+  const [isInitialized, setIsInitialized] = useState(false);
+
   // Add memory debugging tools to window
   useEffect(() => {
+    // Only initialize in development
+    if (process.env.NODE_ENV !== 'development') return;
+
     // Initialize memory debugging tools
-    import('@/utils/memory').then(({ memoryProfiler }) => {
-        // Add to window for easy access
-        (window as any).__MEMORY_DEBUG__ = {
+    import('@/utils/memory')
+      .then(({ memoryProfiler }) => {
+        // Create debug object
+        const debugObj = {
           gc: () => memoryProfiler.forceGarbageCollection(),
           takeSnapshot: (label: string) => memoryProfiler.takeHeapSnapshot(label),
           getMemoryInfo: () => {
@@ -27,59 +33,78 @@ export function DevToolsWrapper() {
           checkForLeaks: () => {
             const leaks: string[] = [];
             
-            // Check for detached DOM elements
-            const detached = [];
-            const walker = document.createTreeWalker(
-              document,
-              NodeFilter.SHOW_ELEMENT,
-              { acceptNode: () => NodeFilter.FILTER_ACCEPT }
-            );
-            
-            const nodes: Element[] = [];
-            let node: Node | null;
-            
-            while ((node = walker.nextNode())) {
-              if (node instanceof Element) {
-                nodes.push(node);
+            try {
+              // Check for detached DOM elements
+              const detached: Element[] = [];
+              const walker = document.createTreeWalker(
+                document,
+                NodeFilter.SHOW_ELEMENT,
+                { acceptNode: () => NodeFilter.FILTER_ACCEPT }
+              );
+              
+              const nodes: Element[] = [];
+              let node: Node | null;
+              
+              while ((node = walker.nextNode())) {
+                if (node instanceof Element) {
+                  nodes.push(node);
+                }
               }
-            }
-            
-            for (const node of nodes) {
-              if (!document.contains(node)) {
-                detached.push(node);
+              
+              for (const node of nodes) {
+                if (!document.contains(node)) {
+                  detached.push(node);
+                }
               }
-            }
-            
-            if (detached.length > 0) {
-              leaks.push(`Found ${detached.length} potentially detached DOM elements`);
-            }
-            
-            // Check for excessive event listeners
-            let listenerCount = 0;
-            const elements = document.getElementsByTagName('*');
-            for (let i = 0; i < elements.length; i++) {
-              const elem = elements[i];
-              if ((elem as any).__events) {
-                listenerCount += Object.keys((elem as any).__events).length;
+              
+              if (detached.length > 0) {
+                leaks.push(`Found ${detached.length} detached DOM elements`);
+                console.warn('Detached elements:', detached);
               }
+              
+              // Check for event listeners on window
+              const listeners = (window as any).getEventListeners?.(window) || {};
+              const listenerCount = Object.values(listeners).reduce((count: number, events: unknown) => {
+                const eventArray = Array.isArray(events) ? events : [];
+                return count + eventArray.length;
+              }, 0);
+                
+              // Arbitrary threshold of 50 event listeners
+              if (typeof listenerCount === 'number' && listenerCount > 50) {
+                leaks.push(`High number of event listeners (${listenerCount}) on window`);
+              }
+              
+              return leaks.length > 0 ? leaks : ['No memory leaks detected'];
+            } catch (error) {
+              console.error('Error checking for leaks:', error);
+              return ['Error checking for leaks: ' + (error as Error).message];
             }
-            
-            if (listenerCount > 1000) {
-              leaks.push(`Found ${listenerCount} event listeners (may indicate a leak)`);
-            }
-            
-            console.log('Memory Leak Check:');
-            leaks.forEach(leak => console.log(`- ${leak}`));
-            
-            return leaks.length > 0 ? leaks : ['No obvious memory leaks detected'];
           }
         };
         
-        console.log(
-          '%cMemory debugging tools are available at window.__MEMORY_DEBUG__',
-          'color: #4CAF50; font-weight: bold; padding: 4px; background: #f5f5f5;'
-        );
+        // Add to window for easy access
+        (window as any).__MEMORY_DEBUG__ = debugObj;
+        setIsInitialized(true);
+        console.log('Memory debugging tools initialized');
+      })
+      .catch(error => {
+        console.warn('Failed to load memory profiler:', error);
+        // Provide a safe fallback
+        (window as any).__MEMORY_DEBUG__ = {
+          getMemoryInfo: () => ({ error: 'Memory debug tools failed to load' }),
+          gc: () => console.warn('Memory debug tools not available'),
+          takeSnapshot: () => console.warn('Memory debug tools not available'),
+          checkForLeaks: () => ['Memory debug tools not available']
+        };
+        setIsInitialized(true);
       });
+      
+    // Cleanup function
+    return () => {
+      if ((window as any).__MEMORY_DEBUG__) {
+        delete (window as any).__MEMORY_DEBUG__;
+      }
+    };
   }, []);
 
   return (
