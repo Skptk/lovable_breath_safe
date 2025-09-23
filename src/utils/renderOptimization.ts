@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback, useEffect } from 'react';
+import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
 import { debounce, throttle } from 'lodash';
 
 /**
@@ -180,8 +180,12 @@ function isEqual(a: any, b: any): boolean {
 export function withRenderLogging<P>(
   WrappedComponent: React.ComponentType<P>,
   componentName: string
-) {
-  return function WithRenderLogging(props: P) {
+): React.ComponentType<P> {
+  // Create a display name for the HOC
+  const displayName = `withRenderLogging(${componentName})`;
+
+  // Create the component
+  const WithRenderLogging = (props: P) => {
     const renderCount = useRef(0);
     const lastRenderTime = useRef(performance.now());
     
@@ -196,8 +200,11 @@ export function withRenderLogging<P>(
       props
     );
     
-    return <WrappedComponent {...(props as any)} />;
+    return React.createElement(WrappedComponent, props);
   };
+  
+  WithRenderLogging.displayName = displayName;
+  return WithRenderLogging as React.ComponentType<P>;
 }
 
 /**
