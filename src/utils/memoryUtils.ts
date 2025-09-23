@@ -9,18 +9,22 @@ const componentInstances = new Map<string, Set<object>>();
  * Track component instance for memory leak detection
  */
 export function trackComponent(componentName: string, instance: object) {
-  if (!componentInstances.has(componentName)) {
-    componentInstances.set(componentName, new Set());
-  }
-  componentInstances.get(componentName)?.add(instance);
-  
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Memory] ${componentName} mounted (${componentInstances.get(componentName)?.size} total)`);
+  if (process.env['NODE_ENV'] !== 'production') {
+    if (!componentInstances.has(componentName)) {
+      componentInstances.set(componentName, new Set());
+    }
+    
+    const instances = componentInstances.get(componentName);
+    instances?.add(instance);
+    
+    if (process.env['NODE_ENV'] === 'development') {
+      console.log(`[Memory] Tracking ${componentName} instance (total: ${instances?.size})`);
+    }
   }
   
   return () => {
     componentInstances.get(componentName)?.delete(instance);
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env['NODE_ENV'] === 'development') {
       console.log(`[Memory] ${componentName} unmounted (${componentInstances.get(componentName)?.size} remaining)`);
     }
   };
@@ -41,18 +45,18 @@ export function logComponentInstances() {
  * Force garbage collection (works in Chrome with --js-flags="--expose-gc")
  */
 export function forceGarbageCollection() {
-  if ((window as any).gc) {
-    (window as any).gc();
+  // Use type assertion to avoid TypeScript errors
+  const win = window as any;
+  
+  // Check for the exposed gc function in different locations
+  if (typeof win.gc === 'function') {
+    win.gc();
     return true;
   }
   
-  if (window.gc) {
-    window.gc();
-    return true;
-  }
-  
-  if ((window as any).webkit && (window as any).webkit.memory && typeof (window as any).webkit.memory.collectGarbage === 'function') {
-    (window as any).webkit.memory.collectGarbage();
+  // Check for webkit-specific garbage collection
+  if (win.webkit?.memory?.collectGarbage && typeof win.webkit.memory.collectGarbage === 'function') {
+    win.webkit.memory.collectGarbage();
     return true;
   }
   
@@ -62,22 +66,47 @@ export function forceGarbageCollection() {
 
 /**
  * Measure memory usage
+ * Returns null if memory measurement is not available in this environment
  */
 export function measureMemory() {
-  if ('measureMemory' in (performance as any)) {
-    return (performance as any).measureMemory();
+  try {
+    // Safely check if performance is available
+    if (typeof performance === 'undefined' || !performance) {
+      return null;
+    }
+    
+    // Type assertion for TypeScript
+    const perf = performance as any;
+    
+    // Check for the newer performance.measureMemory API first
+    if (typeof perf.measureMemory === 'function') {
+      return perf.measureMemory();
+    }
+    
+    // Fall back to the older performance.memory API (Chrome)
+    if (perf.memory) {
+      return {
+        usedJSHeapSize: perf.memory.usedJSHeapSize,
+        totalJSHeapSize: perf.memory.totalJSHeapSize,
+        jsHeapSizeLimit: perf.memory.jsHeapSizeLimit,
+      };
+    }
+    
+    // Check for the Node.js memory usage API
+    if (typeof process !== 'undefined' && process.memoryUsage) {
+      const nodeMem = process.memoryUsage();
+      return {
+        usedJSHeapSize: nodeMem.heapUsed,
+        totalJSHeapSize: nodeMem.heapTotal,
+        jsHeapSizeLimit: nodeMem.rss, // Not exactly the same, but gives an idea
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.warn('Error measuring memory:', error);
+    return null;
   }
-  
-  const memory = (performance as any).memory;
-  if (memory) {
-    return {
-      usedJSHeapSize: memory.usedJSHeapSize,
-      totalJSHeapSize: memory.totalJSHeapSize,
-      jsHeapSizeLimit: memory.jsHeapSizeLimit,
-    };
-  }
-  
-  return null;
 }
 
 /**
@@ -121,73 +150,97 @@ export function createLeakDetector(componentName: string) {
  * Track event listeners to prevent memory leaks
  */
 export function trackEventListeners() {
-  if (!(window as any)._originalAddEventListener) {
-    // Store original methods
-    (window as any)._originalAddEventListener = window.addEventListener;
-    (window as any)._originalRemoveEventListener = window.removeEventListener;
+  if (typeof window === 'undefined') return;
+  
+  // Store original methods
+  (window as any)._originalAddEventListener = window.addEventListener.bind(window);
+  (window as any)._originalRemoveEventListener = window.removeEventListener.bind(window);
+  
+  // Track all event listeners
+  const listeners = new Map<string, Map<EventListenerOrEventListenerObject, EventListener>>();
+  
+  // Override addEventListener
+  window.addEventListener = function<K extends keyof WindowEventMap>(
+    type: K | string,
+    listener: (this: Window, ev: WindowEventMap[K] & Event) => any,
+    options?: boolean | AddEventListenerOptions
+  ) {
+    const eventType = type as string;
     
-    // Track all event listeners
-    const listeners = new Map<string, Map<Function, EventListener>>();
+    if (!listeners.has(eventType)) {
+      listeners.set(eventType, new Map());
+    }
     
-    // Override addEventListener
-    window.addEventListener = function(
-      type: string,
-      listener: EventListener,
-      options?: boolean | AddEventListenerOptions
-    ) {
-      if (!listeners.has(type)) {
-        listeners.set(type, new Map());
+    const wrappedListener = function(this: Window, event: Event) {
+      try {
+        return (listener as EventListener).call(this, event);
+      } catch (e) {
+        console.error(`Error in event listener for '${eventType}':`, e);
+        throw e;
       }
-      
-      const wrappedListener = function(this: any, ...args: any[]) {
-        try {
-          return listener.apply(this, args);
-        } catch (e) {
-          console.error(`Error in event listener for ${type}:`, e);
-          throw e;
-        }
-      };
-      
-      listeners.get(type)?.set(listener, wrappedListener);
-      return (window as any)._originalAddEventListener.call(
-        this,
-        type,
-        wrappedListener,
-        options
-      );
     };
     
-    // Override removeEventListener
-    window.removeEventListener = function(
-      type: string,
-      listener: EventListener,
-      options?: boolean | EventListenerOptions
-    ) {
-      const wrappedListener = listeners.get(type)?.get(listener);
-      const result = (window as any)._originalRemoveEventListener.call(
-        this,
-        type,
-        wrappedListener || listener,
-        options
-      );
-      
-      if (wrappedListener) {
-        listeners.get(type)?.delete(listener);
-      }
-      
-      return result;
-    };
+    const listenerObj = listener as EventListenerOrEventListenerObject;
+    listeners.get(eventType)?.set(listenerObj, wrappedListener);
     
-    // Add method to get all event listeners
-    (window as any).getEventListeners = function() {
-      return Array.from(listeners.entries()).reduce((acc, [type, typeListeners]) => {
-        acc[type] = Array.from(typeListeners.keys());
-        return acc;
-      }, {} as Record<string, EventListener[]>);
-    };
+    // Call original addEventListener with wrapped listener
+    return (window as any)._originalAddEventListener(
+      eventType,
+      wrappedListener,
+      options
+    );
+  } as typeof window.addEventListener;
+  
+  // Override removeEventListener
+  window.removeEventListener = function<K extends keyof WindowEventMap>(
+    type: K | string,
+    listener: (this: Window, ev: WindowEventMap[K] & Event) => any,
+    options?: boolean | EventListenerOptions
+  ) {
+    const eventType = type as string;
+    const listenerObj = listener as EventListenerOrEventListenerObject;
+    const wrappedListener = listeners.get(eventType)?.get(listenerObj);
     
-    console.log('[Memory] Event listener tracking enabled');
-  }
+    const result = (window as any)._originalRemoveEventListener(
+      eventType,
+      wrappedListener || listenerObj,
+      options
+    );
+    
+    if (wrappedListener) {
+      listeners.get(eventType)?.delete(listenerObj);
+    }
+    
+    return result;
+  } as typeof window.removeEventListener;
+  
+  // Log all event listeners (for debugging)
+  const logAllEventListeners = () => {
+    console.group('Event Listeners');
+    listeners.forEach((listeners, type) => {
+      console.log(`%c${type}: ${listeners.size} listeners`, 'color: #4CAF50');
+    });
+    console.groupEnd();
+  };
+  
+  // Log event listeners on unload
+  const beforeUnloadHandler = () => {
+    const totalListeners = Array.from(listeners.values())
+      .reduce((sum, map) => sum + map.size, 0);
+    
+    if (totalListeners > 0) {
+      console.warn(`[Memory] ${totalListeners} event listeners still attached on unload`);
+      logAllEventListeners();
+    }
+  };
+  
+  window.addEventListener('beforeunload', beforeUnloadHandler);
+  
+  // Expose for debugging
+  (window as any).__eventListeners = {
+    list: listeners,
+    log: logAllEventListeners,
+  };
   
   return () => {
     // Restore original methods
@@ -197,11 +250,13 @@ export function trackEventListeners() {
       delete (window as any)._originalAddEventListener;
       delete (window as any)._originalRemoveEventListener;
       delete (window as any).getEventListeners;
+      window.removeEventListener('beforeunload', beforeUnloadHandler);
+      delete (window as any).__eventListeners;
     }
   };
 }
 
 // Initialize event listener tracking in development
-if (process.env.NODE_ENV === 'development') {
+if (process.env['NODE_ENV'] === 'development') {
   trackEventListeners();
 }

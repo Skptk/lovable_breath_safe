@@ -93,6 +93,57 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
     streaks
   } = useUserPoints();
 
+  // Memoize the fetchProfile function to prevent unnecessary re-renders
+  const fetchProfile = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.warn('User profile not found in database');
+          return;
+        }
+        throw error;
+      }
+      
+      setProfile(data);
+    } catch (error: any) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  // Memoize the fetchWithdrawalRequests function to prevent unnecessary re-renders
+  const fetchWithdrawalRequests = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('withdrawal_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      setWithdrawalRequests(data || []);
+    } catch (error) {
+      console.error('Error fetching withdrawal requests:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load withdrawal requests',
+        variant: 'destructive',
+      });
+    }
+  }, [user?.id, toast]);
+
   // Update badges when user points change
   useEffect(() => {
     if (userPoints?.totalPoints !== undefined && updateBadges) {
@@ -100,24 +151,27 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
     }
   }, [userPoints?.totalPoints, updateBadges]);
 
-  // Debug logging
+  // Debug logging - only in development
   useEffect(() => {
-    console.log('Rewards page - Achievements:', achievements);
-    console.log('Rewards page - Badges:', badges);
-    console.log('Rewards page - Loading:', achievementsLoading);
-    console.log('Rewards page - Error:', achievementsError);
-    console.log('Rewards page - User Points:', userPoints);
-    console.log('Rewards page - Streaks:', streaks);
-  }, [achievements, badges, achievementsLoading, achievementsError, userPoints, streaks]);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Rewards page - Achievements:', achievements);
+      console.log('Rewards page - Badges:', badges);
+      console.log('Rewards page - Loading:', achievementsLoading);
+      console.log('Rewards page - User Points:', userPoints);
+      console.log('Rewards page - Streaks:', streaks);
+    }
+  }, [achievements, badges, achievementsLoading, userPoints, streaks]);
 
+  // Fetch profile and withdrawal requests when user changes
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchProfile();
       fetchWithdrawalRequests();
     }
-  }, [user]);
+  }, [user?.id, fetchProfile, fetchWithdrawalRequests]);
 
-  const fetchProfile = async () => {
+  // Original fetchProfile function moved above
+  const originalFetchProfile = async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')

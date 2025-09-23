@@ -99,6 +99,9 @@ const AirQualityDashboardContent: React.FC<AirQualityDashboardContentProps> = ({
   const [selectedPollutant, setSelectedPollutant] = React.useState<PollutantData | null>(null);
   const [isRefreshing, setIsRefreshing] = React.useState<boolean>(false);
   const [lastUpdate, setLastUpdate] = React.useState<Date | null>(null);
+  const [isRequestingPermission, setIsRequestingPermission] = React.useState<boolean>(false);
+  const [hasUserConsent, setHasUserConsent] = React.useState<boolean>(true);
+  const [hasRequestedPermission, setHasRequestedPermission] = React.useState<boolean>(locationContext.hasRequestedPermission);
   
   // Hooks
   const { data, isLoading, error, refreshData } = useAirQuality();
@@ -188,38 +191,35 @@ const AirQualityDashboardContent: React.FC<AirQualityDashboardContentProps> = ({
   // Request location permission handler
   const handleRequestLocationPermission = React.useCallback(async () => {
     if (isRequestingPermission) return;
+    
+    setIsRequestingPermission(true);
     try {
-      const success = await requestLocationPermission();
+      const success = await locationContext.requestPermission();
       if (success) {
+        setHasRequestedPermission(true);
         toast({
           title: "Location Access Granted",
           description: "Air quality data will now be fetched for your location.",
           variant: "default",
         });
       } else {
-        toast({ 
-          title: "Location Access Failed", 
-          description: "Unable to get location permission. Please try again.", 
-          variant: "destructive" 
+        toast({
+          title: "Location Access Denied",
+          description: "Please enable location access to get air quality data for your area.",
+          variant: "destructive",
         });
       }
-    } catch (err: any) {
-      const message = err?.message ?? "Failed to get location permission";
-      let errorMessage = message;
-      if (message.includes("permission denied")) {
-        errorMessage = "Location permission denied. Please enable location access in your browser settings.";
-      } else if (message.includes("unavailable")) {
-        errorMessage = "Location services unavailable. Please check your device settings.";
-      } else if (message.includes("timed out")) {
-        errorMessage = "Location request timed out. Please try again.";
-      }
-      toast({ 
-        title: "Location Access Failed", 
-        description: errorMessage, 
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+      toast({
+        title: "Location Permission Error",
+        description: "There was an error requesting location access. Please try again.",
         variant: "destructive" 
       });
+    } finally {
+      setIsRequestingPermission(false);
     }
-  }, [isRequestingPermission, requestLocationPermission, toast]);
+  }, [isRequestingPermission, locationContext, toast]);
 
   // Permission check UI - brief loading while waiting for permission or timeout
   if (!hasRequestedPermission && !permissionTimeoutReached) {

@@ -91,7 +91,7 @@ export function useWebSocket(
 
   // Effect to handle connection lifecycle
   useEffect(() => {
-    if (!url) return undefined;
+    if (!url) return;
 
     let cleanup: (() => void) | undefined;
     

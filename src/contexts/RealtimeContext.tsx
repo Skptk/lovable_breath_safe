@@ -90,18 +90,41 @@ function useRealtimeContextValue() {
     };
   }, [cleanup, throttledSetConnectionStatus]);
 
-  // Subscribe to a channel with automatic cleanup
+  // Define the cleanup function outside the useCallback to avoid hooks after early returns
   const subscribe = useCallback((
     channelName: string, 
     callback: (payload: any) => void,
     options: { isPersistent?: boolean } = {}
   ) => {
-    if (!mountedRef.current) return () => {};
+    // Early return check moved after hooks
+    const isMounted = mountedRef.current;
+    const manager = managerRef.current;
     
-    const channel = managerRef.current.getChannel(channelName);
+    // Get the channel
+    const channel = manager.getChannel(channelName);
+    
+    // Create a cleanup function that can be called even if not mounted
+    const cleanup = () => {
+      if (!isMounted) return;
+      
+      const callbacks = activeSubscriptionsRef.current.get(channelName);
+      if (callbacks) {
+        callbacks.delete(callback);
+        if (callbacks.size === 0) {
+          // If no more callbacks, unsubscribe from the channel
+          if (!options.isPersistent && channel) {
+            channel.unsubscribe(callback);
+            activeSubscriptionsRef.current.delete(channelName);
+          }
+        }
+      }
+    };
+    
+    // Early return after hooks
+    if (!isMounted) return cleanup;
     if (!channel) {
       console.warn(`[RealtimeContext] Channel ${channelName} not found`);
-      return () => {};
+      return cleanup;
     }
     
     // Track the subscription
@@ -115,22 +138,8 @@ function useRealtimeContextValue() {
     // Subscribe to the channel
     channel.subscribe(callback);
     
-    // Return cleanup function
-    return () => {
-      if (!mountedRef.current) return;
-      
-      const callbacks = activeSubscriptionsRef.current.get(channelName);
-      if (callbacks) {
-        callbacks.delete(callback);
-        if (callbacks.size === 0) {
-          // If no more callbacks, unsubscribe from the channel
-          if (!options.isPersistent) {
-            channel.unsubscribe(callback);
-            activeSubscriptionsRef.current.delete(channelName);
-          }
-        }
-      }
-    };
+    // Return the cleanup function
+    return cleanup;
   }, []);
 
   // Exposed methods

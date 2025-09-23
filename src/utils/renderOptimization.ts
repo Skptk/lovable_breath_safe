@@ -1,5 +1,8 @@
-import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
-import { debounce, throttle } from 'lodash';
+import * as React from 'react';
+import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+// Use require for lodash to avoid type issues
+const debounce = require('lodash/debounce');
+const throttle = require('lodash/throttle');
 
 /**
  * Custom hook to track component renders
@@ -177,34 +180,75 @@ function isEqual(a: any, b: any): boolean {
 /**
  * HOC to log when a component re-renders
  */
-export function withRenderLogging<P>(
+export function withRenderLogging<P extends object>(
   WrappedComponent: React.ComponentType<P>,
   componentName: string
-): React.ComponentType<P> {
+): React.FC<P> {
   // Create a display name for the HOC
   const displayName = `withRenderLogging(${componentName})`;
 
-  // Create the component
-  const WithRenderLogging = (props: P) => {
-    const renderCount = useRef(0);
-    const lastRenderTime = useRef(performance.now());
+  // Create the component with proper typing
+  const WithRenderLogging: React.FC<P> = (props) => {
+    // Use a ref to track render count and timing
+    const renderData = useRef({
+      count: 0,
+      lastRenderTime: performance.now(),
+      mounted: true
+    });
     
-    renderCount.current++;
+    // Track if component is mounted
+    useEffect(() => {
+      renderData.current.mounted = true;
+      return () => {
+        renderData.current.mounted = false;
+      };
+    }, []);
+    
+    // Calculate render timing
     const now = performance.now();
-    const timeSinceLastRender = now - lastRenderTime.current;
-    lastRenderTime.current = now;
+    const renderInfo = renderData.current;
+    const timeSinceLastRender = now - renderInfo.lastRenderTime;
     
-    console.log(
-      `[Render] ${componentName} #${renderCount.current} ` +
-      `(${timeSinceLastRender.toFixed(2)}ms since last render)`,
-      props
-    );
+    // Update render count and time
+    renderInfo.count++;
+    renderInfo.lastRenderTime = now;
     
+    // Log render information
+    if (process.env['NODE_ENV'] === 'development') {
+      // Use requestIdleCallback to avoid blocking the main thread
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(() => {
+          if (renderInfo.mounted) {
+            console.log(
+              `[Render] ${componentName} #${renderInfo.count} ` +
+              `(${timeSinceLastRender.toFixed(2)}ms since last render)`,
+              process.env['NODE_ENV'] === 'development' ? props : '[Props hidden in production]'
+            );
+          }
+        });
+      } else {
+        // Fallback for environments without requestIdleCallback
+        setTimeout(() => {
+          if (renderInfo.mounted) {
+            console.log(
+              `[Render] ${componentName} #${renderInfo.count} ` +
+              `(${timeSinceLastRender.toFixed(2)}ms since last render)`,
+              process.env['NODE_ENV'] === 'development' ? props : '[Props hidden in production]'
+            );
+          }
+        }, 0);
+      }
+    }
+    
+    // Render the wrapped component
     return React.createElement(WrappedComponent, props);
   };
   
+  // Set the display name for better debugging
   WithRenderLogging.displayName = displayName;
-  return WithRenderLogging as React.ComponentType<P>;
+  
+  // Return the enhanced component
+  return WithRenderLogging;
 }
 
 /**
