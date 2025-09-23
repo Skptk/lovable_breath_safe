@@ -46,6 +46,14 @@ export default defineConfig(({ mode }) => ({
     minify: "esbuild",
     brotliSize: false,
     sourcemap: false,
+    esbuild: {
+      keepNames: true,
+      minifyIdentifiers: false,
+      minifySyntax: true,
+      minifyWhitespace: true,
+      legalComments: 'none',
+      target: 'es2020',
+    },
     rollupOptions: {
       output: {
         manualChunks: {

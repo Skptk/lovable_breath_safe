@@ -321,14 +321,36 @@ const PointsGrid: React.FC<{
   );
 };
 
+interface WeatherSectionProps {
+  coordinates: { 
+    latitude: number; 
+    longitude: number; 
+  } | null;
+}
+
 /**
- * Weather section wrapper
+ * Weather section wrapper with proper null checks and typing
  */
-const WeatherSection: React.FC<{ coordinates: { latitude: number; longitude: number } | null }> = ({ coordinates }) => {
-  if (!coordinates) return null;
+const WeatherSection: React.FC<WeatherSectionProps> = ({ 
+  coordinates 
+}) => {
+  // Early return if coordinates are not available
+  if (!coordinates || 
+      typeof coordinates.latitude !== 'number' || 
+      typeof coordinates.longitude !== 'number') {
+    return null;
+  }
+
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut", delay: 0.4 }}>
-      <WeatherStatsCard latitude={coordinates.latitude} longitude={coordinates.longitude} />
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      transition={{ duration: 0.6, ease: "easeOut", delay: 0.4 }}
+    >
+      <WeatherStatsCard 
+        latitude={coordinates.latitude} 
+        longitude={coordinates.longitude} 
+      />
     </motion.div>
   );
 };
@@ -385,10 +407,17 @@ const AirQualityDashboardContent: React.FC<
   // Use permission timeout hook (replaces forceDisplay pattern)
   const permissionTimeoutReached = usePermissionTimeout(hasRequestedPermission, 3000);
 
-  // Memoize coordinates safely
-  const memoizedCoordinates = useMemo(() => {
-    if (!data?.coordinates) return null;
-    return { latitude: data.coordinates.lat, longitude: data.coordinates.lon };
+  // Memoize coordinates with proper typing and null checks
+  const memoizedCoordinates = useMemo<{ latitude: number; longitude: number } | null>(() => {
+    if (!data?.coordinates || 
+        typeof data.coordinates.lat !== 'number' || 
+        typeof data.coordinates.lon !== 'number') {
+      return null;
+    }
+    return { 
+      latitude: Number(data.coordinates.lat), 
+      longitude: Number(data.coordinates.lon) 
+    };
   }, [data?.coordinates?.lat, data?.coordinates?.lon]);
 
   // Request location permission handler

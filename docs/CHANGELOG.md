@@ -2,7 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2025-09-23
+## [Unreleased]
+
+### Fixed
+
+- **Build System**: Fixed ReferenceError in production builds
+  - Updated Vite/ESBuild configuration to prevent identifier mangling
+  - Added `keepNames: true` and disabled `minifyIdentifiers` in ESBuild config
+  - Improved type safety in WeatherStatsCard and WeatherSection components
+  - Added proper null checks and type guards for coordinate handling
+  - Ensured proper variable initialization order to prevent hoisting issues
+
+## [1.0.0] - 2025-09-23
 
 ### Added
 

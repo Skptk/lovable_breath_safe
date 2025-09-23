@@ -28,18 +28,23 @@ interface WeatherStatsCardProps {
 }
 
 // Memoize the component to prevent unnecessary re-renders
-const WeatherStatsCard = React.memo(({ latitude, longitude }: WeatherStatsCardProps): JSX.Element => {
+const WeatherStatsCard = React.memo(({ 
+  latitude, 
+  longitude 
+}: WeatherStatsCardProps): JSX.Element => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Memoize coordinates to prevent unnecessary re-renders
-  const memoizedCoordinates = useMemo(() => ({
-    latitude,
-    longitude
-  }), [latitude, longitude]);
+  // Memoize coordinates with explicit typing and initialization
+  const memoizedCoordinates = useMemo<{ latitude: number; longitude: number }>(() => {
+    return {
+      latitude: Number(latitude) || 0,
+      longitude: Number(longitude) || 0
+    };
+  }, [latitude, longitude]);
 
   // Memoize fetch function to prevent recreation on every render
   const fetchWeatherData = useCallback(async (): Promise<void> => {
