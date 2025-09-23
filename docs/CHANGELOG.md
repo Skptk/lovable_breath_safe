@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2025-09-23
 
 ### Fixed
+- **Achievement System**: Fixed issue where new users were getting all achievements immediately upon registration
+  - Modified achievement initialization to ensure new users start with zero achievements
+  - Updated `check_achievements` function to only unlock achievements after user activity
+  - Added activity checks to prevent premature achievement unlocking
+  - Improved error handling and logging
+  - Added comprehensive documentation for the achievement system
+
 - **Signup Flow**: Resolved foreign key constraint violation during user registration by implementing a proper initialization sequence:
   - Ensured `profiles` record is created before related records (`user_settings`, `user_points`)
   - Restructured the initialization process into clear, sequential steps
