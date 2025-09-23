@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import Footer from "@/components/Footer";
+import { DevToolsWrapper } from "@/components/dev/DevToolsWrapper";
 
 export default function Landing(): JSX.Element {
   const navigate = useNavigate();
@@ -46,7 +47,7 @@ export default function Landing(): JSX.Element {
     {
       icon: MapPin,
       title: "Location Intelligence",
-      description: "Find the cleanest air in your city with our interactive map and location-based recommendations.",
+      description: "Find the cleanest air in your city with my interactive map and location-based recommendations.",
       color: "text-purple-600"
     },
     {
@@ -91,11 +92,17 @@ export default function Landing(): JSX.Element {
   // Show loading while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className={`min-h-screen flex flex-col ${theme}`}>
+        {/* Development Tools - Only in development */}
+        {import.meta.env.DEV && <DevToolsWrapper />}
+        
+        {/* Main content */}
+        <main className="flex-1">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </main>
       </div>
     );
   }
