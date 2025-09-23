@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useAirQuality } from '../hooks/useAirQuality';
-import { useWeatherStore } from '../store/weatherStore';
+import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useGeolocation } from '../hooks/useGeolocation';
-import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
 import { logGeolocation } from '@/lib/logger';
+
+// Import hooks directly instead of lazy loading them
+import { useWeatherStore } from '@/store/weatherStore';
+import { useAuth } from '@/contexts/AuthContext';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
 
 // Refresh lock mechanism for weather backgrounds
 const BACKGROUND_REFRESH_LOCK_KEY = 'breath_safe_background_refresh_lock';
@@ -47,18 +48,14 @@ interface BackgroundManagerProps {
 }
 
 export default function BackgroundManager({ children }: BackgroundManagerProps) {
-  const { data: airQualityData } = useAirQuality();
   const { theme } = useTheme();
-  const { user } = useAuth();
   const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.webp');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasInitialData, setHasInitialData] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
-
-  // Time analysis cache to prevent duplicate logging
-  const timeAnalysisCache = useRef<Record<string, string>>({});
-
-  // Use centralized weather store instead of useWeatherData hook
+  
+  // Use hooks directly
+  const { user } = useAuth() || {};
   const { 
     weatherData: currentWeather, 
     isLoading: weatherLoading, 
@@ -66,8 +63,7 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     fetchWeatherData,
     setCoordinates
   } = useWeatherStore();
-
-  // Use new geolocation hook for proper location handling
+  
   const { 
     locationData, 
     hasUserConsent, 
@@ -75,6 +71,9 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     requestLocation,
     getIPBasedLocationAsync
   } = useGeolocation();
+  
+  // Time analysis cache to prevent duplicate logging
+  const timeAnalysisCache = useRef<Record<string, string>>({});
 
   // Update weather store coordinates when location data changes
   useEffect(() => {
@@ -272,3 +271,4 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     </div>
   );
 }
+

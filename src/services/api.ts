@@ -474,18 +474,44 @@ export class ApiService {
         timestamp: Date.now(),
       };
     }
-  // Generic RPC method
+  },
+
+  /**
+   * Execute a stored procedure on the Supabase server
+   * @param functionName - The name of the stored procedure to call
+   * @param params - Parameters to pass to the stored procedure
+   * @param options - API options (caching, retry, timeout, etc.)
+   * @returns A promise that resolves to the RPC response
+   */
   async rpc<T = any>(
     functionName: string,
     params: Record<string, unknown> = {},
     options: Partial<ApiOptions> = {}
   ): Promise<ApiResponse<T>> {
     const opts = { ...defaultOptions, ...options };
+    const cacheKey = generateCacheKey(`rpc_${functionName}`, JSON.stringify(params), {});
+    
+    // Return cached data if available and valid
+    if (opts.cache) {
+      const cached = getCachedData(cacheKey);
+      if (cached) {
+        return {
+          data: cached as T,
+          error: null,
+          success: true,
+          timestamp: Date.now(),
+        };
+      }
+    }
     
     try {
-      const executeRpc = async (): Promise<{ data: T; error: any }> => {
+      const executeRpc = async (): Promise<{ data: T | null; error: any }> => {
+        const rpcPromise = supabase.rpc(functionName, params);
         const { data, error } = await withTimeout(
-          supabase.rpc(functionName, params) as unknown as Promise<{ data: T; error: any }>,
+          rpcPromise.then(({ data, error }) => ({
+            data: data as T,
+            error
+          })) as Promise<{ data: T; error: any }>,
           opts.timeout
         );
         return { data, error };
@@ -497,8 +523,13 @@ export class ApiService {
 
       if (result.error) throw result.error;
 
+      // Cache the successful response
+      if (opts.cache && result.data) {
+        setCachedData(cacheKey, result.data, opts.cacheTTL);
+      }
+
       return {
-        data: result.data,
+        data: result.data as T,
         error: null,
         success: true,
         timestamp: Date.now(),
