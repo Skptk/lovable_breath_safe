@@ -170,46 +170,6 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
     }
   }, [user?.id, fetchProfile, fetchWithdrawalRequests]);
 
-  // Original fetchProfile function moved above
-  const originalFetchProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          console.warn('User profile not found in database');
-          return;
-        }
-        throw error;
-      }
-      
-      setProfile(data);
-    } catch (error: any) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchWithdrawalRequests = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('withdrawal_requests')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setWithdrawalRequests(data || []);
-    } catch (error: any) {
-      console.error('Error fetching withdrawal requests:', error);
-    }
-  };
-
   const handleInitializeAchievements = async () => {
     try {
       const result = await initializeUserAchievements();
