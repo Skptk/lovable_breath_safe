@@ -9,7 +9,7 @@ import { useAirQuality } from "@/hooks/useAirQuality";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { useRefreshCountdown } from "@/hooks/useRefreshCountdown";
-import { useLocation } from "@/contexts/LocationContext";
+import { useLocationContext } from "@/contexts";
 import { StatCard } from "@/components/ui/StatCard";
 import { RefreshProgressBar } from "@/components/ui/RefreshProgressBar";
 import { getAQIColor, getAQILabel } from "@/config/maps";
@@ -36,7 +36,7 @@ export default function AirQualityDashboard({
   const { data, isRefreshing, isLoading, error, refreshData } = useAirQuality();
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { timeUntilRefresh, manualRefresh: refreshCountdown } = useRefreshCountdown();
-  const { requestLocationPermission, isRequestingPermission, hasUserConsent, hasRequestedPermission } = useLocation();
+  const { requestLocationPermission, isRequestingPermission, hasUserConsent, hasRequestedPermission } = useLocationContext();
   const { toast } = useToast();
   
   const [selectedPollutant, setSelectedPollutant] = useState<{

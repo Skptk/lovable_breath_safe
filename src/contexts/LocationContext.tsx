@@ -228,7 +228,7 @@ export function LocationProvider({ children }: LocationProviderProps) {
   );
 }
 
-export function useLocation(): LocationContextType {
+export function useLocationContext(): LocationContextType {
   const context = useContext(LocationContext);
   if (context === undefined) {
     throw new Error('useLocation must be used within a LocationProvider');
