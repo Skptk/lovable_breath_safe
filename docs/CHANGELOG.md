@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2025-09-23
 
 ### Fixed
+
+- **TypeScript Build**: Resolved TypeScript errors in `withRenderLogging` HOC
+  - Fixed type safety issues in `renderOptimization.ts`
+  - Replaced JSX with `React.createElement` to avoid transformation issues
+  - Added proper display name for better debugging
+  - Improved generic type handling for the HOC component
 - **Achievement System**: Fixed issue where new users were getting all achievements immediately upon registration
   - Modified achievement initialization to ensure new users start with zero achievements
   - Updated `check_achievements` function to only unlock achievements after user activity
