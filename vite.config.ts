@@ -48,7 +48,12 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
+      // Disable tree shaking at Rollup level to prevent initialization issues
+      treeshake: false,
       output: {
+        // Preserve original variable names and structure
+        compact: false,
+        minifyInternalExports: false,
         manualChunks: {
           react: ['react', 'react-dom'],
           router: ['react-router-dom'],
@@ -98,14 +103,20 @@ export default defineConfig(({ mode }) => ({
     esbuild: {
       keepNames: true,
       minifyIdentifiers: false,
-      minifySyntax: true,
+      minifySyntax: false, // Disable syntax minification to prevent hoisting issues
       minifyWhitespace: true,
       legalComments: 'none',
       target: 'esnext',
-      treeShaking: true,
+      treeShaking: false, // Disable tree shaking to prevent initialization order issues
       define: {
         'process.env.NODE_ENV': '"production"'
-      }
+      },
+      // Additional options to prevent variable hoisting issues
+      format: 'esm',
+      platform: 'browser',
+      // Preserve function names and variable declarations
+      drop: [], // Don't drop any statements
+      pure: [], // Don't mark any functions as pure
     }
   }
 }));
