@@ -1,7 +1,10 @@
--- Create a new migration file: 20250923080000_fix_user_signup_constraint_issues.sql
+-- Fix user signup constraints by removing all ON CONFLICT clauses
+-- This is a comprehensive fix that replaces the previous attempts
 
--- Drop the existing trigger and function to ensure a clean slate
+-- Drop the existing trigger if it exists
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+-- Drop the existing function if it exists
 DROP FUNCTION IF EXISTS public.handle_new_user();
 
 -- Create a new, simplified handle_new_user function
@@ -44,7 +47,12 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Update the version table for migration tracking
-INSERT INTO public.schema_migrations (version, description)
-VALUES ('20250923080000', 'Fixed user signup constraint issues by removing ON CONFLICT clauses')
-ON CONFLICT (version) DO NOTHING;
+-- Update the version table for migration tracking if it exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'schema_migrations') THEN
+    INSERT INTO public.schema_migrations (version, description)
+    VALUES ('20250923080920', 'Fixed user signup constraint issues by removing all ON CONFLICT clauses')
+    ON CONFLICT (version) DO NOTHING;
+  END IF;
+END $$;

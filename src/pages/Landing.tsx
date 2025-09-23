@@ -72,8 +72,8 @@ export default function Landing(): JSX.Element {
   const stats = [
     { label: "Active Users", value: "Onboarding", description: "Trusting Breath Safe" },
     { label: "Cities Covered", value: "500+", description: "Worldwide coverage" },
-    { label: "Data Points", value: "1M+", description: "Real-time readings" },
-    { label: "Health Score", value: "95%", description: "User satisfaction" }
+    { label: "Data Source", value: "AQICN", description: "Real-time readings" },
+    { label: "Health Score", value: "Pending", description: "User satisfaction" }
   ];
 
   const handleGetStarted = () => {
