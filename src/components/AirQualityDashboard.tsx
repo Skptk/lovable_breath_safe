@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
@@ -26,18 +26,26 @@ interface AirQualityDashboardProps {
   isDemoMode?: boolean;
 }
 
-export default function AirQualityDashboard({
+// Create a wrapper component to handle the location context separately
+const AirQualityDashboardContent = ({
+  user,
+  locationContext,
   onNavigate,
   showMobileMenu,
   onMobileMenuToggle,
   isDemoMode = false
-}: AirQualityDashboardProps) {
-  const { user } = useAuth();
+}: AirQualityDashboardProps & { user: any, locationContext: any }) => {
   const { data, isRefreshing, isLoading, error, refreshData } = useAirQuality();
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { timeUntilRefresh, manualRefresh: refreshCountdown } = useRefreshCountdown();
-  const { requestLocationPermission, isRequestingPermission, hasUserConsent, hasRequestedPermission } = useLocationContext();
   const { toast } = useToast();
+  
+  const { 
+    hasUserConsent = false, 
+    hasRequestedPermission = false, 
+    isRequestingPermission = false,
+    requestLocationPermission 
+  } = locationContext || {};
   
   const [selectedPollutant, setSelectedPollutant] = useState<{
     name: string;
@@ -600,3 +608,27 @@ export default function AirQualityDashboard({
     </div>
   );
 }
+
+// Main component that handles the location context
+const AirQualityDashboard = ({
+  onNavigate,
+  showMobileMenu,
+  onMobileMenuToggle,
+  isDemoMode = false
+}: AirQualityDashboardProps) => {
+  const { user } = useAuth();
+  const locationContext = useLocationContext();
+  
+  return (
+    <AirQualityDashboardContent 
+      user={user}
+      locationContext={locationContext}
+      onNavigate={onNavigate}
+      showMobileMenu={showMobileMenu}
+      onMobileMenuToggle={onMobileMenuToggle}
+      isDemoMode={isDemoMode}
+    />
+  );
+};
+
+export default AirQualityDashboard;
