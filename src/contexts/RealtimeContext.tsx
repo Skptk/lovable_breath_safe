@@ -1,13 +1,20 @@
-import React, { createContext, useContext, useEffect, useRef, useCallback, useState } from 'react';
+import React, { 
+  createContext, 
+  useContext, 
+  useEffect, 
+  useRef, 
+  useState, 
+  useCallback,
+  useMemo
+} from 'react';
 import { useAuth } from './AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { 
-  subscribeToChannel,
-  unsubscribeFromChannel,
   cleanupAllChannels,
-  addConnectionStatusListener
+  addConnectionStatusListener,
+  realtimeManager
 } from '@/lib/realtimeClient';
+import { useThrottle } from '@/hooks/usePerformance';
 
 interface RealtimeContextType {
   connectionStatus: 'connected' | 'reconnecting' | 'disconnected';
@@ -23,94 +30,158 @@ interface RealtimeProviderProps {
   children: React.ReactNode;
 }
 
-export function RealtimeProvider({ children }: RealtimeProviderProps) {
+// Throttle time for connection status updates to prevent excessive re-renders
+const STATUS_UPDATE_THROTTLE_MS = 1000;
+
+// Memoize the context value to prevent unnecessary re-renders
+function useRealtimeContextValue() {
   const { user } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
   
-  // Track active subscriptions to prevent duplicates
-  const activeSubscriptions = useRef<Set<string>>(new Set());
-  const statusListenerCleanup = useRef<(() => void) | null>(null);
+  // Use refs to track state without causing re-renders
+  const activeSubscriptionsRef = useRef<Map<string, Set<Function>>>(new Map());
+  const statusListenerCleanupRef = useRef<(() => void) | null>(null);
   const mountedRef = useRef(true);
+  const managerRef = useRef(realtimeManager);
   
-  // Persistent channel management - keep core channels alive during navigation
-  const persistentChannels = useRef<Set<string>>(new Set());
-  const channelCleanupQueue = useRef<Set<string>>(new Set());
-
-  // Core channels that should persist across navigation
-  const CORE_CHANNELS = [
-    'user-notifications',
-    'user-points-inserts'
-  ];
-
-  // Page-specific channels that can be dynamic
-  const PAGE_SPECIFIC_CHANNELS = [
-    'user-profile-points'
-  ];
-
-  // Initialize persistent channels when user logs in (with debouncing)
-  useEffect(() => {
-    if (user && mountedRef.current) {
-      // Debounce channel initialization to prevent rapid re-initialization
-      const timeoutId = setTimeout(() => {
-        if (user && mountedRef.current) {
-          console.log('🔄 [RealtimeContext] User logged in, initializing persistent channels');
-          
-          // Initialize core persistent channels only if not already initialized
-          CORE_CHANNELS.forEach(channelType => {
-            const channelName = `${channelType}-${user.id}`;
-            if (!persistentChannels.current.has(channelName)) {
-              persistentChannels.current.add(channelName);
-              console.log(`🔗 [RealtimeContext] Added persistent channel: ${channelName}`);
-            }
-          });
-        }
-      }, 500); // 500ms debounce
-      
-      return () => clearTimeout(timeoutId);
+  // Throttle the connection status updates
+  const throttledSetConnectionStatus = useThrottle((status: 'connected' | 'reconnecting' | 'disconnected') => {
+    if (mountedRef.current) {
+      setConnectionStatus(status);
     }
-  }, [user?.id]); // Only depend on user ID to prevent unnecessary re-runs
+  }, STATUS_UPDATE_THROTTLE_MS);
+
+  // Cleanup function for the effect
+  const cleanup = useCallback(() => {
+    if (statusListenerCleanupRef.current) {
+      statusListenerCleanupRef.current();
+      statusListenerCleanupRef.current = null;
+    }
+    
+    // Clean up all subscriptions when unmounting
+    activeSubscriptionsRef.current.forEach((callbacks, channelName) => {
+      callbacks.forEach(callback => {
+        managerRef.current.unsubscribe(channelName, callback);
+      });
+    });
+    
+    activeSubscriptionsRef.current.clear();
+  }, []);
 
   // Set up connection status listener
   useEffect(() => {
-    if (!mountedRef.current) return;
-
-    if (statusListenerCleanup.current) {
-      statusListenerCleanup.current();
+    mountedRef.current = true;
+    
+    // Clean up any existing listeners
+    if (statusListenerCleanupRef.current) {
+      statusListenerCleanupRef.current();
     }
-
-    statusListenerCleanup.current = addConnectionStatusListener((status) => {
+    
+    // Set up new status listener
+    statusListenerCleanupRef.current = addConnectionStatusListener((status) => {
       if (mountedRef.current) {
-        setConnectionStatus(status);
+        throttledSetConnectionStatus(status);
       }
     });
-
+    
     return () => {
-      if (statusListenerCleanup.current) {
-        statusListenerCleanup.current();
-        statusListenerCleanup.current = null;
+      mountedRef.current = false;
+      cleanup();
+    };
+  }, [cleanup, throttledSetConnectionStatus]);
+
+  // Subscribe to a channel with automatic cleanup
+  const subscribe = useCallback((
+    channelName: string, 
+    callback: (payload: any) => void,
+    options: { isPersistent?: boolean } = {}
+  ) => {
+    if (!mountedRef.current) return () => {};
+    
+    const channel = managerRef.current.getChannel(channelName);
+    if (!channel) {
+      console.warn(`[RealtimeContext] Channel ${channelName} not found`);
+      return () => {};
+    }
+    
+    // Track the subscription
+    if (!activeSubscriptionsRef.current.has(channelName)) {
+      activeSubscriptionsRef.current.set(channelName, new Set());
+    }
+    
+    const callbacks = activeSubscriptionsRef.current.get(channelName)!;
+    callbacks.add(callback);
+    
+    // Subscribe to the channel
+    channel.subscribe(callback);
+    
+    // Return cleanup function
+    return () => {
+      if (!mountedRef.current) return;
+      
+      const callbacks = activeSubscriptionsRef.current.get(channelName);
+      if (callbacks) {
+        callbacks.delete(callback);
+        if (callbacks.size === 0) {
+          // If no more callbacks, unsubscribe from the channel
+          if (!options.isPersistent) {
+            channel.unsubscribe(callback);
+            activeSubscriptionsRef.current.delete(channelName);
+          }
+        }
       }
     };
   }, []);
 
-  // Clean up all channels when user signs out
-  useEffect(() => {
-    if (!mountedRef.current) return;
+  // Exposed methods
+  const contextValue = useMemo(() => ({
+    connectionStatus,
+    isConnected: connectionStatus === 'connected',
+    subscribeToNotifications: (callback: (payload: any) => void) => 
+      subscribe(`user-notifications-${user?.id}`, callback, { isPersistent: true }),
+    subscribeToUserPoints: (callback: (payload: any) => void) => 
+      subscribe(`user-points-${user?.id}`, callback, { isPersistent: true }),
+    subscribeToUserProfilePoints: (callback: (payload: any) => void) => 
+      subscribe(`user-profile-points-${user?.id}`, callback, { isPersistent: false }),
+  }), [connectionStatus, subscribe, user?.id]);
+  
+  return contextValue;
+}
 
-    if (!user) {
-      console.log('🔄 User signed out, cleaning up all realtime channels...');
-      cleanupAllChannels();
-      activeSubscriptions.current.clear();
-      persistentChannels.current.clear();
-      channelCleanupQueue.current.clear();
-    }
-  }, [user]);
-
-  // Cleanup on unmount
+export function RealtimeProvider({ children }: RealtimeProviderProps) {
+  const contextValue = useRealtimeContextValue();
+  
+  // Clean up on unmount
   useEffect(() => {
     return () => {
-      mountedRef.current = false;
-      if (statusListenerCleanup.current) {
-        statusListenerCleanup.current();
+      // Clean up all channels when the provider unmounts
+      cleanupAllChannels();
+    };
+  }, []);
+  
+  return (
+    <RealtimeContext.Provider value={contextValue}>
+      {children}
+    </RealtimeContext.Provider>
+  );
+}
+
+export function useRealtime() {
+  const context = useContext(RealtimeContext);
+  if (context === undefined) {
+    throw new Error('useRealtime must be used within a RealtimeProvider');
+  }
+  return context;
+}
+
+// Cleanup on unmount
+useEffect(() => {
+  return () => {
+    mountedRef.current = false;
+    if (statusListenerCleanupRef.current) {
+      statusListenerCleanupRef.current();
+    }
+    cleanupAllChannels();
       }
       cleanupAllChannels();
     };
