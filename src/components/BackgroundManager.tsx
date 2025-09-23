@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { logGeolocation } from '@/lib/logger';
 
@@ -47,14 +47,19 @@ interface BackgroundManagerProps {
   children: React.ReactNode;
 }
 
-export default function BackgroundManager({ children }: BackgroundManagerProps) {
-  const { theme } = useTheme();
+/**
+ * BackgroundManager component that handles dynamic background changes based on weather and time.
+ * Manages weather data fetching, background transitions, and error states.
+ */
+const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ children }) => {
+  // State
   const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.webp');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasInitialData, setHasInitialData] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
   
-  // Use hooks directly
+  // Hooks - all at the top level
+  const { theme } = useTheme();
   const { user } = useAuth() || {};
   const { 
     weatherData: currentWeather, 
@@ -72,13 +77,31 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
     getIPBasedLocationAsync
   } = useGeolocation();
   
+  // Refs for tracking state without causing re-renders
+  const isMountedRef = useRef(true);
+  const initialLoadRef = useRef(true);
+  
   // Time analysis cache to prevent duplicate logging
   const timeAnalysisCache = useRef<Record<string, string>>({});
 
+  // Cleanup function for component unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Update weather store coordinates when location data changes
   useEffect(() => {
+    if (!isMountedRef.current) return;
+    
     if (locationData && !hasInitialData) {
-      logGeolocation.debug('Location data updated, setting coordinates', { city: locationData.city, country: locationData.country });
+      logGeolocation.debug('Location data updated, setting coordinates', { 
+        city: locationData.city, 
+        country: locationData.country 
+      });
+      
+      // Only update coordinates if they've changed
       setCoordinates({ 
         latitude: locationData.latitude, 
         longitude: locationData.longitude 
@@ -88,57 +111,75 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
 
   // Implement immediate fetch on login and progressive loading
   useEffect(() => {
-    if (user && !hasInitialData && locationData) {
+    if (!isMountedRef.current) return;
+    
+    const fetchWeather = async () => {
+      if (!user || !locationData) return;
+      
       logGeolocation.info('User authenticated, fetching initial weather data');
       setBackgroundState('loading');
       
-      // Set a flag to indicate we have initial data
-      setHasInitialData(true);
-      
-      // Fetch initial weather data using centralized store
-      const fetchInitialWeather = async () => {
-        try {
-          await fetchWeatherData({ 
-            latitude: locationData.latitude, 
-            longitude: locationData.longitude 
-          });
+      try {
+        await fetchWeatherData({ 
+          latitude: locationData.latitude, 
+          longitude: locationData.longitude 
+        });
+        
+        if (isMountedRef.current) {
           logGeolocation.info('Initial weather data fetched successfully');
           setBackgroundState('success');
-        } catch (error) {
-          logGeolocation.warn('Initial weather data failed, using fallback');
-          setBackgroundState('error');
+          setHasInitialData(true);
         }
-      };
-      
-      fetchInitialWeather();
+      } catch (error) {
+        if (isMountedRef.current) {
+          logGeolocation.warn('Initial weather data failed, using fallback', { error });
+          setBackgroundState('error');
+          setHasInitialData(true);
+        }
+      }
+    };
+    
+    // Only fetch if we haven't loaded data yet
+    if (!hasInitialData) {
+      fetchWeather();
     }
-  }, [user, hasInitialData, locationData?.latitude, locationData?.longitude, fetchWeatherData]);
+    
+    // Cleanup function
+    return () => {
+      // Any cleanup if needed
+    };
+  }, [user, hasInitialData, locationData, fetchWeatherData]);
 
   // Update background state based on weather loading status
   useEffect(() => {
-    if (weatherLoading) {
+    if (!isMountedRef.current) return;
+    
+    // Only update state if it's actually changing
+    if (weatherLoading && backgroundState !== 'loading') {
       setBackgroundState('loading');
-    } else if (weatherError) {
+    } else if (weatherError && backgroundState !== 'error') {
+      console.warn('Weather data error:', weatherError);
       setBackgroundState('error');
-    } else if (currentWeather) {
+    } else if (currentWeather && backgroundState !== 'success') {
       setBackgroundState('success');
     }
-  }, [weatherLoading, weatherError, currentWeather]);
+  }, [weatherLoading, weatherError, currentWeather, backgroundState]);
 
   // Determine the appropriate background image based on weather and time
   const targetBackground = useMemo(() => {
-    // Wait for WeatherStore to complete loading before making decisions
-    if (weatherLoading) {
-      console.log('BackgroundManager: WeatherStore still loading, using default background');
-      return '/weather-backgrounds/partly-cloudy.webp';
+    // Default fallback background
+    const defaultBackground = '/weather-backgrounds/partly-cloudy.webp';
+    
+    // If we're still loading or have an error, use the default background
+    if (weatherLoading || weatherError) {
+      console.log(`BackgroundManager: ${weatherLoading ? 'Loading' : 'Error'}, using default background`);
+      return defaultBackground;
     }
     
+    // If we don't have weather data, use the default background
     if (!currentWeather) {
-      // Only log "no weather data" if we're not loading and truly have no data
-      if (!weatherLoading) {
-        console.log('BackgroundManager: No weather data available after loading completed, using default background');
-      }
-      return '/weather-backgrounds/partly-cloudy.webp';
+      console.log('BackgroundManager: No weather data available, using default background');
+      return defaultBackground;
     }
 
     // Check if background refresh is locked to prevent duplicate updates
@@ -201,6 +242,9 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
 
   // Update background when target changes
   useEffect(() => {
+    if (!isMountedRef.current || !targetBackground) return;
+    
+    // Only update if the background is actually changing
     if (targetBackground !== currentBackground) {
       console.log('BackgroundManager: Changing background from', currentBackground, 'to', targetBackground);
       
@@ -211,29 +255,47 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
       setIsTransitioning(true);
       
       // Change background after transition starts
-      setTimeout(() => {
-        setCurrentBackground(targetBackground);
-        setIsTransitioning(false);
+      const transitionTimer = setTimeout(() => {
+        if (isMountedRef.current) {
+          setCurrentBackground(targetBackground);
+          setIsTransitioning(false);
+        }
       }, 250); // Half of transition duration
+      
+      // Cleanup function to clear the timeout if the component unmounts
+      return () => {
+        clearTimeout(transitionTimer);
+      };
     }
   }, [targetBackground, currentBackground]);
 
   // Get overlay opacity based on theme
   const overlayOpacity = theme === 'light' ? '0.2' : '0.4';
 
-  // Get background based on state
-  const getBackgroundForState = () => {
-    switch (backgroundState) {
-      case 'loading':
-        return '/weather-backgrounds/partly-cloudy.webp'; // Default while loading
-      case 'error':
-        return '/weather-backgrounds/overcast.webp'; // Fallback for errors
-      case 'success':
-        return currentBackground; // Weather-based background
-      default:
-        return '/weather-backgrounds/partly-cloudy.webp';
+  // Get background based on state with fallbacks
+  const getBackgroundForState = useCallback((): string => {
+    const defaultBg = '/weather-backgrounds/partly-cloudy.webp';
+    
+    try {
+      switch (backgroundState) {
+        case 'loading':
+          return defaultBg; // Default while loading
+          
+        case 'error':
+          return '/weather-backgrounds/overcast.webp'; // Fallback for errors
+          
+        case 'success':
+          // Ensure we have a valid background before returning it
+          return currentBackground || defaultBg;
+          
+        default:
+          return defaultBg;
+      }
+    } catch (error) {
+      console.error('Error getting background for state:', error);
+      return defaultBg;
     }
-  };
+  }, [backgroundState, currentBackground]);
 
   return (
     <div className="relative min-h-screen">
@@ -270,5 +332,6 @@ export default function BackgroundManager({ children }: BackgroundManagerProps) 
       </div>
     </div>
   );
-}
+});
 
+export default BackgroundManager;
