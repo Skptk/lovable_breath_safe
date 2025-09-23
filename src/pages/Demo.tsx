@@ -7,7 +7,11 @@ import BackgroundManager from "@/components/BackgroundManager";
 import Footer from "@/components/Footer";
 
 // Lazy load only the components needed for demo mode
-const AirQualityDashboard = lazy(() => import("@/components/AirQualityDashboard"));
+const AirQualityDashboard = lazy(() => 
+  import("@/components/AirQualityDashboard").then(module => ({
+    default: module.AirQualityDashboard
+  }))
+);
 const WeatherStats = lazy(() => import("@/components/WeatherStats"));
 
 // Loading skeleton for lazy components

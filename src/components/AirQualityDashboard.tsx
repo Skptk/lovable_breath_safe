@@ -34,7 +34,7 @@ const AirQualityDashboardContent = ({
   showMobileMenu,
   onMobileMenuToggle,
   isDemoMode = false
-}: AirQualityDashboardProps & { user: any, locationContext: any }) => {
+}: AirQualityDashboardProps & { user: any; locationContext: any }) => {
   const { data, isRefreshing, isLoading, error, refreshData } = useAirQuality();
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { timeUntilRefresh, manualRefresh: refreshCountdown } = useRefreshCountdown();
@@ -610,7 +610,7 @@ const AirQualityDashboardContent = ({
 }
 
 // Main component that handles the location context
-const AirQualityDashboard = ({
+export const AirQualityDashboard = ({
   onNavigate,
   showMobileMenu,
   onMobileMenuToggle,
@@ -631,4 +631,5 @@ const AirQualityDashboard = ({
   );
 };
 
+// Default export for backward compatibility
 export default AirQualityDashboard;

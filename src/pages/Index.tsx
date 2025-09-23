@@ -10,7 +10,11 @@ import { cleanupAllChannels } from "@/lib/realtimeClient";
 import { logNavigation } from "@/lib/logger";
 
 // Lazy load heavy components
-const AirQualityDashboard = lazy(() => import("@/components/AirQualityDashboard"));
+const AirQualityDashboard = lazy(() => 
+  import("@/components/AirQualityDashboard").then(module => ({
+    default: module.AirQualityDashboard
+  }))
+);
 const HistoryView = lazy(() => import("@/components/HistoryView"));
 const WeatherStats = lazy(() => import("@/components/WeatherStats"));
 const ProfileView = lazy(() => import("@/components/ProfileView"));

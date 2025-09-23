@@ -1,5 +1,5 @@
 // Main Components
-export { default as AirQualityDashboard } from './AirQualityDashboard';
+export { AirQualityDashboard } from './AirQualityDashboard';
 export { default as ProfileView } from './ProfileView';
 export { default as HistoryView } from './HistoryView';
 export { default as Navigation } from './Navigation';

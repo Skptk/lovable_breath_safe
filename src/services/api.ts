@@ -1,5 +1,4 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { useAppStore } from '@/store';
 import { Database } from '@/types/supabase';
 
 // Create a typed Supabase client
@@ -252,39 +251,40 @@ export class ApiService {
     return ApiService.instance;
   }
 
-  // Generic query method with proper TypeScript types
-  async query<T = any, TTable extends ExtendedTableName = ExtendedTableName>(
+  /**
+   * Generic query method with proper TypeScript types
+   */
+  async query<T = any, TTable extends ExtendedTableName = any>(
     table: TTable,
     query: string = '*',
     filters: Partial<TableRow<TTable>> = {},
     options: Partial<ApiOptions> = {}
   ): Promise<ApiResponse<T>> {
     const opts = { ...defaultOptions, ...options };
-    const cacheKey = generateCacheKey(table as string, query, filters);
+    const cacheKey = generateCacheKey(String(table), query, filters);
     
-    try {
-      // Check cache first
-      if (opts.cache && isCacheValid(cacheKey)) {
+    // Return cached data if available and valid
+    if (opts.cache) {
+      const cached = getCachedData(cacheKey);
+      if (cached) {
         return {
-          data: getCachedData(cacheKey),
+          data: cached as T,
           error: null,
           success: true,
           timestamp: Date.now(),
         };
       }
+    }
 
-      // Execute query with retry logic
+    try {
       const executeQuery = async (): Promise<T> => {
         const { data, error } = await withTimeout(
-          (async () => {
-            const { data: result, error: queryError } = await supabase
-              .from(table as string)
-              .select(query)
-              .match(filters as any);
-            return { data: result, error: queryError };
-          })(),
+          supabase.from(String(table)).select(query).match(filters as any).then(res => ({
+            data: res.data,
+            error: res.error
+          })),
           opts.timeout
-        ) as { data: T; error: any };
+        );
 
         if (error) throw error;
         return data as T;
@@ -294,7 +294,7 @@ export class ApiService {
         ? await retryWithDelay(executeQuery, opts.retryCount, opts.retryDelay)
         : await executeQuery();
 
-      // Cache the result
+      // Cache the result if caching is enabled
       if (opts.cache) {
         setCachedData(cacheKey, result, opts.cacheTTL);
       }
@@ -307,9 +307,7 @@ export class ApiService {
       };
     } catch (error: any) {
       const errorMessage = error?.message || 'Unknown error occurred';
-      
-      // Log error for debugging
-      console.error(`API Error in ${String(table)}:`, error);
+      console.error(`API Query Error in ${String(table)}:`, error);
       
       return {
         data: null,
@@ -320,8 +318,10 @@ export class ApiService {
     }
   }
 
-  // Generic insert method
-  async insert<T = any, TTable extends ExtendedTableName = ExtendedTableName>(
+  /**
+   * Generic insert method
+   */
+  async insert<T = any, TTable extends ExtendedTableName = any>(
     table: TTable,
     data: TableInsert<TTable> | TableInsert<TTable>[],
     options: Partial<ApiOptions> = {}
@@ -330,16 +330,17 @@ export class ApiService {
     
     try {
       const executeInsert = async (): Promise<T> => {
+        const query = Array.isArray(data)
+          ? supabase.from(String(table)).insert(data as any[])
+          : supabase.from(String(table)).insert(data as any).select();
+        
         const { data: result, error } = await withTimeout(
-          (async () => {
-            const { data: insertData, error: insertError } = await supabase
-              .from(table as string)
-              .insert(data as any)
-              .select();
-            return { data: insertData, error: insertError };
-          })(),
+          query.then((res: any) => ({
+            data: res.data,
+            error: res.error
+          })),
           opts.timeout
-        ) as { data: T; error: any };
+        );
 
         if (error) throw error;
         return result as T;
@@ -350,7 +351,7 @@ export class ApiService {
         : await executeInsert();
 
       // Invalidate cache for this table
-      invalidateCacheForTable(table as string);
+      invalidateCacheForTable(String(table));
 
       return {
         data: result,
@@ -371,8 +372,10 @@ export class ApiService {
     }
   }
 
-  // Generic update method
-  async update<T = any, TTable extends ExtendedTableName = ExtendedTableName>(
+  /**
+   * Generic update method
+   */
+  async update<T = any, TTable extends ExtendedTableName = any>(
     table: TTable,
     data: TableUpdate<TTable>,
     filters: Partial<TableRow<TTable>>,
@@ -383,16 +386,13 @@ export class ApiService {
     try {
       const executeUpdate = async (): Promise<T> => {
         const { data: result, error } = await withTimeout(
-          (async () => {
-            const { data: updateData, error: updateError } = await supabase
-              .from(table as string)
-              .update(data as any)
-              .match(filters as any)
-              .select();
-            return { data: updateData, error: updateError };
-          })(),
+          supabase.from(String(table)).update(data as any).match(filters as any).select()
+            .then((res: any) => ({
+              data: res.data,
+              error: res.error
+            })),
           opts.timeout
-        ) as { data: T; error: any };
+        );
 
         if (error) throw error;
         return result as T;
@@ -403,7 +403,7 @@ export class ApiService {
         : await executeUpdate();
 
       // Invalidate cache for this table
-      invalidateCacheForTable(table as string);
+      invalidateCacheForTable(String(table));
 
       return {
         data: result,
@@ -424,8 +424,10 @@ export class ApiService {
     }
   }
 
-  // Generic delete method
-  async delete<T = any, TTable extends ExtendedTableName = ExtendedTableName>(
+  /**
+   * Generic delete method
+   */
+  async delete<T = any, TTable extends ExtendedTableName = any>(
     table: TTable,
     filters: Partial<TableRow<TTable>>,
     options: Partial<ApiOptions> = {}
@@ -435,16 +437,13 @@ export class ApiService {
     try {
       const executeDelete = async (): Promise<T> => {
         const { data, error } = await withTimeout(
-          (async () => {
-            const { data: deleteData, error: deleteError } = await supabase
-              .from(table as string)
-              .delete()
-              .match(filters as any)
-              .select();
-            return { data: deleteData, error: deleteError };
-          })(),
+          supabase.from(String(table)).delete().match(filters as any).select()
+            .then((res: any) => ({
+              data: res.data,
+              error: res.error
+            })),
           opts.timeout
-        ) as { data: T; error: any };
+        );
 
         if (error) throw error;
         return data as T;
@@ -455,7 +454,7 @@ export class ApiService {
         : await executeDelete();
 
       // Invalidate cache for this table
-      invalidateCacheForTable(table as string);
+      invalidateCacheForTable(String(table));
 
       return {
         data: result,
@@ -474,7 +473,7 @@ export class ApiService {
         timestamp: Date.now(),
       };
     }
-  },
+  }
 
   /**
    * Execute a stored procedure on the Supabase server
@@ -503,33 +502,33 @@ export class ApiService {
         };
       }
     }
-    
+
     try {
       const executeRpc = async (): Promise<{ data: T | null; error: any }> => {
-        const rpcPromise = supabase.rpc(functionName, params);
         const { data, error } = await withTimeout(
-          rpcPromise.then(({ data, error }) => ({
-            data: data as T,
-            error
-          })) as Promise<{ data: T; error: any }>,
+          supabase.rpc(functionName, params).then((res: any) => ({
+            data: res.data,
+            error: res.error
+          })),
           opts.timeout
         );
+
         return { data, error };
       };
 
-      const result = await (opts.retry
-        ? retryWithDelay(executeRpc, opts.retryCount, opts.retryDelay)
-        : executeRpc());
+      const { data, error } = opts.retry
+        ? await retryWithDelay(executeRpc, opts.retryCount, opts.retryDelay)
+        : await executeRpc();
 
-      if (result.error) throw result.error;
+      if (error) throw error;
 
-      // Cache the successful response
-      if (opts.cache && result.data) {
-        setCachedData(cacheKey, result.data, opts.cacheTTL);
+      // Cache the result if caching is enabled
+      if (opts.cache && data) {
+        setCachedData(cacheKey, data, opts.cacheTTL);
       }
 
       return {
-        data: result.data as T,
+        data: data as T,
         error: null,
         success: true,
         timestamp: Date.now(),
@@ -548,7 +547,10 @@ export class ApiService {
   }
 }
 
-// ... (rest of the code remains the same)
+// Export a singleton instance of the API service
+const apiService = ApiService.getInstance();
+
+export default apiService;
 
 // Hook for using API service
 export const useApiService = () => {
@@ -559,50 +561,59 @@ export const useApiService = () => {
 export const airQualityApi = {
   // Get user's air quality readings
   getUserReadings: (userId: string, options?: Partial<ApiOptions>) => {
-    return ApiService.getInstance().query('air_quality_readings', '*', { user_id: userId }, options);
+    const api = ApiService.getInstance();
+    return api.query('air_quality_readings', '*', { user_id: userId }, options);
   },
   
   // Insert new reading
   insertReading: (reading: TableInsert<'air_quality_readings'>, options?: Partial<ApiOptions>) => {
-    return ApiService.getInstance().insert('air_quality_readings', reading, options);
+    const api = ApiService.getInstance();
+    return api.insert('air_quality_readings', reading, options);
   },
   
   // Delete user's readings
   deleteUserReadings: (userId: string, options?: Partial<ApiOptions>) => {
-    return ApiService.getInstance().delete('air_quality_readings', { user_id: userId }, options);
+    const api = ApiService.getInstance();
+    return api.delete('air_quality_readings', { user_id: userId }, options);
   },
 };
 
 export const userApi = {
   // Get user profile
   getProfile: (userId: string, options?: Partial<ApiOptions>) => {
-    return ApiService.getInstance().query('profiles', '*', { id: userId }, options);
+    const api = ApiService.getInstance();
+    return api.query('profiles', '*', { id: userId }, options);
   },
   
   // Update user profile
   updateProfile: (userId: string, data: Partial<TableUpdate<'profiles'>>, options?: Partial<ApiOptions>) => {
-    return ApiService.getInstance().update('profiles', data, { id: userId }, options);
+    const api = ApiService.getInstance();
+    return api.update('profiles', data, { id: userId }, options);
   },
   
   // Get user achievements
   getAchievements: (userId: string, options?: Partial<ApiOptions>) => {
-    return ApiService.getInstance().query('user_achievements', '*', { user_id: userId }, options);
+    const api = ApiService.getInstance();
+    return api.query('user_achievements', '*', { user_id: userId }, options);
   },
   
   // Get user streaks
   getStreaks: (userId: string, options?: Partial<ApiOptions>) => {
-    return ApiService.getInstance().query('user_streaks', '*', { user_id: userId }, options);
+    const api = ApiService.getInstance();
+    return api.query('user_streaks', '*', { user_id: userId }, options);
   },
 };
 
 export const withdrawalApi = {
   // Get user withdrawal requests
   getUserRequests: (userId: string, options?: Partial<ApiOptions>) => {
-    return ApiService.getInstance().query('withdrawal_requests', '*', { user_id: userId }, options);
+    const api = ApiService.getInstance();
+    return api.query('withdrawal_requests', '*', { user_id: userId }, options);
   },
   
   // Create withdrawal request
   createRequest: (data: TableInsert<'withdrawal_requests'>, options?: Partial<ApiOptions>) => {
-    return ApiService.getInstance().insert('withdrawal_requests', data, options);
+    const api = ApiService.getInstance();
+    return api.insert('withdrawal_requests', data, options);
   },
 };
