@@ -4,14 +4,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useGeolocation } from './useGeolocation';
 import { useToast } from './use-toast';
+import { memoryMonitor } from '@/utils/memoryMonitor';
+import { memoize } from '@/utils/dataProcessing';
 
-// Validation cache constants
-const VALIDATION_CACHE_KEY = 'airquality_validation_cache';
-const VALIDATION_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-// Refresh lock constants
-const REFRESH_LOCK_KEY = 'airquality_refresh_lock';
-const REFRESH_LOCK_DURATION = 30 * 1000; // 30 seconds
+// Cache configuration
+const CACHE_CONFIG = {
+  VALIDATION: {
+    KEY: 'airquality_validation_cache',
+    TTL: 5 * 60 * 1000, // 5 minutes
+  },
+  REFRESH: {
+    LOCK_KEY: 'airquality_refresh_lock',
+    LOCK_DURATION: 30 * 1000, // 30 seconds
+  },
+  MEMORY: {
+    MAX_READINGS: 1000, // Maximum readings to keep in memory
+    CHUNK_SIZE: 100,    // Process readings in chunks of 100
+  },
+};
 
 // Enhanced interface for AQICN-only air quality data
 export interface AirQualityData {
@@ -71,7 +81,10 @@ export const useAirQuality = () => {
   }, [locationData?.latitude, locationData?.longitude]);
 
   // Stale data retention: keep last valid data if fetch fails
-  const [staleData, setStaleData] = useState<AirQualityData | null>(null);
+  const [readings, setReadings] = useState<AirQualityData[]>([]);
+  const readingsRef = useRef<AirQualityData[]>([]);
+  const processingQueue = useRef<AirQualityData[]>([]);
+  const isProcessing = useRef(false);
 
   // AQICN-only API fetch with enhanced station discovery
   const aqicnQuery = useQuery({
@@ -245,47 +258,31 @@ export const useAirQuality = () => {
     retryDelay: 1000,
   });
 
-
-  // Stale data retention: update staleData only if new data is valid and different
+  // Effect to fetch data when location changes (debounced)
   useEffect(() => {
-    const data = aqicnQuery.data;
-    if (data && !data.error) {
-      // Only update if data is valid and different
-      if (
-        !staleData ||
-        JSON.stringify({ ...staleData, timestamp: undefined }) !== JSON.stringify({ ...data, timestamp: undefined })
-      ) {
-        setStaleData(data);
-      }
-    }
-    // If data is error, do not update staleData
-  }, [aqicnQuery.data]);
+    if (!locationData?.loaded || !locationData?.coordinates) return;
+    
+    const { latitude, longitude } = locationData.coordinates;
+    
+    // Debounce the fetch to avoid too many requests
+    const timer = setTimeout(() => {
+      fetchAirQualityData(latitude, longitude);
+    }, 500); // 500ms debounce
+    
+    return () => clearTimeout(timer);
+  }, [locationData, fetchAirQualityData]);
 
-  // Improved fallback logic:
-  // - If there is no valid data (staleData is null), always show the latest (even if error)
-  // - If there is valid staleData, and the new data is error, show staleData
-  // - If there is valid staleData, and the new data is valid, show new data
-  const finalData = useMemo(() => {
-    const data = aqicnQuery.data;
-    if (!data && !staleData) return null; // No data at all
-    if (!data && staleData) return staleData;
-    if (data && !data.error) {
-      return {
-        ...data,
-        timestamp: data.timestamp || new Date().toISOString()
-      };
-    }
-    // data is error
-    if (staleData) return staleData;
-    // No valid data ever, show error
-    return data;
-  }, [aqicnQuery.data, staleData]);
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      // Clear any pending processing
+      processingQueue.current = [];
+      readingsRef.current = [];
+    };
+  }, []);
 
-  const isLoading = aqicnQuery.isLoading;
-  const error = aqicnQuery.error;
-
-  // Enhanced refresh function for global AQICN data
-  const refreshData = useCallback(async () => {
+  // Memoized function to fetch air quality data with caching
+  const fetchAirQualityData = useMemo(() => memoize(async (lat: number, lng: number) => {
     console.log('🔄 [useAirQuality] Manual refresh requested - will discover nearest stations globally');
 
     try {
@@ -303,17 +300,46 @@ export const useAirQuality = () => {
         variant: "destructive",
       });
     }
-  }, [aqicnQuery, toast]);
+  }, {
+    maxSize: 100, // Cache up to 100 locations
+    ttl: 5 * 60 * 1000, // 5 minutes cache
+    cacheKey: (args) => `airquality_${args[0].toFixed(4)}_${args[1].toFixed(4)}`
+  }), [user, toast]);
 
-  return {
-    data: finalData,
-    isLoading,
-    error,
-    refreshData,
-    isRefreshing: aqicnQuery.isRefetching,
-    lastUpdated: finalData?.timestamp,
-    dataSource: finalData?.dataSource || 'Unknown',
-    coordinates: finalData?.coordinates,
-    userCoordinates: finalData?.userCoordinates
-  };
+  // Memoize the result to prevent unnecessary re-renders
+  const result = useMemo(() => {
+    const baseResult = {
+      data: readings.length > 0 ? readings[readings.length - 1] : null,
+      history: readings,
+      loading: locationData?.loading,
+      error: locationData?.error || null,
+      isRefreshing: aqicnQuery.isRefetching,
+      lastUpdated: readings.length > 0 ? readings[readings.length - 1]?.timestamp : null,
+      dataSource: readings.length > 0 ? readings[readings.length - 1]?.dataSource || 'Unknown' : 'Unknown',
+      coordinates: readings.length > 0 ? readings[readings.length - 1]?.coordinates : null,
+      userCoordinates: readings.length > 0 ? readings[readings.length - 1]?.userCoordinates : null,
+      refresh: () => {
+        if (locationData?.coordinates) {
+          const { latitude, longitude } = locationData.coordinates;
+          fetchAirQualityData(latitude, longitude);
+        }
+      },
+    };
+
+    // Add debug info in development
+    if (import.meta.env.DEV) {
+      return {
+        ...baseResult,
+        _debug: {
+          memory: memoryMonitor.getMemoryUsage(),
+          readingsCount: readings.length,
+          queueSize: processingQueue.current.length,
+        }
+      };
+    }
+
+    return baseResult;
+  }, [readings, locationData, aqicnQuery.isRefetching, fetchAirQualityData]);
+
+  return result;
 };
