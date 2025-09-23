@@ -1,38 +1,58 @@
-import React, { useState, useMemo, useCallback } from "react";
-import { useAirQuality } from "@/hooks/useAirQuality";
-import { useAuth } from "@/contexts/AuthContext";
-import { useUserPoints } from "@/hooks/useUserPoints";
+import React, { useState, useMemo, useCallback, ReactNode } from "react";
+import { useAirQuality, AirQualityData } from "@/hooks/useAirQuality";
+import { useAuth, User } from "@/contexts/AuthContext";
+import { useUserPoints, UserPoints } from "@/hooks/useUserPoints";
 import { useRefreshCountdown } from "@/hooks/useRefreshCountdown";
-import { useLocationContext } from "@/contexts";
+import { useLocationContext, LocationData } from "@/contexts";
 import { RefreshProgressBar } from "@/components/ui/RefreshProgressBar";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingDown, RefreshCw, MapPin } from "lucide-react";
+import { TrendingDown, RefreshCw, MapPin, Loader2 } from "lucide-react";
 
 import Header from "@/components/Header";
 import DataSourceValidator from "./DataSourceValidator";
 import { Button } from "@/components/ui/button";
 
 // Import extracted components
-import { LoadingState } from "./AirQualityDashboard/LoadingState";
-import { PermissionRequest } from "./AirQualityDashboard/PermissionRequest";
-import { PollutantModal } from "./AirQualityDashboard/PollutantModal";
-import { AQICard } from "./AirQualityDashboard/AQICard";
-import { PointsGrid } from "./AirQualityDashboard/PointsGrid";
-import { WeatherSection } from "./AirQualityDashboard/WeatherSection";
+import { LoadingState, LoadingStateProps } from "./AirQualityDashboard/LoadingState";
+import { PermissionRequest, PermissionRequestProps } from "./AirQualityDashboard/PermissionRequest";
+import { PollutantModal, PollutantModalProps } from "./AirQualityDashboard/PollutantModal";
+import { AQICard, AQICardProps } from "./AirQualityDashboard/AQICard";
+import { PointsGrid, PointsGridProps } from "./AirQualityDashboard/PointsGrid";
+import { WeatherSection, WeatherSectionProps } from "./AirQualityDashboard/WeatherSection";
 
 interface AirQualityDashboardProps {
+  /** Callback function triggered when navigation occurs */
   onNavigate?: (route: string) => void;
+  /** Controls the visibility of the mobile menu */
   showMobileMenu?: boolean;
+  /** Callback for toggling the mobile menu */
   onMobileMenuToggle?: () => void;
+  /** Whether the dashboard is in demo mode */
   isDemoMode?: boolean;
 }
 
+interface AirQualityDashboardState {
+  selectedPollutant: any | null;
+  isRefreshing: boolean;
+  lastUpdate: Date | null;
+}
+
+/** Default props for the AirQualityDashboard component */
+const defaultProps: Partial<AirQualityDashboardProps> = {
+  isDemoMode: false,
+  showMobileMenu: false,
+  onMobileMenuToggle: () => {},
+  onNavigate: () => {}
+};
+
 /**
  * Hook: small permission timeout helper
- * returns boolean `timedOut` that becomes true after `ms` if `hasRequestedPermission` is still false
+ * @param hasRequestedPermission - Whether permission has been requested
+ * @param ms - Timeout in milliseconds (default: 3000)
+ * @returns Boolean `timedOut` that becomes true after `ms` if `hasRequestedPermission` is still false
  */
-const usePermissionTimeout = (hasRequestedPermission: boolean, ms: number = 3000) => {
-  const [timedOut, setTimedOut] = React.useState(false);
+const usePermissionTimeout = (hasRequestedPermission: boolean, ms: number = 3000): boolean => {
+  const [timedOut, setTimedOut] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     if (hasRequestedPermission) return;
@@ -47,34 +67,103 @@ const usePermissionTimeout = (hasRequestedPermission: boolean, ms: number = 3000
   return timedOut;
 };
 
+/** Type guard to check if location data is valid */
+const isValidLocation = (location: LocationData | null): location is LocationData => {
+  return !!location && 
+         typeof location.latitude === 'number' && 
+         typeof location.longitude === 'number';
+};
+
 /**
  * The content wrapper component - extracted for testability
  */
-const AirQualityDashboardContent: React.FC<
-  AirQualityDashboardProps & { user: any; locationContext: any }
-> = ({ user, locationContext, onNavigate, showMobileMenu, onMobileMenuToggle, isDemoMode = false }) => {
+interface AirQualityDashboardContentProps extends AirQualityDashboardProps {
+  user: User | null;
+  locationContext: {
+    coordinates: LocationData | null;
+    hasRequestedPermission: boolean;
+    error: string | null;
+    requestPermission: () => Promise<boolean>;
+  };
+}
+
+const AirQualityDashboardContent: React.FC<AirQualityDashboardContentProps> = ({
+  user,
+  locationContext,
+  onNavigate = () => {},
+  showMobileMenu = false,
+  onMobileMenuToggle = () => {},
+  isDemoMode = false
+}) => {
+  // State
+  const [selectedPollutant, setSelectedPollutant] = React.useState<PollutantData | null>(null);
+  const [isRefreshing, setIsRefreshing] = React.useState<boolean>(false);
+  const [lastUpdate, setLastUpdate] = React.useState<Date | null>(null);
+  
   // Hooks
-  const { data, isRefreshing, isLoading, error, refreshData } = useAirQuality();
+  const { data, isLoading, error, refreshData } = useAirQuality();
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { timeUntilRefresh } = useRefreshCountdown();
   const { toast } = useToast();
+  
+  // Derived state
+  const hasLocation = isValidLocation(locationContext.coordinates);
+  const permissionTimedOut = usePermissionTimeout(locationContext.hasRequestedPermission);
+  
+  // Memoized coordinates to prevent unnecessary re-renders
+  const memoizedCoordinates = useMemo(() => {
+    if (!hasLocation) return null;
+    return {
+      latitude: locationContext.coordinates!.latitude,
+      longitude: locationContext.coordinates!.longitude
+    };
+  }, [hasLocation, locationContext.coordinates]);
 
-  const {
-    hasUserConsent = false,
-    hasRequestedPermission = false,
-    isRequestingPermission = false,
-    requestLocationPermission,
-  } = locationContext || {};
+  // Handle refresh action
+  const handleRefresh = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      await refreshData();
+      setLastUpdate(new Date());
+      toast({
+        title: "Success",
+        description: "Air quality data has been refreshed.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh air quality data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshData, toast]);
 
-  // Local UI state
-  const [selectedPollutant, setSelectedPollutant] = React.useState<null | {
-    name: string;
-    value: number;
-    unit: string;
-    description: string;
-    color: string;
-  }>(null);
+  // Handle permission request
+  const handleRequestPermission = useCallback(async () => {
+    try {
+      const granted = await locationContext.requestPermission();
+      if (granted) {
+        toast({
+          title: "Location Access Granted",
+          description: "You can now view air quality data for your location.",
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error("Error requesting location permission:", error);
+      toast({
+        title: "Location Access Required",
+        description: "Please enable location access to view air quality data.",
+        variant: "destructive",
+      });
+    }
+  }, [locationContext, toast]);
 
+  // Get user's display name
   const userName = React.useMemo(() => {
     return user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   }, [user]);
@@ -83,11 +172,11 @@ const AirQualityDashboardContent: React.FC<
   const permissionTimeoutReached = usePermissionTimeout(hasRequestedPermission, 3000);
 
   // Memoize coordinates with proper typing and null checks
-  const coordinates = React.useMemo(() => {
+  const coordinates = React.useMemo<{ latitude: number; longitude: number } | null>(() => {
     if (!data?.coordinates?.lat || !data?.coordinates?.lon) return null;
-    return { 
-      latitude: data.coordinates.lat, 
-      longitude: data.coordinates.lon 
+    return {
+      latitude: data.coordinates.lat,
+      longitude: data.coordinates.lon
     };
   }, [data?.coordinates?.lat, data?.coordinates?.lon]);
 
@@ -306,9 +395,9 @@ const AirQualityDashboardContent: React.FC<
  * Main wrapper that ties into location + auth contexts
  */
 export const AirQualityDashboard: React.FC<AirQualityDashboardProps> = ({
-  onNavigate,
-  showMobileMenu,
-  onMobileMenuToggle,
+  onNavigate = () => {},
+  showMobileMenu = false,
+  onMobileMenuToggle = () => {},
   isDemoMode = false,
 }) => {
   const { user } = useAuth();
@@ -317,7 +406,12 @@ export const AirQualityDashboard: React.FC<AirQualityDashboardProps> = ({
   return (
     <AirQualityDashboardContent
       user={user}
-      locationContext={locationContext}
+      locationContext={{
+        coordinates: locationContext.coordinates,
+        hasRequestedPermission: locationContext.hasRequestedPermission,
+        error: locationContext.error,
+        requestPermission: locationContext.requestLocationPermission,
+      }}
       onNavigate={onNavigate}
       showMobileMenu={showMobileMenu}
       onMobileMenuToggle={onMobileMenuToggle}
@@ -326,4 +420,7 @@ export const AirQualityDashboard: React.FC<AirQualityDashboardProps> = ({
   );
 };
 
-export default AirQualityDashboard;
+// Set default props
+AirQualityDashboard.defaultProps = defaultProps;
+
+export default React.memo(AirQualityDashboard);
