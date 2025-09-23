@@ -16,7 +16,11 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import Footer from "@/components/Footer";
-import { DevToolsWrapper } from "@/components/dev/DevToolsWrapper";
+// Development tools - only imported in development
+const DevToolsWrapper = process.env.NODE_ENV === 'development' 
+  ? React.lazy(() => import('@/components/dev/DevToolsWrapper')) 
+  : () => null;
+
 
 export default function Landing(): JSX.Element {
   const navigate = useNavigate();
@@ -93,8 +97,12 @@ export default function Landing(): JSX.Element {
   if (loading) {
     return (
       <div className={`min-h-screen flex flex-col ${theme}`}>
-        {/* Development Tools */}
-        <DevToolsWrapper />
+        {/* Development Tools - Only in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <React.Suspense fallback={null}>
+            <DevToolsWrapper />
+          </React.Suspense>
+        )}
         
         {/* Main content */}
         <main className="flex-1">

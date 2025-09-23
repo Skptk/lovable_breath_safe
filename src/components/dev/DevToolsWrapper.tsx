@@ -9,7 +9,12 @@ export function DevToolsWrapper() {
   // Add memory debugging tools to window
   useEffect(() => {
     // Only initialize in development
-    if (process.env.NODE_ENV !== 'development') return;
+    if (process.env.NODE_ENV !== 'development') {
+      console.log('[DevTools] Running in production, DevTools disabled');
+      return;
+    }
+    
+    console.log('[DevTools] Initializing development tools...');
 
     // Initialize memory debugging tools
     import('@/utils/memory')
@@ -85,7 +90,15 @@ export function DevToolsWrapper() {
         // Add to window for easy access
         (window as any).__MEMORY_DEBUG__ = debugObj;
         setIsInitialized(true);
-        console.log('Memory debugging tools initialized');
+        console.log('[DevTools] Memory debugging tools initialized');
+        
+        // Log initial memory info
+        try {
+          const memInfo = debugObj.getMemoryInfo();
+          console.log('[DevTools] Initial memory info:', memInfo);
+        } catch (error) {
+          console.warn('[DevTools] Could not get initial memory info:', error);
+        }
       })
       .catch(error => {
         console.warn('Failed to load memory profiler:', error);
