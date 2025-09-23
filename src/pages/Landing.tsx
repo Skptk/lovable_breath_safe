@@ -17,7 +17,7 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import Footer from "@/components/Footer";
 // Development tools - only imported in development
-const DevToolsWrapper = process.env.NODE_ENV === 'development' 
+const DevToolsWrapper = import.meta.env.DEV 
   ? React.lazy(() => import('@/components/dev/DevToolsWrapper')) 
   : () => null;
 
@@ -98,7 +98,7 @@ export default function Landing(): JSX.Element {
     return (
       <div className={`min-h-screen flex flex-col ${theme}`}>
         {/* Development Tools - Only in development */}
-        {process.env.NODE_ENV === 'development' && (
+        {import.meta.env.DEV && (
           <React.Suspense fallback={null}>
             <DevToolsWrapper />
           </React.Suspense>

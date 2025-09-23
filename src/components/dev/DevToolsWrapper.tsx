@@ -9,7 +9,7 @@ export function DevToolsWrapper() {
   // Add memory debugging tools to window
   useEffect(() => {
     // Only initialize in development
-    if (process.env.NODE_ENV !== 'development') {
+    if (!import.meta.env.DEV) {
       console.log('[DevTools] Running in production, DevTools disabled');
       return;
     }
