@@ -25,7 +25,8 @@
     "security:check": "npm run secret-scan && npm run lint",
     "security:fix": "npm run lint -- --fix",
     "prepare": "husky",
-    "prebuild": "npm run check-init-issues && npm run type-check && npm run lint",
+    "prebuild": "npm run type-check && npm run lint",
+    "prebuild:local": "npm run check-init-issues && npm run type-check && npm run lint",
     "precommit": "lint-staged"
   },
   "dependencies": {

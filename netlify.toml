@@ -3,7 +3,7 @@
   command = "npm ci --legacy-peer-deps && npm run build"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
   # Environment variables should be set in Netlify dashboard under Site settings > Environment variables
   # VITE_SUPABASE_URL = "your_supabase_project_url"
