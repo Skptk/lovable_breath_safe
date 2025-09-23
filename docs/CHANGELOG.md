@@ -18,6 +18,15 @@ All notable changes to this project will be documented in this file.
   - Disabled problematic VARIABLE_USED_BEFORE_DECLARATION pattern to reduce false positives
   - Added comprehensive error handling and logging throughout the codebase
 
+- **Netlify Deployment**: Fixed build failures and dependency conflicts
+  - Resolved ERESOLVE dependency conflict between lovable-tagger and Vite 7
+  - Updated Node.js version from 18 to 20 in netlify.toml to support modern packages
+  - Added package overrides and --legacy-peer-deps configuration for compatibility
+  - Created .npmrc with legacy-peer-deps=true for consistent dependency resolution
+  - Simplified ESLint configuration to avoid ES module import issues
+  - Updated build scripts to skip initialization checks in CI environment
+  - Fixed custom ESLint rules to use ES module syntax
+
 - **Build System**: Fixed ReferenceError in production builds
   - Updated Vite/ESBuild configuration to prevent identifier mangling
   - Added `keepNames: true` and disabled `minifyIdentifiers` in ESBuild config
