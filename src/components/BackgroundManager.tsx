@@ -52,11 +52,14 @@ interface BackgroundManagerProps {
  * BackgroundManager component that handles dynamic background changes based on weather and time.
  * Manages weather data fetching, background transitions, and error states.
  */
+const DEFAULT_BACKGROUND = '/weather-backgrounds/partly-cloudy.webp';
+const ERROR_BACKGROUND = '/weather-backgrounds/overcast.webp';
+
 const bgStateTracker = { renderCount: 0 };
 
 const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ children }) => {
   // State
-  const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.webp');
+  const [currentBackground, setCurrentBackground] = useState<string>(DEFAULT_BACKGROUND);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasInitialData, setHasInitialData] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
@@ -82,7 +85,8 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   
   // Refs for tracking state without causing re-renders
   const isMountedRef = useRef(true);
-  
+  const hasAppliedBackgroundRef = useRef(false);
+  const fallbackTimeoutRef = useRef<number | null>(null);
   // Time analysis cache to prevent duplicate logging
   const timeAnalysisCache = useRef<Record<string, string>>({});
 
@@ -221,12 +225,12 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   // Determine the appropriate background image based on weather and time
   const targetBackground = useMemo(() => {
     // Default fallback background
-    const defaultBackground = '/weather-backgrounds/partly-cloudy.webp';
+    const defaultBackground = DEFAULT_BACKGROUND;
     
     // If we're still loading or have an error, use the default background
     if (weatherLoading || weatherError) {
       console.log(`BackgroundManager: ${weatherLoading ? 'Loading' : 'Error'}, using default background`);
-      return defaultBackground;
+      return weatherError ? ERROR_BACKGROUND : defaultBackground;
     }
     
     // If we don't have weather data, use the default background
@@ -314,6 +318,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
         if (isMountedRef.current) {
           setCurrentBackground(targetBackground);
           setIsTransitioning(false);
+          hasAppliedBackgroundRef.current = true;
         }
       }, 250); // Half of transition duration
 
@@ -325,6 +330,35 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
     return undefined;
   }, [targetBackground, currentBackground]);
+
+  useEffect(() => {
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+      fallbackTimeoutRef.current = null;
+    }
+
+    if (currentWeather || weatherLoading) {
+      return;
+    }
+
+    fallbackTimeoutRef.current = window.setTimeout(() => {
+      if (!isMountedRef.current || hasAppliedBackgroundRef.current) {
+        return;
+      }
+
+      console.log(`🖼️ [BG-MANAGER-${renderIteration}] Applying default background after timeout`);
+      setCurrentBackground(DEFAULT_BACKGROUND);
+      setBackgroundState((prev) => (prev === 'error' ? prev : 'success'));
+      hasAppliedBackgroundRef.current = true;
+    }, 3000);
+
+    return () => {
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
+    };
+  }, [currentWeather, weatherLoading, renderIteration]);
 
   // Get background based on state with fallbacks
   const getBackgroundForState = useCallback((): string => {
@@ -371,7 +405,8 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
             onError={() => {
               console.warn('BackgroundManager: Failed to load background image:', getBackgroundForState());
               // Fallback to default background
-              setCurrentBackground('/weather-backgrounds/partly-cloudy.webp');
+              setCurrentBackground(DEFAULT_BACKGROUND);
+              hasAppliedBackgroundRef.current = true;
             }}
           />
           
