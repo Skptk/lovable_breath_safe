@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface MemoryInfo {
   jsHeapSizeLimit?: number;
@@ -70,7 +70,7 @@ export function useMemoryMonitor(interval = 10000) {
   
   useEffect(() => {
     // Only run in development
-    if (process.env.NODE_ENV !== 'development') {
+    if (process.env['NODE_ENV'] !== 'development') {
       return;
     }
     
@@ -95,11 +95,6 @@ export function useMemoryMonitor(interval = 10000) {
   };
 }
 
-// Higher Order Component for monitoring specific components
-interface WithMemoryMonitorProps {
-  componentName: string;
-}
-
 export function withMemoryMonitor<P>(WrappedComponent: React.ComponentType<P>, componentName: string) {
   return function WithMemoryMonitor(props: P) {
     const mountTime = useRef(performance.now());
@@ -122,6 +117,6 @@ export function withMemoryMonitor<P>(WrappedComponent: React.ComponentType<P>, c
       };
     }, []);
     
-    return <WrappedComponent {...(props as any)} />;
+    return React.createElement(WrappedComponent as React.ComponentType<any>, props as any);
   };
 }

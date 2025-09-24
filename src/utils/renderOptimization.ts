@@ -1,8 +1,7 @@
 import * as React from 'react';
 import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-// Use require for lodash to avoid type issues
-const debounce = require('lodash/debounce');
-const throttle = require('lodash/throttle');
+import debounce from 'lodash/debounce';
+import throttle from 'lodash/throttle';
 
 /**
  * Custom hook to track component renders

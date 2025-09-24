@@ -55,7 +55,11 @@ export function createBatchedProcessor<T, R>(
       const results = await processFn(items);
       
       currentBatch.forEach((entry, index) => {
-        entry.resolve(results[index]);
+        if (index < results.length) {
+          entry.resolve(results[index]!);
+        } else {
+          entry.reject(new Error('Batched processor received fewer results than expected'));
+        }
       });
     } catch (error) {
       currentBatch.forEach(entry => {
@@ -139,12 +143,12 @@ export function debounce<T extends (...args: any[]) => any>(
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null;
   
-  return function(this: any, ...args: Parameters<T>) {
-    const context = this;
-    
-    const later = function() {
+  return function (this: unknown, ...args: Parameters<T>) {
+    const later = () => {
       timeout = null;
-      if (!immediate) func.apply(context, args);
+      if (!immediate) {
+        func.apply(this, args);
+      }
     };
     
     const callNow = immediate && !timeout;
@@ -156,7 +160,7 @@ export function debounce<T extends (...args: any[]) => any>(
     timeout = setTimeout(later, wait);
     
     if (callNow) {
-      func.apply(context, args);
+      func.apply(this, args);
     }
   };
 }
@@ -170,11 +174,9 @@ export function throttle<T extends (...args: any[]) => any>(
 ): (...args: Parameters<T>) => void {
   let inThrottle = false;
   
-  return function(this: any, ...args: Parameters<T>) {
-    const context = this;
-    
+  return function (this: unknown, ...args: Parameters<T>) {
     if (!inThrottle) {
-      func.apply(context, args);
+      func.apply(this, args);
       inThrottle = true;
       
       setTimeout(() => {
