@@ -9,9 +9,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
 
-// Refresh lock mechanism for weather backgrounds
-const BACKGROUND_REFRESH_LOCK_KEY = 'breath_safe_background_refresh_lock';
-const BACKGROUND_REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes
+// Background refresh settings
+const BACKGROUND_REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
+const BACKGROUND_TRANSITION_DURATION = 500; // 500ms for smoother transitions
+const BACKGROUND_UPDATE_DEBOUNCE = 1000; // 1 second debounce for background updates
 
 type TimeOfDayPeriod = 'morning' | 'afternoon' | 'evening' | 'night';
 
@@ -153,8 +154,10 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   // State
   const [currentBackground, setCurrentBackground] = useState<string>(DEFAULT_BACKGROUND);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [hasInitialData, setHasInitialData] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
+  const lastWeatherUpdate = useRef<number>(0);
+  const updateTimeoutRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
   const [timeOfDayInfo, setTimeOfDayInfo] = useState<{
     period: TimeOfDayPeriod;
     isSunriseWindow: boolean;
@@ -184,12 +187,11 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   const renderIteration = bgStateTracker.renderCount;
 
   // Refs for tracking state without causing re-renders
-  const isMountedRef = useRef(true);
-  const hasAppliedBackgroundRef = useRef(false);
   const fallbackTimeoutRef = useRef<number | null>(null);
   const effectTimeoutRef = useRef<number | null>(null);
-  // Time analysis cache to prevent duplicate logging
-  const timeAnalysisCache = useRef<Record<string, string>>({});
+  const updateIntervalRef = useRef<number | null>(null);
+  const lastBackgroundRef = useRef<string>('');
+  const pendingBackgroundUpdate = useRef<string | null>(null);
 
   const shouldTrack = resolveBackgroundDebugFlag();
   const debugLog = useCallback(
@@ -227,13 +229,19 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
-      if (fallbackTimeoutRef.current) {
-        clearTimeout(fallbackTimeoutRef.current);
-        fallbackTimeoutRef.current = null;
-      }
-      if (effectTimeoutRef.current) {
-        clearTimeout(effectTimeoutRef.current);
-        effectTimeoutRef.current = null;
+      
+      // Clear all timeouts and intervals
+      [fallbackTimeoutRef, effectTimeoutRef, updateIntervalRef].forEach(ref => {
+        if (ref.current) {
+          clearTimeout(ref.current);
+          ref.current = null;
+        }
+      });
+      
+      // Clear any pending updates
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
       }
     };
   }, []);
@@ -440,7 +448,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     return candidateBackground;
   }, [currentWeather, currentBackground, weatherLoading, weatherError, debugLog, timeOfDayInfo]);
 
-  // Update background when target changes
+  // Update background when target changes with debounce and safety checks
   useEffect(() => {
     if (!isMountedRef.current || !targetBackground) {
       return undefined;
@@ -448,33 +456,59 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
     // Only update if the background is actually changing
     if (targetBackground !== currentBackground) {
-      debugLog('BackgroundManager: Changing background from', currentBackground, 'to', targetBackground);
-
-      // Set refresh lock to prevent rapid changes
-      if (targetBackground !== DEFAULT_BACKGROUND) {
-        setBackgroundRefreshLock(targetBackground);
+      // Cancel any pending updates
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
       }
 
-      // Start transition
-      setIsTransitioning(true);
+      // Store the pending background update
+      pendingBackgroundUpdate.current = targetBackground;
 
-      // Change background after transition starts
-      const transitionTimer = setTimeout(() => {
-        if (isMountedRef.current) {
-          setCurrentBackground(targetBackground);
-          setIsTransitioning(false);
-          hasAppliedBackgroundRef.current = true;
+      // Debounce the update to prevent rapid changes
+      updateTimeoutRef.current = window.setTimeout(() => {
+        if (!isMountedRef.current || pendingBackgroundUpdate.current !== targetBackground) {
+          return;
         }
-      }, 250); // Half of transition duration
 
-      // Cleanup function to clear the timeout if the component unmounts
-      return () => {
-        clearTimeout(transitionTimer);
-      };
+        debugLog('BackgroundManager: Changing background from', currentBackground, 'to', targetBackground);
+
+        // Set refresh lock to prevent rapid changes
+        if (targetBackground !== DEFAULT_BACKGROUND) {
+          setBackgroundRefreshLock(targetBackground);
+        }
+
+        // Start transition
+        setIsTransitioning(true);
+
+        // Update the background after a short delay to allow the transition to start
+        const transitionTimer = window.setTimeout(() => {
+          if (isMountedRef.current) {
+            setCurrentBackground(targetBackground);
+            setIsTransitioning(false);
+            hasAppliedBackgroundRef.current = true;
+            pendingBackgroundUpdate.current = null;
+          }
+        }, BACKGROUND_TRANSITION_DURATION / 2);
+
+        // Clear the update timeout
+        updateTimeoutRef.current = null;
+
+        // Cleanup function to clear the timeout if the effect runs again
+        return () => {
+          clearTimeout(transitionTimer);
+        };
+      }, BACKGROUND_UPDATE_DEBOUNCE);
     }
 
-    return undefined;
-  }, [targetBackground, currentBackground]);
+    // Cleanup function to clear any pending timeouts
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
+      }
+    };
+  }, [targetBackground, currentBackground, debugLog]);
 
   useEffect(() => {
     if (fallbackTimeoutRef.current) {
@@ -511,18 +545,28 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
   // Get background based on state with fallbacks
   const getBackgroundForState = useCallback((): string => {
-    const defaultBg = '/weather-backgrounds/partly-cloudy.webp';
+    const defaultBg = DEFAULT_BACKGROUND;
     
     try {
+      // If we have a pending update, use it to prevent flickering
+      if (pendingBackgroundUpdate.current) {
+        return pendingBackgroundUpdate.current;
+      }
+
+      // If we're in a transition, keep the current background
+      if (isTransitioning) {
+        return currentBackground || defaultBg;
+      }
+
+      // Otherwise, return the appropriate background based on state
       switch (backgroundState) {
         case 'loading':
-          return defaultBg; // Default while loading
+          return defaultBg;
           
         case 'error':
-          return '/weather-backgrounds/overcast.webp'; // Fallback for errors
+          return ERROR_BACKGROUND;
           
         case 'success':
-          // Ensure we have a valid background before returning it
           return currentBackground || defaultBg;
           
         default:
@@ -532,7 +576,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       console.error('Error getting background for state:', error);
       return defaultBg;
     }
-  }, [backgroundState, currentBackground]);
+  }, [backgroundState, currentBackground, isTransitioning]);
 
   // Get overlay opacity based on theme
   const overlayOpacity = theme === 'light' ? '0.2' : '0.4';
