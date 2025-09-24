@@ -155,6 +155,11 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasInitialData, setHasInitialData] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
+  const [timeOfDayInfo, setTimeOfDayInfo] = useState<{
+    period: TimeOfDayPeriod;
+    isSunriseWindow: boolean;
+    isSunsetWindow: boolean;
+  }>({ period: 'morning', isSunriseWindow: false, isSunsetWindow: false });
 
   // Hooks - all at the top level
   const { theme } = useTheme();
@@ -222,8 +227,36 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
+      if (effectTimeoutRef.current) {
+        clearTimeout(effectTimeoutRef.current);
+        effectTimeoutRef.current = null;
+      }
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const updateTimeOfDay = () => {
+      if (!isMountedRef.current) {
+        return;
+      }
+      setTimeOfDayInfo(getTimeOfDayInfo(currentWeather?.sunriseTime, currentWeather?.sunsetTime));
+    };
+
+    updateTimeOfDay();
+    const intervalId = window.setInterval(updateTimeOfDay, 60 * 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [currentWeather?.sunriseTime, currentWeather?.sunsetTime]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -352,10 +385,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       return defaultBackground;
     }
 
-    const { period, isSunriseWindow, isSunsetWindow } = getTimeOfDayInfo(
-      currentWeather.sunriseTime,
-      currentWeather.sunsetTime
-    );
+    const { period, isSunriseWindow, isSunsetWindow } = timeOfDayInfo;
     const isNightPeriod = period === 'night' || isNightTime(currentWeather.sunriseTime, currentWeather.sunsetTime);
     const isSunriseSunset = isSunriseSunsetPeriod(currentWeather.sunriseTime, currentWeather.sunsetTime);
 
@@ -408,7 +438,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     }
 
     return candidateBackground;
-  }, [currentWeather, currentBackground, weatherLoading, weatherError, debugLog]);
+  }, [currentWeather, currentBackground, weatherLoading, weatherError, debugLog, timeOfDayInfo]);
 
   // Update background when target changes
   useEffect(() => {
@@ -421,7 +451,9 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       debugLog('BackgroundManager: Changing background from', currentBackground, 'to', targetBackground);
 
       // Set refresh lock to prevent rapid changes
-      setBackgroundRefreshLock(targetBackground);
+      if (targetBackground !== DEFAULT_BACKGROUND) {
+        setBackgroundRefreshLock(targetBackground);
+      }
 
       // Start transition
       setIsTransitioning(true);
@@ -452,6 +484,10 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
     if (currentWeather || weatherLoading) {
       return;
+    }
+
+    if (typeof window === 'undefined') {
+      return () => {};
     }
 
     fallbackTimeoutRef.current = window.setTimeout(() => {

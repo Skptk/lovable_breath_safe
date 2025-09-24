@@ -6,6 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **BackgroundManager**: Prevent default background lockout and improve time-of-day handling
+  - Derive sunrise/sunset periods via interval-driven effect rather than during render
+  - Ensure fallback timers and effect probes are cleaned on unmount to avoid leaks
+  - Only persist background refresh lock when applying non-default weather imagery
+
+- **Realtime/Profiles**: Guard Supabase channel readiness and clean ProfileView subscriptions
+  - Queue channel setup until `supabase.channel` is ready, resolving pending waiters safely
+  - Expose `ensureChannelReady` and `getExistingChannel` helpers for guarded reuse in ProfileView
+  - Update `ProfileView` subscription effect to await readiness, handle cleanup deterministically, and debounce refreshes
+
+- **Dashboard Error Boundaries**: Localize failures to their respective views
+  - Wrap each lazy dashboard section (`AirQualityDashboard`, `ProfileView`, `HistoryView`, etc.) in `EnhancedErrorBoundary`
+  - Provide user-friendly fallback messaging with soft refresh guidance per view
+  - Document manual validation steps for boundary coverage in `/docs/validation/error-boundaries.md`
+
 - **Initialization Issues Script**: Major debugging and optimization (92% issue reduction)
   - Reduced initialization issues from 89 to 7 through comprehensive debugging
   - Fixed critical HOOK_AFTER_EARLY_RETURN issues in React components

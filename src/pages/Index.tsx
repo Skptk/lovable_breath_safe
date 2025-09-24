@@ -7,6 +7,7 @@ import MobileNavigation from "@/components/MobileNavigation";
 import BackgroundManager from "@/components/BackgroundManager";
 import { DeveloperTools } from "@/components/DeveloperTools";
 import { cleanupAllChannels } from "@/lib/realtimeClient";
+import EnhancedErrorBoundary from "@/components/EnhancedErrorBoundary";
 import { logNavigation } from "@/lib/logger";
 
 // Lazy load heavy components
@@ -33,10 +34,10 @@ const PageSkeleton = () => (
   </div>
 );
 
-export default function Index(): JSX.Element {
+export default function Index(): JSX.Element | null {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [currentView, setCurrentView] = useState("dashboard");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showDeveloperTools, setShowDeveloperTools] = useState(false);
@@ -118,89 +119,120 @@ export default function Index(): JSX.Element {
   }, [currentView, location]);
 
   const renderView = (): JSX.Element => {
+    const makeFallback = (title: string, message: string) => (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center">
+        <h2 className="text-2xl font-semibold text-red-500">{title}</h2>
+        <p className="text-muted-foreground max-w-md">{message}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
+
     switch (currentView) {
       case "dashboard":
         return (
-          <Suspense fallback={<PageSkeleton />}>
-            <AirQualityDashboard 
-              onNavigate={handleViewChange} 
-              showMobileMenu={showMobileMenu}
-              onMobileMenuToggle={toggleMobileMenu}
-            />
-          </Suspense>
+          <EnhancedErrorBoundary fallback={makeFallback("Dashboard Error", "We couldn't render the air quality dashboard. Refresh to retry.")}>
+            <Suspense fallback={<PageSkeleton />}>
+              <AirQualityDashboard 
+                onNavigate={handleViewChange} 
+                showMobileMenu={showMobileMenu}
+                onMobileMenuToggle={toggleMobileMenu}
+              />
+            </Suspense>
+          </EnhancedErrorBoundary>
         );
       case "history":
         return (
-          <Suspense fallback={<PageSkeleton />}>
-            <HistoryView 
-              showMobileMenu={showMobileMenu}
-              onMobileMenuToggle={toggleMobileMenu}
-            />
-          </Suspense>
+          <EnhancedErrorBoundary fallback={makeFallback("History Error", "Historical data is temporarily unavailable. Please refresh." )}>
+            <Suspense fallback={<PageSkeleton />}>
+              <HistoryView 
+                showMobileMenu={showMobileMenu}
+                onMobileMenuToggle={toggleMobileMenu}
+              />
+            </Suspense>
+          </EnhancedErrorBoundary>
         );
       case "map":
         return (
-          <Suspense fallback={<PageSkeleton />}>
-            <WeatherStats 
-              showMobileMenu={showMobileMenu}
-              onMobileMenuToggle={toggleMobileMenu}
-            />
-          </Suspense>
+          <EnhancedErrorBoundary fallback={makeFallback("Weather Stats Error", "We couldn't load weather statistics. Try refreshing the page." )}>
+            <Suspense fallback={<PageSkeleton />}>
+              <WeatherStats 
+                showMobileMenu={showMobileMenu}
+                onMobileMenuToggle={toggleMobileMenu}
+              />
+            </Suspense>
+          </EnhancedErrorBoundary>
         );
       case "rewards":
         return (
-          <Suspense fallback={<PageSkeleton />}>
-            <Rewards 
-              showMobileMenu={showMobileMenu}
-              onMobileMenuToggle={toggleMobileMenu}
-            />
-          </Suspense>
+          <EnhancedErrorBoundary fallback={makeFallback("Rewards Error", "Rewards data failed to load. Refresh the page to retry." )}>
+            <Suspense fallback={<PageSkeleton />}>
+              <Rewards 
+                showMobileMenu={showMobileMenu}
+                onMobileMenuToggle={toggleMobileMenu}
+              />
+            </Suspense>
+          </EnhancedErrorBoundary>
         );
       case "store":
         return (
-          <Suspense fallback={<PageSkeleton />}>
-            <Store 
-              showMobileMenu={showMobileMenu}
-              onMobileMenuToggle={toggleMobileMenu}
-            />
-          </Suspense>
+          <EnhancedErrorBoundary fallback={makeFallback("Store Error", "The store is temporarily unavailable. Please try again after refreshing." )}>
+            <Suspense fallback={<PageSkeleton />}>
+              <Store 
+                showMobileMenu={showMobileMenu}
+                onMobileMenuToggle={toggleMobileMenu}
+              />
+            </Suspense>
+          </EnhancedErrorBoundary>
         );
       case "profile":
         return (
-          <Suspense fallback={<PageSkeleton />}>
-            <ProfileView 
-              showMobileMenu={showMobileMenu}
-              onMobileMenuToggle={toggleMobileMenu}
-            />
-          </Suspense>
+          <EnhancedErrorBoundary fallback={makeFallback("Profile Error", "We hit a snag loading your profile. Refresh to give it another shot." )}>
+            <Suspense fallback={<PageSkeleton />}>
+              <ProfileView 
+                showMobileMenu={showMobileMenu}
+                onMobileMenuToggle={toggleMobileMenu}
+              />
+            </Suspense>
+          </EnhancedErrorBoundary>
         );
       case "settings":
         return (
-          <Suspense fallback={<PageSkeleton />}>
-            <SettingsView 
-              showMobileMenu={showMobileMenu}
-              onMobileMenuToggle={toggleMobileMenu}
-            />
-          </Suspense>
+          <EnhancedErrorBoundary fallback={makeFallback("Settings Error", "Settings failed to render. Please refresh the page." )}>
+            <Suspense fallback={<PageSkeleton />}>
+              <SettingsView 
+                showMobileMenu={showMobileMenu}
+                onMobileMenuToggle={toggleMobileMenu}
+              />
+            </Suspense>
+          </EnhancedErrorBoundary>
         );
       case "news":
         return (
-          <Suspense fallback={<PageSkeleton />}>
-            <NewsPage 
-              showMobileMenu={showMobileMenu}
-              onMobileMenuToggle={toggleMobileMenu}
-            />
-          </Suspense>
+          <EnhancedErrorBoundary fallback={makeFallback("News Error", "Latest air quality news could not be loaded. Refresh to retry." )}>
+            <Suspense fallback={<PageSkeleton />}>
+              <NewsPage 
+                showMobileMenu={showMobileMenu}
+                onMobileMenuToggle={toggleMobileMenu}
+              />
+            </Suspense>
+          </EnhancedErrorBoundary>
         );
       default:
         return (
-          <Suspense fallback={<PageSkeleton />}>
-            <AirQualityDashboard 
-              onNavigate={handleViewChange}
-              showMobileMenu={showMobileMenu}
-              onMobileMenuToggle={toggleMobileMenu}
-            />
-          </Suspense>
+          <EnhancedErrorBoundary fallback={makeFallback("Dashboard Error", "We couldn't render the air quality dashboard. Refresh to retry." )}>
+            <Suspense fallback={<PageSkeleton />}>
+              <AirQualityDashboard 
+                onNavigate={handleViewChange}
+                showMobileMenu={showMobileMenu}
+                onMobileMenuToggle={toggleMobileMenu}
+              />
+            </Suspense>
+          </EnhancedErrorBoundary>
         );
     }
   };

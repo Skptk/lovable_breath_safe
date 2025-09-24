@@ -31,6 +31,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealtime } from "@/contexts/RealtimeContext";
+import { ensureChannelReady, getExistingChannel } from "@/lib/realtimeClient";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { useWithdrawalRequests } from "@/hooks/useWithdrawalRequests";
 import { useAchievements } from "@/hooks/useAchievements";
@@ -273,20 +274,50 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
 
   // Subscribe to profile points updates with performance optimization
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) {
+      return undefined;
+    }
 
-    const unsubscribe = subscribeToUserProfilePoints((payload) => {
-      console.log('Profile points updated:', payload);
-      // Update user points hook with new total points
-      if (payload.eventType === 'UPDATE' && payload.new?.total_points !== undefined) {
-        updateTotalPoints(payload.new.total_points);
+    let isMounted = true;
+    let cleanupFn: (() => void) | undefined;
+    const channelName = `user-profile-points-${user.id}`;
+
+    const setupSubscription = async () => {
+      try {
+        await ensureChannelReady(channelName);
+
+        if (!isMounted) {
+          return;
+        }
+
+        const existingChannel = getExistingChannel(channelName);
+        if (!existingChannel) {
+          console.warn("Realtime channel not available after readiness guard, proceeding with subscription");
+        }
+
+        cleanupFn = subscribeToUserProfilePoints((payload) => {
+          console.log('Profile points updated:', payload);
+          // Update user points hook with new total points
+          if (payload.eventType === 'UPDATE' && payload.new?.total_points !== undefined) {
+            updateTotalPoints(payload.new.total_points);
+          }
+          // Use debounced refresh to prevent excessive API calls
+          debouncedFetchProfile();
+        });
+      } catch (error) {
+        console.warn('Failed to establish realtime subscription for profile points', error);
       }
-      // Use debounced refresh to prevent excessive API calls
-      debouncedFetchProfile();
-    });
+    };
 
-    return unsubscribe;
-  }, [user, subscribeToUserProfilePoints, updateTotalPoints, debouncedFetchProfile]);
+    setupSubscription();
+
+    return () => {
+      isMounted = false;
+      if (cleanupFn) {
+        cleanupFn();
+      }
+    };
+  }, [user?.id, subscribeToUserProfilePoints, updateTotalPoints, debouncedFetchProfile]);
 
   const fetchProfile = async () => {
     try {

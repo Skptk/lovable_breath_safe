@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { logConnection } from '@/lib/logger';
 
 // Environment flag to disable realtime entirely
-const REALTIME_ENABLED = import.meta.env.VITE_SUPABASE_REALTIME_ENABLED !== 'false';
+const REALTIME_ENABLED = (import.meta.env['VITE_SUPABASE_REALTIME_ENABLED'] ?? 'true') !== 'false';
 
 // IMPROVED RETRY CONFIGURATION
 const MAX_RETRY_ATTEMPTS = 5; // Increased from 3
@@ -74,6 +74,8 @@ class RealtimeConnectionManager {
   private connectionStatus: 'connected' | 'reconnecting' | 'disconnected' = 'connected';
   private statusListeners: Set<(status: 'connected' | 'reconnecting' | 'disconnected') => void> = new Set();
   private pendingCleanups: Map<string, NodeJS.Timeout> = new Map(); // Track pending cleanups
+  private pendingReadyChecks: Map<string, NodeJS.Timeout> = new Map();
+  private pendingReadyResolvers: Map<string, Array<(channel: RealtimeChannel | null) => void>> = new Map();
   private isDestroyed: boolean = false; // Track if manager is destroyed
   private navigationState: { currentView: string; lastViewChange: number } = { currentView: 'dashboard', lastViewChange: Date.now() }; // Track navigation state
   private globalRetryTimeout: NodeJS.Timeout | null = null; // Global retry mechanism
@@ -101,6 +103,21 @@ class RealtimeConnectionManager {
       
       // Add WebSocket reconnection mechanism for code 1011
       this.startWebSocketReconnection();
+    }
+  }
+
+  private isRealtimeClientReady(): boolean {
+    if (this.isDestroyed || !REALTIME_ENABLED) {
+      return false;
+    }
+
+    try {
+      const hasChannelFactory = typeof (supabase as any)?.channel === 'function';
+      const hasRealtimeInstance = typeof (supabase as any)?.realtime === 'object';
+      return hasChannelFactory && hasRealtimeInstance;
+    } catch (error) {
+      console.warn('[Realtime] Supabase realtime not ready yet:', error);
+      return false;
     }
   }
 
@@ -160,10 +177,11 @@ class RealtimeConnectionManager {
       const newChannel = supabase.channel(channelName);
       
       // Re-subscribe with existing callbacks
-      for (const callback of channelData.callbacks) {
-        // Re-attach callbacks (this is a simplified approach)
-        console.log(`[Realtime] Re-attaching callback for channel '${channelName}'`);
-      }
+      channelData.callbacks.forEach(existingCallback => {
+        (newChannel as any).on('*', (_event: any, payload: any) => {
+          existingCallback(payload);
+        });
+      });
       
       // Update channel data
       channelData.channel = newChannel;
@@ -589,9 +607,15 @@ class RealtimeConnectionManager {
     if (isRateLimitError) {
       console.warn(`[Realtime] Rate limit error for channel '${channelName}', waiting before retry`);
       // Wait longer for rate limit errors
+      const retryCallback = Array.from(channelData.callbacks)[0];
+      if (!retryCallback) {
+        console.warn(`[Realtime] No callbacks available for channel '${channelName}' after rate limit error, stopping retry`);
+        return;
+      }
+
       setTimeout(() => {
         if (channelData.isReconnecting) {
-          this.retryChannelSubscription(channelName, Array.from(channelData.callbacks)[0], this.getChannelConfig(channelName));
+          this.retryChannelSubscription(channelName, retryCallback as (payload: any) => void, this.getChannelConfig(channelName));
         }
       }, 10000); // Wait 10 seconds for rate limit
       return;
@@ -752,7 +776,8 @@ class RealtimeConnectionManager {
       this.scheduleRetryWithBackoff(channelName, config);
       
     } catch (error) {
-      logConnection.warn('Error during token refresh, proceeding with retry', { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logConnection.warn('Error during token refresh, proceeding with retry', { error: errorMessage });
       this.scheduleRetryWithBackoff(channelName, config);
     }
   }
@@ -864,7 +889,8 @@ class RealtimeConnectionManager {
       channelData.channel = newChannel;
       
     } catch (error) {
-      logConnection.error(`Error during channel reconnection for '${channelName}'`, { error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logConnection.error(`Error during channel reconnection for '${channelName}'`, { error: errorMessage });
       channelData.isReconnecting = false;
       channelData.connectionHealth = 'unhealthy';
       
@@ -948,6 +974,15 @@ class RealtimeConnectionManager {
       return;
     }
 
+    if (!this.isRealtimeClientReady()) {
+      this.enqueueReadySubscription(channelName, () => {
+        this.subscribeToChannel(channelName, callback, config);
+      });
+      return;
+    }
+
+    this.resolvePendingReady(channelName, null);
+
     // Prevent duplicate subscriptions during rapid navigation changes
     const timeSinceLastViewChange = Date.now() - this.navigationState.lastViewChange;
     if (timeSinceLastViewChange < 2000) { // 2 second cooldown after view change
@@ -968,6 +1003,7 @@ class RealtimeConnectionManager {
       channelData.callbacks.add(callback);
       channelData.refs++;
       console.info(`[Realtime] Channel '${channelName}' reused, refs: ${channelData.refs}`);
+      this.resolvePendingReady(channelName, channelData.channel ?? null);
       return;
     }
 
@@ -1020,10 +1056,10 @@ class RealtimeConnectionManager {
 
       // Store the channel with reference counting and retry tracking
       this.activeChannels.set(channelName, {
-        channel: null,
+        channel: subscription,
         callbacks: new Set([callback]),
         retryCount: 0,
-        lastRetryTime: 0,
+        lastRetryTime: Date.now(),
         isReconnecting: false,
         connectionHealth: 'healthy',
         config: config || {}, // Store the config
@@ -1031,8 +1067,9 @@ class RealtimeConnectionManager {
       });
       
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`[Realtime] Failed to create channel '${channelName}':`, {
-        error: error?.message || error,
+        error: errorMessage,
         channelName,
         timestamp: new Date().toISOString(),
         config
@@ -1044,6 +1081,11 @@ class RealtimeConnectionManager {
   public unsubscribeFromChannel(channelName: string, callback?: (payload: any) => void): void {
     if (this.isDestroyed) {
       return;
+    }
+
+    if (this.pendingReadyChecks.has(channelName)) {
+      clearTimeout(this.pendingReadyChecks.get(channelName)!);
+      this.pendingReadyChecks.delete(channelName);
     }
 
     const channelData = this.activeChannels.get(channelName);
@@ -1095,12 +1137,22 @@ class RealtimeConnectionManager {
       }
       this.activeChannels.delete(channelName);
       this.pendingCleanups.delete(channelName);
+      if (this.pendingReadyChecks.has(channelName)) {
+        clearTimeout(this.pendingReadyChecks.get(channelName)!);
+        this.pendingReadyChecks.delete(channelName);
+      }
+      this.pendingReadyResolvers.delete(channelName);
       console.info(`[Realtime] Successfully removed channel '${channelName}'`);
     } catch (error) {
       console.error(`[Realtime] Error removing channel '${channelName}':`, error);
       // Force remove from our tracking even if Supabase removal fails
       this.activeChannels.delete(channelName);
       this.pendingCleanups.delete(channelName);
+      if (this.pendingReadyChecks.has(channelName)) {
+        clearTimeout(this.pendingReadyChecks.get(channelName)!);
+        this.pendingReadyChecks.delete(channelName);
+      }
+      this.pendingReadyResolvers.delete(channelName);
     }
   }
 
@@ -1116,6 +1168,11 @@ class RealtimeConnectionManager {
       clearTimeout(timeout);
     }
     this.pendingCleanups.clear();
+    for (const timeout of this.pendingReadyChecks.values()) {
+      clearTimeout(timeout);
+    }
+    this.pendingReadyChecks.clear();
+    this.pendingReadyResolvers.clear();
     
     for (const [channelName, channelData] of this.activeChannels.entries()) {
       try {
@@ -1176,6 +1233,67 @@ class RealtimeConnectionManager {
 
   public isChannelActive(channelName: string): boolean {
     return !this.isDestroyed && this.activeChannels.has(channelName);
+  }
+
+  public getActiveChannel(channelName: string): RealtimeChannel | undefined {
+    return this.activeChannels.get(channelName)?.channel ?? undefined;
+  }
+
+  public async ensureChannelReady(channelName: string): Promise<RealtimeChannel | null> {
+    if (this.isDestroyed) {
+      return null;
+    }
+
+    if (this.isRealtimeClientReady()) {
+      const existing = this.getActiveChannel(channelName);
+      if (existing) {
+        return existing;
+      }
+    }
+
+    return new Promise<RealtimeChannel | null>((resolve) => {
+      this.enqueueReadySubscription(channelName, () => {
+        resolve(this.getActiveChannel(channelName) ?? null);
+      }, resolve);
+    });
+  }
+
+  private enqueueReadySubscription(
+    channelName: string,
+    action: () => void,
+    resolver?: (channel: RealtimeChannel | null) => void
+  ): void {
+    if (this.pendingReadyChecks.has(channelName)) {
+      clearTimeout(this.pendingReadyChecks.get(channelName)!);
+    }
+
+    if (resolver) {
+      const resolvers = this.pendingReadyResolvers.get(channelName) ?? [];
+      resolvers.push(resolver);
+      this.pendingReadyResolvers.set(channelName, resolvers);
+    }
+
+    const retryTimer = setTimeout(() => {
+      this.pendingReadyChecks.delete(channelName);
+      if (!this.isDestroyed) {
+        action();
+      }
+    }, 500);
+
+    this.pendingReadyChecks.set(channelName, retryTimer);
+  }
+
+  private resolvePendingReady(channelName: string, channel: RealtimeChannel | null): void {
+    if (this.pendingReadyChecks.has(channelName)) {
+      clearTimeout(this.pendingReadyChecks.get(channelName)!);
+      this.pendingReadyChecks.delete(channelName);
+    }
+
+    const resolvers = this.pendingReadyResolvers.get(channelName);
+    if (resolvers) {
+      resolvers.forEach(resolve => resolve(channel));
+      this.pendingReadyResolvers.delete(channelName);
+    }
   }
 
   public resetConnectionState(): void {
@@ -1307,6 +1425,14 @@ export function getChannelStatus() {
 
 export function isChannelActive(channelName: string): boolean {
   return getRealtimeManager().isChannelActive(channelName);
+}
+
+export function ensureChannelReady(channelName: string): Promise<RealtimeChannel | null> {
+  return getRealtimeManager().ensureChannelReady(channelName);
+}
+
+export function getExistingChannel(channelName: string): RealtimeChannel | undefined {
+  return getRealtimeManager().getActiveChannel(channelName);
 }
 
 export function resetConnectionState(): void {
