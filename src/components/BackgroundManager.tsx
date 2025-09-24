@@ -155,26 +155,26 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hasInitialData, setHasInitialData] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
-  
+
   // Hooks - all at the top level
   const { theme } = useTheme();
   const { user } = useAuth() || {};
-  const { 
-    weatherData: currentWeather, 
-    isLoading: weatherLoading, 
+  const {
+    weatherData: currentWeather,
+    isLoading: weatherLoading,
     error: weatherError,
     fetchWeatherData,
     setCoordinates
   } = useWeatherStore();
-  
-  const { 
-    locationData, 
-    hasUserConsent, 
+
+  const {
+    locationData,
+    hasUserConsent,
     permissionStatus,
     requestLocation,
     getIPBasedLocationAsync
   } = useGeolocation();
-  
+
   bgStateTracker.renderCount += 1;
   const renderIteration = bgStateTracker.renderCount;
 
