@@ -8,11 +8,11 @@ import React, {
   useMemo
 } from 'react';
 import { useAuth } from './AuthContext';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { 
+import {
   cleanupAllChannels,
   addConnectionStatusListener,
-  realtimeManager
+  subscribeToChannel,
+  unsubscribeFromChannel
 } from '@/lib/realtimeClient';
 import { useThrottle } from '@/hooks/usePerformance';
 
@@ -33,16 +33,22 @@ interface RealtimeProviderProps {
 // Throttle time for connection status updates to prevent excessive re-renders
 const STATUS_UPDATE_THROTTLE_MS = 1000;
 
+type SubscriptionEntry = {
+  callbacks: Set<(payload: any) => void>;
+  aggregator: (payload: any) => void;
+  options: { isPersistent?: boolean };
+  isSubscribed: boolean;
+};
+
 // Memoize the context value to prevent unnecessary re-renders
 function useRealtimeContextValue() {
   const { user } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
   
   // Use refs to track state without causing re-renders
-  const activeSubscriptionsRef = useRef<Map<string, Set<Function>>>(new Map());
+  const activeSubscriptionsRef = useRef<Map<string, SubscriptionEntry>>(new Map());
   const statusListenerCleanupRef = useRef<(() => void) | null>(null);
   const mountedRef = useRef(true);
-  const managerRef = useRef(realtimeManager);
   
   // Throttle the connection status updates
   const throttledSetConnectionStatus = useThrottle((status: 'connected' | 'reconnecting' | 'disconnected') => {
@@ -59,10 +65,8 @@ function useRealtimeContextValue() {
     }
     
     // Clean up all subscriptions when unmounting
-    activeSubscriptionsRef.current.forEach((callbacks, channelName) => {
-      callbacks.forEach(callback => {
-        managerRef.current.unsubscribe(channelName, callback);
-      });
+    activeSubscriptionsRef.current.forEach((entry, channelName) => {
+      unsubscribeFromChannel(channelName, entry.aggregator);
     });
     
     activeSubscriptionsRef.current.clear();
@@ -92,55 +96,69 @@ function useRealtimeContextValue() {
 
   // Define the cleanup function outside the useCallback to avoid hooks after early returns
   const subscribe = useCallback((
-    channelName: string, 
+    channelName: string,
     callback: (payload: any) => void,
     options: { isPersistent?: boolean } = {}
   ) => {
-    // Early return check moved after hooks
-    const isMounted = mountedRef.current;
-    const manager = managerRef.current;
-    
-    // Get the channel
-    const channel = manager.getChannel(channelName);
-    
-    // Create a cleanup function that can be called even if not mounted
-    const cleanup = () => {
-      if (!isMounted) return;
-      
-      const callbacks = activeSubscriptionsRef.current.get(channelName);
-      if (callbacks) {
-        callbacks.delete(callback);
-        if (callbacks.size === 0) {
-          // If no more callbacks, unsubscribe from the channel
-          if (!options.isPersistent && channel) {
-            channel.unsubscribe(callback);
-            activeSubscriptionsRef.current.delete(channelName);
-          }
+    if (!mountedRef.current || !user?.id) {
+      return () => {};
+    }
+
+    let entry = activeSubscriptionsRef.current.get(channelName);
+
+    if (!entry) {
+      const aggregator = (payload: any) => {
+        const currentEntry = activeSubscriptionsRef.current.get(channelName);
+        if (!currentEntry) {
+          return;
         }
+
+        currentEntry.callbacks.forEach((cb) => {
+          try {
+            cb(payload);
+          } catch (error) {
+            console.error(`[RealtimeContext] Error in subscription callback for ${channelName}:`, error);
+          }
+        });
+      };
+
+      entry = {
+        callbacks: new Set(),
+        aggregator,
+        options: { ...options },
+        isSubscribed: false
+      };
+      activeSubscriptionsRef.current.set(channelName, entry);
+    } else if (options.isPersistent) {
+      entry.options.isPersistent = true;
+    }
+
+    const wasEmpty = entry.callbacks.size === 0;
+    entry.callbacks.add(callback);
+
+    if (!entry.isSubscribed || wasEmpty) {
+      subscribeToChannel(channelName, entry.aggregator);
+      entry.isSubscribed = true;
+    }
+
+    return () => {
+      if (!mountedRef.current) {
+        return;
+      }
+
+      const currentEntry = activeSubscriptionsRef.current.get(channelName);
+      if (!currentEntry) {
+        return;
+      }
+
+      currentEntry.callbacks.delete(callback);
+
+      if (currentEntry.callbacks.size === 0 && !currentEntry.options.isPersistent) {
+        unsubscribeFromChannel(channelName, currentEntry.aggregator);
+        activeSubscriptionsRef.current.delete(channelName);
       }
     };
-    
-    // Early return after hooks
-    if (!isMounted) return cleanup;
-    if (!channel) {
-      console.warn(`[RealtimeContext] Channel ${channelName} not found`);
-      return cleanup;
-    }
-    
-    // Track the subscription
-    if (!activeSubscriptionsRef.current.has(channelName)) {
-      activeSubscriptionsRef.current.set(channelName, new Set());
-    }
-    
-    const callbacks = activeSubscriptionsRef.current.get(channelName)!;
-    callbacks.add(callback);
-    
-    // Subscribe to the channel
-    channel.subscribe(callback);
-    
-    // Return the cleanup function
-    return cleanup;
-  }, []);
+  }, [user?.id]);
 
   // Exposed methods
   const contextValue = useMemo(() => ({

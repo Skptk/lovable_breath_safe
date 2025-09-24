@@ -13,34 +13,101 @@ import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/we
 const BACKGROUND_REFRESH_LOCK_KEY = 'breath_safe_background_refresh_lock';
 const BACKGROUND_REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes
 
+type TimeOfDayPeriod = 'morning' | 'afternoon' | 'evening' | 'night';
+
+interface BackgroundLockPayload {
+  timestamp: number;
+  userAgent: string;
+  background?: string;
+}
+
+const parseTimeString = (value?: string): Date | null => {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed;
+  }
+
+  const asNumber = Number(value);
+  if (!Number.isNaN(asNumber)) {
+    const fromNumber = new Date(asNumber * (value.length < 13 ? 1000 : 1));
+    if (!Number.isNaN(fromNumber.getTime())) {
+      return fromNumber;
+    }
+  }
+
+  return null;
+};
+
+const getTimeOfDayInfo = (
+  sunriseTime?: string,
+  sunsetTime?: string
+): { period: TimeOfDayPeriod; isSunriseWindow: boolean; isSunsetWindow: boolean } => {
+  const now = new Date();
+  const sunrise = parseTimeString(sunriseTime);
+  const sunset = parseTimeString(sunsetTime);
+  const hour = now.getHours();
+
+  const windowMs = 45 * 60 * 1000; // 45 minutes on either side of sunrise/sunset
+  const isSunriseWindow = !!(sunrise && Math.abs(now.getTime() - sunrise.getTime()) <= windowMs);
+  const isSunsetWindow = !!(sunset && Math.abs(now.getTime() - sunset.getTime()) <= windowMs);
+
+  let period: TimeOfDayPeriod;
+  if (hour >= 21 || hour < 5) {
+    period = 'night';
+  } else if (hour < 12) {
+    period = 'morning';
+  } else if (hour < 17) {
+    period = 'afternoon';
+  } else {
+    period = 'evening';
+  }
+
+  return { period, isSunriseWindow, isSunsetWindow };
+};
+
 // Helper function to check if background refresh is locked
-const isBackgroundRefreshLocked = (): boolean => {
+const isBackgroundRefreshLocked = (nextBackground?: string): boolean => {
   if (typeof window === 'undefined') {
     return false;
   }
   try {
     const lockData = localStorage.getItem(BACKGROUND_REFRESH_LOCK_KEY);
     if (!lockData) return false;
-    
-    const { timestamp } = JSON.parse(lockData);
+
+    const parsed: BackgroundLockPayload = JSON.parse(lockData);
+    const { timestamp, background } = parsed;
     const now = Date.now();
     const timeSinceLastRefresh = now - timestamp;
-    
-    return timeSinceLastRefresh < BACKGROUND_REFRESH_LOCK_DURATION;
+
+    if (timeSinceLastRefresh >= BACKGROUND_REFRESH_LOCK_DURATION) {
+      return false;
+    }
+
+    if (nextBackground && background && background !== nextBackground) {
+      // Allow new backgrounds through the lock window
+      return false;
+    }
+
+    return true;
   } catch {
     return false;
   }
 };
 
 // Helper function to set background refresh lock
-const setBackgroundRefreshLock = (): void => {
+const setBackgroundRefreshLock = (nextBackground: string): void => {
   if (typeof window === 'undefined') {
     return;
   }
   try {
     const lockData = {
       timestamp: Date.now(),
-      userAgent: navigator.userAgent
+      userAgent: navigator.userAgent,
+      background: nextBackground
     };
     localStorage.setItem(BACKGROUND_REFRESH_LOCK_KEY, JSON.stringify(lockData));
   } catch (error) {
@@ -273,78 +340,75 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
   // Determine the appropriate background image based on weather and time
   const targetBackground = useMemo(() => {
-    // Default fallback background
     const defaultBackground = DEFAULT_BACKGROUND;
-    
-    // If we're still loading or have an error, use the default background
+
     if (weatherLoading || weatherError) {
-      console.log(`BackgroundManager: ${weatherLoading ? 'Loading' : 'Error'}, using default background`);
+      debugLog(`BackgroundManager: ${weatherLoading ? 'Loading' : 'Error'}, using default background`);
       return weatherError ? ERROR_BACKGROUND : defaultBackground;
     }
-    
-    // If we don't have weather data, use the default background
+
     if (!currentWeather) {
-      console.log('BackgroundManager: No weather data available, using default background');
+      debugLog('BackgroundManager: No weather data available, using default background');
       return defaultBackground;
     }
 
-    // Check if background refresh is locked to prevent duplicate updates
-    if (isBackgroundRefreshLocked()) {
-      console.log('BackgroundManager: Refresh locked - using current background');
-      return currentBackground;
-    }
-
-    // Check if it's within sunrise/sunset period (highest priority)
+    const { period, isSunriseWindow, isSunsetWindow } = getTimeOfDayInfo(
+      currentWeather.sunriseTime,
+      currentWeather.sunsetTime
+    );
+    const isNightPeriod = period === 'night' || isNightTime(currentWeather.sunriseTime, currentWeather.sunsetTime);
     const isSunriseSunset = isSunriseSunsetPeriod(currentWeather.sunriseTime, currentWeather.sunsetTime);
-    
-    // Check if it's night time
-    const nightTime = isNightTime(currentWeather.sunriseTime, currentWeather.sunsetTime);
-    
-    // Simplified time analysis logging - only log on significant changes
+
     const currentTime = new Date();
     const timeKey = `${currentTime.getHours()}:${currentTime.getMinutes()}`;
-    const dayNightKey = nightTime ? 'Night' : 'Day';
-    
-    // Only log if this is a new time period or day/night transition
+    const dayNightKey = isNightPeriod ? 'Night' : 'Day';
+
     if (!timeAnalysisCache.current[timeKey] || timeAnalysisCache.current[timeKey] !== dayNightKey) {
       timeAnalysisCache.current[timeKey] = dayNightKey;
-      
-      // Single summary log instead of verbose analysis
-      debugLog(`🌙 [BackgroundManager] Time: ${timeKey} (${dayNightKey}) | Sunrise: ${currentWeather.sunriseTime || 'N/A'} | Sunset: ${currentWeather.sunsetTime || 'N/A'}`);
+      debugLog(
+        `🌙 [BackgroundManager] Time: ${timeKey} (${dayNightKey}) | Sunrise: ${currentWeather.sunriseTime || 'N/A'} | Sunset: ${currentWeather.sunsetTime || 'N/A'}`
+      );
     }
-    
-    // For OpenWeatherMap, we need to map the weather condition to Open-Meteo codes
-    // OpenWeatherMap uses text descriptions, so we'll map them to our background system
-    let conditionCode = 1; // Default to partly cloudy
-    
+
+    let conditionCode = 1;
     const weatherCondition = currentWeather.weatherCondition?.toLowerCase();
     if (weatherCondition) {
       if (weatherCondition.includes('clear') || weatherCondition.includes('sun')) {
-        conditionCode = 0; // Clear sky
+        conditionCode = 0;
       } else if (weatherCondition.includes('cloud') && !weatherCondition.includes('overcast')) {
-        conditionCode = 2; // Partly cloudy
+        conditionCode = 2;
       } else if (weatherCondition.includes('overcast')) {
-        conditionCode = 3; // Overcast
+        conditionCode = 3;
       } else if (weatherCondition.includes('rain') || weatherCondition.includes('drizzle')) {
-        conditionCode = 61; // Rain
+        conditionCode = 61;
       } else if (weatherCondition.includes('snow')) {
-        conditionCode = 71; // Snow
+        conditionCode = 71;
       } else if (weatherCondition.includes('fog') || weatherCondition.includes('mist')) {
-        conditionCode = 45; // Fog
+        conditionCode = 45;
       }
     }
-    
-    // Priority order: sunrise/sunset > night time > weather conditions
-    if (isSunriseSunset) {
-      const isSunrise = new Date().getHours() < 12;
-      return isSunrise ? '/weather-backgrounds/sunrise.webp' : '/weather-backgrounds/sunset.webp';
-    } else if (nightTime) {
-      return '/weather-backgrounds/night.webp';
-    } else {
-      // Map weather condition codes to background images
-      return getBackgroundImage(conditionCode);
+
+    let candidateBackground = getBackgroundImage(conditionCode);
+
+    if (isNightPeriod) {
+      candidateBackground = '/weather-backgrounds/night.webp';
     }
-  }, [currentWeather, currentBackground, weatherLoading, weatherError]); // Include weatherError for accuracy
+
+    if (isSunriseWindow) {
+      candidateBackground = '/weather-backgrounds/sunrise.webp';
+    } else if (isSunsetWindow || (period === 'evening' && conditionCode === 0)) {
+      candidateBackground = '/weather-backgrounds/sunset.webp';
+    } else if (isSunriseSunset && period === 'morning') {
+      candidateBackground = '/weather-backgrounds/sunrise.webp';
+    }
+
+    if (isBackgroundRefreshLocked(candidateBackground) && currentBackground !== DEFAULT_BACKGROUND) {
+      debugLog('BackgroundManager: Refresh locked - using current background');
+      return currentBackground;
+    }
+
+    return candidateBackground;
+  }, [currentWeather, currentBackground, weatherLoading, weatherError, debugLog]);
 
   // Update background when target changes
   useEffect(() => {
@@ -357,7 +421,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       debugLog('BackgroundManager: Changing background from', currentBackground, 'to', targetBackground);
 
       // Set refresh lock to prevent rapid changes
-      setBackgroundRefreshLock();
+      setBackgroundRefreshLock(targetBackground);
 
       // Start transition
       setIsTransitioning(true);
