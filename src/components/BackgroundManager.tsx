@@ -15,6 +15,9 @@ const BACKGROUND_REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes
 
 // Helper function to check if background refresh is locked
 const isBackgroundRefreshLocked = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
   try {
     const lockData = localStorage.getItem(BACKGROUND_REFRESH_LOCK_KEY);
     if (!lockData) return false;
@@ -31,6 +34,9 @@ const isBackgroundRefreshLocked = (): boolean => {
 
 // Helper function to set background refresh lock
 const setBackgroundRefreshLock = (): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
   try {
     const lockData = {
       timestamp: Date.now(),
@@ -83,15 +89,16 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     getIPBasedLocationAsync
   } = useGeolocation();
   
+  bgStateTracker.renderCount += 1;
+  const renderIteration = bgStateTracker.renderCount;
+
   // Refs for tracking state without causing re-renders
   const isMountedRef = useRef(true);
   const hasAppliedBackgroundRef = useRef(false);
   const fallbackTimeoutRef = useRef<number | null>(null);
+  const effectTimeoutRef = useRef<number | null>(null);
   // Time analysis cache to prevent duplicate logging
   const timeAnalysisCache = useRef<Record<string, string>>({});
-
-  bgStateTracker.renderCount += 1;
-  const renderIteration = bgStateTracker.renderCount;
 
   const shouldTrack = typeof __TRACK_VARIABLES__ === 'undefined' || __TRACK_VARIABLES__;
 
@@ -129,10 +136,26 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       return; // Skip in non-browser environments
     }
 
-    console.log(`🖼️ [BG-MANAGER-${renderIteration}] Effect running after render`);
+    const iterationLabel = renderIteration;
+    if (shouldTrack) {
+      console.log(`🖼️ [BG-MANAGER-${iterationLabel}] Effect running after render`);
+    }
 
-    const timeoutId = window.setTimeout(() => {
-      console.log('⚠️  [CRITICAL] BackgroundManager effect timeout - potential TDZ trigger point', {
+    if (effectTimeoutRef.current) {
+      window.clearTimeout(effectTimeoutRef.current);
+      effectTimeoutRef.current = null;
+    }
+
+    if (!(shouldTrack && backgroundState === 'loading')) {
+      return () => {
+        if (shouldTrack) {
+          console.log(`🖼️ [BG-MANAGER-${iterationLabel}] Effect cleanup`);
+        }
+      };
+    }
+
+    effectTimeoutRef.current = window.setTimeout(() => {
+      console.warn('⚠️  [CRITICAL] BackgroundManager effect timeout - potential TDZ trigger point', {
         hasWeatherData: !!currentWeather,
         backgroundState,
         timestamp: new Date().toISOString()
@@ -140,13 +163,18 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       if (shouldTrack) {
         debugTracker.trackVariableAccess('BackgroundManager', 'BackgroundManager.tsx:postRenderTimeout');
       }
-    }, 0);
+    }, 5000);
 
     return () => {
-      console.log(`🖼️ [BG-MANAGER-${renderIteration}] Effect cleanup`);
-      clearTimeout(timeoutId);
+      if (shouldTrack) {
+        console.log(`🖼️ [BG-MANAGER-${iterationLabel}] Effect cleanup`);
+      }
+      if (effectTimeoutRef.current) {
+        window.clearTimeout(effectTimeoutRef.current);
+        effectTimeoutRef.current = null;
+      }
     };
-  }, [backgroundState, currentWeather, renderIteration]);
+  }, [backgroundState, currentWeather, shouldTrack, renderIteration]);
 
   // Update weather store coordinates when location data changes
   useEffect(() => {
@@ -295,7 +323,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       // Map weather condition codes to background images
       return getBackgroundImage(conditionCode);
     }
-  }, [currentWeather, currentBackground, weatherLoading]); // Add weatherLoading dependency
+  }, [currentWeather, currentBackground, weatherLoading, weatherError]); // Include weatherError for accuracy
 
   // Update background when target changes
   useEffect(() => {
