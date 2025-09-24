@@ -33,7 +33,7 @@ interface AirQualityDashboardProps {
  * Hook: small permission timeout helper
  * returns boolean `timedOut` that becomes true after `ms` if `hasRequestedPermission` is still false
  */
-const usePermissionTimeout = (hasRequestedPermission: boolean, ms: number = 3000) => {
+function usePermissionTimeout(hasRequestedPermission: boolean, ms: number = 3000) {
   const [timedOut, setTimedOut] = React.useState(false);
 
   React.useEffect(() => {
@@ -47,14 +47,21 @@ const usePermissionTimeout = (hasRequestedPermission: boolean, ms: number = 3000
   }, [hasRequestedPermission, ms]);
 
   return timedOut;
-};
+}
 
 /**
  * The content wrapper component - extracted for testability
  */
-const AirQualityDashboardContent: React.FC<
-  AirQualityDashboardProps & { user: any; locationContext: any }
-> = ({ user, locationContext, onNavigate, showMobileMenu, onMobileMenuToggle, isDemoMode = false }) => {
+type AirQualityDashboardContentProps = AirQualityDashboardProps & { user: any; locationContext: any };
+
+function AirQualityDashboardContent({
+  user,
+  locationContext,
+  onNavigate,
+  showMobileMenu,
+  onMobileMenuToggle,
+  isDemoMode = false,
+}: AirQualityDashboardContentProps) {
   // Hooks
   const { data, isRefreshing, isLoading, error, refreshData } = useAirQuality();
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
@@ -302,7 +309,7 @@ const AirQualityDashboardContent: React.FC<
       </div>
     </div>
   );
-};
+}
 
 /**
  * Main wrapper that ties into location + auth contexts
