@@ -9,9 +9,7 @@ interface WeatherSectionProps {
   } | null;
 }
 
-export const WeatherSection: React.FC<WeatherSectionProps> = React.memo(({
-  coordinates 
-}) => {
+function WeatherSectionComponent({ coordinates }: WeatherSectionProps) {
   // Early return if coordinates are not available
   if (!coordinates || 
       typeof coordinates.latitude !== 'number' || 
@@ -31,6 +29,8 @@ export const WeatherSection: React.FC<WeatherSectionProps> = React.memo(({
       />
     </motion.div>
   );
-});
+}
+
+export const WeatherSection: React.FC<WeatherSectionProps> = React.memo(WeatherSectionComponent);
 
 WeatherSection.displayName = 'WeatherSection';

@@ -8,10 +8,10 @@ interface PointsGridProps {
   onNavigate?: (route: string) => void;
 }
 
-export const PointsGrid: React.FC<PointsGridProps> = React.memo(({
+function PointsGridComponent({
   userPoints,
   onNavigate,
-}) => {
+}: PointsGridProps) {
   if (!userPoints) return null;
 
   return (
@@ -58,6 +58,8 @@ export const PointsGrid: React.FC<PointsGridProps> = React.memo(({
       </div>
     </motion.div>
   );
-});
+}
+
+export const PointsGrid: React.FC<PointsGridProps> = React.memo(PointsGridComponent);
 
 PointsGrid.displayName = 'PointsGrid';

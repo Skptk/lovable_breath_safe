@@ -18,17 +18,21 @@ interface AQICardProps {
   setSelectedPollutant: (p: any | null) => void;
 }
 
-export const AQICard: React.FC<AQICardProps> = React.memo(({
+function formatRefreshCountdown(seconds: number) {
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
+
+function AQICardComponent({
   data,
   timeUntilRefresh,
   isRefreshing,
   onRefresh,
   onNavigate,
-  showMobileMenu,
-  onMobileMenuToggle,
-  isDemoMode,
   setSelectedPollutant,
-}) => {
+}: AQICardProps) {
   const aqiColor = getAQIColor(data?.aqi ?? 0);
   const aqiLabel = getAQILabel(data?.aqi ?? 0);
 
@@ -39,6 +43,11 @@ export const AQICard: React.FC<AQICardProps> = React.memo(({
 
   const locationSource = isUserLocation ? "Your Location" : "Nearest Sensor";
   const locationIcon = isUserLocation ? User : Satellite;
+
+  const formattedRefreshCountdown = React.useMemo(
+    () => formatRefreshCountdown(timeUntilRefresh),
+    [timeUntilRefresh]
+  );
 
   // CRITICAL FIX: Remove useMemo and create pollutants array directly
   const pollutants = [
@@ -90,6 +99,9 @@ export const AQICard: React.FC<AQICardProps> = React.memo(({
                 <div className="text-xs text-muted-foreground">
                   Data source: {data?.dataSource ?? "—"}
                 </div>
+                <div className="text-xs text-muted-foreground">
+                  Next auto refresh in {formattedRefreshCountdown}
+                </div>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 justify-center">
@@ -123,16 +135,16 @@ export const AQICard: React.FC<AQICardProps> = React.memo(({
                   View History
                 </Button>
               </div>
+
             </div>
 
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-center">Pollutant Breakdown</h3>
               <div className="grid grid-cols-2 gap-3">
                 {pollutants.map((pollutant) => (
-                  <GlassCard
+                  <div
                     key={pollutant.name}
-                    variant="subtle"
-                    className="p-3 text-center cursor-pointer hover:scale-105 transition-transform"
+                    className="cursor-pointer hover:scale-105 transition-transform"
                     onClick={() =>
                       setSelectedPollutant({
                         name: pollutant.name,
@@ -143,13 +155,21 @@ export const AQICard: React.FC<AQICardProps> = React.memo(({
                       })
                     }
                   >
-                    <div className={`text-lg font-bold ${pollutant.color}`}>
-                      {pollutant.value.toFixed(1)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{pollutant.name}</div>
-                    <div className="text-xs text-muted-foreground">{pollutant.unit}</div>
-                  </GlassCard>
+                    <GlassCard
+                      variant="subtle"
+                      className="p-3 text-center"
+                    >
+                      <div className={`text-lg font-bold ${pollutant.color}`}>
+                        {pollutant.value.toFixed(1)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">{pollutant.name}</div>
+                      <div className="text-xs text-muted-foreground">{pollutant.unit}</div>
+                    </GlassCard>
+                  </div>
                 ))}
+              </div>
+              <div className="text-xs text-muted-foreground mt-2 text-center">
+                Next auto refresh in {formattedRefreshCountdown}
               </div>
             </div>
           </div>
@@ -157,6 +177,8 @@ export const AQICard: React.FC<AQICardProps> = React.memo(({
       </GlassCard>
     </motion.div>
   );
-});
+}
+
+export const AQICard: React.FC<AQICardProps> = React.memo(AQICardComponent);
 
 AQICard.displayName = 'AQICard';
