@@ -314,12 +314,12 @@ function AirQualityDashboardContent({
 /**
  * Main wrapper that ties into location + auth contexts
  */
-export const AirQualityDashboard: React.FC<AirQualityDashboardProps> = ({
+export function AirQualityDashboard({
   onNavigate,
   showMobileMenu,
   onMobileMenuToggle,
   isDemoMode = false,
-}) => {
+}: AirQualityDashboardProps) {
   const { user } = useAuth();
   const locationContext = useLocationContext();
 
@@ -333,6 +333,6 @@ export const AirQualityDashboard: React.FC<AirQualityDashboardProps> = ({
       isDemoMode={isDemoMode}
     />
   );
-};
+}
 
 export default AirQualityDashboard;
