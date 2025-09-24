@@ -3,11 +3,16 @@ import { debugTracker } from '../utils/errorTracker';
 import { useWeatherStore } from '@/store/weatherStore';
 
 const TDZDetector: React.FC = () => {
+  const trackingEnabled = typeof __TRACK_VARIABLES__ !== 'undefined' && __TRACK_VARIABLES__;
   const [renderCount, setRenderCount] = useState(0);
   const renderRef = React.useRef(0);
   const weatherData = useWeatherStore((state) => state.weatherData);
 
   useEffect(() => {
+    if (!trackingEnabled) {
+      return;
+    }
+
     renderRef.current += 1;
     const next = renderRef.current;
     setRenderCount(next);
@@ -58,14 +63,22 @@ const TDZDetector: React.FC = () => {
       });
       clearTimeout(timeoutId);
     };
-  }, [weatherData]);
+  }, [trackingEnabled, weatherData]);
 
   useEffect(() => {
+    if (!trackingEnabled) {
+      return;
+    }
+
     console.log(`🕵️ [TDZ-DETECTOR] Weather data effect triggered`, {
       timestamp: new Date().toISOString(),
       hasWeatherData: !!weatherData,
     });
-  }, [weatherData]);
+  }, [trackingEnabled, weatherData]);
+
+  if (!trackingEnabled) {
+    return null;
+  }
 
   return (
     <div style={{ display: 'none' }}>
