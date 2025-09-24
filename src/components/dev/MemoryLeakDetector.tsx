@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createLeakDetector } from '@/utils/memoryUtils';
+import { debugLog, debugWarn, debugError, debugTrace } from '@/utils/debugFlags';
 
 interface MemoryLeakDetectorProps {
   componentName: string;
@@ -35,15 +36,15 @@ export function MemoryLeakDetector({
   // Check for potential leaks
   useEffect(() => {
     if (instanceCount >= errorThreshold) {
-      console.error(
-        `[Memory Leak Detected] ${componentName} has ${instanceCount} instances. ` +
-        `This is likely a memory leak.`
+      debugError(
+        'MemoryLeakDetector',
+        `${componentName} has ${instanceCount} instances (error threshold ${errorThreshold})`
       );
-      console.trace('Component instance stack trace');
+      debugTrace('MemoryLeakDetector', `${componentName} instance stack trace`);
     } else if (instanceCount >= warnThreshold) {
-      console.warn(
-        `[Potential Memory Leak] ${componentName} has ${instanceCount} instances. ` +
-        `This may indicate a memory leak.`
+      debugWarn(
+        'MemoryLeakDetector',
+        `${componentName} has ${instanceCount} instances (warn threshold ${warnThreshold})`
       );
     }
   }, [instanceCount, componentName, warnThreshold, errorThreshold]);
@@ -90,7 +91,9 @@ export function useLeakDetection(componentName: string) {
     const cleanup = leakDetector.current.track(instanceRef.current);
     
     // Log mount
-    console.log(`[Mount] ${componentName} mounted (${renderCount.current} renders)`);
+    debugLog('MemoryLeakDetector', `[Mount] ${componentName} mounted`, {
+      renders: renderCount.current
+    });
     
     return () => {
       // Clean up
@@ -99,16 +102,17 @@ export function useLeakDetection(componentName: string) {
       // Log unmount with duration
       const unmountTime = performance.now();
       const duration = unmountTime - mountTime.current;
-      console.log(
-        `[Unmount] ${componentName} after ${(duration / 1000).toFixed(2)}s ` +
-        `(${renderCount.current} renders)`
-      );
+      debugLog('MemoryLeakDetector', `[Unmount] ${componentName}`, {
+        durationMs: duration,
+        renders: renderCount.current
+      });
       
       // If component was mounted for a short time, it might be a memory leak
       if (duration < 1000 && renderCount.current > 5) {
-        console.warn(
-          `[Potential Memory Leak] ${componentName} was mounted/unmounted ` +
-          `quickly ${renderCount.current} times. This may indicate a memory leak.`
+        debugWarn(
+          'MemoryLeakDetector',
+          `${componentName} mounted/unmounted quickly`,
+          { renders: renderCount.current, durationMs: duration }
         );
       }
     };
@@ -152,8 +156,10 @@ export function MemoryUsageWarning() {
           setIsHighMemory(isHigh);
           
           if (isHigh) {
-            console.warn(
-              `High memory usage: ${Math.round((used / limit) * 100)}% of available JS heap used`
+            debugWarn(
+              'MemoryUsageWarning',
+              `High memory usage detected`,
+              { percentUsed: Math.round((used / limit) * 100) }
             );
           }
         }

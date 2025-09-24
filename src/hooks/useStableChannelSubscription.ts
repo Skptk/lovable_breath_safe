@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { debugLog, debugWarn, debugError } from '@/utils/debugFlags';
 
 interface ChannelConfig {
   event?: string;
@@ -45,10 +46,12 @@ export function useStableChannelSubscription({
   
   // Create and configure channel - stable function
   const createChannel = useCallback(() => {
+    debugLog('StableChannel', `createChannel invoked for ${channelName}`);
     if (isDestroyedRef.current) return null;
 
     try {
       const channel = supabase.channel(channelName);
+      debugLog('StableChannel', `channel created for ${channelName}`);
       
       // Configure postgres changes if config provided
       if (configRef.current?.event && configRef.current?.schema && configRef.current?.table) {
@@ -77,7 +80,7 @@ export function useStableChannelSubscription({
 
       return channel;
     } catch (error) {
-      console.error(`❌ [StableChannel] Error creating channel ${channelName}:`, error);
+      debugError('StableChannel', `Error creating channel ${channelName}`, error);
       return null;
     }
   }, [channelName]); // Only depend on channelName
@@ -87,13 +90,16 @@ export function useStableChannelSubscription({
     if (isDestroyedRef.current) return;
 
     if (error) {
-      console.warn(`⚠️ [StableChannel] Handling error for ${channelName}:`, error);
+      debugWarn('StableChannel', `Handling error for ${channelName}`, error);
     }
 
     if (retryCountRef.current < maxRetries) {
       const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
       
-      console.log(`🔄 [StableChannel] Retrying ${channelName} in ${delay}ms (attempt ${retryCountRef.current + 1}/${maxRetries})`);
+      debugLog('StableChannel', `Retrying ${channelName} in ${delay}ms`, {
+        attempt: retryCountRef.current + 1,
+        maxRetries
+      });
       
       retryTimeoutRef.current = setTimeout(() => {
         if (!isDestroyedRef.current) {
@@ -102,14 +108,14 @@ export function useStableChannelSubscription({
         }
       }, delay);
     } else {
-      console.error(`❌ [StableChannel] Max retries reached for ${channelName}`);
+      debugError('StableChannel', `Max retries reached for ${channelName}`);
     }
   }, [channelName, maxRetries]); // Stable dependencies
 
   // Subscribe to channel - stable function with debouncing
   const subscribe = useCallback(async () => {
     if (isDestroyedRef.current || !enabledRef.current || isSubscribedRef.current || isSubscribingRef.current) {
-      console.log(`🔌 [StableChannel] Subscription skipped for ${channelName}:`, {
+      debugLog('StableChannel', `Subscription skipped for ${channelName}`, {
         isDestroyed: isDestroyedRef.current,
         enabled: enabledRef.current,
         isSubscribed: isSubscribedRef.current,
@@ -119,7 +125,7 @@ export function useStableChannelSubscription({
     }
 
     try {
-      console.log(`🔌 [StableChannel] Subscribing to ${channelName}`);
+      debugLog('StableChannel', `Subscribing to ${channelName}`);
       isSubscribingRef.current = true;
       
       const channel = createChannel();
@@ -132,28 +138,28 @@ export function useStableChannelSubscription({
 
         switch (status) {
           case 'SUBSCRIBED':
-            console.log(`✅ [StableChannel] Successfully subscribed to ${channelName}`);
+            debugLog('StableChannel', `Successfully subscribed to ${channelName}`);
             isSubscribedRef.current = true;
             isSubscribingRef.current = false;
             retryCountRef.current = 0;
             break;
             
           case 'CHANNEL_ERROR':
-            console.error(`❌ [StableChannel] Channel error for ${channelName}:`, error);
+            debugError('StableChannel', `Channel error for ${channelName}`, error);
             isSubscribedRef.current = false;
             isSubscribingRef.current = false;
             handleChannelError(error);
             break;
             
           case 'TIMED_OUT':
-            console.warn(`⏰ [StableChannel] Channel timeout for ${channelName}`);
+            debugWarn('StableChannel', `Channel timeout for ${channelName}`);
             isSubscribedRef.current = false;
             isSubscribingRef.current = false;
             handleChannelError(new Error('Channel timeout'));
             break;
             
           case 'CLOSED':
-            console.log(`🔒 [StableChannel] Channel closed for ${channelName}`);
+            debugLog('StableChannel', `Channel closed for ${channelName}`);
             isSubscribedRef.current = false;
             isSubscribingRef.current = false;
             break;
@@ -163,7 +169,7 @@ export function useStableChannelSubscription({
       channelRef.current = subscription;
 
     } catch (error) {
-      console.error(`❌ [StableChannel] Subscription failed for ${channelName}:`, error);
+      debugError('StableChannel', `Subscription failed for ${channelName}`, error);
       isSubscribingRef.current = false;
       handleChannelError(error);
     }

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { connectionManager, ConnectionOptions } from '@/lib/connectionManager';
+import { debugLog, debugWarn, debugError } from '@/utils/debugFlags';
 
 export interface UseWebSocketOptions extends ConnectionOptions {
   onMessage?: (event: MessageEvent) => void;
@@ -54,6 +55,7 @@ export function useWebSocket(
   const handleMessage = useCallback((event: MessageEvent) => {
     setLastMessage(event);
     onMessageRef.current?.(event);
+    debugLog('WebSocket', 'Message received', { url, data: event.data });
   }, []);
 
   // Handle connection open
@@ -61,18 +63,21 @@ export function useWebSocket(
     setIsConnected(true);
     setError(null);
     onOpenRef.current?.(event);
+    debugLog('WebSocket', 'Connection opened', { url });
   }, []);
 
   // Handle connection close
   const handleClose = useCallback((event: CloseEvent) => {
     setIsConnected(false);
     onCloseRef.current?.(event);
+    debugWarn('WebSocket', 'Connection closed', { url, code: event.code, reason: event.reason });
   }, []);
 
   // Handle errors
   const handleError = useCallback((event: Event) => {
     setError(new Error('WebSocket error'));
     onErrorRef.current?.(event);
+    debugError('WebSocket', 'Connection error', { url, event });
   }, []);
 
   // Send message function
@@ -81,15 +86,20 @@ export function useWebSocket(
     if (!connectionId) {
       throw new Error('WebSocket URL is not set');
     }
+    debugLog('WebSocket', 'Sending message', { connectionId, data });
     await connectionManager.send(connectionId, data);
   }, []);
 
   // Connect to WebSocket
   const connect = useCallback(async () => {
-    if (!url) return;
+    if (!url) {
+      debugWarn('WebSocket', 'Connect called with null URL');
+      return;
+    }
 
     const connectionId = getConnectionId(url);
     connectionIdRef.current = connectionId;
+    debugLog('WebSocket', 'Connecting', { url, connectionId, options: connectionOptionsRef.current });
 
     try {
       const ws = await connectionManager.connect(url, connectionOptionsRef.current);
@@ -107,11 +117,13 @@ export function useWebSocket(
         ws.removeEventListener('error', handleError);
 
         if (!reconnectOnUnmountRef.current && connectionId) {
+          debugLog('WebSocket', 'Disconnecting on cleanup', { connectionId });
           connectionManager.disconnect(connectionId);
         }
       };
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to connect to WebSocket'));
+      debugError('WebSocket', 'Failed to connect', { url, error: err });
       return undefined;
     }
   }, [url, getConnectionId, handleMessage, handleOpen, handleClose, handleError]);
@@ -140,6 +152,7 @@ export function useWebSocket(
 
   useEffect(() => {
     connectionIdRef.current = getConnectionId(url);
+    debugLog('WebSocket', 'Connection ID updated', { url, connectionId: connectionIdRef.current });
   }, [url, getConnectionId]);
 
   return {
