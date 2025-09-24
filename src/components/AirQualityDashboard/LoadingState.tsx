@@ -6,10 +6,10 @@ interface LoadingStateProps {
   subtitle?: string;
 }
 
-export const LoadingState: React.FC<LoadingStateProps> = React.memo(({
+function LoadingStateComponent({
   title = "Loading",
   subtitle = "Please wait...",
-}) => {
+}: LoadingStateProps) {
   return (
     <div className="space-y-6 lg:space-y-8">
       <Header title={title} subtitle={subtitle} />
@@ -19,6 +19,8 @@ export const LoadingState: React.FC<LoadingStateProps> = React.memo(({
       </div>
     </div>
   );
-});
+}
+
+export const LoadingState: React.FC<LoadingStateProps> = React.memo(LoadingStateComponent);
 
 LoadingState.displayName = 'LoadingState';
