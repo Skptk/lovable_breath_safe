@@ -63,6 +63,25 @@ const ERROR_BACKGROUND = '/weather-backgrounds/overcast.webp';
 
 const bgStateTracker = { renderCount: 0 };
 
+const resolveBackgroundDebugFlag = (): boolean => {
+  if (typeof globalThis === 'undefined') {
+    return false;
+  }
+
+  const globalAny = globalThis as Record<string, unknown>;
+  const explicitFlag = globalAny['__BG_DEBUG__'];
+  if (typeof explicitFlag === 'boolean') {
+    return explicitFlag;
+  }
+
+  const trackerFlag = globalAny['__TRACK_VARIABLES__'];
+  if (typeof trackerFlag === 'boolean') {
+    return trackerFlag;
+  }
+
+  return false;
+};
+
 const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ children }) => {
   // State
   const [currentBackground, setCurrentBackground] = useState<string>(DEFAULT_BACKGROUND);
@@ -100,9 +119,17 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   // Time analysis cache to prevent duplicate logging
   const timeAnalysisCache = useRef<Record<string, string>>({});
 
-  const shouldTrack = typeof __TRACK_VARIABLES__ === 'undefined' || __TRACK_VARIABLES__;
+  const shouldTrack = resolveBackgroundDebugFlag();
+  const debugLog = useCallback(
+    (...args: unknown[]) => {
+      if (shouldTrack) {
+        console.log(...args);
+      }
+    },
+    [shouldTrack]
+  );
 
-  console.log(`🖼️ [BG-MANAGER-${renderIteration}] Component rendering:`, {
+  debugLog(`🖼️ [BG-MANAGER-${renderIteration}] Component rendering:`, {
     hasWeatherData: !!currentWeather,
     backgroundState,
     weatherLoading,
@@ -137,9 +164,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     }
 
     const iterationLabel = renderIteration;
-    if (shouldTrack) {
-      console.log(`🖼️ [BG-MANAGER-${iterationLabel}] Effect running after render`);
-    }
+    debugLog(`🖼️ [BG-MANAGER-${iterationLabel}] Effect running after render`);
 
     if (effectTimeoutRef.current) {
       window.clearTimeout(effectTimeoutRef.current);
@@ -148,9 +173,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
     if (!(shouldTrack && backgroundState === 'loading')) {
       return () => {
-        if (shouldTrack) {
-          console.log(`🖼️ [BG-MANAGER-${iterationLabel}] Effect cleanup`);
-        }
+        debugLog(`🖼️ [BG-MANAGER-${iterationLabel}] Effect cleanup`);
       };
     }
 
@@ -166,9 +189,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     }, 5000);
 
     return () => {
-      if (shouldTrack) {
-        console.log(`🖼️ [BG-MANAGER-${iterationLabel}] Effect cleanup`);
-      }
+      debugLog(`🖼️ [BG-MANAGER-${iterationLabel}] Effect cleanup`);
       if (effectTimeoutRef.current) {
         window.clearTimeout(effectTimeoutRef.current);
         effectTimeoutRef.current = null;
@@ -289,7 +310,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       timeAnalysisCache.current[timeKey] = dayNightKey;
       
       // Single summary log instead of verbose analysis
-      console.log(`🌙 [BackgroundManager] Time: ${timeKey} (${dayNightKey}) | Sunrise: ${currentWeather.sunriseTime || 'N/A'} | Sunset: ${currentWeather.sunsetTime || 'N/A'}`);
+      debugLog(`🌙 [BackgroundManager] Time: ${timeKey} (${dayNightKey}) | Sunrise: ${currentWeather.sunriseTime || 'N/A'} | Sunset: ${currentWeather.sunsetTime || 'N/A'}`);
     }
     
     // For OpenWeatherMap, we need to map the weather condition to Open-Meteo codes
@@ -333,7 +354,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
     // Only update if the background is actually changing
     if (targetBackground !== currentBackground) {
-      console.log('BackgroundManager: Changing background from', currentBackground, 'to', targetBackground);
+      debugLog('BackgroundManager: Changing background from', currentBackground, 'to', targetBackground);
 
       // Set refresh lock to prevent rapid changes
       setBackgroundRefreshLock();
@@ -374,7 +395,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
         return;
       }
 
-      console.log(`🖼️ [BG-MANAGER-${renderIteration}] Applying default background after timeout`);
+      debugLog(`🖼️ [BG-MANAGER-${renderIteration}] Applying default background after timeout`);
       setCurrentBackground(DEFAULT_BACKGROUND);
       setBackgroundState((prev) => (prev === 'error' ? prev : 'success'));
       hasAppliedBackgroundRef.current = true;
@@ -455,7 +476,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     );
 
     if (shouldTrack) {
-      console.log(`✅ [BG-MANAGER-${renderIteration}] Render successful`);
+      debugLog(`✅ [BG-MANAGER-${renderIteration}] Render successful`);
       debugTracker.trackVariableAccess('BackgroundManager', 'BackgroundManager.tsx:renderSuccess');
     }
 
