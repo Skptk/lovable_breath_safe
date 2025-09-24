@@ -10,6 +10,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: "/", // Ensure proper base path for Netlify
+    define: {
+      __DEBUG_MODE__: JSON.stringify(isDebug),
+      __TRACK_VARIABLES__: JSON.stringify(isDebug || mode === "development"),
+    },
     server: {
       host: "::",
       port: 8080,
@@ -48,7 +52,7 @@ export default defineConfig(({ mode }) => {
       cssCodeSplit: true,
       minify: isDebug ? false : "esbuild",
       brotliSize: false,
-      sourcemap: isDebug,
+      sourcemap: isDebug ? true : false,
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
         // Disable tree shaking at Rollup level to prevent initialization issues
@@ -105,6 +109,23 @@ export default defineConfig(({ mode }) => {
           assetFileNames: "assets/[name]-[hash].[ext]",
         },
       },
+      ...(isDebug
+        ? {
+            sourcemap: true,
+            minify: false,
+            rollupOptions: {
+              treeshake: false,
+              output: {
+                ...{
+                  sourcemap: true,
+                  preserveModules: false,
+                  manualChunks: undefined,
+                  inlineDynamicImports: false,
+                },
+              },
+            },
+          }
+        : {}),
       esbuild: {
         keepNames: true,
         minifyIdentifiers: false,

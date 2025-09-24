@@ -1,5 +1,19 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { debugTracker } from '@/utils/errorTracker';
+
+const shouldTrackWeatherState = typeof __TRACK_VARIABLES__ === 'undefined' || __TRACK_VARIABLES__;
+
+const trackWeatherState = (action: string, payload: unknown) => {
+  console.log(`🏪 [STORE] Weather state changing via ${action}:`, payload);
+  if (shouldTrackWeatherState) {
+    debugTracker.trackVariableDeclaration(
+      'weatherState',
+      { action, payload, timestamp: Date.now() },
+      'weatherStore.ts'
+    );
+  }
+};
 
 // Weather data types
 export interface WeatherData {
@@ -101,6 +115,7 @@ export const useWeatherStore = create<WeatherStore>()(
 
       // Set weather data
       setWeatherData: (data) => {
+        trackWeatherState('setWeatherData', data);
         set({ 
           weatherData: data,
           lastFetchTime: Date.now(),
@@ -111,6 +126,7 @@ export const useWeatherStore = create<WeatherStore>()(
 
       // Set forecast data
       setForecastData: (data) => {
+        trackWeatherState('setForecastData', data);
         set({ 
           forecastData: data,
           lastFetchTime: Date.now(),
@@ -120,10 +136,16 @@ export const useWeatherStore = create<WeatherStore>()(
       },
 
       // Set loading state
-      setLoading: (loading) => set({ isLoading: loading }),
+      setLoading: (loading) => {
+        trackWeatherState('setLoading', loading);
+        set({ isLoading: loading });
+      },
 
       // Set error state
-      setError: (error) => set({ error, isLoading: false }),
+      setError: (error) => {
+        trackWeatherState('setError', error);
+        set({ error, isLoading: false });
+      },
 
       // Set rate limited state
       setRateLimited: (until) => {
@@ -131,6 +153,8 @@ export const useWeatherStore = create<WeatherStore>()(
           rateLimitUntil: until,
           isRateLimited: true
         });
+
+        trackWeatherState('setRateLimited', until);
         
         // Auto-clear rate limit after the specified time
         setTimeout(() => {
@@ -139,10 +163,13 @@ export const useWeatherStore = create<WeatherStore>()(
       },
 
       // Clear rate limit
-      clearRateLimit: () => set({ 
-        rateLimitUntil: null,
-        isRateLimited: false
-      }),
+      clearRateLimit: () => {
+        trackWeatherState('clearRateLimit', null);
+        set({ 
+          rateLimitUntil: null,
+          isRateLimited: false
+        });
+      },
 
       // Set coordinates
       setCoordinates: (coordinates) => {
@@ -152,6 +179,7 @@ export const useWeatherStore = create<WeatherStore>()(
           current.longitude !== coordinates.longitude;
         
         if (changed) {
+          trackWeatherState('setCoordinates', coordinates);
           set({ 
             currentCoordinates: coordinates,
             weatherCacheKey: `weather_${coordinates.latitude}_${coordinates.longitude}`,
@@ -162,6 +190,7 @@ export const useWeatherStore = create<WeatherStore>()(
 
       // Clear cache
       clearCache: () => {
+        trackWeatherState('clearCache', null);
         set({ 
           weatherData: null,
           forecastData: [],
@@ -217,13 +246,14 @@ export const useWeatherStore = create<WeatherStore>()(
         }
         
         // Set loading state
+        trackWeatherState('setLoading', { isLoading: true, error: null });
         set({ isLoading: true, error: null });
         
         try {
           console.log('🌤️ [WeatherStore] Fetching fresh weather data for coordinates:', coordinates);
           
           // Fetch weather data from OpenWeatherMap
-          const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
+          const apiKey = import.meta.env['VITE_OPENWEATHERMAP_API_KEY'];
           if (!apiKey) {
             throw new Error('OpenWeatherMap API key not configured');
           }

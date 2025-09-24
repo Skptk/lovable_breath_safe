@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { logGeolocation } from '@/lib/logger';
+import { debugTracker } from '@/utils/errorTracker';
 
 // Import hooks directly instead of lazy loading them
 import { useWeatherStore } from '@/store/weatherStore';
@@ -51,6 +52,8 @@ interface BackgroundManagerProps {
  * BackgroundManager component that handles dynamic background changes based on weather and time.
  * Manages weather data fetching, background transitions, and error states.
  */
+const bgStateTracker = { renderCount: 0 };
+
 const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ children }) => {
   // State
   const [currentBackground, setCurrentBackground] = useState<string>('/weather-backgrounds/partly-cloudy.webp');
@@ -79,10 +82,36 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   
   // Refs for tracking state without causing re-renders
   const isMountedRef = useRef(true);
-  const initialLoadRef = useRef(true);
   
   // Time analysis cache to prevent duplicate logging
   const timeAnalysisCache = useRef<Record<string, string>>({});
+
+  bgStateTracker.renderCount += 1;
+  const renderIteration = bgStateTracker.renderCount;
+
+  const shouldTrack = typeof __TRACK_VARIABLES__ === 'undefined' || __TRACK_VARIABLES__;
+
+  console.log(`🖼️ [BG-MANAGER-${renderIteration}] Component rendering:`, {
+    hasWeatherData: !!currentWeather,
+    backgroundState,
+    weatherLoading,
+    weatherError,
+    geolocationConsent: hasUserConsent,
+    geolocationPermissionStatus: permissionStatus,
+    hasLocationData: !!locationData,
+    requestLocationAvailable: typeof requestLocation === 'function',
+    getIPBasedLocationAsyncAvailable: typeof getIPBasedLocationAsync === 'function',
+    timestamp: new Date().toISOString()
+  });
+
+  if (shouldTrack) {
+    debugTracker.trackVariableDeclaration(`BackgroundManager#${renderIteration}`, {
+      hasWeatherData: !!currentWeather,
+      backgroundState,
+      weatherLoading,
+      weatherError
+    }, 'BackgroundManager.tsx:render');
+  }
 
   // Cleanup function for component unmount
   useEffect(() => {
@@ -90,6 +119,30 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       isMountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return; // Skip in non-browser environments
+    }
+
+    console.log(`🖼️ [BG-MANAGER-${renderIteration}] Effect running after render`);
+
+    const timeoutId = window.setTimeout(() => {
+      console.log('⚠️  [CRITICAL] BackgroundManager effect timeout - potential TDZ trigger point', {
+        hasWeatherData: !!currentWeather,
+        backgroundState,
+        timestamp: new Date().toISOString()
+      });
+      if (shouldTrack) {
+        debugTracker.trackVariableAccess('BackgroundManager', 'BackgroundManager.tsx:postRenderTimeout');
+      }
+    }, 0);
+
+    return () => {
+      console.log(`🖼️ [BG-MANAGER-${renderIteration}] Effect cleanup`);
+      clearTimeout(timeoutId);
+    };
+  }, [backgroundState, currentWeather, renderIteration]);
 
   // Update weather store coordinates when location data changes
   useEffect(() => {
@@ -242,18 +295,20 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
   // Update background when target changes
   useEffect(() => {
-    if (!isMountedRef.current || !targetBackground) return;
-    
+    if (!isMountedRef.current || !targetBackground) {
+      return undefined;
+    }
+
     // Only update if the background is actually changing
     if (targetBackground !== currentBackground) {
       console.log('BackgroundManager: Changing background from', currentBackground, 'to', targetBackground);
-      
+
       // Set refresh lock to prevent rapid changes
       setBackgroundRefreshLock();
-      
+
       // Start transition
       setIsTransitioning(true);
-      
+
       // Change background after transition starts
       const transitionTimer = setTimeout(() => {
         if (isMountedRef.current) {
@@ -261,16 +316,15 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
           setIsTransitioning(false);
         }
       }, 250); // Half of transition duration
-      
+
       // Cleanup function to clear the timeout if the component unmounts
       return () => {
         clearTimeout(transitionTimer);
       };
     }
-  }, [targetBackground, currentBackground]);
 
-  // Get overlay opacity based on theme
-  const overlayOpacity = theme === 'light' ? '0.2' : '0.4';
+    return undefined;
+  }, [targetBackground, currentBackground]);
 
   // Get background based on state with fallbacks
   const getBackgroundForState = useCallback((): string => {
@@ -297,41 +351,62 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     }
   }, [backgroundState, currentBackground]);
 
-  return (
-    <div className="relative min-h-screen">
-      {/* Weather Background */}
-      <div 
-        className="fixed inset-0 z-[-1] transition-opacity duration-500"
-        style={{ 
-          opacity: isTransitioning ? 0.3 : 1 
-        }}
-      >
-        <img
-          src={getBackgroundForState()}
-          alt="Weather background"
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            console.warn('BackgroundManager: Failed to load background image:', getBackgroundForState());
-            // Fallback to default background
-            setCurrentBackground('/weather-backgrounds/partly-cloudy.webp');
-          }}
-        />
-        
-        {/* Overlay for better text readability */}
-        <div 
-          className="absolute inset-0"
-          style={{ 
-            backgroundColor: `rgba(0, 0, 0, ${overlayOpacity})` 
-          }}
-        />
-      </div>
+  // Get overlay opacity based on theme
+  const overlayOpacity = theme === 'light' ? '0.2' : '0.4';
 
-      {/* Content */}
-      <div className="relative z-10">
-        {children}
+  try {
+    const renderResult = (
+      <div className="relative min-h-screen">
+        {/* Weather Background */}
+        <div 
+          className="fixed inset-0 z-[-1] transition-opacity duration-500"
+          style={{ 
+            opacity: isTransitioning ? 0.3 : 1 
+          }}
+        >
+          <img
+            src={getBackgroundForState()}
+            alt="Weather background"
+            className="w-full h-full object-cover"
+            onError={() => {
+              console.warn('BackgroundManager: Failed to load background image:', getBackgroundForState());
+              // Fallback to default background
+              setCurrentBackground('/weather-backgrounds/partly-cloudy.webp');
+            }}
+          />
+          
+          {/* Overlay for better text readability */}
+          <div 
+            className="absolute inset-0"
+            style={{ 
+              backgroundColor: `rgba(0, 0, 0, ${overlayOpacity})` 
+            }}
+          />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10">
+          {children}
+        </div>
       </div>
-    </div>
-  );
+    );
+
+    if (shouldTrack) {
+      console.log(`✅ [BG-MANAGER-${renderIteration}] Render successful`);
+      debugTracker.trackVariableAccess('BackgroundManager', 'BackgroundManager.tsx:renderSuccess');
+    }
+
+    return renderResult;
+  } catch (error) {
+    console.error(`❌ [BG-MANAGER-${renderIteration}] Render error:`, error);
+    if (shouldTrack) {
+      debugTracker.dumpDebugInfo();
+    }
+    throw error;
+  }
+
+  // Fallback return to satisfy TypeScript control flow (should be unreachable)
+  return null;
 });
 
 export default BackgroundManager;

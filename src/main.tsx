@@ -1,3 +1,6 @@
+// Import error tracker first
+import './utils/errorTracker'
+
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.tsx'
@@ -7,6 +10,25 @@ import { AuthProvider } from './contexts/AuthContext'
 import { RealtimeProvider } from './contexts/RealtimeContext'
 import { LocationProvider } from './contexts/LocationContext'
 import { SupabaseErrorBoundary } from './components/SupabaseErrorBoundary'
+
+// Track module loading order
+console.log('🚀 [MODULE] main.tsx loading at:', new Date().toISOString())
+
+// Wrap all imports with try-catch and logging
+const safeImport = async (moduleName: string, importFn: () => Promise<any>) => {
+  try {
+    console.log(`📦 [IMPORT] Loading ${moduleName}...`)
+    const module = await importFn()
+    console.log(`✅ [IMPORT] Successfully loaded ${moduleName}`)
+    return module
+  } catch (error) {
+    console.error(`❌ [IMPORT] Failed to load ${moduleName}:`, error)
+    throw error
+  }
+}
+
+// Reference helper to keep it available during debugging sessions
+void safeImport
 
 // Global error handling for unhandled promise rejections
 if (typeof window !== 'undefined') {

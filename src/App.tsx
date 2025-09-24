@@ -3,12 +3,15 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
-import { ErrorBoundary } from "@/components";
+import EnhancedErrorBoundary from "@/components/EnhancedErrorBoundary";
 import { usePerformanceMonitor, usePreload } from "@/hooks/usePerformance";
 import { useAppStore } from "@/store";
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useMemo } from "react";
+import type { ErrorInfo } from "react";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ConnectionResilienceProvider } from "./components/ConnectionResilienceProvider";
+import { debugTracker } from "./utils/errorTracker";
+import TDZDetector from "./components/TDZDetector";
 
 // Retry mechanism for lazy loading
 const retry = (fn: () => Promise<any>, retriesLeft: number = 3, interval: number = 1000): Promise<any> => {
@@ -56,6 +59,9 @@ const LazyErrorFallback = ({ error, retry }: { error: Error; retry: () => void }
       <h1 className="text-2xl font-bold text-red-600">Loading Error</h1>
       <p className="text-muted-foreground">
         Failed to load the requested page. This might be a temporary network issue.
+      </p>
+      <p className="text-sm text-muted-foreground font-mono break-words">
+        {error.message}
       </p>
       <div className="space-y-2">
         <button
@@ -112,6 +118,17 @@ const App = (): JSX.Element => {
     "/src/components/ui/input.css"
   ]);
 
+  useEffect(() => {
+    console.log("🧩 [COMPONENT] App mounting at:", new Date().toISOString());
+    if (typeof __TRACK_VARIABLES__ === "undefined" || __TRACK_VARIABLES__) {
+      debugTracker.trackVariableDeclaration("App", "mounted", "App.tsx:component");
+    }
+
+    return () => {
+      console.log("🧩 [COMPONENT] App unmounting at:", new Date().toISOString());
+    };
+  }, []);
+
   // Sync loading state with global store
   useEffect(() => {
     setLoading(loading);
@@ -134,81 +151,96 @@ const App = (): JSX.Element => {
     }
   }, [loading, isAuthenticated, user, setError]);
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+  const appContent = useMemo<JSX.Element>(() => {
+    console.log("🧩 [RENDER] App rendering at:", new Date().toISOString());
+    const shouldTrack = typeof __TRACK_VARIABLES__ === "undefined" || __TRACK_VARIABLES__;
+    if (shouldTrack) {
+      debugTracker.trackVariableAccess("App", "App.tsx:render");
+    }
 
-  return (
-    <ThemeProvider>
-      <ErrorBoundary
-        onError={(error, errorInfo) => {
-          console.error("App-level error:", error, errorInfo);
-          setError(error.message);
-        }}
-        fallback={
-          <div className="min-h-screen bg-background flex items-center justify-center p-4">
-            <div className="text-center space-y-4">
-              <h1 className="text-2xl font-bold text-red-600">Application Error</h1>
-              <p className="text-muted-foreground">
-                Something went wrong. Please refresh the page or contact support.
-              </p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-              >
-                Refresh Page
-              </button>
-            </div>
-          </div>
-        }
-      >
-        <TooltipProvider>
-          <ConnectionResilienceProvider
-            config={{
-              heartbeatInterval: process.env.NODE_ENV === 'development' ? 60000 : 120000, // 1 min dev, 2 min production
-              showDebugPanel: process.env.NODE_ENV === 'development',
-              maxReconnectAttempts: process.env.NODE_ENV === 'production' ? 5 : 10,
-              alertAutoHide: 5000
-            }}
-          >
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Suspense fallback={<LoadingSpinner />}>
-                <ErrorBoundary
-                  onError={(error, errorInfo) => {
-                    console.error("Route loading error:", error, errorInfo);
-                    setError(error.message);
-                  }}
-                  fallback={<LazyErrorFallback error={new Error("Failed to load route")} retry={() => window.location.reload()} />}
+    if (loading) {
+      console.log("🧩 [RENDER] App returning loading state");
+      return <LoadingSpinner />;
+    }
+
+    const isDev = import.meta.env.DEV;
+    const isProd = import.meta.env.PROD;
+
+    return (
+      <ThemeProvider>
+        <EnhancedErrorBoundary
+          onError={(error: Error, errorInfo: ErrorInfo) => {
+            console.error("App-level error:", error, errorInfo);
+            setError(error.message);
+          }}
+          fallback={
+            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+              <div className="text-center space-y-4">
+                <h1 className="text-2xl font-bold text-red-600">Application Error</h1>
+                <p className="text-muted-foreground">
+                  Something went wrong. Please refresh the page or contact support.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
                 >
-                  <Routes>
-                    <Route path="/" element={<Landing />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/onboarding" element={<Onboarding />} />
-                    <Route path="/products" element={<Products />} />
-                    <Route path="/privacy" element={<Privacy />} />
-                    <Route path="/terms" element={<Terms />} />
-                    <Route path="/demo" element={<Demo />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route 
-                      path="/dashboard" 
-                      element={
-                        <ProtectedRoute>
-                          <Index />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </ErrorBoundary>
-              </Suspense>
-            </BrowserRouter>
-          </ConnectionResilienceProvider>
-        </TooltipProvider>
-      </ErrorBoundary>
-    </ThemeProvider>
-  );
+                  Refresh Page
+                </button>
+              </div>
+            </div>
+          }
+        >
+          <TooltipProvider>
+            <ConnectionResilienceProvider
+              config={{
+                heartbeatInterval: isDev ? 60000 : 120000,
+                showDebugPanel: isDev,
+                maxReconnectAttempts: isProd ? 5 : 10,
+                alertAutoHide: 5000
+              }}
+            >
+              <TDZDetector />
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EnhancedErrorBoundary
+                    onError={(error: Error, errorInfo: ErrorInfo) => {
+                      console.error("Route loading error:", error, errorInfo);
+                      setError(error.message);
+                    }}
+                    fallback={<LazyErrorFallback error={new Error("Failed to load route")} retry={() => window.location.reload()} />}
+                  >
+                    <Routes>
+                      <Route path="/" element={<Landing />} />
+                      <Route path="/auth" element={<Auth />} />
+                      <Route path="/onboarding" element={<Onboarding />} />
+                      <Route path="/products" element={<Products />} />
+                      <Route path="/privacy" element={<Privacy />} />
+                      <Route path="/terms" element={<Terms />} />
+                      <Route path="/demo" element={<Demo />} />
+                      <Route path="/contact" element={<Contact />} />
+                      <Route 
+                        path="/dashboard" 
+                        element={
+                          <ProtectedRoute>
+                            <Index />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </EnhancedErrorBoundary>
+                </Suspense>
+              </BrowserRouter>
+            </ConnectionResilienceProvider>
+          </TooltipProvider>
+        </EnhancedErrorBoundary>
+      </ThemeProvider>
+    );
+  }, [loading, setError]);
+
+  return appContent;
 };
 
 export default App;
