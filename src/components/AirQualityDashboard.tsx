@@ -20,7 +20,7 @@ import {
   AQICard,
   PointsGrid,
   WeatherSection,
-} from "./AirQualityDashboard";
+} from "./AirQualityDashboard/index";
 
 interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
