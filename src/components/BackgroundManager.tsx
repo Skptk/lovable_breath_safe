@@ -155,6 +155,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   const [currentBackground, setCurrentBackground] = useState<string>(DEFAULT_BACKGROUND);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
+  const [hasInitialData, setHasInitialData] = useState<boolean>(false);
   const lastWeatherUpdate = useRef<number>(0);
   const updateTimeoutRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
@@ -358,9 +359,12 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       fetchWeather();
     }
     
-    // Cleanup function
     return () => {
-      // Any cleanup if needed
+      // Cleanup function
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
+      }
     };
   }, [user, hasInitialData, locationData, fetchWeatherData]);
 

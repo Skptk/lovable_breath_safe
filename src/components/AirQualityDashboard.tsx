@@ -12,15 +12,13 @@ import Header from "@/components/Header";
 import DataSourceValidator from "./DataSourceValidator";
 import { Button } from "@/components/ui/button";
 
-// Import extracted components
-import {
-  LoadingState,
-  PermissionRequest,
-  PollutantModal,
-  AQICard,
-  PointsGrid,
-  WeatherSection,
-} from "./AirQualityDashboard/index";
+// Import components directly to avoid circular dependencies
+import { LoadingState } from "./AirQualityDashboard/LoadingState";
+import { PermissionRequest } from "./AirQualityDashboard/PermissionRequest";
+import { PollutantModal } from "./AirQualityDashboard/PollutantModal";
+import { AQICard } from "./AirQualityDashboard/AQICard";
+import { PointsGrid } from "./AirQualityDashboard/PointsGrid";
+import { WeatherSection } from "./AirQualityDashboard/WeatherSection";
 
 interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
