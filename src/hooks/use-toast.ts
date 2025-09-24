@@ -132,9 +132,10 @@ let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
-  listeners.forEach((listener) => {
+  const snapshot = [...listeners]
+  for (const listener of snapshot) {
     listener(memoryState)
-  })
+  }
 }
 
 type Toast = Omit<ToasterToast, "id">
@@ -171,6 +172,10 @@ function toast({ ...props }: Toast) {
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
+  const stableDispatch = React.useCallback((action: Action) => {
+    dispatch(action)
+  }, [])
+
   React.useEffect(() => {
     listeners.push(setState)
     return () => {
@@ -179,13 +184,20 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, [state])
+  }, [])
 
-  return {
-    ...state,
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
-  }
+  const dismiss = React.useCallback((toastId?: string) => {
+    stableDispatch({ type: "DISMISS_TOAST", toastId })
+  }, [stableDispatch])
+
+  return React.useMemo(
+    () => ({
+      ...state,
+      toast,
+      dismiss,
+    }),
+    [state, dismiss]
+  )
 }
 
 export { useToast, toast }

@@ -26,46 +26,73 @@ export function useWebSocket(
   const [lastMessage, setLastMessage] = useState<MessageEvent | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const reconnectOnUnmountRef = useRef(reconnectOnUnmount);
+  const connectionOptionsRef = useRef(connectionOptions);
+  const onMessageRef = useRef(onMessage);
+  const onOpenRef = useRef(onOpen);
+  const onCloseRef = useRef(onClose);
+  const onErrorRef = useRef(onError);
+  const connectionIdRef = useRef<string | null>(null);
+
+  connectionOptionsRef.current = connectionOptions;
+  onMessageRef.current = onMessage;
+  onOpenRef.current = onOpen;
+  onCloseRef.current = onClose;
+  onErrorRef.current = onError;
+
+  const getConnectionId = useCallback((value: string | null) => {
+    if (!value) return null;
+
+    try {
+      const parsed = new URL(value);
+      return `${parsed.protocol}//${parsed.host}${parsed.pathname}`.toLowerCase();
+    } catch {
+      return value.toLowerCase();
+    }
+  }, []);
 
   // Handle message events
   const handleMessage = useCallback((event: MessageEvent) => {
     setLastMessage(event);
-    onMessage?.(event);
-  }, [onMessage]);
+    onMessageRef.current?.(event);
+  }, []);
 
   // Handle connection open
   const handleOpen = useCallback((event: Event) => {
     setIsConnected(true);
     setError(null);
-    onOpen?.(event);
-  }, [onOpen]);
+    onOpenRef.current?.(event);
+  }, []);
 
   // Handle connection close
   const handleClose = useCallback((event: CloseEvent) => {
     setIsConnected(false);
-    onClose?.(event);
-  }, [onClose]);
+    onCloseRef.current?.(event);
+  }, []);
 
   // Handle errors
   const handleError = useCallback((event: Event) => {
     setError(new Error('WebSocket error'));
-    onError?.(event);
-  }, [onError]);
+    onErrorRef.current?.(event);
+  }, []);
 
   // Send message function
   const sendMessage = useCallback(async (data: any) => {
-    if (!url) {
+    const connectionId = connectionIdRef.current;
+    if (!connectionId) {
       throw new Error('WebSocket URL is not set');
     }
-    await connectionManager.send(connectionManager.getConnectionId(url), data);
-  }, [url]);
+    await connectionManager.send(connectionId, data);
+  }, []);
 
   // Connect to WebSocket
   const connect = useCallback(async () => {
     if (!url) return;
 
+    const connectionId = getConnectionId(url);
+    connectionIdRef.current = connectionId;
+
     try {
-      const ws = await connectionManager.connect(url, connectionOptions);
+      const ws = await connectionManager.connect(url, connectionOptionsRef.current);
       
       // Set up event listeners
       ws.addEventListener('message', handleMessage);
@@ -79,15 +106,15 @@ export function useWebSocket(
         ws.removeEventListener('close', handleClose);
         ws.removeEventListener('error', handleError);
 
-        if (!reconnectOnUnmountRef.current) {
-          connectionManager.disconnect(connectionManager.getConnectionId(url));
+        if (!reconnectOnUnmountRef.current && connectionId) {
+          connectionManager.disconnect(connectionId);
         }
       };
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to connect to WebSocket'));
       return undefined;
     }
-  }, [url, connectionOptions, handleMessage, handleOpen, handleClose, handleError]);
+  }, [url, getConnectionId, handleMessage, handleOpen, handleClose, handleError]);
 
   // Effect to handle connection lifecycle
   useEffect(() => {
@@ -111,6 +138,10 @@ export function useWebSocket(
     reconnectOnUnmountRef.current = reconnectOnUnmount;
   }, [reconnectOnUnmount]);
 
+  useEffect(() => {
+    connectionIdRef.current = getConnectionId(url);
+  }, [url, getConnectionId]);
+
   return {
     isConnected,
     lastMessage,
@@ -118,10 +149,11 @@ export function useWebSocket(
     sendMessage,
     reconnect: connect,
     disconnect: useCallback(() => {
-      if (url) {
-        connectionManager.disconnect(connectionManager.getConnectionId(url));
+      const connectionId = connectionIdRef.current;
+      if (connectionId) {
+        connectionManager.disconnect(connectionId);
       }
-    }, [url]),
+    }, []),
   };
 }
 

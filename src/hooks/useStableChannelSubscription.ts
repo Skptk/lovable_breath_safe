@@ -23,7 +23,7 @@ interface UseStableChannelSubscriptionOptions {
  */
 export function useStableChannelSubscription({
   channelName,
-  userId,
+  userId: _userId,
   config,
   onData,
   enabled = true,
@@ -36,17 +36,13 @@ export function useStableChannelSubscription({
   const isDestroyedRef = useRef(false);
   const subscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSubscribingRef = useRef(false);
+  const subscribeRef = useRef<(() => Promise<void> | void) | null>(null);
   
   // Store stable references to prevent dependency loop
   const configRef = useRef(config);
   const onDataRef = useRef(onData);
   const enabledRef = useRef(enabled);
   
-  // Update refs when props change
-  configRef.current = config;
-  onDataRef.current = onData;
-  enabledRef.current = enabled;
-
   // Create and configure channel - stable function
   const createChannel = useCallback(() => {
     if (isDestroyedRef.current) return null;
@@ -72,7 +68,7 @@ export function useStableChannelSubscription({
         );
       } else {
         // Generic channel for custom events
-        (channel as any).on('*', (event: any, payload: any) => {
+        (channel as any).on('*', (_event: any, payload: any) => {
           if (!isDestroyedRef.current && onDataRef.current) {
             onDataRef.current(payload);
           }
@@ -85,6 +81,30 @@ export function useStableChannelSubscription({
       return null;
     }
   }, [channelName]); // Only depend on channelName
+
+  // Handle channel errors with retry logic - stable function
+  const handleChannelError = useCallback((error: any) => {
+    if (isDestroyedRef.current) return;
+
+    if (error) {
+      console.warn(`⚠️ [StableChannel] Handling error for ${channelName}:`, error);
+    }
+
+    if (retryCountRef.current < maxRetries) {
+      const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
+      
+      console.log(`🔄 [StableChannel] Retrying ${channelName} in ${delay}ms (attempt ${retryCountRef.current + 1}/${maxRetries})`);
+      
+      retryTimeoutRef.current = setTimeout(() => {
+        if (!isDestroyedRef.current) {
+          retryCountRef.current++;
+          subscribeRef.current?.();
+        }
+      }, delay);
+    } else {
+      console.error(`❌ [StableChannel] Max retries reached for ${channelName}`);
+    }
+  }, [channelName, maxRetries]); // Stable dependencies
 
   // Subscribe to channel - stable function with debouncing
   const subscribe = useCallback(async () => {
@@ -147,27 +167,13 @@ export function useStableChannelSubscription({
       isSubscribingRef.current = false;
       handleChannelError(error);
     }
-  }, [channelName, createChannel]); // Stable dependencies
+  }, [channelName, createChannel, handleChannelError]); // Stable dependencies
 
-  // Handle channel errors with retry logic - stable function
-  const handleChannelError = useCallback((error: any) => {
-    if (isDestroyedRef.current) return;
+  subscribeRef.current = subscribe;
 
-    if (retryCountRef.current < maxRetries) {
-      const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
-      
-      console.log(`🔄 [StableChannel] Retrying ${channelName} in ${delay}ms (attempt ${retryCountRef.current + 1}/${maxRetries})`);
-      
-      retryTimeoutRef.current = setTimeout(() => {
-        if (!isDestroyedRef.current) {
-          retryCountRef.current++;
-          subscribe();
-        }
-      }, delay);
-    } else {
-      console.error(`❌ [StableChannel] Max retries reached for ${channelName}`);
-    }
-  }, [channelName, maxRetries, subscribe]); // Stable dependencies
+  useEffect(() => {
+    subscribeRef.current = subscribe;
+  }, [subscribe]);
 
   // Cleanup function - stable function
   const cleanup = useCallback(() => {
@@ -214,7 +220,7 @@ export function useStableChannelSubscription({
     // Wait a bit before reconnecting
     setTimeout(() => {
       if (!isDestroyedRef.current) {
-        subscribe();
+        subscribeRef.current?.();
       }
     }, 1000);
   }, [channelName, cleanup, subscribe]); // Stable dependencies
@@ -234,7 +240,7 @@ export function useStableChannelSubscription({
       
       subscriptionTimeoutRef.current = setTimeout(() => {
         if (!isDestroyedRef.current && enabledRef.current) {
-          subscribe();
+          subscribeRef.current?.();
         }
       }, 100); // 100ms debounce
     }

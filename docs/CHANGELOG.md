@@ -34,6 +34,16 @@ All notable changes to this project will be documented in this file.
   - Added proper null checks and type guards for coordinate handling
   - Ensured proper variable initialization order to prevent hoisting issues
 
+- **Realtime Subscriptions**: Hardened Supabase channel hook lifecycle
+  - Refactored `useStableChannelSubscription` to register hooks before conditional returns
+  - Persist callback references with internal refs to avoid temporal dead zone errors
+  - Added defensive logging and retry guards for more reliable reconnect behavior
+
+- **Error Handling**: Converted UI error boundary to functional architecture
+  - Replaced legacy class-based `ErrorBoundary` with hook-driven implementation
+  - Added deterministic recovery scheduling with cancellable timeouts
+  - Preserved advanced fallback UI while improving prop-change resilience
+
 ## [1.0.0] - 2025-09-23
 
 ### Added
