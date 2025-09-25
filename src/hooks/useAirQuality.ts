@@ -258,6 +258,26 @@ export const useAirQuality = () => {
     retryDelay: 1000,
   });
 
+  // Persist successful responses into the readings buffers so UI consumers receive data
+  useEffect(() => {
+    const latestReading = aqicnQuery.data;
+    if (!latestReading) return;
+
+    const now = Date.now();
+    if (now - lastLogTime.current > 5_000) {
+      console.log('📥 [useAirQuality] Caching latest AQI reading for dashboard consumption', {
+        location: latestReading.location,
+        aqi: latestReading.aqi,
+        timestamp: latestReading.timestamp,
+      });
+      lastLogTime.current = now;
+    }
+
+    const updatedReadings = [...readingsRef.current, latestReading].slice(-CACHE_CONFIG.MEMORY.MAX_READINGS);
+    readingsRef.current = updatedReadings;
+    setReadings(updatedReadings);
+  }, [aqicnQuery.data]);
+
   // Memoized function to fetch air quality data with caching
   const fetchAirQualityData = useMemo(() => memoize(async (lat: number, lng: number) => {
     console.log('🔄 [useAirQuality] Manual refresh requested - will discover nearest stations globally');
