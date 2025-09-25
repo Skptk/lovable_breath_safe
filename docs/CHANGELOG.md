@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - **Maintenance Mode Gate**: Introduced `MaintenanceGate` wrapper and `VITE_MAINTENANCE_MODE`/`VITE_MAINTENANCE_TOKEN` controls to limit production access during live debugging sessions. The gate surfaces a secure password prompt and preserves existing app state for authorized testers.
+- **Supabase Cron Auth Migration**: Added `20250925205100_update_cron_use_http_auth.sql` to recreate the `environmental-data-collection` job using pg_net’s auth registry so the edge function can be triggered every minute without depending on restricted database settings.
 
 ### Fixed
 
@@ -70,6 +71,7 @@ All notable changes to this project will be documented in this file.
 - **Tooling**: Added opt-in `GENERATE_SOURCEMAPS` flag in `vite.config.ts` so production bundles can emit source maps for forensic TDZ analysis without permanently exposing build internals.
 - **Air Quality Refresh Controls**: Reworked `useAirQuality` to expose a `manualRefresh` gate that enforces a 15-minute lock with toast feedback, prevents redundant refetches on initial location detection, and centralizes refresh invocation for the dashboard.
 - **Server-Side Data Collection Cadence**: Updated `supabase/functions/scheduled-data-collection/index.ts` and cron migration `20250123000001_setup_cron_scheduling.sql` to run every minute (down from 15 minutes), aligning server ingestion with near-real-time AQICN availability. Logged messages, collection interval metadata, and documentation now reflect the 60-second window.
+- **Supabase Cron Authentication**: Switched the minute-level cron invocation to reference the pg_net auth entry `environmental-data-collector`, replacing the prior `current_setting('app.settings.service_role_key')` approach. Documented the required `net.http_add_auth('environmental-data-collector', 'bearer', jsonb_build_object('token', '<SERVICE_ROLE_KEY>'))` setup in deployment notes so the cron job can authenticate without Vault support.
 
 - **Realtime Subscriptions**: Hardened Supabase channel hook lifecycle
   - Refactored `useStableChannelSubscription` to register hooks before conditional returns

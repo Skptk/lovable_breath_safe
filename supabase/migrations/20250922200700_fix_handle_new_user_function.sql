@@ -44,7 +44,17 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Update the version table for migration tracking
-INSERT INTO public.schema_migrations (version, description)
-VALUES ('20250923080000', 'Fixed user signup constraint issues by removing ON CONFLICT clauses')
-ON CONFLICT (version) DO NOTHING;
+-- Update the version table for migration tracking if available
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'schema_migrations'
+  ) THEN
+    INSERT INTO public.schema_migrations (version, description)
+    VALUES ('20250923080000', 'Fixed user signup constraint issues by removing ON CONFLICT clauses')
+    ON CONFLICT (version) DO NOTHING;
+  END IF;
+END $$;
