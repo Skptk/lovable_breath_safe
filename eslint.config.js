@@ -35,17 +35,25 @@ export default tseslint.config(
       // TypeScript rules - relaxed
       "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/no-explicit-any": "off", // Disabled for build
-      "@typescript-eslint/no-use-before-define": "warn", // Changed from error to warning
+      "@typescript-eslint/no-use-before-define": "warn",
       "@typescript-eslint/no-unsafe-function-type": "warn",
       
       // Best practices - relaxed
       "no-use-before-define": "off",
-      "no-undef": "warn", // Changed from error to warning
+      "no-undef": "warn",
       
       // Parsing errors - make warnings
       "no-unused-vars": "warn",
       "no-redeclare": "warn",
     },
+  },
+  // Targeted TDZ enforcement for critical components
+  {
+    files: ["src/components/BackgroundManager.tsx"],
+    rules: {
+      "@typescript-eslint/no-use-before-define": "error",
+      "no-undef": "error"
+    }
   },
   // Additional configuration for test files
   {

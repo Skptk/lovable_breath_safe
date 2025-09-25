@@ -75,10 +75,10 @@ END;
 $$;
 
 -- Create the actual cron job for environmental data collection
--- This will run every 15 minutes and call the edge function
+-- This will run every minute and call the edge function
 SELECT cron.schedule(
   'environmental-data-collection',
-  '*/15 * * * *', -- Every 15 minutes
+  '* * * * *', -- Every minute
   'SELECT net.http_post(
     url := ''https://bmqdbetupttlthpadseq.supabase.co/functions/v1/scheduled-data-collection'',
     headers := ''{"Content-Type": "application/json", "Authorization": "Bearer " || current_setting(''app.settings.service_role_key'')}''::jsonb,
@@ -125,7 +125,7 @@ DO $$
 BEGIN
   RAISE LOG '✅ Cron scheduling setup completed successfully';
   RAISE LOG '📅 Data collection schedule table created';
-  RAISE LOG '🔄 Cron job scheduled for every 15 minutes';
-  RAISE LOG '⏰ Next run scheduled for: %', NOW() + INTERVAL '15 minutes';
+  RAISE LOG '🔄 Cron job scheduled for every minute';
+  RAISE LOG '⏰ Next run scheduled for: %', NOW() + INTERVAL '1 minute';
   RAISE LOG 'ℹ️  Use trigger_data_collection() to manually trigger collection';
 END $$;

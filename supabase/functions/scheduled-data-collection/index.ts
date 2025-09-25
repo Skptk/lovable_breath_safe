@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 // - Supabase cron jobs run in UTC timezone
 // - All timestamps are logged in UTC (ISO format)
 // - Local time is also logged for debugging purposes
-// - Collection interval: 15 minutes (900,000 milliseconds)
+// - Collection interval: 1 minute (60,000 milliseconds)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +14,7 @@ const corsHeaders = {
 };
 
 // Configuration
-const COLLECTION_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
+const COLLECTION_INTERVAL = 60 * 1000; // 1 minute in milliseconds
 const MAJOR_CITIES = [
   { name: 'Nairobi', lat: -1.2921, lon: 36.8219, country: 'Kenya' },
   { name: 'Mombasa', lat: -4.0435, lon: 39.6682, country: 'Kenya' },
@@ -297,15 +297,15 @@ async function collectAllEnvironmentalData(aqicnApiKey: string, supabase: any): 
   }
 
   // Calculate next collection time properly
-  // Since this function runs every 15 minutes via cron, next collection is exactly 15 minutes from now
+  // Since this function runs every minute via cron, the next collection is exactly 1 minute from now
   const nextCollection = new Date(Date.now() + COLLECTION_INTERVAL);
   const nextCollectionUTC = nextCollection.toISOString();
   const nextCollectionLocal = nextCollection.toString();
   
   console.log(`⏰ Next scheduled collection (UTC): ${nextCollectionUTC}`);
   console.log(`⏰ Next scheduled collection (Local): ${nextCollectionLocal}`);
-  console.log(`⏰ Collection interval: ${COLLECTION_INTERVAL / 1000 / 60} minutes`);
-  console.log(`⏰ Note: This function runs automatically every 15 minutes via Supabase cron`);
+  console.log(`⏰ Collection interval: ${COLLECTION_INTERVAL / 1000} seconds`);
+  console.log(`⏰ Note: This function now runs automatically every minute via Supabase cron`);
 }
 
 serve(async (req) => {

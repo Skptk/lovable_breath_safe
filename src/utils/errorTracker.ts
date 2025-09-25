@@ -39,7 +39,7 @@ console.error = (...args: any[]) => {
     };
     tdzEvents.push(eventInfo);
 
-    console.group('🚨 [CRITICAL] TDZ Error Detected');
+    console.group('🛑 [CRITICAL] TDZ Error Detected');
     console.log('Variable:', variableName);
     console.log('Timestamp:', timestamp);
     console.log('Location:', typeof window !== 'undefined' ? window.location.href : 'unknown');
@@ -63,7 +63,7 @@ console.error = (...args: any[]) => {
 // Track variable declarations and access
 export const debugTracker = {
   trackVariableDeclaration: (name: string, value: any, location: string) => {
-    console.log(`📝 [VAR-DECLARE] '${name}' at ${location}:`, typeof value);
+    console.log(`🧾 [VAR-DECLARE] '${name}' at ${location}:`, typeof value);
     variableRegistry.set(name, { value, location, timestamp: Date.now() });
   },
   
@@ -79,8 +79,8 @@ export const debugTracker = {
     accessLog.push(trace);
     
     if (!variableRegistry.has(name)) {
-      console.error(`❌ [TDZ-RISK] Accessing undeclared '${name}' at ${location}`);
-      console.log('📊 [REGISTRY] Current variables:', Array.from(variableRegistry.keys()));
+      console.error(`⚠️ [TDZ-RISK] Accessing undeclared '${name}' at ${location}`);
+      console.log('📘 [REGISTRY] Current variables:', Array.from(variableRegistry.keys()));
       if (trace.stack) {
         console.log('🧵 [TDZ-STACK]', trace.stack);
       }
@@ -109,7 +109,7 @@ export const debugTracker = {
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
     if (event.message.includes('Cannot access') && event.message.includes('before initialization')) {
-      console.group('🚨 [TDZ-ERROR] Temporal Dead Zone Violation Detected');
+      console.group('🛑 [TDZ-ERROR] Temporal Dead Zone Violation Detected');
       console.error('Error:', event.error);
       console.log('Filename:', event.filename);
       console.log('Line:', event.lineno, 'Column:', event.colno);

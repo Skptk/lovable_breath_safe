@@ -5,17 +5,13 @@ import { useAuth } from './useAuth';
 import { useGeolocation } from './useGeolocation';
 import { useToast } from './use-toast';
 import { memoryMonitor } from '@/utils/memoryMonitor';
-import { memoize } from '@/utils/dataProcessing';
+import { setRefreshLockTimestamp, getTimeUntilNextRefresh, isRefreshLocked } from '@/utils/refreshLock';
 
 // Cache configuration
 const CACHE_CONFIG = {
   VALIDATION: {
     KEY: 'airquality_validation_cache',
     TTL: 5 * 60 * 1000, // 5 minutes
-  },
-  REFRESH: {
-    LOCK_KEY: 'airquality_refresh_lock',
-    LOCK_DURATION: 30 * 1000, // 30 seconds
   },
   MEMORY: {
     MAX_READINGS: 1000, // Maximum readings to keep in memory
@@ -84,7 +80,6 @@ export const useAirQuality = () => {
   const [readings, setReadings] = useState<AirQualityData[]>([]);
   const readingsRef = useRef<AirQualityData[]>([]);
   const processingQueue = useRef<AirQualityData[]>([]);
-  const isProcessing = useRef(false);
 
   // AQICN-only API fetch with enhanced station discovery
   const aqicnQuery = useQuery({
@@ -279,43 +274,71 @@ export const useAirQuality = () => {
   }, [aqicnQuery.data]);
 
   // Memoized function to fetch air quality data with caching
-  const fetchAirQualityData = useMemo(() => memoize(async (lat: number, lng: number) => {
-    console.log('🔄 [useAirQuality] Manual refresh requested - will discover nearest stations globally');
+  const refreshOnce = useRef(false);
 
-    try {
-      await aqicnQuery.refetch();
-      toast({
-        title: "Data Refreshed",
-        description: "Global air quality data updated from nearest monitoring station with distance calculation",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error('❌ [useAirQuality] Refresh failed:', error);
-      toast({
-        title: "Refresh Failed",
-        description: "Failed to refresh air quality data",
-        variant: "destructive",
-      });
-    }
-  }, {
-    maxSize: 100, // Cache up to 100 locations
-    ttl: 5 * 60 * 1000, // 5 minutes cache
-    cacheKey: (args) => `airquality_${args[0].toFixed(4)}_${args[1].toFixed(4)}`
-  }), [user, toast]);
+  const manualRefresh = useCallback(
+    async (options: { force?: boolean; silent?: boolean } = {}) => {
+      if (!locationData?.latitude || !locationData?.longitude) {
+        return { skipped: true } as const;
+      }
+
+      if (!options.force && isRefreshLocked()) {
+        const remainingMs = getTimeUntilNextRefresh();
+        if (!options.silent) {
+          const remainingSeconds = Math.ceil(remainingMs / 1000);
+          const minutes = Math.floor(remainingSeconds / 60);
+          const seconds = remainingSeconds % 60;
+          toast({
+            title: "Refresh locked",
+            description: `Next update available in ${minutes}:${seconds.toString().padStart(2, '0')}.`,
+            variant: "default",
+          });
+        }
+        return { locked: true, remainingMs } as const;
+      }
+
+      try {
+        console.log('🔄 [useAirQuality] Initiating air quality refresh');
+        await aqicnQuery.refetch();
+        setRefreshLockTimestamp();
+        if (!options.silent) {
+          toast({
+            title: "Data refreshed",
+            description: "Latest air quality data retrieved successfully.",
+            variant: "default",
+          });
+        }
+        return { refreshed: true } as const;
+      } catch (error) {
+        console.error('❌ [useAirQuality] Refresh failed:', error);
+        if (!options.silent) {
+          toast({
+            title: "Refresh failed",
+            description: "Unable to fetch new air quality data. Please try again later.",
+            variant: "destructive",
+          });
+        }
+        return { error: true, cause: error } as const;
+      }
+    },
+    [aqicnQuery, locationData?.latitude, locationData?.longitude, toast]
+  );
 
   // Effect to fetch data when location changes (debounced)
   useEffect(() => {
-    if (!locationData?.loaded || !locationData?.coordinates) return;
-    
-    const { latitude, longitude } = locationData.coordinates;
-    
-    // Debounce the fetch to avoid too many requests
+    if (!locationData?.latitude || !locationData?.longitude) return;
+
     const timer = setTimeout(() => {
-      fetchAirQualityData(latitude, longitude);
-    }, 500); // 500ms debounce
-    
+      const hasRefreshedOnce = refreshOnce.current;
+      manualRefresh({
+        force: !hasRefreshedOnce,
+        silent: hasRefreshedOnce,
+      });
+      refreshOnce.current = true;
+    }, 500);
+
     return () => clearTimeout(timer);
-  }, [locationData, fetchAirQualityData]);
+  }, [locationData?.latitude, locationData?.longitude, manualRefresh]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -338,12 +361,8 @@ export const useAirQuality = () => {
       dataSource: readings.length > 0 ? readings[readings.length - 1]?.dataSource || 'Unknown' : 'Unknown',
       coordinates: readings.length > 0 ? readings[readings.length - 1]?.coordinates : null,
       userCoordinates: readings.length > 0 ? readings[readings.length - 1]?.userCoordinates : null,
-      refresh: () => {
-        if (locationData?.coordinates) {
-          const { latitude, longitude } = locationData.coordinates;
-          fetchAirQualityData(latitude, longitude);
-        }
-      },
+      refresh: manualRefresh,
+      refreshData: manualRefresh,
     };
 
     // Add debug info in development
@@ -359,7 +378,7 @@ export const useAirQuality = () => {
     }
 
     return baseResult;
-  }, [readings, locationData, aqicnQuery.isRefetching, fetchAirQualityData]);
+  }, [readings, locationData, aqicnQuery.isRefetching, manualRefresh]);
 
   return result;
 };

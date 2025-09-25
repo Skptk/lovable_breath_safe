@@ -22,7 +22,6 @@
     "strictFunctionTypes": true,
     "strictBindCallApply": true,
     "strictPropertyInitialization": true,
-    "noImplicitThis": true,
     "alwaysStrict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -31,8 +30,8 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
-    "noImplicitThis": true,
     "useUnknownInCatchVariables": true,
+    "types": ["vite/client", "vitest"],
     
     /* Additional Checks */
     "esModuleInterop": true,
@@ -64,14 +63,14 @@
     "src",
     "src/**/*.ts",
     "src/**/*.tsx",
-    "src/**/*.d.ts"
+    "src/**/*.d.ts",
+    "tests",
+    "tests/**/*.ts",
+    "tests/**/*.tsx"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "**/__tests__",
-    "**/__mocks__"
+    "**/*.spec.ts"
   ]
 }
