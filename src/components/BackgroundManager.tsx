@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { logGeolocation } from '@/lib/logger';
 import { debugTracker } from '@/utils/errorTracker';
 
@@ -11,6 +11,8 @@ import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/we
 
 // Background refresh settings
 const BACKGROUND_REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
+const BACKGROUND_REFRESH_LOCK_DURATION = 5 * 60 * 1000; // 5 minutes to prevent rapid switching
+const BACKGROUND_REFRESH_LOCK_KEY = 'breath-safe:bg-refresh-lock';
 const BACKGROUND_TRANSITION_DURATION = 500; // 500ms for smoother transitions
 const BACKGROUND_UPDATE_DEBOUNCE = 1000; // 1 second debounce for background updates
 
@@ -128,6 +130,7 @@ interface BackgroundManagerProps {
  */
 const DEFAULT_BACKGROUND = '/weather-backgrounds/partly-cloudy.webp';
 const ERROR_BACKGROUND = '/weather-backgrounds/overcast.webp';
+const GLOBAL_TIME_ANALYSIS_CACHE_KEY = '__BG_TIME_ANALYSIS_CACHE__';
 
 const bgStateTracker = { renderCount: 0 };
 
@@ -191,8 +194,11 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   const fallbackTimeoutRef = useRef<number | null>(null);
   const effectTimeoutRef = useRef<number | null>(null);
   const updateIntervalRef = useRef<number | null>(null);
+  const timeOfDayIntervalRef = useRef<number | null>(null);
   const lastBackgroundRef = useRef<string>('');
   const pendingBackgroundUpdate = useRef<string | null>(null);
+  const timeAnalysisCacheRef = useRef<Record<string, string> | null>(Object.create(null));
+  const hasAppliedBackgroundRef = useRef(false);
 
   const shouldTrack = resolveBackgroundDebugFlag();
   const debugLog = useCallback(
@@ -203,6 +209,30 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     },
     [shouldTrack]
   );
+
+  const getTimeAnalysisCache = useCallback((): Record<string, string> => {
+    try {
+      if (typeof globalThis !== 'undefined') {
+        const globalAny = globalThis as Record<string, unknown>;
+        const existing = globalAny[GLOBAL_TIME_ANALYSIS_CACHE_KEY];
+        if (existing && typeof existing === 'object') {
+          return existing as Record<string, string>;
+        }
+
+        const initializedCache: Record<string, string> = Object.create(null);
+        globalAny[GLOBAL_TIME_ANALYSIS_CACHE_KEY] = initializedCache;
+        return initializedCache;
+      }
+    } catch (error) {
+      console.warn('BackgroundManager: Failed to access global time analysis cache, using local cache instead.', error);
+    }
+
+    if (!timeAnalysisCacheRef.current || typeof timeAnalysisCacheRef.current !== 'object') {
+      timeAnalysisCacheRef.current = Object.create(null);
+    }
+
+    return timeAnalysisCacheRef.current;
+  }, []);
 
   debugLog(`🖼️ [BG-MANAGER-${renderIteration}] Component rendering:`, {
     hasWeatherData: !!currentWeather,
@@ -231,6 +261,11 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     return () => {
       isMountedRef.current = false;
       
+      if (timeOfDayIntervalRef.current !== null) {
+        window.clearInterval(timeOfDayIntervalRef.current);
+        timeOfDayIntervalRef.current = null;
+      }
+
       // Clear all timeouts and intervals
       [fallbackTimeoutRef, effectTimeoutRef, updateIntervalRef].forEach(ref => {
         if (ref.current) {
@@ -261,9 +296,13 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
     updateTimeOfDay();
     const intervalId = window.setInterval(updateTimeOfDay, 60 * 1000);
+    timeOfDayIntervalRef.current = intervalId;
 
     return () => {
       window.clearInterval(intervalId);
+      if (timeOfDayIntervalRef.current === intervalId) {
+        timeOfDayIntervalRef.current = null;
+      }
     };
   }, [currentWeather?.sunriseTime, currentWeather?.sunsetTime]);
 
@@ -385,72 +424,90 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
   // Determine the appropriate background image based on weather and time
   const targetBackground = useMemo(() => {
-    const defaultBackground = DEFAULT_BACKGROUND;
+    try {
+      const defaultBackground = DEFAULT_BACKGROUND;
 
-    if (weatherLoading || weatherError) {
-      debugLog(`BackgroundManager: ${weatherLoading ? 'Loading' : 'Error'}, using default background`);
-      return weatherError ? ERROR_BACKGROUND : defaultBackground;
-    }
-
-    if (!currentWeather) {
-      debugLog('BackgroundManager: No weather data available, using default background');
-      return defaultBackground;
-    }
-
-    const { period, isSunriseWindow, isSunsetWindow } = timeOfDayInfo;
-    const isNightPeriod = period === 'night' || isNightTime(currentWeather.sunriseTime, currentWeather.sunsetTime);
-    const isSunriseSunset = isSunriseSunsetPeriod(currentWeather.sunriseTime, currentWeather.sunsetTime);
-
-    const currentTime = new Date();
-    const timeKey = `${currentTime.getHours()}:${currentTime.getMinutes()}`;
-    const dayNightKey = isNightPeriod ? 'Night' : 'Day';
-
-    if (!timeAnalysisCache.current[timeKey] || timeAnalysisCache.current[timeKey] !== dayNightKey) {
-      timeAnalysisCache.current[timeKey] = dayNightKey;
-      debugLog(
-        `🌙 [BackgroundManager] Time: ${timeKey} (${dayNightKey}) | Sunrise: ${currentWeather.sunriseTime || 'N/A'} | Sunset: ${currentWeather.sunsetTime || 'N/A'}`
-      );
-    }
-
-    let conditionCode = 1;
-    const weatherCondition = currentWeather.weatherCondition?.toLowerCase();
-    if (weatherCondition) {
-      if (weatherCondition.includes('clear') || weatherCondition.includes('sun')) {
-        conditionCode = 0;
-      } else if (weatherCondition.includes('cloud') && !weatherCondition.includes('overcast')) {
-        conditionCode = 2;
-      } else if (weatherCondition.includes('overcast')) {
-        conditionCode = 3;
-      } else if (weatherCondition.includes('rain') || weatherCondition.includes('drizzle')) {
-        conditionCode = 61;
-      } else if (weatherCondition.includes('snow')) {
-        conditionCode = 71;
-      } else if (weatherCondition.includes('fog') || weatherCondition.includes('mist')) {
-        conditionCode = 45;
+      if (weatherLoading || weatherError) {
+        debugLog(`BackgroundManager: ${weatherLoading ? 'Loading' : 'Error'}, using default background`);
+        return weatherError ? ERROR_BACKGROUND : defaultBackground;
       }
+
+      if (!currentWeather) {
+        debugLog('BackgroundManager: No weather data available, using default background');
+        return defaultBackground;
+      }
+
+      const { period, isSunriseWindow, isSunsetWindow } = timeOfDayInfo;
+      const isNightPeriod = period === 'night' || isNightTime(currentWeather.sunriseTime, currentWeather.sunsetTime);
+      const isSunriseSunset = isSunriseSunsetPeriod(currentWeather.sunriseTime, currentWeather.sunsetTime);
+
+      const currentTime = new Date();
+      const timeKey = `${currentTime.getHours()}:${currentTime.getMinutes()}`;
+      const dayNightKey = isNightPeriod ? 'Night' : 'Day';
+      const cache = getTimeAnalysisCache();
+
+      if (!cache[timeKey] || cache[timeKey] !== dayNightKey) {
+        cache[timeKey] = dayNightKey;
+        debugLog(
+          `🌙 [BackgroundManager] Time: ${timeKey} (${dayNightKey}) | Sunrise: ${currentWeather.sunriseTime || 'N/A'} | Sunset: ${currentWeather.sunsetTime || 'N/A'}`
+        );
+      }
+
+      let conditionCode = 1;
+      const weatherCondition = currentWeather.weatherCondition?.toLowerCase();
+      if (weatherCondition) {
+        if (weatherCondition.includes('clear') || weatherCondition.includes('sun')) {
+          conditionCode = 0;
+        } else if (weatherCondition.includes('cloud') && !weatherCondition.includes('overcast')) {
+          conditionCode = 2;
+        } else if (weatherCondition.includes('overcast')) {
+          conditionCode = 3;
+        } else if (weatherCondition.includes('rain') || weatherCondition.includes('drizzle')) {
+          conditionCode = 61;
+        } else if (weatherCondition.includes('snow')) {
+          conditionCode = 71;
+        } else if (weatherCondition.includes('fog') || weatherCondition.includes('mist')) {
+          conditionCode = 45;
+        }
+      }
+
+      let candidateBackground = getBackgroundImage(conditionCode);
+
+      if (isNightPeriod) {
+        candidateBackground = '/weather-backgrounds/night.webp';
+      }
+
+      if (isSunriseWindow) {
+        candidateBackground = '/weather-backgrounds/sunrise.webp';
+      } else if (isSunsetWindow || (period === 'evening' && conditionCode === 0)) {
+        candidateBackground = '/weather-backgrounds/sunset.webp';
+      } else if (isSunriseSunset && period === 'morning') {
+        candidateBackground = '/weather-backgrounds/sunrise.webp';
+      }
+
+      if (isBackgroundRefreshLocked(candidateBackground) && currentBackground !== DEFAULT_BACKGROUND) {
+        debugLog('BackgroundManager: Refresh locked - using current background');
+        return currentBackground;
+      }
+
+      return candidateBackground;
+    } catch (error) {
+      console.error('BackgroundManager: Failed to determine target background, using default background instead.', error);
+      if (shouldTrack) {
+        debugTracker.trackVariableAccess('BackgroundManager', 'BackgroundManager.tsx:targetBackgroundFallback');
+      }
+      return DEFAULT_BACKGROUND;
     }
-
-    let candidateBackground = getBackgroundImage(conditionCode);
-
-    if (isNightPeriod) {
-      candidateBackground = '/weather-backgrounds/night.webp';
-    }
-
-    if (isSunriseWindow) {
-      candidateBackground = '/weather-backgrounds/sunrise.webp';
-    } else if (isSunsetWindow || (period === 'evening' && conditionCode === 0)) {
-      candidateBackground = '/weather-backgrounds/sunset.webp';
-    } else if (isSunriseSunset && period === 'morning') {
-      candidateBackground = '/weather-backgrounds/sunrise.webp';
-    }
-
-    if (isBackgroundRefreshLocked(candidateBackground) && currentBackground !== DEFAULT_BACKGROUND) {
-      debugLog('BackgroundManager: Refresh locked - using current background');
-      return currentBackground;
-    }
-
-    return candidateBackground;
-  }, [currentWeather, currentBackground, weatherLoading, weatherError, debugLog, timeOfDayInfo]);
+  }, [
+    currentWeather,
+    currentBackground,
+    weatherLoading,
+    weatherError,
+    debugLog,
+    timeOfDayInfo,
+    getTimeAnalysisCache,
+    shouldTrack
+  ]);
 
   // Update background when target changes with debounce and safety checks
   useEffect(() => {
