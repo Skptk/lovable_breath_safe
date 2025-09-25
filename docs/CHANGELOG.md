@@ -4,12 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Maintenance Mode Gate**: Introduced `MaintenanceGate` wrapper and `VITE_MAINTENANCE_MODE`/`VITE_MAINTENANCE_TOKEN` controls to limit production access during live debugging sessions. The gate surfaces a secure password prompt and preserves existing app state for authorized testers.
+
 ### Fixed
 
+- **AirQuality Data Fetching**: Reordered the `fetchAirQualityData` memo declaration ahead of its dependent `useEffect` in `useAirQuality.ts` to eliminate a production-only TDZ (`ReferenceError: Cannot access 'g' before initialization`) affecting `AirQualityDashboard`.
 - **BackgroundManager**: Prevent default background lockout and improve time-of-day handling
   - Derive sunrise/sunset periods via interval-driven effect rather than during render
   - Ensure fallback timers and effect probes are cleaned on unmount to avoid leaks
   - Only persist background refresh lock when applying non-default weather imagery
+  - Declare `timeAnalysisCache` and `hasAppliedBackgroundRef` refs explicitly to avoid TDZ crashes
+  - Add lock key and duration constants for deterministic bundling and tests
+
+- **Tooling**: Harden static analysis and regression detection for TDZ issues
+  - Promote `@typescript-eslint/no-use-before-define` and `no-undef` to errors in `eslint.config.js`
+  - Add Vitest configuration with JSDOM environment and shared `tests/setup.ts`
+  - Create `tests/backgroundManager.test.tsx` smoke test to ensure `BackgroundManager` renders without ReferenceErrors
+  - Introduce `scripts/check-bundle-reference-errors.js` and wire into the `build` script to fail builds when ReferenceError patterns appear
+  - Update `tsconfig.app.json` includes and type definitions to cover `vitest` and test files
+  - Extend `package.json` devDependencies with Vitest and Testing Library tooling and add `test:bg-manager` script
 
 - **Realtime/Profiles**: Guard Supabase channel readiness and clean ProfileView subscriptions
   - Queue channel setup until `supabase.channel` is ready, resolving pending waiters safely
@@ -48,6 +63,10 @@ All notable changes to this project will be documented in this file.
   - Improved type safety in WeatherStatsCard and WeatherSection components
   - Added proper null checks and type guards for coordinate handling
   - Ensured proper variable initialization order to prevent hoisting issues
+
+### Changed
+
+- **Tooling**: Added opt-in `GENERATE_SOURCEMAPS` flag in `vite.config.ts` so production bundles can emit source maps for forensic TDZ analysis without permanently exposing build internals.
 
 - **Realtime Subscriptions**: Hardened Supabase channel hook lifecycle
   - Refactored `useStableChannelSubscription` to register hooks before conditional returns

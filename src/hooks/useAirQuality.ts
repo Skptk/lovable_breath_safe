@@ -258,29 +258,6 @@ export const useAirQuality = () => {
     retryDelay: 1000,
   });
 
-  // Effect to fetch data when location changes (debounced)
-  useEffect(() => {
-    if (!locationData?.loaded || !locationData?.coordinates) return;
-    
-    const { latitude, longitude } = locationData.coordinates;
-    
-    // Debounce the fetch to avoid too many requests
-    const timer = setTimeout(() => {
-      fetchAirQualityData(latitude, longitude);
-    }, 500); // 500ms debounce
-    
-    return () => clearTimeout(timer);
-  }, [locationData, fetchAirQualityData]);
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      // Clear any pending processing
-      processingQueue.current = [];
-      readingsRef.current = [];
-    };
-  }, []);
-
   // Memoized function to fetch air quality data with caching
   const fetchAirQualityData = useMemo(() => memoize(async (lat: number, lng: number) => {
     console.log('🔄 [useAirQuality] Manual refresh requested - will discover nearest stations globally');
@@ -305,6 +282,29 @@ export const useAirQuality = () => {
     ttl: 5 * 60 * 1000, // 5 minutes cache
     cacheKey: (args) => `airquality_${args[0].toFixed(4)}_${args[1].toFixed(4)}`
   }), [user, toast]);
+
+  // Effect to fetch data when location changes (debounced)
+  useEffect(() => {
+    if (!locationData?.loaded || !locationData?.coordinates) return;
+    
+    const { latitude, longitude } = locationData.coordinates;
+    
+    // Debounce the fetch to avoid too many requests
+    const timer = setTimeout(() => {
+      fetchAirQualityData(latitude, longitude);
+    }, 500); // 500ms debounce
+    
+    return () => clearTimeout(timer);
+  }, [locationData, fetchAirQualityData]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      // Clear any pending processing
+      processingQueue.current = [];
+      readingsRef.current = [];
+    };
+  }, []);
 
   // Memoize the result to prevent unnecessary re-renders
   const result = useMemo(() => {
