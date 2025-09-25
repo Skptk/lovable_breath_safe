@@ -7,6 +7,7 @@ import inspect from "vite-plugin-inspect";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const isDebug = mode === "debug";
+  const enableSourceMaps = isDebug || process.env.GENERATE_SOURCEMAPS === "true";
 
   return {
     base: "/", // Ensure proper base path for Netlify
@@ -52,7 +53,7 @@ export default defineConfig(({ mode }) => {
       cssCodeSplit: true,
       minify: isDebug ? false : "esbuild",
       brotliSize: false,
-      sourcemap: isDebug ? true : false,
+      sourcemap: enableSourceMaps,
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
         // Disable tree shaking at Rollup level to prevent initialization issues
@@ -111,13 +112,13 @@ export default defineConfig(({ mode }) => {
       },
       ...(isDebug
         ? {
-            sourcemap: true,
+            sourcemap: enableSourceMaps,
             minify: false,
             rollupOptions: {
               treeshake: false,
               output: {
                 ...{
-                  sourcemap: true,
+                  sourcemap: enableSourceMaps,
                   preserveModules: false,
                   manualChunks: undefined,
                   inlineDynamicImports: false,
