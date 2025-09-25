@@ -197,7 +197,9 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   const timeOfDayIntervalRef = useRef<number | null>(null);
   const lastBackgroundRef = useRef<string>('');
   const pendingBackgroundUpdate = useRef<string | null>(null);
-  const timeAnalysisCacheRef = useRef<Record<string, string> | null>(Object.create(null));
+  const timeAnalysisCacheRef = useRef<Record<string, string>>(
+    Object.create(null) as Record<string, string>
+  );
   const hasAppliedBackgroundRef = useRef(false);
 
   const shouldTrack = resolveBackgroundDebugFlag();
@@ -225,10 +227,6 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       }
     } catch (error) {
       console.warn('BackgroundManager: Failed to access global time analysis cache, using local cache instead.', error);
-    }
-
-    if (!timeAnalysisCacheRef.current || typeof timeAnalysisCacheRef.current !== 'object') {
-      timeAnalysisCacheRef.current = Object.create(null);
     }
 
     return timeAnalysisCacheRef.current;

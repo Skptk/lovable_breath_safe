@@ -12,6 +12,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { ConnectionResilienceProvider } from "./components/ConnectionResilienceProvider";
 import { debugTracker } from "./utils/errorTracker";
 import TDZDetector from "./components/TDZDetector";
+import MaintenanceGate from "./components/MaintenanceGate";
 
 // Retry mechanism for lazy loading
 const retry = (fn: () => Promise<any>, retriesLeft: number = 3, interval: number = 1000): Promise<any> => {
@@ -167,8 +168,9 @@ const App = (): JSX.Element => {
     const isProd = import.meta.env.PROD;
 
     return (
-      <ThemeProvider>
-        <EnhancedErrorBoundary
+      <MaintenanceGate>
+        <ThemeProvider>
+          <EnhancedErrorBoundary
           onError={(error: Error, errorInfo: ErrorInfo) => {
             console.error("App-level error:", error, errorInfo);
             setError(error.message);
@@ -235,8 +237,9 @@ const App = (): JSX.Element => {
               </BrowserRouter>
             </ConnectionResilienceProvider>
           </TooltipProvider>
-        </EnhancedErrorBoundary>
-      </ThemeProvider>
+          </EnhancedErrorBoundary>
+        </ThemeProvider>
+      </MaintenanceGate>
     );
   }, [loading, setError]);
 
