@@ -1,3 +1,9 @@
+# Local analysis outputs
+lint-results.json
+prev_*.
+
+# Supabase CLI temp artifacts
+supabase/.temp/
 # Logs
 logs
 *.log

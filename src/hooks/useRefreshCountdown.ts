@@ -1,66 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getTimeUntilNextRefresh, setRefreshLockTimestamp } from '@/utils/refreshLock';
 
-// Refresh lock mechanism constants (must match useAirQuality)
-const REFRESH_LOCK_KEY = 'breath_safe_refresh_lock';
-const REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes
+const TOTAL_INTERVAL_SECONDS = 15 * 60; // 15 minutes
 
 export function useRefreshCountdown() {
-  const [timeUntilRefresh, setTimeUntilRefresh] = useState<number>(900); // 15 minutes in seconds
+  const [timeUntilRefresh, setTimeUntilRefresh] = useState<number>(TOTAL_INTERVAL_SECONDS);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Function to get time until next refresh based on refresh lock
-  const getTimeUntilRefresh = useCallback((): number => {
-    try {
-      const lockData = localStorage.getItem(REFRESH_LOCK_KEY);
-      if (!lockData) return 0; // No lock, can refresh immediately
-      
-      const { timestamp } = JSON.parse(lockData);
-      const now = Date.now();
-      const timeSinceLastRefresh = now - timestamp;
-      const timeRemaining = REFRESH_LOCK_DURATION - timeSinceLastRefresh;
-      
-      // Convert to seconds and ensure it's positive
-      return Math.max(0, Math.floor(timeRemaining / 1000));
-    } catch {
-      return 0;
-    }
+  const syncFromLock = useCallback(() => {
+    const remainingMs = getTimeUntilNextRefresh();
+    const remainingSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+    setTimeUntilRefresh(remainingSeconds === 0 ? TOTAL_INTERVAL_SECONDS : remainingSeconds);
+    return remainingSeconds;
   }, []);
 
-  // Countdown timer that syncs with refresh lock
   useEffect(() => {
-    const updateCountdown = () => {
-      const timeRemaining = getTimeUntilRefresh();
-      setTimeUntilRefresh(timeRemaining);
-      
-      // If refresh lock has expired, reset countdown
-      if (timeRemaining <= 0) {
-        setTimeUntilRefresh(900); // Reset to 15 minutes
-      }
-    };
-
-    // Update immediately
-    updateCountdown();
-    
-    // Update every second
-    const interval = setInterval(updateCountdown, 1000);
-
+    syncFromLock();
+    const interval = setInterval(syncFromLock, 1000);
     return () => clearInterval(interval);
-  }, [getTimeUntilRefresh]);
+  }, [syncFromLock]);
 
-  // Manual refresh function
-  const manualRefresh = useCallback(() => {
+  const markRefreshStart = useCallback(() => {
     setIsRefreshing(true);
-    
-    // Simulate refresh duration
-    setTimeout(() => {
-      setIsRefreshing(false);
-      // The countdown will automatically update based on the new refresh lock
-    }, 2000);
   }, []);
+
+  const markRefreshComplete = useCallback(() => {
+    setIsRefreshing(false);
+    setRefreshLockTimestamp();
+    syncFromLock();
+  }, [syncFromLock]);
 
   return {
     timeUntilRefresh,
     isRefreshing,
-    manualRefresh
+    markRefreshStart,
+    markRefreshComplete,
   };
 }

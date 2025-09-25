@@ -105,9 +105,23 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const resolveTrackingFlag = (): boolean => {
+  if (typeof globalThis === "object") {
+    const globalWithFlag = globalThis as typeof globalThis & { __TRACK_VARIABLES__?: boolean };
+    if (typeof globalWithFlag.__TRACK_VARIABLES__ !== "undefined") {
+      return Boolean(globalWithFlag.__TRACK_VARIABLES__);
+    }
+  }
+  return true;
+};
+
 const App = (): JSX.Element => {
   const { loading, isAuthenticated, user, validateProfile } = useAuth();
   const { setLoading, setError } = useAppStore();
+
+  const shouldTrackVariables = useMemo(() => {
+    return resolveTrackingFlag();
+  }, []);
   
   // Performance monitoring
   usePerformanceMonitor("App");
@@ -121,14 +135,14 @@ const App = (): JSX.Element => {
 
   useEffect(() => {
     console.log("🧩 [COMPONENT] App mounting at:", new Date().toISOString());
-    if (typeof __TRACK_VARIABLES__ === "undefined" || __TRACK_VARIABLES__) {
+    if (shouldTrackVariables) {
       debugTracker.trackVariableDeclaration("App", "mounted", "App.tsx:component");
     }
 
     return () => {
       console.log("🧩 [COMPONENT] App unmounting at:", new Date().toISOString());
     };
-  }, []);
+  }, [shouldTrackVariables]);
 
   // Sync loading state with global store
   useEffect(() => {
@@ -142,7 +156,6 @@ const App = (): JSX.Element => {
     }
   }, [user, loading, validateProfile]);
 
-  // Handle authentication errors - only show error, don't force redirect
   useEffect(() => {
     if (!loading && !isAuthenticated && user) {
       // Only set error if we have a user but authentication failed
@@ -154,8 +167,7 @@ const App = (): JSX.Element => {
 
   const appContent = useMemo<JSX.Element>(() => {
     console.log("🧩 [RENDER] App rendering at:", new Date().toISOString());
-    const shouldTrack = typeof __TRACK_VARIABLES__ === "undefined" || __TRACK_VARIABLES__;
-    if (shouldTrack) {
+    if (shouldTrackVariables) {
       debugTracker.trackVariableAccess("App", "App.tsx:render");
     }
 
@@ -171,77 +183,77 @@ const App = (): JSX.Element => {
       <MaintenanceGate>
         <ThemeProvider>
           <EnhancedErrorBoundary
-          onError={(error: Error, errorInfo: ErrorInfo) => {
-            console.error("App-level error:", error, errorInfo);
-            setError(error.message);
-          }}
-          fallback={
-            <div className="min-h-screen bg-background flex items-center justify-center p-4">
-              <div className="text-center space-y-4">
-                <h1 className="text-2xl font-bold text-red-600">Application Error</h1>
-                <p className="text-muted-foreground">
-                  Something went wrong. Please refresh the page or contact support.
-                </p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                >
-                  Refresh Page
-                </button>
-              </div>
-            </div>
-          }
-        >
-          <TooltipProvider>
-            <ConnectionResilienceProvider
-              config={{
-                heartbeatInterval: isDev ? 60000 : 120000,
-                showDebugPanel: isDev,
-                maxReconnectAttempts: isProd ? 5 : 10,
-                alertAutoHide: 5000
-              }}
-            >
-              <TDZDetector />
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Suspense fallback={<LoadingSpinner />}>
-                  <EnhancedErrorBoundary
-                    onError={(error: Error, errorInfo: ErrorInfo) => {
-                      console.error("Route loading error:", error, errorInfo);
-                      setError(error.message);
-                    }}
-                    fallback={<LazyErrorFallback error={new Error("Failed to load route")} retry={() => window.location.reload()} />}
+            onError={(error: Error, errorInfo: ErrorInfo) => {
+              console.error("App-level error:", error, errorInfo);
+              setError(error.message);
+            }}
+            fallback={
+              <div className="min-h-screen bg-background flex items-center justify-center p-4">
+                <div className="text-center space-y-4">
+                  <h1 className="text-2xl font-bold text-red-600">Application Error</h1>
+                  <p className="text-muted-foreground">
+                    Something went wrong. Please refresh the page or contact support.
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
                   >
-                    <Routes>
-                      <Route path="/" element={<Landing />} />
-                      <Route path="/auth" element={<Auth />} />
-                      <Route path="/onboarding" element={<Onboarding />} />
-                      <Route path="/products" element={<Products />} />
-                      <Route path="/privacy" element={<Privacy />} />
-                      <Route path="/terms" element={<Terms />} />
-                      <Route path="/demo" element={<Demo />} />
-                      <Route path="/contact" element={<Contact />} />
-                      <Route 
-                        path="/dashboard" 
-                        element={
-                          <ProtectedRoute>
-                            <Index />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </EnhancedErrorBoundary>
-                </Suspense>
-              </BrowserRouter>
-            </ConnectionResilienceProvider>
-          </TooltipProvider>
+                    Refresh Page
+                  </button>
+                </div>
+              </div>
+            }
+          >
+            <TooltipProvider>
+              <ConnectionResilienceProvider
+                config={{
+                  heartbeatInterval: isDev ? 60000 : 120000,
+                  showDebugPanel: isDev,
+                  maxReconnectAttempts: isProd ? 5 : 10,
+                  alertAutoHide: 5000
+                }}
+              >
+                <TDZDetector />
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <EnhancedErrorBoundary
+                      onError={(error: Error, errorInfo: ErrorInfo) => {
+                        console.error("Route loading error:", error, errorInfo);
+                        setError(error.message);
+                      }}
+                      fallback={<LazyErrorFallback error={new Error("Failed to load route")} retry={() => window.location.reload()} />}
+                    >
+                      <Routes>
+                        <Route path="/" element={<Landing />} />
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/onboarding" element={<Onboarding />} />
+                        <Route path="/products" element={<Products />} />
+                        <Route path="/privacy" element={<Privacy />} />
+                        <Route path="/terms" element={<Terms />} />
+                        <Route path="/demo" element={<Demo />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route
+                          path="/dashboard"
+                          element={
+                            <ProtectedRoute>
+                              <Index />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </EnhancedErrorBoundary>
+                  </Suspense>
+                </BrowserRouter>
+              </ConnectionResilienceProvider>
+            </TooltipProvider>
           </EnhancedErrorBoundary>
         </ThemeProvider>
       </MaintenanceGate>
     );
-  }, [loading, setError]);
+  }, [loading, setError, shouldTrackVariables]);
 
   return appContent;
 };
