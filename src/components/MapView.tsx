@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { GlassCard, GlassCardContent } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Layers, Loader2, AlertTriangle } from "lucide-react";
@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import LeafletMap from "./LeafletMap";
 import Header from "@/components/Header";
 import AQIDataCharts from "./AQIDataCharts";
+import { useGlobalEnvironmentalData } from "@/hooks/useGlobalEnvironmentalData";
+import type { GlobalEnvironmentalData } from "@/types";
 
 
 interface NearbyLocation {
@@ -45,66 +47,157 @@ interface MapViewProps {
 
 export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewProps = {}): JSX.Element {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-  const [airQualityData, setAirQualityData] = useState<AirQualityData | null>(null);
+  const [fallbackAirQualityData, setFallbackAirQualityData] = useState<AirQualityData | null>(null);
+  const [hasFetchedFallback, setHasFetchedFallback] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationRequested, setLocationRequested] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const { toast } = useToast();
 
-  // Fetch air quality data when user location is available
-  const fetchAirQualityData = async (lat: number, lon: number): Promise<void> => {
-    try {
+  const globalDataOptions = useMemo(() => {
+    const baseOptions = {
+      autoRefresh: true,
+      refreshInterval: 60_000,
+      maxDistanceKm: 200,
+    } as const;
 
+    if (!userLocation) {
+      return baseOptions;
+    }
+
+    const hasNamedCity = userLocation.city && userLocation.city.trim().length > 0 && userLocation.city !== 'Your Location';
+
+    return {
+      ...baseOptions,
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+      ...(hasNamedCity ? { cityName: userLocation.city } : {}),
+    };
+  }, [userLocation]);
+
+  const {
+    data: globalData,
+    allCitiesData,
+    isLoading: isGlobalLoading,
+    error: globalDataError,
+    refetch: refetchGlobalData,
+  } = useGlobalEnvironmentalData(globalDataOptions);
+
+  const mapGlobalDataToAirQuality = useCallback((data?: GlobalEnvironmentalData | null): AirQualityData | null => {
+    if (!data) return null;
+
+    return {
+      aqi: data.aqi ?? 0,
+      pm25: data.pm25 ?? undefined,
+      pm10: data.pm10 ?? undefined,
+      no2: data.no2 ?? undefined,
+      so2: data.so2 ?? undefined,
+      co: data.co ?? undefined,
+      o3: data.o3 ?? undefined,
+      location: data.city_name,
+      timestamp: data.collection_timestamp,
+    };
+  }, []);
+
+  const serverAirQualityData = useMemo(() => {
+    if (globalData && !Array.isArray(globalData)) {
+      return mapGlobalDataToAirQuality(globalData);
+    }
+
+    if (allCitiesData.length > 0) {
+      if (userLocation?.city) {
+        const cityMatch = allCitiesData.find((item) =>
+          item.city_name.toLowerCase() === userLocation.city.toLowerCase()
+        );
+        if (cityMatch) {
+          return mapGlobalDataToAirQuality(cityMatch);
+        }
+      }
+
+      return mapGlobalDataToAirQuality(allCitiesData[0]);
+    }
+
+    return null;
+  }, [allCitiesData, globalData, mapGlobalDataToAirQuality, userLocation?.city]);
+
+  const activeAirQualityData = useMemo(
+    () => serverAirQualityData ?? fallbackAirQualityData,
+    [serverAirQualityData, fallbackAirQualityData]
+  );
+
+  // Fetch air quality data when user location is available (fallback path)
+  const fetchAirQualityData = useCallback(async (lat: number, lon: number): Promise<void> => {
+    setHasFetchedFallback(true);
+    try {
       const { data: response, error } = await supabase.functions.invoke('fetchAQI', {
         body: { lat, lon }
       });
 
       if (error) {
-        console.error('Error fetching air quality data:', error);
+        console.error('Error fetching fallback air quality data:', error);
         setError('Failed to fetch air quality data');
         return;
       }
 
-      if (response) {
-        setAirQualityData({
-          aqi: response.aqi || 0,
-          pm25: response.pollutants?.pm25 || 0,
-          pm10: response.pollutants?.pm10 || 0,
-          no2: response.pollutants?.no2 || 0,
-          so2: response.pollutants?.so2 || 0,
-          co: response.pollutants?.co || 0,
-          o3: response.pollutants?.o3 || 0,
-          location: response.city || response.stationName || 'Your Location',
-          timestamp: response.timestamp || new Date().toISOString()
-        });
-      }
+      const resolved = response?.data ?? response;
 
-      if (response.error) {
-        console.error('Error fetching air quality data:', response.error);
-        setError('Failed to fetch air quality data');
-        return;
-      }
-
-      if (response.data) {
-        const data = response.data;
-        setAirQualityData({
-          aqi: data.aqi || 0,
-          pm25: data.pollutants?.pm25 || 0,
-          pm10: data.pollutants?.pm10 || 0,
-          no2: data.pollutants?.no2 || 0,
-          so2: data.pollutants?.so2 || 0,
-          co: data.pollutants?.co || 0,
-          o3: data.pollutants?.o3 || 0,
-          location: data.location || 'Your Location',
-          timestamp: data.timestamp || new Date().toISOString()
+      if (resolved) {
+        setFallbackAirQualityData({
+          aqi: resolved.aqi || 0,
+          pm25: resolved.pollutants?.pm25 ?? undefined,
+          pm10: resolved.pollutants?.pm10 ?? undefined,
+          no2: resolved.pollutants?.no2 ?? undefined,
+          so2: resolved.pollutants?.so2 ?? undefined,
+          co: resolved.pollutants?.co ?? undefined,
+          o3: resolved.pollutants?.o3 ?? undefined,
+          location: resolved.city || resolved.stationName || resolved.location || 'Your Location',
+          timestamp: resolved.timestamp || new Date().toISOString()
         });
+        setError(null);
+      } else {
+        console.warn('fetchAQI returned no data to use as fallback');
+        setFallbackAirQualityData(null);
+        setHasFetchedFallback(false);
       }
-    } catch (error) {
-      console.error('Error fetching air quality data:', error);
+    } catch (err) {
+      console.error('Error fetching fallback air quality data:', err);
       setError('Failed to fetch air quality data');
+      setHasFetchedFallback(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (serverAirQualityData) {
+      setFallbackAirQualityData(null);
+      setHasFetchedFallback(false);
+    }
+  }, [serverAirQualityData]);
+
+  useEffect(() => {
+    if (!userLocation) return;
+
+    const interval = setInterval(() => {
+      refetchGlobalData();
+    }, 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [userLocation, refetchGlobalData]);
+
+  useEffect(() => {
+    if (!userLocation) return;
+    if (serverAirQualityData || isGlobalLoading || hasFetchedFallback) {
+      return;
+    }
+
+    fetchAirQualityData(userLocation.latitude, userLocation.longitude);
+  }, [userLocation, serverAirQualityData, isGlobalLoading, hasFetchedFallback, fetchAirQualityData]);
+
+  useEffect(() => {
+    if (globalDataError) {
+      console.warn('MapView: Error fetching server environmental data', globalDataError);
+    }
+  }, [globalDataError]);
 
   // Mock nearby locations - in a real app, these would come from an API
   const nearbyLocations: NearbyLocation[] = [
@@ -188,17 +281,21 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
         country: cityName.country || ''
       });
 
-      // Fetch real air quality data
-      await fetchAirQualityData(latitude, longitude);
-
       // Update nearby locations with real coordinates
       updateNearbyLocations(latitude, longitude);
-      
+
+      // Reset fallback state so hook data becomes primary when available
+      setFallbackAirQualityData(null);
+      setHasFetchedFallback(false);
+
+      // Trigger a refetch of server-side environmental data
+      await refetchGlobalData();
+
     } catch (err: any) {
       console.error('Error getting location:', err);
       
       let errorMessage = 'Failed to get your location.';
-      
+
       if (err.code === 1) {
         errorMessage = 'Location access denied. Please enable location permissions in your browser settings.';
       } else if (err.code === 2) {
@@ -252,7 +349,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
   const getCityFromCoordinates = async (lat: number, lon: number): Promise<{city: string, state: string, country: string}> => {
     try {
       // Use environment variable for API key
-      const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
+      const apiKey = import.meta.env['VITE_OPENWEATHERMAP_API_KEY'];
       
       // If no API key is available, skip the API call and use coordinates
       if (!apiKey || apiKey.trim() === '') {
@@ -294,28 +391,11 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
   const updateNearbyLocations = (userLat: number, userLon: number): void => {
     // TODO: In a real app, you would fetch nearby monitoring stations from an API
     // For now, we'll use the user's actual coordinates
-    if (nearbyLocations.length > 0) {
-      nearbyLocations[0].coordinates = [userLat, userLon];
-      nearbyLocations[0].name = "Your Location";
-    }
-  };
-
-  const getAQIColor = (aqi: number): string => {
-    if (aqi <= 50) return "bg-green-500";
-    if (aqi <= 100) return "bg-yellow-500";
-    if (aqi <= 150) return "bg-orange-500";
-    if (aqi <= 200) return "bg-red-500";
-    if (aqi <= 300) return "bg-purple-500";
-    return "bg-red-800";
-  };
-
-  const getAQILabel = (aqi: number): string => {
-    if (aqi <= 50) return "Good";
-    if (aqi <= 100) return "Moderate";
-    if (aqi <= 150) return "Unhealthy for Sensitive Groups";
-    if (aqi <= 200) return "Unhealthy";
-    if (aqi <= 300) return "Very Unhealthy";
-    return "Hazardous";
+    if (hasFetchedFallback) return;
+    const primaryLocation = nearbyLocations.at(0);
+    if (!primaryLocation) return;
+    primaryLocation.coordinates = [userLat, userLon];
+    primaryLocation.name = "Your Location";
   };
 
   const resetLocationPermission = () => {
@@ -323,7 +403,8 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
     setRetryCount(0);
     setError(null);
     setUserLocation(null);
-    setAirQualityData(null);
+    setFallbackAirQualityData(null);
+    setHasFetchedFallback(false);
     setLocationRequested(false);
   };
 
@@ -332,20 +413,22 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
     if (error && retryCount > 0 && retryCount < 3) {
       const timer = setTimeout(() => {
         console.log(`MapView: Auto-retrying geolocation for new user (attempt ${retryCount + 1}/3)...`);
-        
+
         // Show user feedback about the auto-retry
         toast({
           title: "Retrying Location Services",
           description: `Automatically retrying to get your location... (${retryCount + 1}/3)`,
           variant: "default",
         });
-        
+
         getUserLocation();
       }, 2000); // Wait 2 seconds before retry
-      
+
       return () => clearTimeout(timer);
     }
-  }, [error, retryCount]);
+
+    return undefined;
+  }, [error, retryCount, getUserLocation, toast]);
 
   if (loading) {
     return (
@@ -483,7 +566,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
         <div className="w-full h-full rounded-lg overflow-hidden border border-border">
           <LeafletMap 
             userLocation={userLocation}
-            airQualityData={airQualityData}
+            airQualityData={activeAirQualityData}
             nearbyLocations={nearbyLocations}
           />
         </div>
@@ -538,9 +621,9 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
                   </div>
                   <Badge 
                     variant="secondary"
-                    className={`${getAQIColor(airQualityData?.aqi || 0)} text-white border-0`}
+                    className={`${getAQIColor(activeAirQualityData?.aqi || 0)} text-white border-0`}
                   >
-                    AQI {airQualityData?.aqi || 'Loading...'}
+                    AQI {activeAirQualityData?.aqi || 'Loading...'}
                   </Badge>
                 </div>
               </div>
@@ -551,10 +634,13 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
               <h3 className="text-sm font-semibold text-foreground mb-3">
                 Nearby Monitoring Stations
               </h3>
-              
+
               <div className="space-y-2">
                 {nearbyLocations.map((location) => (
-                  <div key={location.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div
+                    key={location.id}
+                    className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
                     <div className="flex items-center gap-3">
                       <div className={`w-3 h-3 rounded-full ${getAQIColor(location.aqi)}`} />
                       <div>
@@ -562,7 +648,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
                         <div className="text-xs text-muted-foreground">{location.distance}</div>
                       </div>
                     </div>
-                    <Badge 
+                    <Badge
                       variant="secondary"
                       className={`${getAQIColor(location.aqi)} text-white border-0 text-xs`}
                     >
@@ -577,17 +663,17 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
       </div>
 
       {/* AQI Data Charts Section */}
-      {airQualityData ? (
+      {activeAirQualityData ? (
         <div className="mt-8">
           <AQIDataCharts
-            aqi={airQualityData.aqi}
-            pm25={airQualityData.pm25 || 0}
-            pm10={airQualityData.pm10 || 0}
-            no2={airQualityData.no2 || 0}
-            so2={airQualityData.so2 || 0}
-            co={airQualityData.co || 0}
-            o3={airQualityData.o3 || 0}
-            timestamp={airQualityData.timestamp}
+            aqi={activeAirQualityData.aqi}
+            pm25={activeAirQualityData.pm25 || 0}
+            pm10={activeAirQualityData.pm10 || 0}
+            no2={activeAirQualityData.no2 || 0}
+            so2={activeAirQualityData.so2 || 0}
+            co={activeAirQualityData.co || 0}
+            o3={activeAirQualityData.o3 || 0}
+            timestamp={activeAirQualityData.timestamp}
           />
         </div>
       ) : (

@@ -38,6 +38,22 @@ export interface LoggerConfig {
   };
 }
 
+const getEnvValue = (key: string): string | undefined => {
+  const importMetaEnv = typeof import.meta !== 'undefined'
+    ? (import.meta as unknown as { env?: Record<string, string | undefined> }).env
+    : undefined;
+
+  if (importMetaEnv && Object.prototype.hasOwnProperty.call(importMetaEnv, key)) {
+    return importMetaEnv[key];
+  }
+
+  if (typeof process !== 'undefined' && process.env && Object.prototype.hasOwnProperty.call(process.env, key)) {
+    return process.env[key];
+  }
+
+  return undefined;
+};
+
 class Logger {
   private static instance: Logger;
   private config: LoggerConfig;
@@ -47,8 +63,9 @@ class Logger {
   private isProduction: boolean;
 
   private constructor() {
-    this.isProduction = process.env.NODE_ENV === 'production';
-    
+    const mode = getEnvValue('NODE_ENV') ?? getEnvValue('MODE');
+    this.isProduction = mode === 'production' || mode === 'prod';
+
     // Default configuration
     this.config = {
       level: this.isProduction ? 'ERROR' : 'DEBUG',
@@ -84,17 +101,17 @@ class Logger {
 
   private loadConfig(): void {
     // Load from environment variables
-    const envLevel = process.env.LOG_LEVEL as LogLevel;
+    const envLevel = getEnvValue('LOG_LEVEL') as LogLevel | undefined;
     if (envLevel && ['ERROR', 'WARN', 'INFO', 'DEBUG'].includes(envLevel)) {
       this.config.level = envLevel;
     }
 
-    const enablePerformance = process.env.ENABLE_PERFORMANCE_LOGS;
+    const enablePerformance = getEnvValue('ENABLE_PERFORMANCE_LOGS');
     if (enablePerformance !== undefined) {
       this.config.enablePerformanceLogs = enablePerformance === 'true';
     }
 
-    const maxEntries = process.env.MAX_LOG_ENTRIES;
+    const maxEntries = getEnvValue('MAX_LOG_ENTRIES');
     if (maxEntries) {
       this.config.maxLogEntries = parseInt(maxEntries, 10);
     }

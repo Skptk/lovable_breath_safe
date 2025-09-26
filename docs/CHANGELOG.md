@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - **Maintenance Mode Gate**: Introduced `MaintenanceGate` wrapper and `VITE_MAINTENANCE_MODE`/`VITE_MAINTENANCE_TOKEN` controls to limit production access during live debugging sessions. The gate surfaces a secure password prompt and preserves existing app state for authorized testers.
 - **Supabase Cron Auth Migration**: Added `20250925205100_update_cron_use_http_auth.sql` to recreate the `environmental-data-collection` job using pg_net’s auth registry so the edge function can be triggered every minute without depending on restricted database settings.
+- **MapView AQI Integration**: Refactored `src/components/MapView.tsx` to consume the cron-collected readings via `useGlobalEnvironmentalData`, reconcile them with `fetchAQI` fallback state, and synchronize the map, charts, and badges against a single `activeAirQualityData` source.
 
 ### Fixed
 
@@ -65,6 +66,7 @@ All notable changes to this project will be documented in this file.
   - Improved type safety in WeatherStatsCard and WeatherSection components
   - Added proper null checks and type guards for coordinate handling
   - Ensured proper variable initialization order to prevent hoisting issues
+- **Logger Environment Detection**: Updated `src/lib/logger.ts` to resolve environment variables through a cross-runtime `getEnvValue()` helper so browser builds no longer throw `ReferenceError: process is not defined` when determining log levels.
 
 ### Changed
 
