@@ -197,12 +197,12 @@ export const useAirQuality = () => {
               .insert(reading);
             
             if (insertError) {
+              const errorPayload = insertError as { message?: string; details?: string; hint?: string; code?: string };
               console.error('❌ [useAirQuality] Insert failed with detailed error:', {
-                message: insertError.message,
-                details: insertError.details,
-                hint: insertError.hint,
-                code: insertError.code,
-                fullError: insertError
+                message: errorPayload.message,
+                details: errorPayload.details,
+                hint: errorPayload.hint,
+                code: errorPayload.code
               });
               console.error('❌ [useAirQuality] Data that failed to insert:', JSON.stringify(reading, null, 2));
               throw insertError;
@@ -212,14 +212,20 @@ export const useAirQuality = () => {
           } catch (insertError) {
             // Comprehensive error logging for Supabase errors
             console.error('❌ [useAirQuality] CATCH BLOCK - Failed to record AQI check in history:');
+            const supabaseError = insertError as { message?: string; details?: string; hint?: string; code?: string };
             console.error('❌ [useAirQuality] Error type:', typeof insertError);
-            console.error('❌ [useAirQuality] Error constructor:', insertError?.constructor?.name);
-            console.error('❌ [useAirQuality] Error message:', insertError?.message);
-            console.error('❌ [useAirQuality] Error details:', insertError?.details);
-            console.error('❌ [useAirQuality] Error hint:', insertError?.hint);
-            console.error('❌ [useAirQuality] Error code:', insertError?.code);
+            console.error('❌ [useAirQuality] Error constructor:', (insertError as any)?.constructor?.name);
+            console.error('❌ [useAirQuality] Error message:', supabaseError?.message);
+            console.error('❌ [useAirQuality] Error details:', supabaseError?.details);
+            console.error('❌ [useAirQuality] Error hint:', supabaseError?.hint);
+            console.error('❌ [useAirQuality] Error code:', supabaseError?.code);
             console.error('❌ [useAirQuality] Full error object:', insertError);
-            console.error('❌ [useAirQuality] Error stringified:', JSON.stringify(insertError, null, 2));
+            const stringifyCandidate = insertError as Record<string, unknown>;
+            try {
+              console.error('❌ [useAirQuality] Error stringified:', JSON.stringify(stringifyCandidate, null, 2));
+            } catch {
+              // ignore JSON stringify errors
+            }
           }
         }
         // --- END: Record AQI check in history ---
@@ -351,11 +357,15 @@ export const useAirQuality = () => {
 
   // Memoize the result to prevent unnecessary re-renders
   const result = useMemo(() => {
+    const queryError = (aqicnQuery.error as Error) ?? null;
+    const isInitialLoading = aqicnQuery.isLoading || (!readings.length && aqicnQuery.isFetching);
+
     const baseResult = {
       data: readings.length > 0 ? readings[readings.length - 1] : null,
       history: readings,
-      loading: locationData?.loading,
-      error: locationData?.error || null,
+      loading: false,
+      isLoading: isInitialLoading,
+      error: queryError,
       isRefreshing: aqicnQuery.isRefetching,
       lastUpdated: readings.length > 0 ? readings[readings.length - 1]?.timestamp : null,
       dataSource: readings.length > 0 ? readings[readings.length - 1]?.dataSource || 'Unknown' : 'Unknown',
@@ -370,7 +380,7 @@ export const useAirQuality = () => {
       return {
         ...baseResult,
         _debug: {
-          memory: memoryMonitor.getMemoryUsage(),
+          memory: memoryMonitor.getStats(),
           readingsCount: readings.length,
           queueSize: processingQueue.current.length,
         }
@@ -378,7 +388,7 @@ export const useAirQuality = () => {
     }
 
     return baseResult;
-  }, [readings, locationData, aqicnQuery.isRefetching, manualRefresh]);
+  }, [readings, aqicnQuery.isRefetching, manualRefresh]);
 
   return result;
 };

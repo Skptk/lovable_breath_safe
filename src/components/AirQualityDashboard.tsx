@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 
 // Import components directly to avoid circular dependencies
 import { LoadingState } from "./AirQualityDashboard/LoadingState";
+import { DataLoadingOverlay } from "./AirQualityDashboard/DataLoadingOverlay";
 import { PermissionRequest } from "./AirQualityDashboard/PermissionRequest";
 import { PollutantModal } from "./AirQualityDashboard/PollutantModal";
 import { AQICard } from "./AirQualityDashboard/AQICard";
@@ -228,9 +229,15 @@ function AirQualityDashboardContent({
     );
   }
 
-  // Loading while fetching data
-  if (isLoading) {
-    return <LoadingState title={`Hello, ${userName}!`} subtitle="Loading air quality data..." />;
+  // Structured loading state during initial fetch or silent refresh without data
+  if (isLoading && !data) {
+    return (
+      <DataLoadingOverlay
+        userName={userName}
+        showMobileMenu={showMobileMenu}
+        onMobileMenuToggle={onMobileMenuToggle}
+      />
+    );
   }
 
   // Error state with retry wired to refreshData
