@@ -2,31 +2,28 @@
  * Memory debugging utilities for identifying and tracking memory leaks
  */
 
-// Track component instances to detect leaks
-const componentInstances = new Map<string, Set<object>>();
+import { isDebugBuild } from '@/utils/debugFlags';
+
+// Track component instances to detect leaks (debug builds only)
+const componentInstances = isDebugBuild ? new Map<string, Set<object>>() : null;
 
 /**
  * Track component instance for memory leak detection
  */
 export function trackComponent(componentName: string, instance: object) {
-  if (process.env['NODE_ENV'] !== 'production') {
-    if (!componentInstances.has(componentName)) {
-      componentInstances.set(componentName, new Set());
-    }
-    
-    const instances = componentInstances.get(componentName);
-    instances?.add(instance);
-    
-    if (process.env['NODE_ENV'] === 'development') {
-      console.log(`[Memory] Tracking ${componentName} instance (total: ${instances?.size})`);
-    }
+  if (!isDebugBuild || !componentInstances) {
+    return () => {};
   }
-  
+
+  if (!componentInstances.has(componentName)) {
+    componentInstances.set(componentName, new Set());
+  }
+
+  const instances = componentInstances.get(componentName);
+  instances?.add(instance);
+
   return () => {
     componentInstances.get(componentName)?.delete(instance);
-    if (process.env['NODE_ENV'] === 'development') {
-      console.log(`[Memory] ${componentName} unmounted (${componentInstances.get(componentName)?.size} remaining)`);
-    }
   };
 }
 
@@ -34,6 +31,10 @@ export function trackComponent(componentName: string, instance: object) {
  * Log all tracked component instances (useful for debugging)
  */
 export function logComponentInstances() {
+  if (!isDebugBuild || !componentInstances) {
+    return;
+  }
+
   console.group('Component Instances');
   componentInstances.forEach((instances, name) => {
     console.log(`${name}: ${instances.size} instances`);
@@ -45,6 +46,10 @@ export function logComponentInstances() {
  * Force garbage collection (works in Chrome with --js-flags="--expose-gc")
  */
 export function forceGarbageCollection() {
+  if (!isDebugBuild) {
+    return false;
+  }
+
   // Use type assertion to avoid TypeScript errors
   const win = window as any;
   
@@ -69,6 +74,10 @@ export function forceGarbageCollection() {
  * Returns null if memory measurement is not available in this environment
  */
 export function measureMemory() {
+  if (!isDebugBuild) {
+    return null;
+  }
+
   try {
     // Safely check if performance is available
     if (typeof performance === 'undefined' || !performance) {
@@ -113,6 +122,13 @@ export function measureMemory() {
  * Create a memory leak detector for a specific component
  */
 export function createLeakDetector(componentName: string) {
+  if (!isDebugBuild) {
+    return {
+      track: () => () => {},
+      getInstanceCount: () => 0,
+    };
+  }
+
   const instances = new Set<object>();
   let lastCount = 0;
   let growthCount = 0;
@@ -150,7 +166,7 @@ export function createLeakDetector(componentName: string) {
  * Track event listeners to prevent memory leaks
  */
 export function trackEventListeners() {
-  if (typeof window === 'undefined') return;
+  if (!isDebugBuild || typeof window === 'undefined') return;
   
   // Store original methods
   (window as any)._originalAddEventListener = window.addEventListener.bind(window);
@@ -257,6 +273,6 @@ export function trackEventListeners() {
 }
 
 // Initialize event listener tracking in development
-if (process.env['NODE_ENV'] === 'development') {
+if (isDebugBuild) {
   trackEventListeners();
 }

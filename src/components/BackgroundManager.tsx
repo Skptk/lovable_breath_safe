@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { logGeolocation } from '@/lib/logger';
-import { debugTracker } from '@/utils/errorTracker';
+import { isDebugBuild, debugLog } from '@/utils/debugFlags';
 
 // Import hooks directly instead of lazy loading them
 import { useWeatherStore } from '@/store/weatherStore';
@@ -10,7 +10,6 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
 
 // Background refresh settings
-const BACKGROUND_REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutes
 const BACKGROUND_REFRESH_LOCK_DURATION = 5 * 60 * 1000; // 5 minutes to prevent rapid switching
 const BACKGROUND_REFRESH_LOCK_KEY = 'breath-safe:bg-refresh-lock';
 const BACKGROUND_TRANSITION_DURATION = 500; // 500ms for smoother transitions
@@ -130,36 +129,12 @@ interface BackgroundManagerProps {
  */
 const DEFAULT_BACKGROUND = '/weather-backgrounds/partly-cloudy.webp';
 const ERROR_BACKGROUND = '/weather-backgrounds/overcast.webp';
-const GLOBAL_TIME_ANALYSIS_CACHE_KEY = '__BG_TIME_ANALYSIS_CACHE__';
-
-const bgStateTracker = { renderCount: 0 };
-
-const resolveBackgroundDebugFlag = (): boolean => {
-  if (typeof globalThis === 'undefined') {
-    return false;
-  }
-
-  const globalAny = globalThis as Record<string, unknown>;
-  const explicitFlag = globalAny['__BG_DEBUG__'];
-  if (typeof explicitFlag === 'boolean') {
-    return explicitFlag;
-  }
-
-  const trackerFlag = globalAny['__TRACK_VARIABLES__'];
-  if (typeof trackerFlag === 'boolean') {
-    return trackerFlag;
-  }
-
-  return false;
-};
-
 const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ children }) => {
   // State
   const [currentBackground, setCurrentBackground] = useState<string>(DEFAULT_BACKGROUND);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [backgroundState, setBackgroundState] = useState<'loading' | 'error' | 'success'>('loading');
   const [hasInitialData, setHasInitialData] = useState<boolean>(false);
-  const lastWeatherUpdate = useRef<number>(0);
   const updateTimeoutRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
   const [timeOfDayInfo, setTimeOfDayInfo] = useState<{
@@ -179,80 +154,13 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     setCoordinates
   } = useWeatherStore();
 
-  const {
-    locationData,
-    hasUserConsent,
-    permissionStatus,
-    requestLocation,
-    getIPBasedLocationAsync
-  } = useGeolocation();
-
-  bgStateTracker.renderCount += 1;
-  const renderIteration = bgStateTracker.renderCount;
+  const { locationData } = useGeolocation();
 
   // Refs for tracking state without causing re-renders
   const fallbackTimeoutRef = useRef<number | null>(null);
-  const effectTimeoutRef = useRef<number | null>(null);
-  const updateIntervalRef = useRef<number | null>(null);
   const timeOfDayIntervalRef = useRef<number | null>(null);
-  const lastBackgroundRef = useRef<string>('');
   const pendingBackgroundUpdate = useRef<string | null>(null);
-  const timeAnalysisCacheRef = useRef<Record<string, string>>(
-    Object.create(null) as Record<string, string>
-  );
   const hasAppliedBackgroundRef = useRef(false);
-
-  const shouldTrack = resolveBackgroundDebugFlag();
-  const debugLog = useCallback(
-    (...args: unknown[]) => {
-      if (shouldTrack) {
-        console.log(...args);
-      }
-    },
-    [shouldTrack]
-  );
-
-  const getTimeAnalysisCache = useCallback((): Record<string, string> => {
-    try {
-      if (typeof globalThis !== 'undefined') {
-        const globalAny = globalThis as Record<string, unknown>;
-        const existing = globalAny[GLOBAL_TIME_ANALYSIS_CACHE_KEY];
-        if (existing && typeof existing === 'object') {
-          return existing as Record<string, string>;
-        }
-
-        const initializedCache: Record<string, string> = Object.create(null);
-        globalAny[GLOBAL_TIME_ANALYSIS_CACHE_KEY] = initializedCache;
-        return initializedCache;
-      }
-    } catch (error) {
-      console.warn('BackgroundManager: Failed to access global time analysis cache, using local cache instead.', error);
-    }
-
-    return timeAnalysisCacheRef.current;
-  }, []);
-
-  debugLog(`🖼️ [BG-MANAGER-${renderIteration}] Component rendering:`, {
-    hasWeatherData: !!currentWeather,
-    backgroundState,
-    weatherLoading,
-    weatherError,
-    geolocationConsent: hasUserConsent,
-    geolocationPermissionStatus: permissionStatus,
-    hasLocationData: !!locationData,
-    requestLocationAvailable: typeof requestLocation === 'function',
-    getIPBasedLocationAsyncAvailable: typeof getIPBasedLocationAsync === 'function',
-    timestamp: new Date().toISOString()
-  });
-
-  if (shouldTrack) {
-    debugTracker.trackVariableDeclaration(`BackgroundManager#${renderIteration}`, {
-      hasWeatherData: !!currentWeather,
-      backgroundState,
-      weatherLoading,
-      weatherError
-    }, 'BackgroundManager.tsx:render');
-  }
 
   // Cleanup function for component unmount
   useEffect(() => {
@@ -264,13 +172,11 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
         timeOfDayIntervalRef.current = null;
       }
 
-      // Clear all timeouts and intervals
-      [fallbackTimeoutRef, effectTimeoutRef, updateIntervalRef].forEach(ref => {
-        if (ref.current) {
-          clearTimeout(ref.current);
-          ref.current = null;
-        }
-      });
+      // Clear timeouts
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
       
       // Clear any pending updates
       if (updateTimeoutRef.current) {
@@ -293,7 +199,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     };
 
     updateTimeOfDay();
-    const intervalId = window.setInterval(updateTimeOfDay, 60 * 1000);
+    const intervalId = window.setInterval(updateTimeOfDay, 5 * 60 * 1000);
     timeOfDayIntervalRef.current = intervalId;
 
     return () => {
@@ -303,45 +209,6 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       }
     };
   }, [currentWeather?.sunriseTime, currentWeather?.sunsetTime]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return; // Skip in non-browser environments
-    }
-
-    const iterationLabel = renderIteration;
-    debugLog(`🖼️ [BG-MANAGER-${iterationLabel}] Effect running after render`);
-
-    if (effectTimeoutRef.current) {
-      window.clearTimeout(effectTimeoutRef.current);
-      effectTimeoutRef.current = null;
-    }
-
-    if (!(shouldTrack && backgroundState === 'loading')) {
-      return () => {
-        debugLog(`🖼️ [BG-MANAGER-${iterationLabel}] Effect cleanup`);
-      };
-    }
-
-    effectTimeoutRef.current = window.setTimeout(() => {
-      console.warn('⚠️  [CRITICAL] BackgroundManager effect timeout - potential TDZ trigger point', {
-        hasWeatherData: !!currentWeather,
-        backgroundState,
-        timestamp: new Date().toISOString()
-      });
-      if (shouldTrack) {
-        debugTracker.trackVariableAccess('BackgroundManager', 'BackgroundManager.tsx:postRenderTimeout');
-      }
-    }, 5000);
-
-    return () => {
-      debugLog(`🖼️ [BG-MANAGER-${iterationLabel}] Effect cleanup`);
-      if (effectTimeoutRef.current) {
-        window.clearTimeout(effectTimeoutRef.current);
-        effectTimeoutRef.current = null;
-      }
-    };
-  }, [backgroundState, currentWeather, shouldTrack, renderIteration]);
 
   // Update weather store coordinates when location data changes
   useEffect(() => {
@@ -426,30 +293,22 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       const defaultBackground = DEFAULT_BACKGROUND;
 
       if (weatherLoading || weatherError) {
-        debugLog(`BackgroundManager: ${weatherLoading ? 'Loading' : 'Error'}, using default background`);
+        if (isDebugBuild) {
+          debugLog('BackgroundManager', `${weatherLoading ? 'Loading' : 'Error'}, using default background`);
+        }
         return weatherError ? ERROR_BACKGROUND : defaultBackground;
       }
 
       if (!currentWeather) {
-        debugLog('BackgroundManager: No weather data available, using default background');
+        if (isDebugBuild) {
+          debugLog('BackgroundManager', 'No weather data available, using default background');
+        }
         return defaultBackground;
       }
 
       const { period, isSunriseWindow, isSunsetWindow } = timeOfDayInfo;
       const isNightPeriod = period === 'night' || isNightTime(currentWeather.sunriseTime, currentWeather.sunsetTime);
       const isSunriseSunset = isSunriseSunsetPeriod(currentWeather.sunriseTime, currentWeather.sunsetTime);
-
-      const currentTime = new Date();
-      const timeKey = `${currentTime.getHours()}:${currentTime.getMinutes()}`;
-      const dayNightKey = isNightPeriod ? 'Night' : 'Day';
-      const cache = getTimeAnalysisCache();
-
-      if (!cache[timeKey] || cache[timeKey] !== dayNightKey) {
-        cache[timeKey] = dayNightKey;
-        debugLog(
-          `🌙 [BackgroundManager] Time: ${timeKey} (${dayNightKey}) | Sunrise: ${currentWeather.sunriseTime || 'N/A'} | Sunset: ${currentWeather.sunsetTime || 'N/A'}`
-        );
-      }
 
       let conditionCode = 1;
       const weatherCondition = currentWeather.weatherCondition?.toLowerCase();
@@ -484,16 +343,15 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       }
 
       if (isBackgroundRefreshLocked(candidateBackground) && currentBackground !== DEFAULT_BACKGROUND) {
-        debugLog('BackgroundManager: Refresh locked - using current background');
+        if (isDebugBuild) {
+          debugLog('BackgroundManager', 'Refresh locked - reusing current background');
+        }
         return currentBackground;
       }
 
       return candidateBackground;
     } catch (error) {
       console.error('BackgroundManager: Failed to determine target background, using default background instead.', error);
-      if (shouldTrack) {
-        debugTracker.trackVariableAccess('BackgroundManager', 'BackgroundManager.tsx:targetBackgroundFallback');
-      }
       return DEFAULT_BACKGROUND;
     }
   }, [
@@ -501,10 +359,8 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     currentBackground,
     weatherLoading,
     weatherError,
-    debugLog,
     timeOfDayInfo,
-    getTimeAnalysisCache,
-    shouldTrack
+    isDebugBuild
   ]);
 
   // Update background when target changes with debounce and safety checks
@@ -530,7 +386,9 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
           return;
         }
 
-        debugLog('BackgroundManager: Changing background from', currentBackground, 'to', targetBackground);
+        if (isDebugBuild) {
+          debugLog('BackgroundManager', `Changing background from ${currentBackground} to ${targetBackground}`);
+        }
 
         // Set refresh lock to prevent rapid changes
         if (targetBackground !== DEFAULT_BACKGROUND) {
@@ -567,7 +425,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
         updateTimeoutRef.current = null;
       }
     };
-  }, [targetBackground, currentBackground, debugLog]);
+  }, [targetBackground, currentBackground]);
 
   useEffect(() => {
     if (fallbackTimeoutRef.current) {
@@ -588,7 +446,9 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
         return;
       }
 
-      debugLog(`🖼️ [BG-MANAGER-${renderIteration}] Applying default background after timeout`);
+      if (isDebugBuild) {
+        debugLog('BackgroundManager', 'Applying default background after timeout');
+      }
       setCurrentBackground(DEFAULT_BACKGROUND);
       setBackgroundState((prev) => (prev === 'error' ? prev : 'success'));
       hasAppliedBackgroundRef.current = true;
@@ -600,7 +460,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
         fallbackTimeoutRef.current = null;
       }
     };
-  }, [currentWeather, weatherLoading, renderIteration]);
+  }, [currentWeather, weatherLoading]);
 
   // Get background based on state with fallbacks
   const getBackgroundForState = useCallback((): string => {
@@ -678,17 +538,9 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       </div>
     );
 
-    if (shouldTrack) {
-      debugLog(`✅ [BG-MANAGER-${renderIteration}] Render successful`);
-      debugTracker.trackVariableAccess('BackgroundManager', 'BackgroundManager.tsx:renderSuccess');
-    }
-
     return renderResult;
   } catch (error) {
-    console.error(`❌ [BG-MANAGER-${renderIteration}] Render error:`, error);
-    if (shouldTrack) {
-      debugTracker.dumpDebugInfo();
-    }
+    console.error('❌ [BG-MANAGER] Render error:', error);
     throw error;
   }
 

@@ -75,6 +75,8 @@ All notable changes to this project will be documented in this file.
 - **Air Quality Refresh Controls**: Reworked `useAirQuality` to expose a `manualRefresh` gate that enforces a 15-minute lock with toast feedback, prevents redundant refetches on initial location detection, and centralizes refresh invocation for the dashboard.
 - **Server-Side Data Collection Cadence**: Updated `supabase/functions/scheduled-data-collection/index.ts` and cron migration `20250123000001_setup_cron_scheduling.sql` to run every minute (down from 15 minutes), aligning server ingestion with near-real-time AQICN availability. Logged messages, collection interval metadata, and documentation now reflect the 60-second window.
 - **Supabase Cron Authentication**: Switched the minute-level cron invocation to reference the pg_net auth entry `environmental-data-collector`, replacing the prior `current_setting('app.settings.service_role_key')` approach. Documented the required `net.http_add_auth('environmental-data-collector', 'bearer', jsonb_build_object('token', '<SERVICE_ROLE_KEY>'))` setup in deployment notes so the cron job can authenticate without Vault support.
+- **Runtime Diagnostics**: Gated `src/utils/errorTracker.ts`, `src/utils/memoryUtils.ts`, and dev memory panels behind the debug build flag and imposed bounded buffers so production bundles no longer retain unbounded logs or override global listeners.
+- **BackgroundManager**: Removed global debug trackers, trimmed interval cadence to 5 minutes, and reduced console chatter to keep the background system lightweight while preserving weather-based theming.
 
 - **Realtime Subscriptions**: Hardened Supabase channel hook lifecycle
   - Refactored `useStableChannelSubscription` to register hooks before conditional returns
