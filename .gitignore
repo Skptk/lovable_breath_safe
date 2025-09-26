@@ -4,6 +4,7 @@ prev_*.
 
 # Supabase CLI temp artifacts
 supabase/.temp/
+supabase/.branches/
 # Logs
 logs
 *.log
