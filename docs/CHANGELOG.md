@@ -10,6 +10,26 @@ All notable changes to this project will be documented in this file.
 - **Supabase Cron Auth Migration**: Added `20250925205100_update_cron_use_http_auth.sql` to recreate the `environmental-data-collection` job using pg_net’s auth registry so the edge function can be triggered every minute without depending on restricted database settings.
 - **MapView AQI Integration**: Refactored `src/components/MapView.tsx` to consume the cron-collected readings via `useGlobalEnvironmentalData`, reconcile them with `fetchAQI` fallback state, and synchronize the map, charts, and badges against a single `activeAirQualityData` source.
 - **Global Environmental Hook Accessibility**: Refactored `src/hooks/useGlobalEnvironmentalData.ts` to fetch active readings via RPC with table fallback, derive nearest/city matches client-side, and expose unauthenticated-friendly results so maintenance mode and public views surface the latest AQI readings.
+- **Reflow Optimization Hook**: Added `src/hooks/useReflowOptimization.ts`, a reusable measurement scheduler that batches DOM reads, throttles layout work, and surfaces layout thrash diagnostics for any component that needs guarded DOM measurements.
+- **Heap Fail-safe Event Bus**: Implemented centralized heap protection via `src/utils/heapFailSafe.ts`, exposing `initHeapFailSafe()` and `addHeapFailSafeListener()` so UI surfaces warn/critical/emergency tiers. Integrated listeners in `src/hooks/useHeapFailSafe.ts` and `src/components/ConnectionResilienceProvider.tsx` to clear caches and display toasts. Validated with `npm run test` (Vitest).
+- **Network Visibility & Cache Maintenance Utilities**: Added `src/hooks/useNetworkStatus.ts` for offline awareness and scheduled cache purging helpers (`initializeStoreMaintenance()` / `stopStoreMaintenance()`) in `src/store/index.ts` using `createSafeInterval()`, preventing expired entries from accumulating. Covered by `npm run test`.
+
+### Fixed
+
+- **Profile Subscription Cleanup**: Hardened `src/components/ProfileView.tsx` by applying `PROFILE_HISTORY_BUDGET`, limiting badge arrays via `BudgetedArray()`, and cancelling Supabase subscriptions when the tab hides to prevent orphaned listeners. Confirmed through `npm run test`.
+
+### Changed
+
+- **React Query Memory Budgets**: Tuned `src/main.tsx` defaults (`gcTime` 60 s, `staleTime` 30 s) and tagged queries with `meta.budget` to shrink idle cache footprint while preserving refetch behavior. Verified with `npm run test`.
+- **Build Chunk Strategy**: Updated `vite.config.ts` to use `splitVendorChunkPlugin()` and a deterministic `manualChunks` function that emits domain-specific bundles (`vendor-react`, `vendor-query`, `vendor-supabase`, etc.), improving lazy-loading behavior across routes rendered in `src/pages/Index.tsx`.
+
+### Performance
+
+- **Memory Guard Rail Enhancements**: Combined query cache tuning, heap fail-safe dispatching, and badge history pruning reduces steady-state heap usage recorded by `memoryMonitor.addListener()` and ensures reload safeguards trigger before crossing the 200 MB threshold.
+
+### Migration
+
+- **None**: No new Supabase migration files or SQL commands were introduced in this cycle.
 
 ### Fixed
 
@@ -77,6 +97,8 @@ All notable changes to this project will be documented in this file.
 - **Supabase Cron Authentication**: Switched the minute-level cron invocation to reference the pg_net auth entry `environmental-data-collector`, replacing the prior `current_setting('app.settings.service_role_key')` approach. Documented the required `net.http_add_auth('environmental-data-collector', 'bearer', jsonb_build_object('token', '<SERVICE_ROLE_KEY>'))` setup in deployment notes so the cron job can authenticate without Vault support.
 - **Runtime Diagnostics**: Gated `src/utils/errorTracker.ts`, `src/utils/memoryUtils.ts`, and dev memory panels behind the debug build flag and imposed bounded buffers so production bundles no longer retain unbounded logs or override global listeners.
 - **BackgroundManager**: Removed global debug trackers, trimmed interval cadence to 5 minutes, and reduced console chatter to keep the background system lightweight while preserving weather-based theming.
+- **Dashboard UX**: Added a dedicated `DataLoadingOverlay` skeleton and reworked the `useAirQuality` loading state so users see a smooth loading experience instead of the transient dashboard error placeholder.
+- **Dashboard Layout Stabilization**: Adopted `useReflowOptimization` across `src/components/AirQualityDashboard.tsx`, `src/components/AirQualityDashboard/PointsGrid.tsx`, and `src/components/AirQualityDashboard/WeatherSection.tsx` to schedule DOM measurements outside the render path, reducing layout thrash when AQI metrics and weather data refresh.
 
 - **Realtime Subscriptions**: Hardened Supabase channel hook lifecycle
   - Refactored `useStableChannelSubscription` to register hooks before conditional returns

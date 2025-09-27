@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useAirQuality } from "@/hooks/useAirQuality";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserPoints } from "@/hooks/useUserPoints";
@@ -20,6 +20,7 @@ import { PollutantModal } from "./AirQualityDashboard/PollutantModal";
 import { AQICard } from "./AirQualityDashboard/AQICard";
 import { PointsGrid } from "./AirQualityDashboard/PointsGrid";
 import { WeatherSection } from "./AirQualityDashboard/WeatherSection";
+import { useReflowOptimization } from "@/hooks/useReflowOptimization";
 
 interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
@@ -33,9 +34,9 @@ interface AirQualityDashboardProps {
  * returns boolean `timedOut` that becomes true after `ms` if `hasRequestedPermission` is still false
  */
 function usePermissionTimeout(hasRequestedPermission: boolean, ms: number = 3000) {
-  const [timedOut, setTimedOut] = React.useState(false);
+  const [timedOut, setTimedOut] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (hasRequestedPermission) return;
 
     const timer = setTimeout(() => {
@@ -66,6 +67,7 @@ function AirQualityDashboardContent({
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { timeUntilRefresh } = useRefreshCountdown();
   const { toast } = useToast();
+  const aqiCardRef = React.useRef<HTMLDivElement | null>(null);
 
   const {
     hasUserConsent = false,
@@ -98,6 +100,33 @@ function AirQualityDashboardContent({
       longitude: data.coordinates.lon 
     };
   }, [data?.coordinates?.lat, data?.coordinates?.lon]);
+
+  const createEmptyRect = useCallback((): DOMRect => {
+    if (typeof DOMRect !== "undefined") {
+      return new DOMRect();
+    }
+    return {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      toJSON: () => ({})
+    } as DOMRect;
+  }, []);
+
+  const { scheduleMeasurement: scheduleLayoutMeasure } = useReflowOptimization<DOMRect>({
+    debugLabel: "AQICardLayout",
+    measure: () => aqiCardRef.current?.getBoundingClientRect() ?? createEmptyRect(),
+  });
+
+  React.useEffect(() => {
+    if (!aqiCardRef.current) return;
+    scheduleLayoutMeasure();
+  }, [data?.aqi, scheduleLayoutMeasure]);
 
   // Request location permission handler
   const handleRequestLocationPermission = React.useCallback(async () => {
@@ -203,17 +232,19 @@ function AirQualityDashboardContent({
           </div>
         )}
 
-        <AQICard
-          data={data}
-          timeUntilRefresh={timeUntilRefresh}
-          isRefreshing={isRefreshing}
-          onRefresh={handleRefresh}
-          onNavigate={onNavigate}
-          showMobileMenu={showMobileMenu}
-          onMobileMenuToggle={onMobileMenuToggle}
-          isDemoMode={isDemoMode}
-          setSelectedPollutant={setSelectedPollutant}
-        />
+        <div ref={aqiCardRef}>
+          <AQICard
+            data={data}
+            timeUntilRefresh={timeUntilRefresh}
+            isRefreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            onNavigate={onNavigate}
+            showMobileMenu={showMobileMenu}
+            onMobileMenuToggle={onMobileMenuToggle}
+            isDemoMode={isDemoMode}
+            setSelectedPollutant={setSelectedPollutant}
+          />
+        </div>
 
         {!pointsLoading && userPoints && (
           <PointsGrid userPoints={userPoints} onNavigate={onNavigate} />

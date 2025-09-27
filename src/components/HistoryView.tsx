@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useMemo, useCallback } from "react";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar, MapPin, TrendingUp, Download, Loader2, AlertTriangle, Thermometer, Droplets, Clock, Trash2, RefreshCw, Eye } from "lucide-react";
+import { Calendar, MapPin, TrendingUp, Loader2, AlertTriangle, Thermometer, Droplets, Clock, Trash2, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import HistoryDetailModal from "./HistoryDetailModal";
 
+const PAGE_SIZE = 25;
 
 interface HistoryEntry {
   id: string;
@@ -54,6 +55,82 @@ interface HistoryEntry {
   sunrise_time?: string | null;
   sunset_time?: string | null;
 }
+
+type RawHistoryRow = {
+  id: string;
+  created_at: string;
+  timestamp?: string | null;
+  location_name?: string | null;
+  aqi: number;
+  pm25?: number | null;
+  pm10?: number | null;
+  pm1?: number | null;
+  no2?: number | null;
+  so2?: number | null;
+  co?: number | null;
+  o3?: number | null;
+  temperature?: number | null;
+  humidity?: number | null;
+  pm003?: number | null;
+  data_source?: string | null;
+  latitude: number;
+  longitude: number;
+  wind_speed?: number | null;
+  wind_direction?: number | null;
+  wind_gust?: number | null;
+  air_pressure?: number | null;
+  rain_probability?: number | null;
+  uv_index?: number | null;
+  visibility?: number | null;
+  weather_condition?: string | null;
+  feels_like_temperature?: number | null;
+  sunrise_time?: string | null;
+  sunset_time?: string | null;
+  [key: string]: unknown;
+};
+
+const safeNumber = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
+const transformHistoryRow = (entry: RawHistoryRow): HistoryEntry => {
+  const locationName =
+    typeof entry.location_name === "string" && entry.location_name.trim().length > 0
+      ? entry.location_name
+      : "Unknown Location";
+
+  return {
+    id: entry.id,
+    created_at: entry.created_at,
+    timestamp: entry.timestamp ?? entry.created_at,
+    location_name: locationName,
+    aqi: entry.aqi,
+    pm25: safeNumber(entry.pm25),
+    pm10: safeNumber(entry.pm10),
+    pm1: safeNumber(entry.pm1 ?? (entry as any).pm_1),
+    no2: safeNumber(entry.no2),
+    so2: safeNumber(entry.so2),
+    co: safeNumber(entry.co),
+    o3: safeNumber(entry.o3),
+    temperature: safeNumber(entry.temperature),
+    humidity: safeNumber(entry.humidity),
+    pm003: safeNumber(entry.pm003 ?? (entry as any).pm_003),
+    data_source: typeof entry.data_source === "string" ? entry.data_source : null,
+    latitude: entry.latitude,
+    longitude: entry.longitude,
+    wind_speed: safeNumber(entry.wind_speed),
+    wind_direction: safeNumber(entry.wind_direction),
+    wind_gust: safeNumber(entry.wind_gust),
+    air_pressure: safeNumber(entry.air_pressure),
+    rain_probability: safeNumber(entry.rain_probability),
+    uv_index: safeNumber(entry.uv_index),
+    visibility: safeNumber(entry.visibility),
+    weather_condition:
+      typeof entry.weather_condition === "string" ? entry.weather_condition : null,
+    feels_like_temperature: safeNumber(entry.feels_like_temperature),
+    sunrise_time: entry.sunrise_time ?? null,
+    sunset_time: entry.sunset_time ?? null,
+  };
+};
 
 // Helper functions for AQI display
 const getAQIColor = (aqi: number): string => {
@@ -92,106 +169,49 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [clearing, setClearing] = useState(false);
   const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [showFetchButton, setShowFetchButton] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user) {
-      fetchHistory();
-    } else {
-      setLoading(false);
+  const fetchHistory = useCallback(async (pageIndex: number = 0): Promise<HistoryEntry[]> => {
+    if (!user?.id) {
+      return [];
     }
-  }, [user]);
 
-  const fetchHistory = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      setError(null);
+    const from = pageIndex * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
 
-      const { data, error: fetchError } = await supabase
-        .from('air_quality_readings')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('timestamp', { ascending: false });
+    const { data, error: fetchError } = await supabase
+      .from('air_quality_readings')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('timestamp', { ascending: false })
+      .range(from, to);
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // Transform the data to match our interface, handling missing fields
-      const transformedData: HistoryEntry[] = (data || []).map(entry => ({
-        id: entry.id,
-        created_at: entry.created_at,
-        timestamp: (entry as any).timestamp || entry.created_at, // Fallback to created_at if timestamp is missing
-        location_name: entry.location_name,
-        aqi: entry.aqi,
-        pm25: entry.pm25,
-        pm10: entry.pm10,
-        pm1: (entry as any).pm1 || null,
-        no2: entry.no2,
-        so2: entry.so2,
-        co: entry.co,
-        o3: entry.o3,
-        temperature: (entry as any).temperature || null,
-        humidity: (entry as any).humidity || null,
-        pm003: (entry as any).pm003 || null,
-        data_source: (entry as any).data_source || null,
-        latitude: entry.latitude,
-        longitude: entry.longitude,
-        // New weather fields
-        wind_speed: (entry as any).wind_speed || null,
-        wind_direction: (entry as any).wind_direction || null,
-        wind_gust: (entry as any).wind_gust || null,
-        air_pressure: (entry as any).air_pressure || null,
-        rain_probability: (entry as any).rain_probability || null,
-        uv_index: (entry as any).uv_index || null,
-        visibility: (entry as any).visibility || null,
-        weather_condition: (entry as any).weather_condition || null,
-        feels_like_temperature: (entry as any).feels_like_temperature || null,
-        sunrise_time: (entry as any).sunrise_time || null,
-        sunset_time: (entry as any).sunset_time || null,
-      }));
-
-      setHistory(transformedData);
-      
-      // If no history, ensure user points are reset to 0 and show fetch button
-      if (transformedData.length === 0) {
-        await resetUserPoints();
-        setShowFetchButton(true);
-      } else {
-        // Hide fetch button if there's already data
-        setShowFetchButton(false);
-      }
-    } catch (error: any) {
-      console.error('Error fetching history:', error);
-      setError(error.message || 'Failed to fetch history');
-      toast({
-        title: "Error",
-        description: "Failed to load air quality history",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    if (fetchError) {
+      throw fetchError;
     }
-  };
 
-  // Function to reset user points when they have no history
-  const resetUserPoints = async (): Promise<void> => {
-    if (!user) return;
-    
+    const rawData = (data ?? []) as RawHistoryRow[];
+    return rawData.map(transformHistoryRow);
+  }, [user?.id]);
+
+  const resetUserPoints = useCallback(async (): Promise<void> => {
+    if (!user?.id) return;
     try {
       const { error } = await supabase
         .from('profiles')
         .update({ total_points: 0 })
         .eq('user_id', user.id);
-      
+
       if (error) {
         console.error('Error resetting user points:', error);
       } else {
@@ -200,7 +220,86 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
     } catch (error) {
       console.error('Error in resetUserPoints:', error);
     }
-  };
+  }, [user?.id]);
+
+  const refreshHistory = useCallback(async () => {
+    if (!user?.id) {
+      setHistory([]);
+      setPage(0);
+      setHasMore(false);
+      setShowFetchButton(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const firstPage = await fetchHistory(0);
+      setHistory(firstPage);
+      setPage(0);
+      setHasMore(firstPage.length === PAGE_SIZE);
+      setShowFetchButton(firstPage.length === 0);
+
+      if (firstPage.length === 0) {
+        await resetUserPoints();
+      }
+    } catch (error) {
+      console.error('Error fetching history:', error);
+      const message = error instanceof Error ? error.message : 'Failed to fetch history';
+      setError(message);
+      toast({
+        title: "Error",
+        description: "Failed to load air quality history",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [fetchHistory, resetUserPoints, toast, user?.id]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMore || isLoadingMore) {
+      return;
+    }
+
+    const nextPage = page + 1;
+    setIsLoadingMore(true);
+
+    try {
+      const nextEntries = await fetchHistory(nextPage);
+      if (nextEntries.length === 0) {
+        setHasMore(false);
+        return;
+      }
+
+      setHistory((prev) => [...prev, ...nextEntries]);
+      setPage(nextPage);
+      setHasMore(nextEntries.length === PAGE_SIZE);
+    } catch (error) {
+      console.error('Error loading more history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load more history",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [fetchHistory, hasMore, isLoadingMore, page, toast]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setHistory([]);
+      setLoading(false);
+      setShowFetchButton(false);
+      setHasMore(false);
+      return;
+    }
+
+    void refreshHistory();
+  }, [refreshHistory, user?.id]);
 
   // Function to manually fetch AQI data
   const fetchAQIData = async (): Promise<void> => {
@@ -296,7 +395,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       });
 
       // Refresh the history to show the new reading
-      await fetchHistory();
+      await refreshHistory();
       
     } catch (error: any) {
       console.error('Error fetching AQI data:', error);
@@ -356,7 +455,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
     
     try {
       setBulkDeleting(true);
-      console.log(`🗑️ [Bulk Delete] Attempting to delete ${selectedEntries.size} entries for user ${user.id}`);
+      console.log(`ðŸ—‘ï¸ [Bulk Delete] Attempting to delete ${selectedEntries.size} entries for user ${user.id}`);
       
       // First, verify all entries belong to the user
       const { data: entriesToDelete, error: fetchError } = await supabase
@@ -382,7 +481,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         console.warn(`Bulk delete: ${unverifiedCount} entries could not be verified and will be skipped`);
       }
 
-      console.log(`🗑️ [Bulk Delete] Verified ${verifiedEntryIds.length} entries for deletion`);
+      console.log(`ðŸ—‘ï¸ [Bulk Delete] Verified ${verifiedEntryIds.length} entries for deletion`);
 
       // Delete the verified entries
       const { error: deleteError, count } = await supabase
@@ -401,7 +500,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         throw new Error('No entries were deleted. They may have already been removed.');
       }
 
-      console.log(`✅ [Bulk Delete] Successfully deleted ${count} entries`);
+      console.log(`âœ… [Bulk Delete] Successfully deleted ${count} entries`);
 
       // Show success message with actual count
       const successMessage = count === selectedEntries.size 
@@ -418,13 +517,11 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       setSelectedEntries(new Set());
       
       // Force a refresh to ensure database is updated and points are recalculated
-      setTimeout(() => {
-        console.log('🔄 [Bulk Delete] Refreshing history after bulk deletion');
-        fetchHistory();
-      }, 1000); // Increased delay to ensure database triggers complete
+      console.log(' [Bulk Delete] Refreshing history after bulk deletion');
+      await refreshHistory();
       
     } catch (error: any) {
-      console.error('❌ [Bulk Delete] Error bulk deleting entries:', error);
+      console.error('âŒ [Bulk Delete] Error bulk deleting entries:', error);
       
       // Provide more specific error messages
       let errorMessage = 'Failed to delete selected readings';
@@ -474,7 +571,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
     }
     
     try {
-      console.log(`🗑️ [Delete] Attempting to delete entry ${entryId} for user ${user.id}`);
+      console.log(`ðŸ—‘ï¸ [Delete] Attempting to delete entry ${entryId} for user ${user.id}`);
       
       // First, verify the entry exists and belongs to the user
       const { data: existingEntry, error: fetchError } = await supabase
@@ -494,7 +591,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         throw new Error('Entry not found or you do not have permission to delete it');
       }
 
-      console.log(`🗑️ [Delete] Entry verified: AQI ${existingEntry.aqi} at ${existingEntry.location_name}`);
+      console.log(`ðŸ—‘ï¸ [Delete] Entry verified: AQI ${existingEntry.aqi} at ${existingEntry.location_name}`);
 
       // Attempt to delete the entry
       const { error: deleteError, count } = await supabase
@@ -513,7 +610,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         throw new Error('No entries were deleted. The entry may have already been removed.');
       }
 
-      console.log(`✅ [Delete] Successfully deleted entry ${entryId}`);
+      console.log(`âœ… [Delete] Successfully deleted entry ${entryId}`);
 
       // Remove from local state
       setHistory(prev => prev.filter(entry => entry.id !== entryId));
@@ -532,13 +629,10 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       });
       
       // Force a refresh to ensure database is updated and points are recalculated
-      setTimeout(() => {
-        console.log('🔄 [Delete] Refreshing history after deletion');
-        fetchHistory();
-      }, 1000); // Increased delay to ensure database triggers complete
+      await refreshHistory();
       
     } catch (error: any) {
-      console.error('❌ [Delete] Error deleting entry:', error);
+      console.error('âŒ [Delete] Error deleting entry:', error);
       
       // Provide more specific error messages
       let errorMessage = 'Failed to delete entry';
@@ -672,7 +766,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
             </div>
             <h2 className="text-xl font-semibold">Failed to load history</h2>
             <p className="text-muted-foreground">{error}</p>
-            <Button onClick={fetchHistory} variant="outline">
+            <Button onClick={() => void refreshHistory()} variant="outline">
               Try Again
             </Button>
           </div>
@@ -694,7 +788,6 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       </div>
     );
   }
-
   return (
     <div className="page-container">
       <div className="page-content space-y-4 md:space-y-6 w-full max-w-full overflow-x-hidden px-4 md:px-6">
@@ -703,15 +796,12 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         title="Air Quality History"
         subtitle="Track your air quality exposure over time"
         showRefresh={true}
-        onRefresh={() => {
-          console.log('HistoryView: Refresh button clicked');
-          fetchHistory();
-        }}
+        onRefresh={refreshHistory}
         isRefreshing={loading}
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
-
+      
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 justify-end w-full max-w-full overflow-hidden">
           {selectedEntries.size > 0 && (
@@ -954,37 +1044,37 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-full overflow-hidden">
                     {entry.pm25 && entry.pm25 > 0 && (
                       <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
-                        <span className="font-medium">PM2.5:</span> <span className="truncate">{entry.pm25.toFixed(1)} µg/m³</span>
+                        <span className="font-medium">PM2.5:</span> <span className="truncate">{entry.pm25.toFixed(1)} Âµg/mÂ³</span>
                       </div>
                     )}
                     {entry.pm10 && entry.pm10 > 0 && (
                       <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
-                        <span className="font-medium">PM10:</span> <span className="truncate">{entry.pm10.toFixed(1)} µg/m³</span>
+                        <span className="font-medium">PM10:</span> <span className="truncate">{entry.pm10.toFixed(1)} Âµg/mÂ³</span>
                       </div>
                     )}
                     {entry.pm1 && entry.pm1 > 0 && (
                       <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
-                        <span className="font-medium">PM1:</span> <span className="truncate">{entry.pm1.toFixed(1)} µg/m³</span>
+                        <span className="font-medium">PM1:</span> <span className="truncate">{entry.pm1.toFixed(1)} Âµg/mÂ³</span>
                       </div>
                     )}
                     {entry.no2 && entry.no2 > 0 && (
                       <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
-                        <span className="font-medium">NO₂:</span> <span className="truncate">{entry.no2.toFixed(1)} µg/m³</span>
+                        <span className="font-medium">NOâ‚‚:</span> <span className="truncate">{entry.no2.toFixed(1)} Âµg/mÂ³</span>
                       </div>
                     )}
                     {entry.so2 && entry.so2 > 0 && (
                       <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
-                        <span className="font-medium">SO₂:</span> <span className="truncate">{entry.so2.toFixed(1)} µg/m³</span>
+                        <span className="font-medium">SOâ‚‚:</span> <span className="truncate">{entry.so2.toFixed(1)} Âµg/mÂ³</span>
                       </div>
                     )}
                     {entry.co && entry.co > 0 && (
                       <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
-                        <span className="font-medium">CO:</span> <span className="truncate">{entry.co.toFixed(1)} mg/m³</span>
+                        <span className="font-medium">CO:</span> <span className="truncate">{entry.co.toFixed(1)} mg/mÂ³</span>
                       </div>
                     )}
                     {entry.o3 && entry.o3 > 0 && (
                       <div className="text-xs bg-muted/50 p-2 rounded min-w-0 overflow-hidden">
-                        <span className="font-medium">O₃:</span> <span className="truncate">{entry.o3.toFixed(1)} µg/m³</span>
+                        <span className="font-medium">Oâ‚ƒ:</span> <span className="truncate">{entry.o3.toFixed(1)} Âµg/mÂ³</span>
                       </div>
                     )}
                   </div>
@@ -995,7 +1085,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                       {entry.temperature && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Thermometer className="h-3 w-3 flex-shrink-0" />
-                          <span>{entry.temperature}°C</span>
+                          <span>{entry.temperature}Â°C</span>
                         </div>
                       )}
                       {entry.humidity && (
@@ -1031,3 +1121,13 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   </div>
   );
 }
+
+
+
+
+
+
+
+
+
+

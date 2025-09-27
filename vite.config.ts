@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, splitVendorChunkPlugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -40,6 +40,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      splitVendorChunkPlugin(),
       mode === "development" && componentTagger(),
       mode === "development" && inspect(),
     ].filter(Boolean),
@@ -64,46 +65,36 @@ export default defineConfig(({ mode }) => {
           minifyInternalExports: false,
           manualChunks: isDebug
             ? undefined
-            : {
-                react: ["react", "react-dom"],
-                router: ["react-router-dom"],
-                vendor: [
-                  "framer-motion",
-                  "@supabase/supabase-js",
-                  "date-fns",
-                  "@tanstack/react-query",
-                  "leaflet",
-                  "react-leaflet",
-                  "recharts",
-                  ...[
-                    "@radix-ui/react-accordion",
-                    "@radix-ui/react-alert-dialog",
-                    "@radix-ui/react-aspect-ratio",
-                    "@radix-ui/react-avatar",
-                    "@radix-ui/react-checkbox",
-                    "@radix-ui/react-collapsible",
-                    "@radix-ui/react-context-menu",
-                    "@radix-ui/react-dialog",
-                    "@radix-ui/react-dropdown-menu",
-                    "@radix-ui/react-hover-card",
-                    "@radix-ui/react-label",
-                    "@radix-ui/react-menubar",
-                    "@radix-ui/react-navigation-menu",
-                    "@radix-ui/react-popover",
-                    "@radix-ui/react-progress",
-                    "@radix-ui/react-radio-group",
-                    "@radix-ui/react-scroll-area",
-                    "@radix-ui/react-select",
-                    "@radix-ui/react-separator",
-                    "@radix-ui/react-slider",
-                    "@radix-ui/react-switch",
-                    "@radix-ui/react-tabs",
-                    "@radix-ui/react-toast",
-                    "@radix-ui/react-toggle",
-                    "@radix-ui/react-toggle-group",
-                    "@radix-ui/react-tooltip",
-                  ],
-                ],
+            : (id: string) => {
+                if (!id.includes("node_modules")) {
+                  return undefined;
+                }
+
+                if (id.includes("react") || id.includes("scheduler")) {
+                  return "vendor-react";
+                }
+
+                if (id.includes("@tanstack")) {
+                  return "vendor-query";
+                }
+
+                if (id.includes("@supabase")) {
+                  return "vendor-supabase";
+                }
+
+                if (id.includes("framer-motion")) {
+                  return "vendor-animation";
+                }
+
+                if (id.includes("leaflet") || id.includes("recharts")) {
+                  return "vendor-visualization";
+                }
+
+                if (id.includes("@radix-ui")) {
+                  return "vendor-radix";
+                }
+
+                return "vendor";
               },
           chunkFileNames: "js/[name]-[hash].js",
           entryFileNames: "js/[name]-[hash].js",

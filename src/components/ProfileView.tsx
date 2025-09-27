@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import { motion } from "framer-motion";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 
@@ -30,8 +30,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRealtime } from "@/contexts/RealtimeContext";
-import { ensureChannelReady, getExistingChannel } from "@/lib/realtimeClient";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { useWithdrawalRequests } from "@/hooks/useWithdrawalRequests";
 import { useAchievements } from "@/hooks/useAchievements";
@@ -59,6 +57,9 @@ interface ProfileStats {
   totalPoints: number;
   memberSince: string;
 }
+
+const PROFILE_CONNECTION_TIMEOUT_MS = 10000;
+const PROFILE_HISTORY_BUDGET = 200;
 
 // Memoized Badge Component for Performance
 const BadgeIcon = memo(({ 
@@ -112,6 +113,16 @@ const BadgeIcon = memo(({
 BadgeIcon.displayName = 'BadgeIcon';
 
 // Memoized Badge Container for Performance
+const BudgetedArray = <T,>(items: T[] | undefined, budget: number): T[] => {
+  if (!items) {
+    return [];
+  }
+  if (items.length <= budget) {
+    return items;
+  }
+  return items.slice(0, budget);
+};
+
 const BadgeContainer = memo(({ 
   userAchievements, 
   achievements, 
@@ -123,8 +134,9 @@ const BadgeContainer = memo(({
 }) => {
   // Memoize badge calculations to prevent unnecessary re-computations
   const { unlockedBadges, lockedBadges, moreBadgesCount } = useMemo(() => {
-    const unlocked = userAchievements?.filter(ua => ua.unlocked) || [];
-    const locked = userAchievements?.filter(ua => !ua.unlocked) || [];
+    const budgetedUserAchievements = BudgetedArray(userAchievements, PROFILE_HISTORY_BUDGET);
+    const unlocked = budgetedUserAchievements.filter(ua => ua.unlocked);
+    const locked = budgetedUserAchievements.filter(ua => !ua.unlocked);
     const moreCount = Math.max(0, locked.length - 3);
     
     return { unlockedBadges: unlocked, lockedBadges: locked, moreBadgesCount: moreCount };
@@ -148,7 +160,7 @@ const BadgeContainer = memo(({
   }, [unlockedBadges, achievements, isMobile]);
 
   const renderedLockedBadges = useMemo(() => {
-    return lockedBadges.slice(0, 3).map((userAchievement) => {
+    return BudgetedArray(lockedBadges, 3).map((userAchievement) => {
       const achievement = achievements.find(a => a.id === userAchievement.achievement_id);
       if (!achievement) return null;
       
@@ -201,16 +213,27 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     memberSince: ''
   });
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ full_name: '' });
   const { user, signOut } = useAuth();
-  const { subscribeToUserProfilePoints } = useRealtime();
   const { userPoints, isLoading: pointsLoading, updateTotalPoints } = useUserPoints();
   const { withdrawalRequests, isLoading: withdrawalLoading } = useWithdrawalRequests();
   const { achievements, userAchievements, isLoading: achievementsLoading } = useAchievements();
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
+  const subscriptionRef = useRef<(() => void) | null>(null);
+  const isMountedRef = useRef(true);
+  const handleProfilePointsUpdateRef = useRef<(payload: any) => void>(() => {});
+  const userId = user?.id;
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Performance monitoring
   useEffect(() => {
@@ -242,6 +265,16 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     return userDisplayName.charAt(0).toUpperCase();
   }, [userDisplayName]);
 
+  const handleFullNameChange = useCallback((value: string) => {
+    setEditForm((prev) => ({ ...prev, full_name: value }));
+    setProfile((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      return { ...prev, full_name: value };
+    });
+  }, []);
+
   // Debounced profile updates to prevent excessive re-renders
   const debouncedFetchProfile = useCallback(
     debounce(async () => {
@@ -252,6 +285,20 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     }, 300),
     [user]
   );
+
+  useEffect(() => {
+    handleProfilePointsUpdateRef.current = (payload: any) => {
+      if (!isComponentMountedRef.current) {
+        return;
+      }
+
+      console.log('📊 Profile points updated:', payload);
+      if (payload.eventType === 'UPDATE' && payload.new?.total_points !== undefined) {
+        updateTotalPoints(payload.new.total_points);
+      }
+      debouncedFetchProfile();
+    };
+  }, [updateTotalPoints, debouncedFetchProfile]);
 
   // Debounce function implementation
   function debounce<T extends (...args: any[]) => any>(
@@ -266,276 +313,137 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   }
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchProfile();
       fetchUserStats();
     }
   }, [user]);
 
-  // Subscribe to profile points updates with performance optimization
   useEffect(() => {
-    if (!user?.id) {
-      return undefined;
-    }
-
-    let isMounted = true;
-    let cleanupFn: (() => void) | undefined;
-    const channelName = `user-profile-points-${user.id}`;
-
-    const setupSubscription = async () => {
-      try {
-        await ensureChannelReady(channelName);
-
-        if (!isMounted) {
-          return;
-        }
-
-        const existingChannel = getExistingChannel(channelName);
-        if (!existingChannel) {
-          console.warn("Realtime channel not available after readiness guard, proceeding with subscription");
-        }
-
-        cleanupFn = subscribeToUserProfilePoints((payload) => {
-          console.log('Profile points updated:', payload);
-          // Update user points hook with new total points
-          if (payload.eventType === 'UPDATE' && payload.new?.total_points !== undefined) {
-            updateTotalPoints(payload.new.total_points);
-          }
-          // Use debounced refresh to prevent excessive API calls
-          debouncedFetchProfile();
-        });
-      } catch (error) {
-        console.warn('Failed to establish realtime subscription for profile points', error);
-      }
-    };
-
-    setupSubscription();
-
-    return () => {
-      isMounted = false;
-      if (cleanupFn) {
-        cleanupFn();
-      }
-    };
-  }, [user?.id, subscribeToUserProfilePoints, updateTotalPoints, debouncedFetchProfile]);
-
-  const fetchProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          console.warn('User profile not found in database');
-          return;
-        }
-        throw error;
-      }
-      
-      setProfile(data);
-      setEditForm({ full_name: data.full_name || '' });
-    } catch (error: any) {
-      console.error('Error fetching profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load profile",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchUserStats = async () => {
-    try {
-      // Check if user has any readings first
-      const { count: readingsCount, error: countError } = await supabase
-        .from('air_quality_readings')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user?.id);
-
-      if (countError) {
-        console.log('No air quality readings found for new user:', countError.message);
-      }
-
-      const totalPoints = profile?.total_points || 0;
-
-      // Only try to fetch last reading if user has readings
-      let lastReading = null;
-      let locationStats = null;
-
-      if (readingsCount && readingsCount > 0) {
-        try {
-          // Get last reading
-          const { data: lastReadingData, error: lastReadingError } = await supabase
-            .from('air_quality_readings')
-            .select('timestamp, location_name')
-            .eq('user_id', user?.id)
-            .order('timestamp', { ascending: false })
-            .limit(1)
-            .single();
-
-          if (!lastReadingError && lastReadingData) {
-            lastReading = lastReadingData;
-          }
-        } catch (error) {
-          console.log('Error fetching last reading:', error);
-        }
-
-        // Get location stats
-        try {
-          const { data: locationData, error: locationError } = await supabase
-            .from('air_quality_readings')
-            .select('location_name')
-            .eq('user_id', user?.id)
-            .not('location_name', 'is', null);
-
-          if (!locationError && locationData && locationData.length > 0) {
-            const locationCounts = locationData.reduce((acc: any, reading: any) => {
-              acc[reading.location_name] = (acc[reading.location_name] || 0) + 1;
-              return acc;
-            }, {});
-
-            const favoriteLocation = Object.entries(locationCounts)
-              .sort(([,a]: any, [,b]: any) => b - a)[0];
-
-            if (favoriteLocation) {
-              locationStats = {
-                name: favoriteLocation[0],
-                count: favoriteLocation[1]
-              };
-            }
-          }
-        } catch (error) {
-          console.log('Error fetching location stats:', error);
-        }
-      }
-
-      setStats({
-        totalReadings: readingsCount || 0,
-        totalPoints,
-        memberSince: profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'
-      });
-    } catch (error: any) {
-      console.error('Error fetching user stats:', error);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ full_name: editForm.full_name })
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
-
-      setProfile(prev => prev ? { ...prev, full_name: editForm.full_name } : null);
-      setEditing(false);
-      
-      toast({
-        title: "Success",
-        description: "Profile updated successfully",
-      });
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleExportData = async () => {
-    try {
-      // Export user's air quality readings
-      const { data: readings, error } = await supabase
-        .from('air_quality_readings')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('timestamp', { ascending: false });
-
-      if (error) throw error;
-
-      const csvContent = [
-        ['Timestamp', 'Location', 'AQI', 'PM2.5', 'PM10', 'NO2', 'SO2', 'CO', 'O3'],
-        ...readings.map(reading => [
-          reading.timestamp,
-          reading.location_name || 'Unknown',
-          reading.aqi,
-          reading.pm25,
-          reading.pm10,
-          reading.no2,
-          reading.so2,
-          reading.co,
-          reading.o3
-        ])
-      ].map(row => row.join(',')).join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `air-quality-data-${user?.id}-${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-
-      toast({
-        title: "Success",
-        description: "Data exported successfully",
-      });
-    } catch (error: any) {
-      console.error('Error exporting data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to export data",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+    if (!userId || isInitialized || subscriptionRef.current) {
       return;
     }
 
-    try {
-      // Delete user's data
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', user?.id);
+    let isActive = true;
+    let timeoutId: number | null = null;
+    let abortController: AbortController | null = null;
 
-      if (error) throw error;
+    const initializeSubscription = async () => {
+      setSubscriptionStatus('connecting');
+      abortController = new AbortController();
+      timeoutId = window.setTimeout(() => {
+        abortController?.abort();
+      }, PROFILE_CONNECTION_TIMEOUT_MS);
 
-      // Sign out
-      await signOut();
-      
-      toast({
-        title: "Account Deleted",
-        description: "Your account has been deleted successfully",
-      });
-    } catch (error: any) {
-      console.error('Error deleting account:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete account",
-        variant: "destructive",
-      });
+      try {
+        while (!abortController.signal.aborted && !supabase.realtime.isConnected()) {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+
+        if (abortController.signal.aborted || !isActive || !isMountedRef.current) {
+          return;
+        }
+
+        const channelName = `user-profile-points-${userId}`;
+        const channel = supabase.channel(channelName, {
+          config: { presence: { key: userId } }
+        });
+
+        channel.on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'profiles',
+            filter: `user_id=eq.${userId}`
+          },
+          (payload) => {
+            if (isMountedRef.current) {
+              handleProfilePointsUpdateRef.current(payload);
+            }
+          }
+        );
+
+        channel.subscribe((status, error) => {
+          if (!isMountedRef.current || !isActive) {
+            return;
+          }
+
+          if (status === 'SUBSCRIBED') {
+            setSubscriptionStatus('connected');
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('Profile channel error:', error);
+            setSubscriptionStatus('error');
+          }
+        });
+
+        if (!isMountedRef.current || !isActive) {
+          await channel.unsubscribe();
+          return;
+        }
+
+        subscriptionRef.current = () => {
+          void channel.unsubscribe().catch((error) => {
+            console.warn('Failed to unsubscribe profile channel', error);
+          });
+        };
+
+        setIsInitialized(true);
+      } catch (error) {
+        if (!abortController?.signal.aborted) {
+          console.error('Profile subscription failed:', error);
+          setSubscriptionStatus('error');
+        }
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      }
+    };
+
+    void initializeSubscription();
+
+    return () => {
+      isActive = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (abortController) {
+        abortController.abort();
+      }
+      if (subscriptionRef.current) {
+        const unsubscribe = subscriptionRef.current;
+        subscriptionRef.current = null;
+        unsubscribe();
+      }
+      if (isMountedRef.current) {
+        setSubscriptionStatus('idle');
+        setIsInitialized(false);
+      }
+    };
+  }, [userId, isInitialized]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchProfile();
+      fetchUserStats();
     }
-  };
+  }, [user]);
 
   // Mobile performance optimization - pause expensive operations when app is backgrounded
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        console.log('Profile page backgrounded, pausing expensive operations');
-      } else {
-        console.log('Profile page active, resuming operations');
+        if (subscriptionRef.current) {
+          subscriptionRef.current();
+          subscriptionRef.current = null;
+          setSubscriptionStatus('idle');
+          setIsInitialized(false);
+        }
+      } else if (!subscriptionRef.current && userId) {
+        fetchProfile();
+        fetchUserStats();
       }
     };
 
@@ -593,8 +501,8 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
                 <div>
                   <label className="text-sm font-medium">Full Name</label>
                   <Input
-                    value={profile?.full_name || ''}
-                    onChange={(e) => setProfile(prev => ({ ...prev, full_name: e.target.value }))}
+                    value={editForm.full_name}
+                    onChange={(e) => handleFullNameChange(e.target.value)}
                     placeholder="Enter your full name"
                     className="mt-1"
                   />

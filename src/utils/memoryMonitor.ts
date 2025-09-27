@@ -1,3 +1,5 @@
+import { createSafeInterval, CancelSafeInterval } from './safeTimers';
+
 interface MemoryUsage {
   used: number;
   total: number;
@@ -9,10 +11,11 @@ interface MemoryUsage {
 export class MemoryMonitor {
   private static instance: MemoryMonitor;
   private highWaterMark = 0;
-  private checkInterval: number | null = null;
+  private checkInterval: CancelSafeInterval | null = null;
   private listeners: Array<(usage: MemoryUsage) => void> = [];
   private history: MemoryUsage[] = [];
   private readonly MAX_HISTORY = 100; // Keep last 100 readings
+  private observeIntervalMs = 30_000;
 
   private constructor() {
     this.startMonitoring();
@@ -68,6 +71,12 @@ export class MemoryMonitor {
         window.gc();
       }
     }
+
+    if (memory.percentUsed > 70 && this.observeIntervalMs !== 10_000) {
+      this.startMonitoring(10_000);
+    } else if (memory.percentUsed < 50 && this.observeIntervalMs !== 30_000) {
+      this.startMonitoring(30_000);
+    }
   }
 
   private notifyListeners(memory: MemoryUsage) {
@@ -103,14 +112,20 @@ export class MemoryMonitor {
 
   startMonitoring(intervalMs: number = 10000) {
     this.stopMonitoring();
-    this.checkInterval = window.setInterval(() => this.checkMemory(), intervalMs);
+    this.observeIntervalMs = intervalMs;
+    this.checkInterval = createSafeInterval(() => this.checkMemory(), this.observeIntervalMs, {
+      pauseWhenHidden: true,
+      onSkip: reason => {
+        if (reason === 'hidden') {
+          console.debug('[memoryMonitor] Skipping memory check because document is hidden');
+        }
+      }
+    });
   }
 
   stopMonitoring() {
-    if (this.checkInterval !== null) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
+    this.checkInterval?.();
+    this.checkInterval = null;
   }
 
   getHistory(): MemoryUsage[] {
@@ -136,11 +151,11 @@ export class MemoryMonitor {
 export const memoryMonitor = MemoryMonitor.getInstance();
 
 // Start monitoring by default in development
-if (process.env.NODE_ENV === 'development') {
+if (process.env?.['NODE_ENV'] === 'development') {
   memoryMonitor.startMonitoring(30000); // Check every 30 seconds in development
 }
 
 // Add debug helper in development
-if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+if (process.env?.['NODE_ENV'] === 'development' && typeof window !== 'undefined') {
   (window as any).__MEMORY_MONITOR = memoryMonitor;
 }

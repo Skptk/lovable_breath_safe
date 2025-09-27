@@ -10,6 +10,7 @@ export { useWithdrawalRequests } from './useWithdrawalRequests';
 
 // WebSocket stability hooks
 export { useStableChannelSubscription } from './useStableChannelSubscription';
+export { useMemorySafeSubscription } from './useMemorySafeSubscription';
 export { useConnectionHealth } from './useConnectionHealth';
 export { useEnhancedConnectionHealth } from './useEnhancedConnectionHealth';
 export { useSimplifiedConnectionHealth } from './useSimplifiedConnectionHealth';
@@ -19,8 +20,10 @@ export { useRealtimeStatus } from './useRealtimeStatus';
 export { useRefreshCountdown } from './useRefreshCountdown';
 export { useGlobalSearch } from './useGlobalSearch';
 export { useProfileValidation } from './useProfileValidation';
-export { usePerformance } from './usePerformance';
-export { useMobile } from './use-mobile';
+export { usePerformanceMonitor, useDebounce, useThrottle } from './usePerformance';
+export { useIsMobile } from './use-mobile';
 export { useToast } from './use-toast';
 export { useGracefulRealtime } from './useGracefulRealtime';
 export { default as useGlobalEnvironmentalData } from './useGlobalEnvironmentalData';
+export { useOptimizedMessageHandling } from './useOptimizedMessageHandling';
+export { useReflowOptimization } from './useReflowOptimization';

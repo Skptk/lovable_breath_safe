@@ -11,6 +11,11 @@
 
 import { logger, logPerformance } from './logger';
 import { LOGGING_CONFIG, shouldLogPerformance } from '@/config/logging';
+import { createSafeInterval, CancelSafeInterval } from '@/utils/safeTimers';
+
+const hasWindow = typeof window !== 'undefined';
+const performanceAny: (Performance & { memory?: any }) | undefined = hasWindow ? (performance as Performance & { memory?: any }) : undefined;
+const supportsPerformanceMemory = Boolean(performanceAny?.memory);
 
 export interface PerformanceMetric {
   operation: string;
@@ -38,7 +43,7 @@ class PerformanceMonitor {
   private static instance: PerformanceMonitor;
   private metrics: Map<string, PerformanceMetric[]> = new Map();
   private operationTimers: Map<string, number> = new Map();
-  private memoryCheckInterval: NodeJS.Timeout | null = null;
+  private memoryCheckInterval: CancelSafeInterval | null = null;
   private isMonitoring = false;
 
   private constructor() {
@@ -127,9 +132,13 @@ class PerformanceMonitor {
    * Monitor memory usage
    */
   private startMemoryMonitoring(): void {
-    if (typeof performance.memory === 'undefined') return;
+    if (!supportsPerformanceMemory) return;
 
-    this.memoryCheckInterval = setInterval(() => {
+    if (this.memoryCheckInterval) {
+      return;
+    }
+
+    this.memoryCheckInterval = createSafeInterval(() => {
       const memoryInfo = this.getMemoryInfo();
       
       if (memoryInfo.percentage > LOGGING_CONFIG.performance.memory.error) {
@@ -145,14 +154,21 @@ class PerformanceMonitor {
           percentage: memoryInfo.percentage
         });
       }
-    }, 30000); // Check every 30 seconds
+    }, 30_000, {
+      pauseWhenHidden: true,
+      onSkip: reason => {
+        if (reason === 'hidden') {
+          logger.debug('performance', 'Skipping memory check while document hidden');
+        }
+      }
+    });
   }
 
   /**
    * Get current memory information
    */
   public getMemoryInfo(): MemoryMetrics {
-    if (typeof performance.memory === 'undefined') {
+    if (!supportsPerformanceMemory || !performanceAny?.memory) {
       return {
         used: 0,
         total: 0,
@@ -161,7 +177,7 @@ class PerformanceMonitor {
       };
     }
 
-    const memory = performance.memory;
+    const memory = performanceAny.memory;
     const used = memory.usedJSHeapSize / 1024 / 1024; // Convert to MB
     const total = memory.totalJSHeapSize / 1024 / 1024; // Convert to MB
     const available = memory.jsHeapSizeLimit / 1024 / 1024; // Convert to MB
@@ -247,7 +263,8 @@ class PerformanceMonitor {
     if (navigationEntries.length === 0) return;
 
     const navigation = navigationEntries[0] as PerformanceNavigationTiming;
-    const totalTime = navigation.loadEventEnd - navigation.navigationStart;
+    const baseline = typeof navigation.startTime === 'number' ? navigation.startTime : 0;
+    const totalTime = navigation.loadEventEnd - baseline;
 
     if (totalTime > 5000) {
       logger.warn('performance', 'Navigation took longer than expected', { duration: totalTime });
@@ -322,7 +339,7 @@ class PerformanceMonitor {
     this.isMonitoring = enabled;
     
     if (!enabled && this.memoryCheckInterval) {
-      clearInterval(this.memoryCheckInterval);
+      this.memoryCheckInterval();
       this.memoryCheckInterval = null;
     } else if (enabled && !this.memoryCheckInterval && LOGGING_CONFIG.notifications.showPerformanceWarnings) {
       this.startMemoryMonitoring();
@@ -367,7 +384,7 @@ class PerformanceMonitor {
    */
   public destroy(): void {
     if (this.memoryCheckInterval) {
-      clearInterval(this.memoryCheckInterval);
+      this.memoryCheckInterval();
       this.memoryCheckInterval = null;
     }
     

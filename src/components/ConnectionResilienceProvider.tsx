@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { ConnectionNotificationManager } from './ConnectionNotificationManager';
-import { connectionStates } from '@/lib/connectionStates';
+import { useHeapFailSafe } from '@/hooks/useHeapFailSafe';
 
 interface ConnectionResilienceProviderProps {
   children: React.ReactNode;
@@ -12,25 +12,25 @@ interface ConnectionResilienceProviderProps {
     enableAutoReconnect?: boolean;
     alertAutoHide?: number;
   };
-  supabaseClient?: any;
 }
 
 export function ConnectionResilienceProvider({ 
-  children, 
-  config = {},
-  supabaseClient 
+  children,
+  config = {}
 }: ConnectionResilienceProviderProps) {
-  const [showDebugPanel, setShowDebugPanel] = useState(config.showDebugPanel ?? process.env.NODE_ENV === 'development');
+  const [showDebugPanel, setShowDebugPanel] = useState(config.showDebugPanel ?? process.env?.['NODE_ENV'] === 'development');
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected' | 'error'>('connected');
   const [connectionMessage, setConnectionMessage] = useState('Real-time updates are available');
   const [lastCheck, setLastCheck] = useState<Date>(new Date());
   
   const { toast } = useToast();
+  const heapEvent = useHeapFailSafe();
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = config.maxReconnectAttempts ?? 5;
   const heartbeatInterval = config.heartbeatInterval ?? 120000; // 2 minutes (was 30 seconds)
   const enableAutoReconnect = config.enableAutoReconnect ?? true;
-  
+  const networkStatus = useNetworkStatus();
+
   // CRITICAL FIX: Prevent infinite dismiss callbacks
   const dismissCountRef = useRef(0);
   const lastDismissTimeRef = useRef(0);
@@ -61,6 +61,40 @@ export function ConnectionResilienceProvider({
     const interval = setInterval(checkConnectionHealth, heartbeatInterval * 2); // Double the interval
     return () => clearInterval(interval);
   }, [connectionStatus, enableAutoReconnect, heartbeatInterval]);
+
+  useEffect(() => {
+    if (!networkStatus.isOnline) {
+      toast({
+        title: 'You are offline',
+        description: 'Some features may be unavailable while offline.',
+        variant: "default",
+      });
+    }
+  }, [networkStatus.isOnline, toast]);
+
+  useEffect(() => {
+    if (!heapEvent) {
+      return;
+    }
+
+    const titleByLevel = {
+      warn: 'High memory usage detected',
+      critical: 'Critical memory usage detected',
+      emergency: 'Memory emergency'
+    } as const;
+
+    const descriptionByLevel = {
+      warn: 'Breath Safe is monitoring memory closely. You can continue working.',
+      critical: 'We cleared caches to free resources. Expect data to refetch shortly.',
+      emergency: 'Reloading soon due to memory pressure. Please save your work.'
+    } as const;
+
+    toast({
+      title: titleByLevel[heapEvent.level],
+      description: `${descriptionByLevel[heapEvent.level]} (Heap: ${heapEvent.usedMb.toFixed(1)} MB)`,
+      variant: heapEvent.level === 'warn' ? 'default' : 'destructive'
+    });
+  }, [heapEvent, toast]);
 
   // Periodic dismissal pattern summary logging
   useEffect(() => {

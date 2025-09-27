@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
 import { LRUCache } from '@/lib/lru';
+import { createSafeInterval, CancelSafeInterval } from '@/utils/safeTimers';
 
 // Types
 export interface AppState {
@@ -154,6 +155,29 @@ export const useAppStore = create<AppStore>()(
     }
   )
 );
+
+let maintenanceScheduler: CancelSafeInterval | null = null;
+
+export const initializeStoreMaintenance = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  if (maintenanceScheduler) {
+    return;
+  }
+
+  maintenanceScheduler = createSafeInterval(() => {
+    const { clearExpiredCache } = useAppStore.getState();
+    clearExpiredCache();
+  }, 5 * 60 * 1000, {
+    pauseWhenHidden: true,
+  });
+};
+
+export const stopStoreMaintenance = () => {
+  maintenanceScheduler?.();
+  maintenanceScheduler = null;
+};
 
 // Selectors for better performance
 export const useUser = () => useAppStore((state) => state.user);

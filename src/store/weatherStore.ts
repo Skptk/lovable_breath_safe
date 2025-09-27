@@ -3,6 +3,8 @@ import { devtools } from 'zustand/middleware';
 import { debugTracker } from '@/utils/errorTracker';
 
 const shouldTrackWeatherState = typeof __TRACK_VARIABLES__ === 'undefined' || __TRACK_VARIABLES__;
+const MIN_WEATHER_FETCH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+const MIN_FORECAST_FETCH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
 const trackWeatherState = (action: string, payload: unknown) => {
   console.log(`🏪 [STORE] Weather state changing via ${action}:`, payload);
@@ -231,6 +233,11 @@ export const useWeatherStore = create<WeatherStore>()(
           console.log('🌤️ [WeatherStore] Rate limited, using cached weather data');
           return state.getCachedWeather();
         }
+
+        if (state.lastFetchTime && Date.now() - state.lastFetchTime < MIN_WEATHER_FETCH_INTERVAL_MS) {
+          console.log('🌤️ [WeatherStore] Skipping weather fetch due to minimum interval');
+          return state.getCachedWeather() ?? state.weatherData;
+        }
         
         // Check if we have recent cached data (within 5 minutes)
         const cachedWeather = state.getCachedWeather();
@@ -331,6 +338,11 @@ export const useWeatherStore = create<WeatherStore>()(
         if (state.isRateLimited && state.rateLimitUntil && Date.now() < state.rateLimitUntil) {
           console.log('🌤️ [WeatherStore] Rate limited, using cached forecast data');
           return state.getCachedForecast();
+        }
+
+        if (state.lastFetchTime && Date.now() - state.lastFetchTime < MIN_FORECAST_FETCH_INTERVAL_MS) {
+          console.log('🌤️ [WeatherStore] Skipping forecast fetch due to minimum interval');
+          return state.getCachedForecast() ?? state.forecastData;
         }
         
         // Check if we have recent cached data (within 5 minutes)

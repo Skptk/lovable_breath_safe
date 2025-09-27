@@ -2,7 +2,7 @@
 import './utils/errorTracker'
 
 import { createRoot } from 'react-dom/client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query'
 import App from './App.tsx'
 import './index.css'
 import Profiler from './devtools/Profiler'
@@ -10,6 +10,39 @@ import { AuthProvider } from './contexts/AuthContext'
 import { RealtimeProvider } from './contexts/RealtimeContext'
 import { LocationProvider } from './contexts/LocationContext'
 import { SupabaseErrorBoundary } from './components/SupabaseErrorBoundary'
+import { initHeapFailSafe } from './utils/heapFailSafe'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 60 * 1000,
+      staleTime: 30 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      retry: 1,
+      meta: {
+        budget: 'standard',
+      },
+    },
+    mutations: {
+      retry: 1,
+    }
+  },
+  queryCache: new QueryCache({
+    onSuccess: () => {
+      if (!queryClient) return
+
+      setTimeout(() => {
+        const MAX_QUERIES = 10
+        const allQueries = queryClient.getQueryCache().getAll()
+        if (allQueries.length > MAX_QUERIES) {
+          queryClient.getQueryCache().clear()
+          console.log('🧹 Emergency: Cleared query cache due to size limit')
+        }
+      }, 1000)
+    }
+  })
+})
 
 // Track module loading order
 console.log('🚀 [MODULE] main.tsx loading at:', new Date().toISOString())
@@ -69,24 +102,21 @@ if (typeof window !== 'undefined') {
       url: window.location.href
     });
   });
-}
-
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // lower RAM footprint
-      gcTime: 2 * 60 * 1000,       // Garbage collect after 2 min (v4 name)
-      staleTime: 60 * 1000,        // 1 min is enough for AQI/Weather
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
-      retry: 1,
-    },
-    mutations: {
-      retry: 1,
-    }
+  if ('performance' in window) {
+    initHeapFailSafe({
+      queryClient,
+      onWarn: (usedMb) => {
+        console.warn('🟡 [HeapFailSafe] High heap usage detected', { usedMb })
+      },
+      onCritical: (usedMb) => {
+        console.error('⚠️ [HeapFailSafe] Critical heap usage detected, caches cleared', { usedMb })
+      },
+      onEmergency: (usedMb) => {
+        console.error('🚨 [HeapFailSafe] Emergency heap usage triggering reload', { usedMb })
+      }
+    })
   }
-});
+}
 
 createRoot(document.getElementById("root")!).render(
   <SupabaseErrorBoundary>

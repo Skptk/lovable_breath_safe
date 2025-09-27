@@ -106,6 +106,17 @@ vi.mock('@/lib/weatherBackgrounds', () => ({
   isSunriseSunsetPeriod: vi.fn(() => false)
 }));
 
+vi.mock('@/hooks/useReflowOptimization', () => ({
+  useReflowOptimization: () => ({
+    runMeasurement: () => Promise.resolve(null),
+    scheduleMeasurement: () => {},
+    cancelScheduledMeasurement: () => {},
+    getLastResult: () => null,
+    isMeasurementPending: () => false,
+    layoutThrashCount: 0,
+  }),
+}));
+
 describe('BackgroundManager', () => {
   beforeEach(() => {
     vi.useFakeTimers();

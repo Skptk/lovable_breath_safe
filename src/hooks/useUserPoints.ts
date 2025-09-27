@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStableChannelSubscription } from './useStableChannelSubscription';
+import { useMemorySafeSubscription } from './useMemorySafeSubscription';
 
 interface UserPoints {
   totalPoints: number;
@@ -22,10 +22,17 @@ interface PointRecord {
   user_id: string;
   points_earned: number;
   aqi_value: number;
-  location_name: string;
+  location_name: string | null;
   timestamp: string;
   created_at: string;
 }
+
+type UserPointsRealtimePayload = {
+  eventType?: string;
+  new?: PointRecord | null;
+  old?: PointRecord | null;
+  [key: string]: unknown;
+};
 
 export const useUserPoints = () => {
   const { user } = useAuth();
@@ -52,21 +59,19 @@ export const useUserPoints = () => {
   }, []);
 
   // Use stable channel subscription for user points inserts
-  const { isConnected: userPointsConnected } = useStableChannelSubscription({
-    channelName: `user-points-inserts-${user?.id || 'anonymous'}`,
-    userId: user?.id,
-    config: {
+  const { isConnected: userPointsConnected } = useMemorySafeSubscription<UserPointsRealtimePayload>({
+    channelName: `user-points-inserts-${user?.id ?? 'anonymous'}`,
+    postgres: {
       event: 'INSERT',
       schema: 'public',
-      table: 'user_points', // Correct table name
-      filter: `user_id=eq.${user?.id || 'anonymous'}` // Correct column name
+      table: 'user_points',
+      filter: user?.id ? `user_id=eq.${user.id}` : undefined
     },
-    onData: (payload) => {
+    onMessage: (payload) => {
       console.log('New points earned:', payload);
-      if (payload.eventType === 'INSERT') {
-        const newPointRecord = payload.new as PointRecord;
-        
-        // Add to recent earnings
+      if (payload?.eventType === 'INSERT' && payload.new) {
+        const newPointRecord = payload.new;
+
         setUserPoints(prev => ({
           ...prev,
           pointsHistory: [newPointRecord, ...prev.pointsHistory],
@@ -76,11 +81,11 @@ export const useUserPoints = () => {
           monthlyReadings: prev.monthlyReadings + 1
         }));
 
-        // Refresh total points
         fetchUserPoints();
       }
     },
-    enabled: !!user?.id
+    enabled: Boolean(user?.id),
+    debugLabel: 'useUserPoints'
   });
 
   // Fetch user points data
