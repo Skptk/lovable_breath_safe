@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { ConnectionNotificationManager } from './ConnectionNotificationManager';
 import { useHeapFailSafe } from '@/hooks/useHeapFailSafe';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 interface ConnectionResilienceProviderProps {
   children: React.ReactNode;
