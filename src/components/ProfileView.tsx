@@ -226,6 +226,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   const [subscriptionStatus, setSubscriptionStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
   const subscriptionRef = useRef<(() => void) | null>(null);
   const isMountedRef = useRef(true);
+  const isComponentMountedRef = useRef(false);
   const handleProfilePointsUpdateRef = useRef<(payload: any) => void>(() => {});
   const userId = user?.id;
 
@@ -316,10 +317,136 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     [userId, fetchProfile, fetchUserStats]
   );
 
+  const handleSaveProfile = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
+    const trimmedFullName = editForm.full_name?.trim() || null;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: trimmedFullName })
+        .eq('user_id', userId);
+
+      if (error) {
+        throw error;
+      }
+
+      setProfile((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        return {
+          ...prev,
+          full_name: trimmedFullName,
+        };
+      });
+
+      setEditForm((prev) => ({ ...prev, full_name: trimmedFullName || '' }));
+
+      toast({
+        title: 'Profile updated',
+        description: 'Your profile information has been saved.',
+      });
+    } catch (error) {
+      console.error('Failed to update profile', error);
+      toast({
+        title: 'Update failed',
+        description: 'We could not update your profile. Please try again later.',
+        variant: 'destructive',
+      });
+    }
+  }, [userId, editForm.full_name, toast]);
+
+  const handleExportData = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('air_quality_readings')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) {
+        throw error;
+      }
+
+      const blob = new Blob([JSON.stringify(data ?? [], null, 2)], {
+        type: 'application/json',
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'breath-safe-data-export.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Export started',
+        description: 'Your data export has been downloaded successfully.',
+      });
+    } catch (error) {
+      console.error('Failed to export data', error);
+      toast({
+        title: 'Export failed',
+        description: 'We were unable to export your data. Please try again later.',
+        variant: 'destructive',
+      });
+    }
+  }, [userId, toast]);
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Are you sure you want to delete your account? This action cannot be undone.'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (error) {
+        throw error;
+      }
+
+      await signOut();
+
+      toast({
+        title: 'Account deleted',
+        description: 'Your account has been deleted successfully.',
+      });
+    } catch (error) {
+      console.error('Failed to delete account', error);
+      toast({
+        title: 'Delete failed',
+        description: 'We could not delete your account. Please try again later.',
+        variant: 'destructive',
+      });
+    }
+  }, [userId, signOut, toast]);
+
   useEffect(() => {
     isMountedRef.current = true;
+    isComponentMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      isComponentMountedRef.current = false;
     };
   }, []);
 
