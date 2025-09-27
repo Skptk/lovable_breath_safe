@@ -36,6 +36,7 @@ import { useAchievements } from "@/hooks/useAchievements";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
+import { fetchProfile as fetchProfileFromApi, fetchUserStats as fetchUserStatsFromApi } from "@/utils/profileData";
 
 interface ProfileViewProps {
   showMobileMenu?: boolean;
@@ -45,17 +46,17 @@ interface ProfileViewProps {
 interface Profile {
   id: string;
   user_id: string;
-  email: string;
-  full_name: string;
-  avatar_url?: string;
-  total_points: number;
+  email: string | null;
+  full_name: string | null;
+  avatar_url?: string | null;
+  total_points: number | null;
   created_at: string;
 }
 
 interface ProfileStats {
   totalReadings: number;
   totalPoints: number;
-  memberSince: string;
+  memberSince: string | null;
 }
 
 const PROFILE_CONNECTION_TIMEOUT_MS = 10000;
@@ -210,7 +211,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   const [stats, setStats] = useState<ProfileStats>({
     totalReadings: 0,
     totalPoints: 0,
-    memberSince: ''
+    memberSince: null
   });
   const [loading, setLoading] = useState(true);
   const [editForm, setEditForm] = useState({ full_name: '' });
@@ -227,6 +228,93 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   const isMountedRef = useRef(true);
   const handleProfilePointsUpdateRef = useRef<(payload: any) => void>(() => {});
   const userId = user?.id;
+
+  const fetchProfile = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
+    try {
+      const result = await fetchProfileFromApi(userId);
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      if (result) {
+        setProfile({
+          id: result.id,
+          user_id: result.user_id,
+          email: result.email ?? null,
+          full_name: result.full_name ?? null,
+          avatar_url: result.avatar_url ?? null,
+          total_points: result.total_points ?? 0,
+          created_at: result.created_at,
+        });
+        setEditForm((prev) => ({
+          ...prev,
+          full_name: result.full_name ?? "",
+        }));
+
+        if (typeof result.total_points === "number") {
+          updateTotalPoints(result.total_points);
+        }
+      } else {
+        setProfile(null);
+        setEditForm((prev) => ({ ...prev, full_name: "" }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch profile", error);
+      toast({
+        title: "Profile unavailable",
+        description: "We couldn't load your profile right now. Please try again shortly.",
+        variant: "destructive",
+      });
+    }
+  }, [userId, toast, updateTotalPoints]);
+
+  const fetchUserStats = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
+    try {
+      const statsData = await fetchUserStatsFromApi(userId);
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      setStats({
+        totalReadings: statsData.totalReadings ?? 0,
+        totalPoints: statsData.totalPoints ?? 0,
+        memberSince: statsData.memberSince,
+      });
+    } catch (error) {
+      console.error("Failed to fetch profile statistics", error);
+    }
+  }, [userId]);
+
+  const loadProfileData = useCallback(
+    async (showLoader = true) => {
+      if (!userId) {
+        return;
+      }
+
+      if (showLoader) {
+        setLoading(true);
+      }
+
+      try {
+        await Promise.all([fetchProfile(), fetchUserStats()]);
+      } finally {
+        if (showLoader && isMountedRef.current) {
+          setLoading(false);
+        }
+      }
+    },
+    [userId, fetchProfile, fetchUserStats]
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -276,14 +364,12 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   }, []);
 
   // Debounced profile updates to prevent excessive re-renders
-  const debouncedFetchProfile = useCallback(
-    debounce(async () => {
-      if (user) {
-        await fetchProfile();
-        await fetchUserStats();
-      }
-    }, 300),
-    [user]
+  const debouncedFetchProfile = useMemo(
+    () =>
+      debounce(async () => {
+        await loadProfileData(false);
+      }, 300),
+    [loadProfileData]
   );
 
   useEffect(() => {
@@ -313,11 +399,20 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   }
 
   useEffect(() => {
-    if (user?.id) {
-      fetchProfile();
-      fetchUserStats();
+    if (!userId) {
+      setProfile(null);
+      setEditForm({ full_name: "" });
+      setStats({
+        totalReadings: 0,
+        totalPoints: 0,
+        memberSince: null,
+      });
+      setLoading(false);
+      return;
     }
-  }, [user]);
+
+    void loadProfileData();
+  }, [userId, loadProfileData]);
 
   useEffect(() => {
     if (!userId || isInitialized || subscriptionRef.current) {
@@ -424,13 +519,6 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     };
   }, [userId, isInitialized]);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchProfile();
-      fetchUserStats();
-    }
-  }, [user]);
-
   // Mobile performance optimization - pause expensive operations when app is backgrounded
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -442,8 +530,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
           setIsInitialized(false);
         }
       } else if (!subscriptionRef.current && userId) {
-        fetchProfile();
-        fetchUserStats();
+        void loadProfileData(false);
       }
     };
 
@@ -451,7 +538,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [userId, loadProfileData]);
 
   if (loading) {
     return (
