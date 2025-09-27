@@ -62,39 +62,6 @@ export default defineConfig(({ mode }) => {
           // Preserve original variable names and structure
           compact: false,
           minifyInternalExports: false,
-          manualChunks: isDebug
-            ? undefined
-            : (id: string) => {
-                if (!id.includes("node_modules")) {
-                  return undefined;
-                }
-
-                if (id.includes("react") || id.includes("scheduler")) {
-                  return "vendor-react";
-                }
-
-                if (id.includes("@tanstack")) {
-                  return "vendor-query";
-                }
-
-                if (id.includes("@supabase")) {
-                  return "vendor-supabase";
-                }
-
-                if (id.includes("framer-motion")) {
-                  return "vendor-animation";
-                }
-
-                if (id.includes("leaflet") || id.includes("recharts")) {
-                  return "vendor-visualization";
-                }
-
-                if (id.includes("@radix-ui")) {
-                  return "vendor-radix";
-                }
-
-                return "vendor";
-              },
           chunkFileNames: "js/[name]-[hash].js",
           entryFileNames: "js/[name]-[hash].js",
           assetFileNames: "assets/[name]-[hash].[ext]",
