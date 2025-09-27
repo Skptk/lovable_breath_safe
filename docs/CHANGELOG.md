@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - **Profile Subscription Cleanup**: Hardened `src/components/ProfileView.tsx` by applying `PROFILE_HISTORY_BUDGET`, limiting badge arrays via `BudgetedArray()`, and cancelling Supabase subscriptions when the tab hides to prevent orphaned listeners. Confirmed through `npm run test`.
+- **Dashboard Refresh Lock Persistence**: Updated `src/hooks/useAirQuality.ts` to persist the last successful air quality reading and honor the 15-minute refresh lock across navigation/reloads so users cannot bypass rate limits by reloading the dashboard.
 
 ### Changed
 

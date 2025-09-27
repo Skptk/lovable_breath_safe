@@ -26,6 +26,8 @@ const CACHE_CONFIG = {
 
 const AIR_QUALITY_HISTORY_TTL_MS = 12 * 60 * 60 * 1000; // Retain 12 hours of history
 
+const LAST_READING_STORAGE_KEY = 'breath_safe_last_air_quality_reading';
+
 // Enhanced interface for AQICN-only air quality data
 export interface AirQualityData {
   aqi: number;
@@ -69,6 +71,63 @@ export interface AirQualityData {
   message?: string;
 }
 
+interface StoredAirQualityReading {
+  reading: AirQualityData;
+  savedAt: number;
+}
+
+const isLocalStorageAvailableForAirQuality = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  try {
+    const testKey = '__air_quality_storage_test__';
+    window.localStorage.setItem(testKey, '1');
+    window.localStorage.removeItem(testKey);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const loadStoredAirQualityReading = (): AirQualityData | null => {
+  if (!isLocalStorageAvailableForAirQuality()) {
+    return null;
+  }
+  try {
+    const raw = window.localStorage.getItem(LAST_READING_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const payload = JSON.parse(raw) as StoredAirQualityReading;
+    if (!payload?.reading || typeof payload.savedAt !== 'number') {
+      return null;
+    }
+    if (Date.now() - payload.savedAt > AIR_QUALITY_HISTORY_TTL_MS) {
+      window.localStorage.removeItem(LAST_READING_STORAGE_KEY);
+      return null;
+    }
+    return payload.reading;
+  } catch {
+    return null;
+  }
+};
+
+const persistAirQualityReading = (reading: AirQualityData) => {
+  if (!isLocalStorageAvailableForAirQuality()) {
+    return;
+  }
+  try {
+    const payload: StoredAirQualityReading = {
+      reading,
+      savedAt: Date.now(),
+    };
+    window.localStorage.setItem(LAST_READING_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore persistence failures silently
+  }
+};
+
 export const useAirQuality = () => {
   const { user } = useAuth();
   const { locationData } = useGeolocation();
@@ -84,9 +143,18 @@ export const useAirQuality = () => {
   }, [locationData?.latitude, locationData?.longitude]);
 
   // Stale data retention: keep last valid data if fetch fails
-  const [readings, setReadings] = useState<AirQualityData[]>([]);
-  const readingsRef = useRef<AirQualityData[]>([]);
+  const [readings, setReadings] = useState<AirQualityData[]>(() => {
+    if (typeof window === 'undefined') {
+      return [];
+    }
+    const storedReading = loadStoredAirQualityReading();
+    return storedReading ? [storedReading] : [];
+  });
+  const readingsRef = useRef<AirQualityData[]>(readings);
   const prunedCountRef = useRef(0);
+  const initialLockActive = typeof window !== 'undefined' ? isRefreshLocked() : false;
+
+  const [queryEnabled, setQueryEnabled] = useState<boolean>(() => !initialLockActive);
 
   const pruneHistory = useCallback((entries: AirQualityData[]) => {
     const cutoff = Date.now() - AIR_QUALITY_HISTORY_TTL_MS;
@@ -290,7 +358,7 @@ export const useAirQuality = () => {
         };
       }
     },
-    enabled: !!safeCoordinates?.lat && !!safeCoordinates?.lng,
+    enabled: queryEnabled && !!safeCoordinates?.lat && !!safeCoordinates?.lng,
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
     retry: 2,
@@ -312,6 +380,10 @@ export const useAirQuality = () => {
       lastLogTime.current = now;
     }
 
+    if (!latestReading.error) {
+      persistAirQualityReading(latestReading);
+    }
+
     const mergedReadings = [...readingsRef.current, latestReading];
     const prunedReadings = pruneHistory(mergedReadings);
     readingsRef.current = prunedReadings;
@@ -319,7 +391,7 @@ export const useAirQuality = () => {
   }, [aqicnQuery.data, pruneHistory]);
 
   // Memoized function to fetch air quality data with caching
-  const refreshOnce = useRef(false);
+  const refreshOnce = useRef(initialLockActive);
 
   const manualRefresh = useCallback(
     async (options: { force?: boolean; silent?: boolean } = {}) => {
@@ -347,6 +419,7 @@ export const useAirQuality = () => {
         await aqicnQuery.refetch({ throwOnError: true });
         backoffAttemptRef.current = 0;
         setRefreshLockTimestamp();
+        setQueryEnabled(true);
         if (!options.silent) {
           toast({
             title: "Data refreshed",
@@ -379,11 +452,19 @@ export const useAirQuality = () => {
   useEffect(() => {
     if (!locationData?.latitude || !locationData?.longitude) return;
 
+    const lockActive = typeof window !== 'undefined' ? isRefreshLocked() : false;
+
+    setQueryEnabled(!lockActive);
+
+    if (lockActive) {
+      refreshOnce.current = true;
+    }
+
     const timer = setTimeout(() => {
       const hasRefreshedOnce = refreshOnce.current;
       manualRefresh({
-        force: !hasRefreshedOnce,
-        silent: hasRefreshedOnce,
+        force: !hasRefreshedOnce && !lockActive,
+        silent: hasRefreshedOnce || lockActive,
       });
       refreshOnce.current = true;
     }, 500);
