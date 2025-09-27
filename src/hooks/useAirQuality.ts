@@ -458,13 +458,16 @@ export const useAirQuality = () => {
 
     if (lockActive) {
       refreshOnce.current = true;
+      return () => {
+        // no timer registered when locked
+      };
     }
 
     const timer = setTimeout(() => {
       const hasRefreshedOnce = refreshOnce.current;
       manualRefresh({
-        force: !hasRefreshedOnce && !lockActive,
-        silent: hasRefreshedOnce || lockActive,
+        force: !hasRefreshedOnce,
+        silent: hasRefreshedOnce,
       });
       refreshOnce.current = true;
     }, 500);
