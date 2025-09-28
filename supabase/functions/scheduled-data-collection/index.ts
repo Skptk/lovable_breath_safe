@@ -197,8 +197,8 @@ async function collectCityData(
       // Use AQICN environmental data (if available)
       temperature: extractPollutantValue(aqicnData.data.iaqi.t),
       humidity: extractPollutantValue(aqicnData.data.iaqi.h),
-      wind_speed: null, // AQICN doesn't provide detailed wind data
-      wind_direction: null,
+      wind_speed: extractPollutantValue(aqicnData.data.iaqi.w),
+      wind_direction: extractPollutantValue(aqicnData.data.iaqi.wd),
       wind_gust: null,
       air_pressure: extractPollutantValue(aqicnData.data.iaqi.p),
       visibility: null, // AQICN doesn't provide visibility
@@ -255,7 +255,10 @@ async function storeEnvironmentalData(
 }
 
 // Main data collection function
-async function collectAllEnvironmentalData(aqicnApiKey: string, supabase: any): Promise<void> {
+async function collectAllEnvironmentalData(
+  aqicnApiKey: string,
+  supabase: any
+): Promise<{ collectedData: GlobalEnvironmentalData[]; errors: string[] }> {
   const now = new Date();
   const utcTime = now.toISOString();
   const localTime = now.toString();
@@ -306,6 +309,8 @@ async function collectAllEnvironmentalData(aqicnApiKey: string, supabase: any): 
   console.log(`⏰ Next scheduled collection (Local): ${nextCollectionLocal}`);
   console.log(`⏰ Collection interval: ${COLLECTION_INTERVAL / 1000} seconds`);
   console.log(`⏰ Note: This function now runs automatically every minute via Supabase cron`);
+
+  return { collectedData, errors };
 }
 
 serve(async (req) => {
@@ -413,14 +418,16 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Start data collection
-    await collectAllEnvironmentalData(aqicnApiKey, supabase);
+    const { collectedData, errors } = await collectAllEnvironmentalData(aqicnApiKey, supabase);
 
     return new Response(JSON.stringify({ 
       success: true, 
       message: `${executionType} environmental data collection completed`,
       timestamp: new Date().toISOString(),
-      cities_processed: MAJOR_CITIES.length,
-      execution_type: executionType
+      cities_processed: collectedData.length,
+      execution_type: executionType,
+      errors,
+      data: collectedData
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
