@@ -116,19 +116,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         // Track this event
         lastAuthEvent.current = event;
-        lastUserId.current = userId;
-        
+        lastUserId.current = userId ?? null;
+
         // Handle specific events
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           if (session?.user) {
             setProfileValidated(false);
             setValidationAttempted(false);
+            setLoading(false);
           }
         } else if (event === 'SIGNED_OUT') {
           setProfileValidated(false);
           setValidationAttempted(false);
+          setLoading(false);
         }
-        
+
         // Update loading state
         if (event === 'INITIAL_SESSION') {
           setLoading(false);
@@ -172,7 +174,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             .insert({
               user_id: user.id,
               email: user.email,
-              full_name: user.user_metadata?.full_name || '',
+              full_name: user.user_metadata?.['full_name'] || '',
               total_points: 0
             });
 
