@@ -17,6 +17,68 @@ import { PermissionRequest } from "./AirQualityDashboard/PermissionRequest";
 import { PollutantModal } from "./AirQualityDashboard/PollutantModal";
 import { WeatherSection } from "./AirQualityDashboard/WeatherSection";
 
+type PollutantCard = {
+  label: string;
+  value: number;
+  unit: string;
+};
+
+interface PollutantCardGridProps {
+  cards: PollutantCard[];
+  onSelect: (card: PollutantCard) => void;
+  disabled: boolean;
+}
+
+const PollutantCardGrid = React.memo(function PollutantCardGrid({ cards, onSelect, disabled }: PollutantCardGridProps) {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
+      {cards.map((pollutant) => (
+        <button
+          key={pollutant.label}
+          type="button"
+          className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-center transition-transform hover:-translate-y-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/60 disabled:opacity-60 disabled:pointer-events-none"
+          onClick={() => onSelect(pollutant)}
+          disabled={disabled}
+        >
+          <div className="text-2xl font-semibold text-white">
+            {pollutant.value.toFixed(1)}
+          </div>
+          <div className="text-sm text-slate-300 mt-1">{pollutant.label}</div>
+          <div className="text-xs text-slate-400">{pollutant.unit}</div>
+        </button>
+      ))}
+    </div>
+  );
+});
+
+PollutantCardGrid.displayName = "PollutantCardGrid";
+
+interface PointsSummaryCard {
+  label: string;
+  value: string;
+  description: string;
+}
+
+interface PointsSummaryProps {
+  cards: PointsSummaryCard[];
+}
+
+const PointsSummary = React.memo(function PointsSummary({ cards }: PointsSummaryProps) {
+  return (
+    <aside className="space-y-6">
+      {cards.map((card) => (
+        <div key={card.label} className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+          <div className="text-3xl font-semibold text-white mb-2">{card.value}</div>
+          <div className="text-slate-300 text-sm">{card.label}</div>
+          <div className="text-slate-500 text-xs mt-2">{card.description}</div>
+        </div>
+      ))}
+    </aside>
+  );
+});
+
+PointsSummary.displayName = "PointsSummary";
+
 interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
   showMobileMenu?: boolean;
@@ -252,36 +314,11 @@ function AirQualityDashboardContent({
                           </span>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
-                        {[
-                          { label: "PM2.5", value: data?.pm25 ?? 0, unit: "μg/m³" },
-                          { label: "PM10", value: data?.pm10 ?? 0, unit: "μg/m³" },
-                          { label: "NO₂", value: data?.no2 ?? 0, unit: "μg/m³" },
-                          { label: "SO₂", value: data?.so2 ?? 0, unit: "μg/m³" },
-                        ].map((pollutant) => (
-                          <button
-                            key={pollutant.label}
-                            type="button"
-                            className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-center transition-transform hover:-translate-y-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/60"
-                            onClick={() => {
-                              setSelectedPollutant({
-                                name: pollutant.label,
-                                value: pollutant.value,
-                                unit: pollutant.unit,
-                                description: `Detailed information about ${pollutant.label}`,
-                                color: aqiColor,
-                              });
-                            }}
-                          >
-                            <div className="text-2xl font-semibold text-white">
-                              {pollutant.value.toFixed(1)}
-                            </div>
-                            <div className="text-sm text-slate-300 mt-1">{pollutant.label}</div>
-                            <div className="text-xs text-slate-400">{pollutant.unit}</div>
-                          </button>
-                        ))}
-                      </div>
+                      <PollutantCardGrid
+                        cards={pollutantCards}
+                        onSelect={handlePollutantSelect}
+                        disabled={isRefreshing}
+                      />
 
                       <div className="mt-10 flex flex-wrap justify-center gap-4">
                         <Button
@@ -325,29 +362,7 @@ function AirQualityDashboardContent({
                     )}
                   </div>
 
-                  <aside className="space-y-6">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-                      <div className="text-3xl font-semibold text-white mb-2">
-                        {pointsLoading ? "—" : userPoints?.totalPoints?.toLocaleString() ?? "—"}
-                      </div>
-                      <div className="text-slate-300 text-sm">Total Points</div>
-                      <div className="text-slate-500 text-xs mt-2">Earned from air quality monitoring</div>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-                      <div className="text-3xl font-semibold text-white mb-2">
-                        {pointsLoading ? "—" : userPoints?.todayReadings ?? "—"}
-                      </div>
-                      <div className="text-slate-300 text-sm">Today's Readings</div>
-                      <div className="text-slate-500 text-xs mt-2">Air quality readings today</div>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-                      <div className="text-3xl font-semibold text-white mb-2">
-                        {pointsLoading ? "—" : userPoints?.weeklyReadings ?? "—"}
-                      </div>
-                      <div className="text-slate-300 text-sm">Weekly Activity</div>
-                      <div className="text-slate-500 text-xs mt-2">Readings this week</div>
-                    </div>
-                  </aside>
+                  <PointsSummary cards={pointsSummaryCards} />
                 </section>
 
                 <section className="mt-12 pt-12 border-t border-white/10">

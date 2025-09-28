@@ -271,10 +271,10 @@ export default function Index(): JSX.Element | null {
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentView}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
                   >
                     {renderView()}
                   </motion.div>

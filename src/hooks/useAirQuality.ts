@@ -90,7 +90,7 @@ const isLocalStorageAvailableForAirQuality = () => {
   }
 };
 
-const loadStoredAirQualityReading = (): AirQualityData | null => {
+const loadStoredAirQualityPayload = (): StoredAirQualityReading | null => {
   if (!isLocalStorageAvailableForAirQuality()) {
     return null;
   }
@@ -107,10 +107,20 @@ const loadStoredAirQualityReading = (): AirQualityData | null => {
       window.localStorage.removeItem(LAST_READING_STORAGE_KEY);
       return null;
     }
-    return payload.reading;
+    return payload;
   } catch {
     return null;
   }
+};
+
+const loadStoredAirQualityReading = (): AirQualityData | null => {
+  const payload = loadStoredAirQualityPayload();
+  return payload?.reading ?? null;
+};
+
+const loadStoredAirQualitySavedAt = (): number | null => {
+  const payload = loadStoredAirQualityPayload();
+  return payload?.savedAt ?? null;
 };
 
 const persistAirQualityReading = (reading: AirQualityData) => {
@@ -359,6 +369,25 @@ export const useAirQuality = () => {
       }
     },
     enabled: queryEnabled && !!safeCoordinates?.lat && !!safeCoordinates?.lng,
+    placeholderData: () => {
+      const storedReading = loadStoredAirQualityReading();
+      if (!storedReading) {
+        return undefined;
+      }
+
+      // If cached coordinates differ, avoid placeholder to prevent stale mismatch
+      if (
+        storedReading.userCoordinates?.lat !== safeCoordinates?.lat ||
+        storedReading.userCoordinates?.lon !== safeCoordinates?.lng
+      ) {
+        return undefined;
+      }
+
+      return storedReading;
+    },
+    meta: {
+      storedSavedAt: loadStoredAirQualitySavedAt(),
+    },
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
     retry: 2,
