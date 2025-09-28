@@ -21,12 +21,12 @@ const CACHE_CONFIG = {
     TTL: 10 * 60 * 1000, // 10 minutes
   },
   MEMORY: {
-    MAX_READINGS: 60, // Maximum readings to keep in memory (~1 hour at 1/min cadence)
-    CHUNK_SIZE: 50,   // Process readings in chunks of 50
+    MAX_READINGS: 15, // Keep roughly 15 minutes of readings at the 1/min cadence
+    CHUNK_SIZE: 30,   // Process readings in manageable batches
   },
 };
 
-const AIR_QUALITY_HISTORY_TTL_MS = 30 * 60 * 1000; // Retain 30 minutes of history
+const AIR_QUALITY_HISTORY_TTL_MS = 10 * 60 * 1000; // Retain 10 minutes of history
 
 const LAST_READING_STORAGE_KEY = 'breath_safe_last_air_quality_reading';
 
