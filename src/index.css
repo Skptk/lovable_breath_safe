@@ -831,19 +831,11 @@
   }
 
   /* Override any hardcoded gray text colors */
-  .dark .text-gray-500, .dark .text-gray-600, .dark .text-gray-700, .dark .text-gray-800 {
-    color: #ffffff !important;
-  }
-
-  .light .text-gray-500, .light .text-gray-600, .light .text-gray-700, .light .text-gray-800 {
-    color: #6b6b6b !important;
-  }
 
 /* EMERGENCY CSS FIXES - Hide all heartbeat notifications */
 /* Hide all heartbeat-related notifications */
 [class*="notification"]:has([class*="heartbeat"]),
 [class*="toast"]:has([class*="heartbeat"]),
-div:contains("heartbeat"),
 div:contains("Heartbeat") {
   display: none !important;
   visibility: hidden !important;

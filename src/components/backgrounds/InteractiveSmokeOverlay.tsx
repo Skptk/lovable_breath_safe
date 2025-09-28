@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_COLORS = [
@@ -6,6 +7,8 @@ const DEFAULT_COLORS = [
   "rgba(56, 189, 248, 0.3)",
   "rgba(147, 112, 219, 0.28)",
 ];
+
+const SPARKLE_COUNT = 28;
 
 const prefersReducedMotion = () => {
   if (typeof window === "undefined") {
@@ -15,9 +18,14 @@ const prefersReducedMotion = () => {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 };
 
+const pseudoRandom = (seed: number): number => {
+  const x = Math.sin(seed * 9301 + 49297) * 233280;
+  return x - Math.floor(x);
+};
+
 interface InteractiveSmokeOverlayProps {
   /**
-   * Adjusts the strength of the distortion effect (0-1).
+   * Adjusts the strength of the parallax response (0-1).
    */
   intensity?: number;
   /**
@@ -28,176 +36,150 @@ interface InteractiveSmokeOverlayProps {
 }
 
 const InteractiveSmokeOverlay: React.FC<InteractiveSmokeOverlayProps> = ({
-  intensity = 0.85,
+  intensity = 0.75,
   colors,
   className,
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
+  const reducedMotion = useMemo(prefersReducedMotion, []);
+  const parallaxRef = useRef<HTMLDivElement | null>(null);
+  const animationRef = useRef<number | null>(null);
   const pointerRef = useRef({
     x: 0,
     y: 0,
     targetX: 0,
     targetY: 0,
   });
-  const motionDisabled = useMemo(prefersReducedMotion, []);
+
+  const palette = useMemo(() => {
+    const source = colors && colors.length > 0 ? colors : DEFAULT_COLORS;
+    return [
+      source[0] ?? DEFAULT_COLORS[0],
+      source[1] ?? DEFAULT_COLORS[1],
+      source[2] ?? DEFAULT_COLORS[2],
+    ];
+  }, [colors]);
+
+  const overlayVariables = useMemo(
+    () =>
+      ({
+        ["--smoke-color-1" as const]: palette[0],
+        ["--smoke-color-2" as const]: palette[1],
+        ["--smoke-color-3" as const]: palette[2],
+      }) as CSSProperties,
+    [palette]
+  );
+
+  const sparkles = useMemo(() => {
+    return Array.from({ length: SPARKLE_COUNT }, (_, index) => {
+      const base = index + 1;
+      const top = pseudoRandom(base) * 100;
+      const left = pseudoRandom(base * 2.7) * 100;
+      const size = 2.2 + pseudoRandom(base * 4.1) * 3.2;
+      const delay = pseudoRandom(base * 5.3) * 6;
+      const duration = 4.5 + pseudoRandom(base * 6.9) * 5.5;
+      const drift = 24 + pseudoRandom(base * 7.7) * 42;
+
+      return { top, left, size, delay, duration, drift };
+    });
+  }, []);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || typeof window === "undefined" || motionDisabled) {
+    if (typeof window === "undefined" || reducedMotion) {
       return undefined;
     }
 
-    const context = canvas.getContext("2d", { alpha: true });
-    if (!context) {
-      return undefined;
-    }
-
-    let width = 0;
-    let height = 0;
-    const dpr = window.devicePixelRatio || 1;
-
-    const applyPointer = (event: PointerEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      pointerRef.current.targetX = (event.clientX - rect.left) * dpr;
-      pointerRef.current.targetY = (event.clientY - rect.top) * dpr;
+    const handlePointerMove = (event: PointerEvent) => {
+      const { innerWidth, innerHeight } = window;
+      pointerRef.current.targetX = (event.clientX / innerWidth - 0.5) * 2;
+      pointerRef.current.targetY = (event.clientY / innerHeight - 0.5) * 2;
     };
 
     const resetPointer = () => {
-      pointerRef.current.targetX = width / 2;
-      pointerRef.current.targetY = height / 2;
+      pointerRef.current.targetX = 0;
+      pointerRef.current.targetY = 0;
     };
 
-    const handlePointerMove = (event: PointerEvent) => {
-      applyPointer(event);
-    };
+    const animate = () => {
+      const pointer = pointerRef.current;
+      pointer.x += (pointer.targetX - pointer.x) * 0.075;
+      pointer.y += (pointer.targetY - pointer.y) * 0.075;
 
-    const handlePointerLeave = () => {
-      resetPointer();
-    };
+      const shiftX = pointer.x * 26 * intensity;
+      const shiftY = pointer.y * 20 * intensity;
 
-    const resizeCanvas = () => {
-      const bounds = canvas.parentElement?.getBoundingClientRect();
-      width = Math.floor((bounds?.width ?? window.innerWidth) * dpr);
-      height = Math.floor((bounds?.height ?? window.innerHeight) * dpr);
-      canvas.width = width;
-      canvas.height = height;
-      canvas.style.width = `${Math.floor(width / dpr)}px`;
-      canvas.style.height = `${Math.floor(height / dpr)}px`;
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      context.scale(dpr, dpr);
-      resetPointer();
-    };
-
-    resizeCanvas();
-
-    const colorStops = (colors && colors.length > 0 ? colors : DEFAULT_COLORS).map(
-      (color, index) => ({
-        color,
-        offset: Math.min(1, Math.max(0, 0.25 + index * 0.25)),
-      })
-    );
-
-    const draw = (timestamp: number) => {
-      const ctx = context;
-      const time = timestamp * 0.001;
-      const eased = pointerRef.current;
-
-      eased.x += (eased.targetX - eased.x) * 0.08;
-      eased.y += (eased.targetY - eased.y) * 0.08;
-
-      const scaledWidth = width / dpr;
-      const scaledHeight = height / dpr;
-
-      ctx.clearRect(0, 0, scaledWidth, scaledHeight);
-
-      const baseGradient = ctx.createLinearGradient(0, 0, scaledWidth, scaledHeight);
-      baseGradient.addColorStop(0, "rgba(15, 23, 42, 0.58)");
-      baseGradient.addColorStop(1, "rgba(2, 6, 23, 0.74)");
-      ctx.fillStyle = baseGradient;
-      ctx.fillRect(0, 0, scaledWidth, scaledHeight);
-
-      ctx.globalCompositeOperation = "lighter";
-      ctx.filter = "blur(60px)";
-
-      const layers = 5;
-      for (let i = 0; i < layers; i += 1) {
-        const phase = time * (0.18 + i * 0.05);
-        const angle = phase + i * 1.3;
-        const wobble = Math.sin(phase * 1.8 + i) * 120 * intensity;
-        const spread = 260 + Math.cos(phase + i * 0.75) * 120 * intensity;
-
-        const centerX = eased.x / dpr + Math.cos(angle) * (140 + wobble);
-        const centerY = eased.y / dpr + Math.sin(angle * 1.1) * (120 + wobble);
-
-        const gradient = ctx.createRadialGradient(
-          centerX,
-          centerY,
-          spread * 0.2,
-          centerX,
-          centerY,
-          spread
-        );
-
-        colorStops.forEach(({ color, offset }, idx) => {
-          const opacityFalloff = Math.max(0.05, 0.3 - idx * 0.06);
-          const alpha = Math.max(0, intensity * opacityFalloff);
-          const rgba = color.replace(/rgba?\(([^)]+)\)/, (_, inner) => {
-            const parts = inner.split(/\s*,\s*/).map(Number);
-            if (parts.length === 4) {
-              parts[3] = Math.min(1, Math.max(0, alpha));
-              return `rgba(${parts.join(",")})`;
-            }
-            if (parts.length === 3) {
-              return `rgba(${parts.join(",")}, ${alpha})`;
-            }
-            return color;
-          });
-          gradient.addColorStop(offset, rgba);
-        });
-
-        gradient.addColorStop(1, "rgba(15, 23, 42, 0)");
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.rect(0, 0, scaledWidth, scaledHeight);
-        ctx.fill();
+      if (parallaxRef.current) {
+        parallaxRef.current.style.setProperty("--smoke-shift-x", `${shiftX}px`);
+        parallaxRef.current.style.setProperty("--smoke-shift-y", `${shiftY}px`);
       }
 
-      ctx.filter = "none";
-      ctx.globalCompositeOperation = "source-over";
-
-      animationFrameRef.current = window.requestAnimationFrame(draw);
+      animationRef.current = window.requestAnimationFrame(animate);
     };
 
-    animationFrameRef.current = window.requestAnimationFrame(draw);
+    animationRef.current = window.requestAnimationFrame(animate);
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
-    window.addEventListener("pointerleave", handlePointerLeave, { passive: true });
-    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("pointerleave", resetPointer, { passive: true });
 
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerleave", handlePointerLeave);
-      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("pointerleave", resetPointer);
 
-      if (animationFrameRef.current) {
-        window.cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+      if (animationRef.current) {
+        window.cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
     };
-  }, [colors, intensity, motionDisabled]);
+  }, [intensity, reducedMotion]);
 
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-0 mix-blend-screen opacity-90",
+        "atmosphere-overlay pointer-events-none absolute inset-0",
         className
       )}
       aria-hidden="true"
+      style={overlayVariables}
+      data-reduced-motion={reducedMotion ? "true" : "false"}
     >
-      <canvas ref={canvasRef} className="w-full h-full" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(45,212,191,0.18),transparent_55%),radial-gradient(circle_at_bottom,rgba(30,64,175,0.14),transparent_60%)] opacity-70" />
+      <div className="atmosphere-overlay__gradient" />
+      <div ref={parallaxRef} className="atmosphere-overlay__parallax">
+        <div
+          className="smoke-layer smoke-layer--one"
+          style={{
+            ["--parallax-factor" as const]: "0.18",
+          } as CSSProperties}
+        />
+        <div
+          className="smoke-layer smoke-layer--two"
+          style={{
+            ["--parallax-factor" as const]: "0.35",
+          } as CSSProperties}
+        />
+        <div
+          className="smoke-layer smoke-layer--three"
+          style={{
+            ["--parallax-factor" as const]: "0.55",
+          } as CSSProperties}
+        />
+      </div>
+      <div className="sparkle-layer">
+        {sparkles.map((sparkle, index) => (
+          <span
+            key={`sparkle-${index}`}
+            className="sparkle"
+            style={{
+              top: `${sparkle.top}%`,
+              left: `${sparkle.left}%`,
+              width: `${sparkle.size}px`,
+              height: `${sparkle.size}px`,
+              ["--sparkle-delay" as const]: `${sparkle.delay}s`,
+              ["--sparkle-duration" as const]: `${sparkle.duration}s`,
+              ["--sparkle-drift" as const]: `${sparkle.drift}px`,
+            } as CSSProperties}
+          />
+        ))}
+      </div>
+      <div className="atmosphere-overlay__veil" />
     </div>
   );
 };
