@@ -112,7 +112,7 @@ const resolveTrackingFlag = (): boolean => {
       return Boolean(globalWithFlag.__TRACK_VARIABLES__);
     }
   }
-  return true;
+  return false;
 };
 
 const App = (): JSX.Element => {
