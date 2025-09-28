@@ -104,6 +104,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Air Quality API Alignment**: Refactored `supabase/functions/fetchAQI/index.ts` to source responses from the scheduled `global_environmental_data` table, ensuring the on-demand edge function always mirrors the minute-level AQICN data collected by `scheduled-data-collection` while preserving the existing client response shape.
 - **Tooling**: Added opt-in `GENERATE_SOURCEMAPS` flag in `vite.config.ts` so production bundles can emit source maps for forensic TDZ analysis without permanently exposing build internals.
 - **Air Quality Refresh Controls**: Reworked `useAirQuality` to expose a `manualRefresh` gate that enforces a 15-minute lock with toast feedback, prevents redundant refetches on initial location detection, and centralizes refresh invocation for the dashboard.
 - **Server-Side Data Collection Cadence**: Updated `supabase/functions/scheduled-data-collection/index.ts` and cron migration `20250123000001_setup_cron_scheduling.sql` to run every minute (down from 15 minutes), aligning server ingestion with near-real-time AQICN availability. Logged messages, collection interval metadata, and documentation now reflect the 60-second window.
