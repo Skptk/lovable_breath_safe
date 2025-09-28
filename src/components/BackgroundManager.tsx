@@ -2,13 +2,13 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useTheme } from '@/contexts/ThemeContext';
 import { logGeolocation } from '@/lib/logger';
 import { isDebugBuild, debugLog } from '@/utils/debugFlags';
-import { createSafeInterval, CancelSafeInterval } from "@/utils/safeTimers";
 
 // Import hooks directly instead of lazy loading them
 import { useWeatherStore } from '@/store/weatherStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
+import InteractiveSmokeOverlay from '@/components/backgrounds/InteractiveSmokeOverlay';
 
 // Background refresh settings
 const BACKGROUND_REFRESH_LOCK_DURATION = 5 * 60 * 1000; // 5 minutes to prevent rapid switching
@@ -149,6 +149,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-black/40" />
+          <InteractiveSmokeOverlay className="opacity-60" intensity={0.7} />
         </div>
         <div className="relative z-10">
           {children}
@@ -537,25 +538,27 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
             opacity: isTransitioning ? 0.3 : 1 
           }}
         >
-          <img
-            src={getBackgroundForState()}
-            alt="Weather background"
-            className="w-full h-full object-cover"
-            onError={() => {
-              console.warn('BackgroundManager: Failed to load background image:', getBackgroundForState());
-              // Fallback to default background
-              setCurrentBackground(DEFAULT_BACKGROUND);
-              hasAppliedBackgroundRef.current = true;
-            }}
-          />
-          
-          {/* Overlay for better text readability */}
-          <div 
-            className="absolute inset-0"
-            style={{ 
-              backgroundColor: `rgba(0, 0, 0, ${overlayOpacity})` 
-            }}
-          />
+          <div className="absolute inset-0">
+            <img
+              src={getBackgroundForState()}
+              alt="Weather background"
+              className="w-full h-full object-cover"
+              onError={() => {
+                console.warn('BackgroundManager: Failed to load background image:', getBackgroundForState());
+                // Fallback to default background
+                setCurrentBackground(DEFAULT_BACKGROUND);
+                hasAppliedBackgroundRef.current = true;
+              }}
+            />
+            {/* Overlay for better text readability */}
+            <div 
+              className="absolute inset-0"
+              style={{ 
+                backgroundColor: `rgba(0, 0, 0, ${overlayOpacity})` 
+              }}
+            />
+          </div>
+          <InteractiveSmokeOverlay className="opacity-80" intensity={0.85} />
         </div>
 
         {/* Content */}
