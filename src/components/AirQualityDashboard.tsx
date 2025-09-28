@@ -145,6 +145,47 @@ function AirQualityDashboardContent({
   // Use permission timeout hook (replaces forceDisplay pattern)
   const permissionTimeoutReached = usePermissionTimeout(hasRequestedPermission, 3000);
 
+  const aqiNumericValue = data?.aqi ?? 0;
+  const aqiColor = React.useMemo(() => getAQIColor(aqiNumericValue), [aqiNumericValue]);
+  const aqiLabel = React.useMemo(() => getAQILabel(aqiNumericValue), [aqiNumericValue]);
+
+  const pollutantCards = React.useMemo<PollutantCard[]>(() => (
+    [
+      { label: "PM2.5", value: data?.pm25 ?? 0, unit: "μg/m³" },
+      { label: "PM10", value: data?.pm10 ?? 0, unit: "μg/m³" },
+      { label: "NO₂", value: data?.no2 ?? 0, unit: "μg/m³" },
+      { label: "SO₂", value: data?.so2 ?? 0, unit: "μg/m³" },
+    ]
+  ), [data?.pm25, data?.pm10, data?.no2, data?.so2]);
+
+  const handlePollutantSelect = React.useCallback((pollutant: PollutantCard) => {
+    setSelectedPollutant({
+      name: pollutant.label,
+      value: pollutant.value,
+      unit: pollutant.unit,
+      description: `Detailed information about ${pollutant.label}`,
+      color: aqiColor,
+    });
+  }, [aqiColor]);
+
+  const pointsSummaryCards = React.useMemo<PointsSummaryCard[]>(() => [
+    {
+      label: "Total Points",
+      value: pointsLoading ? "—" : (userPoints?.totalPoints?.toLocaleString() ?? "—"),
+      description: "Earned from air quality monitoring",
+    },
+    {
+      label: "Today's Readings",
+      value: pointsLoading ? "—" : (userPoints?.todayReadings?.toLocaleString() ?? "—"),
+      description: "Air quality readings today",
+    },
+    {
+      label: "Weekly Activity",
+      value: pointsLoading ? "—" : (userPoints?.weeklyReadings?.toLocaleString() ?? "—"),
+      description: "Readings this week",
+    },
+  ], [pointsLoading, userPoints?.totalPoints, userPoints?.todayReadings, userPoints?.weeklyReadings]);
+
   // Memoize coordinates with proper typing and null checks
   const coordinates = React.useMemo(() => {
     if (!data?.coordinates?.lat || !data?.coordinates?.lon) return null;
@@ -215,8 +256,6 @@ function AirQualityDashboardContent({
 
     const lastUpdated = data?.timestamp ? new Date(data.timestamp).toLocaleString() : "—";
     const aqiValue = data?.aqi ?? "—";
-    const aqiLabel = getAQILabel(data?.aqi ?? 0);
-    const aqiColor = getAQIColor(data?.aqi ?? 0);
 
     if (showLoadingState) {
       return renderUnifiedShell(
