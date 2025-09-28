@@ -533,12 +533,12 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
       <div className="relative min-h-screen">
         {/* Weather Background */}
         <div 
-          className="fixed inset-0 z-[-1] transition-opacity duration-500"
+          className="fixed inset-0 transition-opacity duration-500"
           style={{ 
             opacity: isTransitioning ? 0.3 : 1 
           }}
         >
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 z-[-1]">
             <img
               src={getBackgroundForState()}
               alt="Weather background"
@@ -558,7 +558,7 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
               }}
             />
           </div>
-          <InteractiveSmokeOverlay className="opacity-80" intensity={0.85} />
+          <InteractiveSmokeOverlay className="z-0" intensity={0.85} />
         </div>
 
         {/* Content */}

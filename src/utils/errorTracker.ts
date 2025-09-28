@@ -54,9 +54,11 @@ const enforceMapLimit = (collection: Map<string, any>, limit: number) => {
   }
 };
 
+const enableTDZTracker = typeof window !== 'undefined' && import.meta.env.DEV && isDebugBuild;
+
 let debugTrackerImpl: DebugTracker = noopTracker;
 
-if (isDebugBuild) {
+if (enableTDZTracker) {
   const variableRegistry = new Map<string, any>();
   const accessLog: VariableTrace[] = [];
   const tdzEvents: TDZEvent[] = [];
@@ -81,24 +83,10 @@ if (isDebugBuild) {
       };
       pushBounded(tdzEvents, eventInfo, MAX_TDZ_EVENTS);
 
-      if (console.group) {
-        console.group('🛑 [CRITICAL] TDZ Error Detected');
-        console.log('Variable:', variableName);
-        console.log('Timestamp:', timestamp);
-        console.log('Location:', typeof window !== 'undefined' ? window.location.href : 'unknown');
-        console.log('UserAgent:', typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown');
-        if (referenceStack) {
-          console.log('Reference stack:', referenceStack);
-        }
-        if (trackerStack) {
-          console.log('Tracker stack:', trackerStack);
-        }
-        if (typeof window !== 'undefined') {
-          (window as any).__TDZ_EVENTS__ = [...tdzEvents];
-          (window as any).__TDZ_VARIABLE_REGISTRY__ = Array.from(variableRegistry.entries());
-          (window as any).__TDZ_ACCESS_LOG__ = [...accessLog];
-        }
-        console.groupEnd();
+      if (typeof window !== 'undefined') {
+        (window as any).__TDZ_EVENTS__ = [...tdzEvents];
+        (window as any).__TDZ_VARIABLE_REGISTRY__ = Array.from(variableRegistry.entries());
+        (window as any).__TDZ_ACCESS_LOG__ = [...accessLog];
       }
     }
     originalConsoleError(...args);
@@ -106,14 +94,13 @@ if (isDebugBuild) {
 
   debugTrackerImpl = {
     trackVariableDeclaration: (name: string, value: unknown, location: string) => {
-      if (!isDebugBuild) return;
+      if (!enableTDZTracker) return;
       enforceMapLimit(variableRegistry, MAX_VARIABLE_REGISTRY);
       variableRegistry.set(name, { value, location, timestamp: Date.now() });
-      console.log(`🧾 [VAR-DECLARE] '${name}' at ${location}:`, typeof value);
     },
 
     trackVariableAccess: (name: string, location: string) => {
-      if (!isDebugBuild) return null;
+      if (!enableTDZTracker) return null;
 
       const trace: VariableTrace = {
         name,
@@ -125,16 +112,6 @@ if (isDebugBuild) {
 
       pushBounded(accessLog, trace, MAX_ACCESS_LOG_ENTRIES);
 
-      if (!variableRegistry.has(name)) {
-        console.warn(`⚠️ [TDZ-RISK] Accessing undeclared '${name}' at ${location}`);
-        console.log('📘 [REGISTRY] Current variables:', Array.from(variableRegistry.keys()));
-        if (trace.stack) {
-          console.log('🧵 [TDZ-STACK]', trace.stack);
-        }
-      } else {
-        console.log(`✅ [VAR-ACCESS] '${name}' safely accessed at ${location}`);
-      }
-
       return trace;
     },
 
@@ -143,29 +120,25 @@ if (isDebugBuild) {
     getTDZEvents: () => tdzEvents,
 
     dumpDebugInfo: () => {
-      if (!isDebugBuild) return;
-      console.group('🔍 [DEBUG-DUMP] Variable Initialization Analysis');
-      console.log('Variables declared:', Array.from(variableRegistry.entries()));
-      console.log('Access attempts:', accessLog);
-      console.log('Potential TDZ violations:', accessLog.filter(log => !variableRegistry.has(log.name)));
-      console.log('Captured TDZ events:', tdzEvents);
-      console.groupEnd();
+      if (!enableTDZTracker) return;
+      if (typeof window !== 'undefined') {
+        (window as any).__TDZ_DEBUG_DUMP__ = {
+          variables: Array.from(variableRegistry.entries()),
+          accessAttempts: [...accessLog],
+          potentialViolations: accessLog.filter(log => !variableRegistry.has(log.name)),
+          events: [...tdzEvents]
+        };
+      }
     }
   };
 
   if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
-      if (!isDebugBuild) {
+      if (!enableTDZTracker) {
         return;
       }
       if (event.message.includes('Cannot access') && event.message.includes('before initialization')) {
-        console.group('🛑 [TDZ-ERROR] Temporal Dead Zone Violation Detected');
-        console.error('Error:', event.error);
-        console.log('Filename:', event.filename);
-        console.log('Line:', event.lineno, 'Column:', event.colno);
-        console.log('Stack:', event.error?.stack);
         debugTrackerImpl.dumpDebugInfo();
-        console.groupEnd();
       }
     });
   }
