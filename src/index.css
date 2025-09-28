@@ -830,12 +830,179 @@
     color: #222222 !important;
   }
 
-  /* Override any hardcoded gray text colors */
+/* Atmospheric smoke & sparkle system */
+.atmosphere-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+  mix-blend-mode: screen;
+  opacity: 0.78;
+}
+
+.atmosphere-overlay__gradient,
+.atmosphere-overlay__parallax,
+.sparkle-layer,
+.atmosphere-overlay__veil {
+  position: absolute;
+  inset: 0;
+}
+
+.atmosphere-overlay__gradient {
+  background:
+    radial-gradient(circle at 22% 18%, rgba(45, 212, 191, 0.22), transparent 60%),
+    radial-gradient(circle at 78% 30%, rgba(56, 189, 248, 0.18), transparent 65%),
+    radial-gradient(circle at 40% 80%, rgba(147, 112, 219, 0.14), transparent 60%);
+  filter: blur(70px);
+  opacity: 0.55;
+  transform: scale(1.1);
+  animation: atmosphere-gradient-drift 48s ease-in-out infinite alternate;
+}
+
+.atmosphere-overlay__parallax {
+  --smoke-shift-x: 0px;
+  --smoke-shift-y: 0px;
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease-out;
+}
+
+.smoke-layer {
+  position: absolute;
+  inset: -24%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 40% 38%, var(--smoke-color-1, rgba(45, 212, 191, 0.32)) 0%, transparent 62%),
+    radial-gradient(circle at 70% 62%, var(--smoke-color-2, rgba(56, 189, 248, 0.26)) 0%, transparent 68%),
+    radial-gradient(circle at 35% 70%, var(--smoke-color-3, rgba(147, 112, 219, 0.24)) 0%, transparent 70%);
+  filter: blur(120px);
+  opacity: 0.42;
+  mix-blend-mode: screen;
+  animation: smoke-flow 36s ease-in-out infinite;
+  transform: translate3d(
+      calc(var(--smoke-shift-x, 0px) * var(--parallax-factor, 0.2)),
+      calc(var(--smoke-shift-y, 0px) * var(--parallax-factor, 0.2)),
+      0
+    )
+    scale(1.05);
+  transition: transform 0.45s ease-out, opacity 0.45s ease-out;
+}
+
+.smoke-layer--one {
+  --parallax-factor: 0.18;
+  animation-duration: 44s;
+}
+
+.smoke-layer--two {
+  --parallax-factor: 0.32;
+  opacity: 0.34;
+  animation-duration: 58s;
+  animation-direction: alternate-reverse;
+}
+
+.smoke-layer--three {
+  --parallax-factor: 0.52;
+  opacity: 0.3;
+  animation-duration: 72s;
+}
+
+.sparkle-layer {
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 16px 28px rgba(56, 189, 248, 0.2));
+  opacity: 0.78;
+}
+
+.sparkle {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(248, 250, 252, 0.86) 0%, rgba(248, 250, 252, 0.42) 48%, transparent 70%);
+  box-shadow:
+    0 0 22px rgba(56, 189, 248, 0.35),
+    0 0 34px rgba(129, 140, 248, 0.2);
+  opacity: 0;
+  animation: sparkle-float var(--sparkle-duration, 6s) ease-in-out infinite;
+  animation-delay: var(--sparkle-delay, 0s);
+}
+
+.atmosphere-overlay__veil {
+  background: linear-gradient(120deg, rgba(15, 23, 42, 0.35), rgba(2, 6, 23, 0.65));
+  mix-blend-mode: multiply;
+  opacity: 0.52;
+}
+
+[data-reduced-motion="true"].atmosphere-overlay,
+[data-reduced-motion="true"] .sparkle,
+[data-reduced-motion="true"] .smoke-layer,
+[data-reduced-motion="true"] .atmosphere-overlay__gradient {
+  animation: none !important;
+  transition: none !important;
+}
+
+@keyframes smoke-flow {
+  0% {
+    transform: translate3d(0px, 0px, 0) scale(1.03);
+  }
+  50% {
+    transform: translate3d(26px, -30px, 0) scale(1.07);
+  }
+  100% {
+    transform: translate3d(-20px, 26px, 0) scale(1.02);
+  }
+}
+
+@keyframes sparkle-float {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.55);
+  }
+  15% {
+    opacity: 0.45;
+  }
+  45% {
+    opacity: 0.88;
+    transform: translate3d(calc(var(--sparkle-drift, 32px) * 0.28), calc(var(--sparkle-drift, 32px) * -0.42), 0) scale(1.08);
+  }
+  75% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--sparkle-drift, 32px)), calc(var(--sparkle-drift, 32px) * -1), 0) scale(0.72);
+  }
+}
+
+@keyframes atmosphere-gradient-drift {
+  0% {
+    transform: scale(1.05) translate3d(-14px, 8px, 0);
+  }
+  50% {
+    transform: scale(1.08) translate3d(16px, -12px, 0);
+  }
+  100% {
+    transform: scale(1.03) translate3d(-12px, 10px, 0);
+  }
+}
+
+/* Override any hardcoded gray text colors */
+.dark .text-gray-500,
+.dark .text-gray-600,
+.dark .text-gray-700,
+.dark .text-gray-800 {
+  color: #ffffff !important;
+}
+
+.light .text-gray-500,
+.light .text-gray-600,
+.light .text-gray-700,
+.light .text-gray-800 {
+  color: #6b6b6b !important;
+}
 
 /* EMERGENCY CSS FIXES - Hide all heartbeat notifications */
 /* Hide all heartbeat-related notifications */
 [class*="notification"]:has([class*="heartbeat"]),
 [class*="toast"]:has([class*="heartbeat"]),
+div:contains("heartbeat"),
 div:contains("Heartbeat") {
   display: none !important;
   visibility: hidden !important;
