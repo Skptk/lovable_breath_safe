@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAirQuality } from "@/hooks/useAirQuality";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserPoints } from "@/hooks/useUserPoints";
@@ -6,29 +6,22 @@ import { useRefreshCountdown } from "@/hooks/useRefreshCountdown";
 import { useLocationContext } from "@/contexts";
 import { RefreshProgressBar } from "@/components/ui/RefreshProgressBar";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingDown, RefreshCw, MapPin, Award, Zap, TrendingUp } from "lucide-react";
+import { TrendingDown, RefreshCw, MapPin, History } from "lucide-react";
+import { getAQIColor, getAQILabel } from "@/config/maps";
 
-import Header from "@/components/Header";
 import DataSourceValidator from "./DataSourceValidator";
 import { Button } from "@/components/ui/button";
-import { GlassCard } from "@/components/ui/GlassCard";
-import { StatCard } from "@/components/ui/StatCard";
 import Footer from "@/components/Footer";
 
-// Import components directly to avoid circular dependencies
 import { LoadingState } from "./AirQualityDashboard/LoadingState";
-import { DataLoadingOverlay } from "./AirQualityDashboard/DataLoadingOverlay";
 import { PermissionRequest } from "./AirQualityDashboard/PermissionRequest";
 import { PollutantModal } from "./AirQualityDashboard/PollutantModal";
-import { AQICard } from "./AirQualityDashboard/AQICard";
 import { WeatherSection } from "./AirQualityDashboard/WeatherSection";
-import { useReflowOptimization } from "@/hooks/useReflowOptimization";
 
 interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
   showMobileMenu?: boolean;
   onMobileMenuToggle?: () => void;
-  isDemoMode?: boolean;
 }
 
 /**
@@ -62,15 +55,12 @@ function AirQualityDashboardContent({
   onNavigate,
   showMobileMenu,
   onMobileMenuToggle,
-  isDemoMode = false,
 }: AirQualityDashboardContentProps) {
   // Hooks
   const { data, isRefreshing, isLoading, error, refreshData } = useAirQuality();
   const { userPoints, isLoading: pointsLoading } = useUserPoints();
   const { timeUntilRefresh } = useRefreshCountdown();
   const { toast } = useToast();
-  const aqiCardRef = React.useRef<HTMLDivElement | null>(null);
-
   const {
     hasUserConsent = false,
     hasRequestedPermission = false,
@@ -102,34 +92,6 @@ function AirQualityDashboardContent({
       longitude: data.coordinates.lon 
     };
   }, [data?.coordinates?.lat, data?.coordinates?.lon]);
-
-  const createEmptyRect = useCallback((): DOMRect => {
-    if (typeof DOMRect !== "undefined") {
-      return new DOMRect();
-    }
-    return {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-      top: 0,
-      right: 0,
-      bottom: 0,
-      left: 0,
-      toJSON: () => ({})
-    } as DOMRect;
-  }, []);
-
-  const { scheduleMeasurement: scheduleLayoutMeasure } = useReflowOptimization<DOMRect>({
-    debugLabel: "AQICardLayout",
-    measure: () => aqiCardRef.current?.getBoundingClientRect() ?? createEmptyRect(),
-  });
-
-  React.useEffect(() => {
-    if (!aqiCardRef.current) return;
-    scheduleLayoutMeasure();
-  }, [data?.aqi, scheduleLayoutMeasure]);
-
   // Request location permission handler
   const handleRequestLocationPermission = React.useCallback(async () => {
     if (isRequestingPermission) return;
@@ -175,189 +137,257 @@ function AirQualityDashboardContent({
     }
   }, [hasUserConsent, refreshData]);
 
+  const renderUnifiedShell = (content: React.ReactNode) => (
+    <div className="relative z-10 px-4 py-8 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-7xl">
+        <div className="bg-black/40 backdrop-blur-xl ring-1 ring-white/10 rounded-3xl shadow-2xl p-6 sm:p-10">
+          {content}
+        </div>
+      </div>
+    </div>
+  );
+
   // Permission check UI - brief loading while waiting for permission or timeout
   const renderDashboardContent = () => {
-    const showSkeleton = isLoading && !data;
-    const showError = !isLoading && !data && error;
+    const showLoadingState = isLoading && !data;
+    const showErrorState = !isLoading && !data && error;
 
-    if (showSkeleton) {
-      return (
-        <GlassCard className="p-6">
-          <DataLoadingOverlay
-            userName={userName}
-            showMobileMenu={showMobileMenu}
-            onMobileMenuToggle={onMobileMenuToggle}
+    const lastUpdated = data?.timestamp ? new Date(data.timestamp).toLocaleString() : "—";
+    const aqiValue = data?.aqi ?? "—";
+    const aqiLabel = getAQILabel(data?.aqi ?? 0);
+    const aqiColor = getAQIColor(data?.aqi ?? 0);
+
+    if (showLoadingState) {
+      return renderUnifiedShell(
+        <div className="py-16">
+          <LoadingState
+            title={`Hello, ${userName}!`}
+            subtitle="Fetching the latest air quality insights..."
           />
-        </GlassCard>
+        </div>
       );
     }
 
-    if (showError) {
-      return (
-        <GlassCard variant="elevated" className="p-6">
-          <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-              <TrendingDown className="h-8 w-8 text-destructive" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-semibold">Unable to load data</h3>
-              <p className="text-muted-foreground">
-                {error?.message || "We couldn't fetch the latest air quality details. Please try again."}
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Button onClick={handleRefresh} disabled={isRefreshing}>
-                {isRefreshing ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Retrying...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Try again
-                  </>
-                )}
-              </Button>
-              <Button variant="outline" onClick={handleRequestLocationPermission}>
-                <MapPin className="mr-2 h-4 w-4" />
-                Re-check location
-              </Button>
-            </div>
+    if (showErrorState) {
+      return renderUnifiedShell(
+        <div className="py-16 text-center space-y-8">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-500/15">
+            <TrendingDown className="h-10 w-10 text-red-400" />
           </div>
-        </GlassCard>
-      );
-    }
-
-    return (
-      <div className="space-y-6 lg:space-y-8">
-        <GlassCard className="p-6">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-[0.2em]">Welcome back</p>
-              <h1 className="text-3xl font-semibold text-foreground">Hello, {userName}!</h1>
-              <p className="text-muted-foreground">
-                {data?.location ? `Air quality in ${data.location}` : "Your personalized air quality dashboard"}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
-                <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                {isRefreshing ? "Refreshing" : "Refresh Data"}
-              </Button>
-              <Button variant="default" onClick={() => onNavigate?.("history")}>
-                View History
-              </Button>
-            </div>
+          <div className="space-y-3">
+            <h3 className="text-2xl font-semibold text-white">Something went wrong</h3>
+            <p className="text-slate-300 max-w-xl mx-auto">
+              {error?.message || "We couldn't retrieve the latest air quality data. Please try again shortly."}
+            </p>
           </div>
-        </GlassCard>
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <GlassCard className="lg:col-span-2 p-0">
-            <div className="p-6 space-y-6">
-              <div ref={aqiCardRef}>
-                <AQICard
-                  data={data}
-                  timeUntilRefresh={timeUntilRefresh}
-                  isRefreshing={isRefreshing}
-                  onRefresh={handleRefresh}
-                  onNavigate={onNavigate}
-                  showMobileMenu={showMobileMenu}
-                  onMobileMenuToggle={onMobileMenuToggle}
-                  isDemoMode={isDemoMode}
-                  setSelectedPollutant={setSelectedPollutant}
-                />
-              </div>
-
-              <GlassCard variant="subtle" className="p-4">
-                <RefreshProgressBar
-                  timeUntilRefresh={timeUntilRefresh}
-                  isRefreshing={isRefreshing}
-                  onManualRefresh={handleRefresh}
-                />
-              </GlassCard>
-
-              {data && (
-                <GlassCard variant="subtle" className="p-4">
-                  <DataSourceValidator
-                    dataSource={data.dataSource}
-                    aqi={data.aqi}
-                    location={data.location}
-                    timestamp={data.timestamp}
-                    userLocation={data.location}
-                  />
-                </GlassCard>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button onClick={handleRefresh} disabled={isRefreshing} className="min-w-[180px]">
+              {isRefreshing ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Try again
+                </>
               )}
-            </div>
-          </GlassCard>
-
-          <div className="space-y-4">
-            <GlassCard className="p-4">
-              <StatCard
-                title="Total Points"
-                value={userPoints?.totalPoints ? userPoints.totalPoints.toLocaleString() : "—"}
-                subtitle="Earned from air quality monitoring"
-                icon={<Award className="h-5 w-5" />}
-              />
-            </GlassCard>
-            <GlassCard className="p-4">
-              <StatCard
-                title="Today's Readings"
-                value={userPoints?.todayReadings ?? "—"}
-                subtitle="Air quality readings today"
-                icon={<Zap className="h-5 w-5" />}
-              />
-            </GlassCard>
-            <GlassCard className="p-4">
-              <StatCard
-                title="Weekly Activity"
-                value={userPoints?.weeklyReadings ?? "—"}
-                subtitle="Readings this week"
-                icon={<TrendingUp className="h-5 w-5" />}
-              />
-            </GlassCard>
+            </Button>
+            <Button variant="outline" onClick={handleRequestLocationPermission} className="min-w-[180px]">
+              <MapPin className="mr-2 h-4 w-4" />
+              Re-check location
+            </Button>
           </div>
         </div>
+      );
+    }
 
-        <GlassCard className="p-6">
-          <WeatherSection coordinates={coordinates} />
-        </GlassCard>
+    return renderUnifiedShell(
+      <>
+                <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-10">
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold uppercase tracking-[0.35em] text-teal-200/80">Welcome back</p>
+                    <h1 className="text-3xl sm:text-4xl font-semibold text-white">
+                      Hello, {userName}!
+                    </h1>
+                    <p className="text-lg text-slate-300">
+                      {data?.location ? `Air quality in ${data.location}` : "Your personalized air quality command center"}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      className="bg-white/5 hover:bg-white/10 text-white border-white/20"
+                    >
+                      <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                      {isRefreshing ? "Refreshing" : "Refresh Data"}
+                    </Button>
+                    <Button
+                      variant="default"
+                      onClick={() => onNavigate?.("history")}
+                      className="bg-teal-400 hover:bg-teal-300 text-slate-900"
+                    >
+                      <History className="mr-2 h-4 w-4" />
+                      View History
+                    </Button>
+                  </div>
+                </header>
 
-        <GlassCard className="p-6 mt-10">
-          <Footer />
-        </GlassCard>
+                <section className="grid gap-8 lg:grid-cols-3">
+                  <div className="lg:col-span-2 space-y-8">
+                    <div className="rounded-2xl border border-white/10 bg-white/5/5 p-8 text-center">
+                      <h2 className="text-xl font-semibold text-white mb-2">Current Air Quality</h2>
+                      <p className="text-slate-400">Last updated: {lastUpdated}</p>
+                      <div className="mt-10 space-y-6">
+                        <div className="text-7xl sm:text-8xl font-bold" style={{ color: aqiColor }}>
+                          {aqiValue}
+                        </div>
+                        <div className="inline-flex items-center px-5 py-2 rounded-full" style={{
+                          backgroundColor: `${aqiColor}20`,
+                        }}>
+                          <span className="text-lg font-medium" style={{ color: aqiColor }}>
+                            {aqiLabel}
+                          </span>
+                        </div>
+                      </div>
 
-        <PollutantModal
-          pollutant={selectedPollutant}
-          onClose={() => setSelectedPollutant(null)}
-        />
-      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
+                        {[
+                          { label: "PM2.5", value: data?.pm25 ?? 0, unit: "μg/m³" },
+                          { label: "PM10", value: data?.pm10 ?? 0, unit: "μg/m³" },
+                          { label: "NO₂", value: data?.no2 ?? 0, unit: "μg/m³" },
+                          { label: "SO₂", value: data?.so2 ?? 0, unit: "μg/m³" },
+                        ].map((pollutant) => (
+                          <button
+                            key={pollutant.label}
+                            type="button"
+                            className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-center transition-transform hover:-translate-y-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/60"
+                            onClick={() => {
+                              setSelectedPollutant({
+                                name: pollutant.label,
+                                value: pollutant.value,
+                                unit: pollutant.unit,
+                                description: `Detailed information about ${pollutant.label}`,
+                                color: aqiColor,
+                              });
+                            }}
+                          >
+                            <div className="text-2xl font-semibold text-white">
+                              {pollutant.value.toFixed(1)}
+                            </div>
+                            <div className="text-sm text-slate-300 mt-1">{pollutant.label}</div>
+                            <div className="text-xs text-slate-400">{pollutant.unit}</div>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="mt-10 flex flex-wrap justify-center gap-4">
+                        <Button
+                          variant="outline"
+                          onClick={handleRefresh}
+                          disabled={isRefreshing}
+                          className="bg-slate-900/60 hover:bg-slate-900/40 text-white border-white/20"
+                        >
+                          <RefreshCw className={`mr-2 h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
+                          {isRefreshing ? "Refreshing..." : "Refresh Now"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => onNavigate?.("history")}
+                          className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+                        >
+                          <History className="mr-2 h-5 w-5" />
+                          View History
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                      <RefreshProgressBar
+                        timeUntilRefresh={timeUntilRefresh}
+                        isRefreshing={isRefreshing}
+                        onManualRefresh={handleRefresh}
+                      />
+                    </div>
+
+                    {data && (
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                        <DataSourceValidator
+                          dataSource={data.dataSource}
+                          aqi={data.aqi}
+                          location={data.location}
+                          timestamp={data.timestamp}
+                          userLocation={data.location}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <aside className="space-y-6">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+                      <div className="text-3xl font-semibold text-white mb-2">
+                        {pointsLoading ? "—" : userPoints?.totalPoints?.toLocaleString() ?? "—"}
+                      </div>
+                      <div className="text-slate-300 text-sm">Total Points</div>
+                      <div className="text-slate-500 text-xs mt-2">Earned from air quality monitoring</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+                      <div className="text-3xl font-semibold text-white mb-2">
+                        {pointsLoading ? "—" : userPoints?.todayReadings ?? "—"}
+                      </div>
+                      <div className="text-slate-300 text-sm">Today's Readings</div>
+                      <div className="text-slate-500 text-xs mt-2">Air quality readings today</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+                      <div className="text-3xl font-semibold text-white mb-2">
+                        {pointsLoading ? "—" : userPoints?.weeklyReadings ?? "—"}
+                      </div>
+                      <div className="text-slate-300 text-sm">Weekly Activity</div>
+                      <div className="text-slate-500 text-xs mt-2">Readings this week</div>
+                    </div>
+                  </aside>
+                </section>
+
+                <section className="mt-12 pt-12 border-t border-white/10">
+                  <WeatherSection coordinates={coordinates} />
+                </section>
+
+                <footer className="mt-12 pt-12 border-t border-white/10 text-slate-300">
+                  <Footer />
+                </footer>
+      </>
     );
   };
 
   return (
-    <div className="space-y-6 lg:space-y-8">
-      {!hasRequestedPermission && !permissionTimeoutReached ? (
-        <GlassCard className="p-6">
-          <LoadingState
-            title={`Hello, ${userName}!`}
-            subtitle="Checking location permissions..."
-          />
-        </GlassCard>
-      ) : !hasUserConsent ? (
-        <GlassCard className="p-6">
-          <PermissionRequest
-            onRequest={handleRequestLocationPermission}
-            requesting={isRequestingPermission}
-            userName={userName}
-            showMobileMenu={showMobileMenu}
-            onMobileMenuToggle={onMobileMenuToggle}
-          />
-        </GlassCard>
-      ) : (
-        renderDashboardContent()
-      )}
-    </div>
+    <>
+      {!hasRequestedPermission && !permissionTimeoutReached
+        ? renderUnifiedShell(
+            <div className="py-16">
+              <LoadingState
+                title={`Hello, ${userName}!`}
+                subtitle="Checking location permissions..."
+              />
+            </div>
+          )
+        : !hasUserConsent
+          ? renderUnifiedShell(
+              <div className="py-10">
+                <PermissionRequest
+                  onRequest={handleRequestLocationPermission}
+                  requesting={isRequestingPermission}
+                  userName={userName}
+                  showMobileMenu={showMobileMenu}
+                  onMobileMenuToggle={onMobileMenuToggle}
+                />
+              </div>
+            )
+          : renderDashboardContent()}
+      <PollutantModal pollutant={selectedPollutant} onClose={() => setSelectedPollutant(null)} />
+    </>
   );
 }
 
@@ -368,7 +398,6 @@ export function AirQualityDashboard({
   onNavigate,
   showMobileMenu,
   onMobileMenuToggle,
-  isDemoMode = false,
 }: AirQualityDashboardProps) {
   const { user } = useAuth();
   const locationContext = useLocationContext();
@@ -380,7 +409,6 @@ export function AirQualityDashboard({
       onNavigate={onNavigate}
       showMobileMenu={showMobileMenu}
       onMobileMenuToggle={onMobileMenuToggle}
-      isDemoMode={isDemoMode}
     />
   );
 }

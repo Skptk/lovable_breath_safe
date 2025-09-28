@@ -110,6 +110,7 @@ All notable changes to this project will be documented in this file.
 - **Dashboard Glass Layout Refresh**: Reworked `src/components/AirQualityDashboard.tsx` to orchestrate the dashboard within layered `GlassCard` containers, introducing component-level loading and error handling atop `BackgroundManager` and `InteractiveSmokeOverlay` for a unified glassmorphism aesthetic.
 - **Dashboard Grid Restoration**: Rebuilt the dashboard structure in `src/components/AirQualityDashboard.tsx` with a two-column layout, dedicated stat tiles, and consolidated weather/footer cards, ensuring the main AQI pane, metrics, and supporting sections align per the reference design.
 - **Global Smoke Layer Integration**: Updated `src/pages/Index.tsx` to wrap all dashboard content with `BackgroundManager` and a high-opacity `InteractiveSmokeOverlay`, guaranteeing the atmospheric smoke effect renders consistently beneath glass cards across the primary shell.
+- **Unified Dashboard Shell & Smoke Overlay Optimization**: Simplified `src/components/AirQualityDashboard.tsx` into a single glass container that houses header, AQI metrics, stats, weather, and footer while introducing an adaptive particle-based `InteractiveSmokeOverlay.tsx` for smoother atmospheric motion on low-end devices.
 
 - **Realtime Subscriptions**: Hardened Supabase channel hook lifecycle
   - Refactored `useStableChannelSubscription` to register hooks before conditional returns

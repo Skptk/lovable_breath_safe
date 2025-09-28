@@ -1,182 +1,262 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_COLORS = [
-  "rgba(45, 212, 191, 0.35)",
-  "rgba(56, 189, 248, 0.3)",
-  "rgba(147, 112, 219, 0.28)",
-];
+const optimizedParticle: CSSProperties = {
+  willChange: "transform",
+  transform: "translate3d(0, 0, 0)",
+  backfaceVisibility: "hidden",
+};
 
-const SPARKLE_COUNT = 18;
+type ParticleConfig = {
+  size: number;
+  left: number;
+  top: number;
+  delay: number;
+  duration: number;
+  blur: number;
+  opacity: number;
+  color: string;
+  animationClass: string;
+};
 
 const prefersReducedMotion = () => {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || typeof matchMedia === "undefined") {
     return false;
   }
 
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  return matchMedia("(prefers-reduced-motion: reduce)").matches;
 };
 
-const pseudoRandom = (seed: number): number => {
+const pseudoRandom = (seed: number) => {
   const x = Math.sin(seed * 9301 + 49297) * 233280;
   return x - Math.floor(x);
 };
 
+const createParticleConfig = (seed: number, opts: {
+  minSize: number;
+  maxSize: number;
+  minDuration: number;
+  maxDuration: number;
+  color: string;
+  blur: number;
+  minOpacity: number;
+  maxOpacity: number;
+  animationClass: string;
+}): ParticleConfig => {
+  const size = opts.minSize + pseudoRandom(seed * 1.7) * (opts.maxSize - opts.minSize);
+  const duration = opts.minDuration + pseudoRandom(seed * 3.1) * (opts.maxDuration - opts.minDuration);
+
+  return {
+    size,
+    left: pseudoRandom(seed * 5.1) * 100,
+    top: pseudoRandom(seed * 7.3) * 100,
+    delay: pseudoRandom(seed * 11.9) * duration,
+    duration,
+    blur: opts.blur,
+    opacity: opts.minOpacity + pseudoRandom(seed * 13.7) * (opts.maxOpacity - opts.minOpacity),
+    color: opts.color,
+    animationClass: opts.animationClass,
+  };
+};
+
+const FAST_PARTICLE_OPTIONS = {
+  minSize: 30,
+  maxSize: 110,
+  minDuration: 20,
+  maxDuration: 35,
+  color: "rgba(255, 255, 255, 0.08)",
+  blur: 1,
+  minOpacity: 0.4,
+  maxOpacity: 0.7,
+  animationClass: "animate-float",
+} as const;
+
+const SLOW_PARTICLE_OPTIONS = {
+  minSize: 100,
+  maxSize: 300,
+  minDuration: 30,
+  maxDuration: 50,
+  color: "rgba(45, 212, 191, 0.12)",
+  blur: 3,
+  minOpacity: 0.2,
+  maxOpacity: 0.45,
+  animationClass: "animate-float-slow",
+} as const;
+
+const getAdaptiveCounts = () => {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return { fast: 25, slow: 15 };
+  }
+
+  const isMobile = window.innerWidth < 768;
+  const hardwareThreads = typeof navigator.hardwareConcurrency === "number" ? navigator.hardwareConcurrency : 8;
+  const isLowEnd = hardwareThreads < 4;
+
+  if (isMobile || isLowEnd) {
+    return { fast: 10, slow: 6 };
+  }
+
+  return { fast: 25, slow: 15 };
+};
+
 interface InteractiveSmokeOverlayProps {
-  /**
-   * Adjusts the strength of the parallax response (0-1).
-   */
   intensity?: number;
-  /**
-   * Override the default gradient colors.
-   */
-  colors?: string[];
   className?: string;
+  highVisibility?: boolean;
 }
 
 const InteractiveSmokeOverlay: React.FC<InteractiveSmokeOverlayProps> = ({
-  intensity = 0.75,
-  colors,
+  intensity = 0.8,
   className,
+  highVisibility = false,
 }) => {
-  const reducedMotion = useMemo(prefersReducedMotion, []);
-  const parallaxRef = useRef<HTMLDivElement | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const pointerTargetRef = useRef({ x: 0, y: 0 });
-
-  const palette = useMemo(() => {
-    const source = colors && colors.length > 0 ? colors : DEFAULT_COLORS;
-    return [
-      source[0] ?? DEFAULT_COLORS[0],
-      source[1] ?? DEFAULT_COLORS[1],
-      source[2] ?? DEFAULT_COLORS[2],
-    ];
-  }, [colors]);
-
-  const overlayVariables = useMemo(
-    () =>
-      ({
-        ["--smoke-color-1" as const]: palette[0],
-        ["--smoke-color-2" as const]: palette[1],
-        ["--smoke-color-3" as const]: palette[2],
-      }) as CSSProperties,
-    [palette]
-  );
-
-  const sparkles = useMemo(() => {
-    return Array.from({ length: SPARKLE_COUNT }, (_, index) => {
-      const base = index + 1;
-      const top = pseudoRandom(base) * 100;
-      const left = pseudoRandom(base * 2.7) * 100;
-      const size = 2.2 + pseudoRandom(base * 4.1) * 3.2;
-      const delay = pseudoRandom(base * 5.3) * 6;
-      const duration = 4.5 + pseudoRandom(base * 6.9) * 5.5;
-      const drift = 24 + pseudoRandom(base * 7.7) * 42;
-
-      return { top, left, size, delay, duration, drift };
-    });
-  }, []);
+  const [counts, setCounts] = useState(() => getAdaptiveCounts());
+  const [prefersReduced, setPrefersReduced] = useState(prefersReducedMotion);
 
   useEffect(() => {
-    if (typeof window === "undefined" || reducedMotion) {
+    if (typeof window === "undefined") {
       return undefined;
     }
 
-    const applyParallax = () => {
-      rafRef.current = null;
-      const shiftX = pointerTargetRef.current.x * 24 * intensity;
-      const shiftY = pointerTargetRef.current.y * 18 * intensity;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handleChange = () => setPrefersReduced(mediaQuery.matches);
+    handleChange();
+    mediaQuery.addEventListener("change", handleChange);
 
-      if (parallaxRef.current) {
-        parallaxRef.current.style.setProperty("--smoke-shift-x", `${shiftX}px`);
-        parallaxRef.current.style.setProperty("--smoke-shift-y", `${shiftY}px`);
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const updateCounts = () => setCounts(getAdaptiveCounts());
+    updateCounts();
+    window.addEventListener("resize", updateCounts);
+
+    return () => {
+      window.removeEventListener("resize", updateCounts);
+    };
+  }, []);
+
+  const fastParticles = useMemo(() => {
+    return Array.from({ length: counts.fast }, (_, index) =>
+      createParticleConfig(index + 1, FAST_PARTICLE_OPTIONS)
+    );
+  }, [counts.fast]);
+
+  const slowParticles = useMemo(() => {
+    return Array.from({ length: counts.slow }, (_, index) =>
+      createParticleConfig(index + 101, SLOW_PARTICLE_OPTIONS)
+    );
+  }, [counts.slow]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || prefersReduced) {
+      return undefined;
+    }
+
+    let animationId: number;
+    let currentX = 0;
+    let currentY = 0;
+
+    const animate = () => {
+      currentX += (pointerTargetRef.current.x - currentX) * 0.08;
+      currentY += (pointerTargetRef.current.y - currentY) * 0.08;
+
+      if (overlayRef.current) {
+        overlayRef.current.style.setProperty("--smoke-offset-x", `${currentX}px`);
+        overlayRef.current.style.setProperty("--smoke-offset-y", `${currentY}px`);
       }
+
+      animationId = window.requestAnimationFrame(animate);
     };
 
-    const scheduleParallax = () => {
-      if (rafRef.current !== null) {
-        return;
-      }
-      rafRef.current = window.requestAnimationFrame(applyParallax);
-    };
+    animationId = window.requestAnimationFrame(animate);
 
     const handlePointerMove = (event: PointerEvent) => {
       const { innerWidth, innerHeight } = window;
-      pointerTargetRef.current.x = (event.clientX / innerWidth - 0.5) * 2;
-      pointerTargetRef.current.y = (event.clientY / innerHeight - 0.5) * 2;
-      scheduleParallax();
+      const normalizedX = (event.clientX / innerWidth - 0.5) * 2;
+      const normalizedY = (event.clientY / innerHeight - 0.5) * 2;
+
+      pointerTargetRef.current.x = normalizedX * 30 * intensity;
+      pointerTargetRef.current.y = normalizedY * 24 * intensity;
     };
 
     const resetPointer = () => {
       pointerTargetRef.current.x = 0;
       pointerTargetRef.current.y = 0;
-      scheduleParallax();
     };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerleave", resetPointer, { passive: true });
 
     return () => {
+      if (animationId) {
+        window.cancelAnimationFrame(animationId);
+      }
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerleave", resetPointer);
-
-      if (rafRef.current) {
-        window.cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
     };
-  }, [intensity, reducedMotion]);
+  }, [intensity, prefersReduced]);
+
+  const overlayOpacity = highVisibility ? 0.8 : 0.58;
 
   return (
     <div
-      className={cn(
-        "atmosphere-overlay pointer-events-none absolute inset-0",
-        className
-      )}
+      ref={overlayRef}
+      className={cn("smoke-overlay", className)}
+      style={{ opacity: overlayOpacity } as CSSProperties}
+      data-reduced-motion={prefersReduced ? "true" : "false"}
       aria-hidden="true"
-      style={overlayVariables}
-      data-reduced-motion={reducedMotion ? "true" : "false"}
     >
-      <div className="atmosphere-overlay__gradient" />
-      <div ref={parallaxRef} className="atmosphere-overlay__parallax">
-        <div
-          className="smoke-layer smoke-layer--one"
-          style={{
-            ["--parallax-factor" as const]: "0.18",
-          } as CSSProperties}
-        />
-        <div
-          className="smoke-layer smoke-layer--two"
-          style={{
-            ["--parallax-factor" as const]: "0.35",
-          } as CSSProperties}
-        />
-        <div
-          className="smoke-layer smoke-layer--three"
-          style={{
-            ["--parallax-factor" as const]: "0.55",
-          } as CSSProperties}
-        />
-      </div>
-      <div className="sparkle-layer">
-        {sparkles.map((sparkle, index) => (
-          <span
-            key={`sparkle-${index}`}
-            className="sparkle"
+      <div className="smoke-overlay__layer">
+        {fastParticles.map((particle, index) => (
+          <div
+            key={`fast-${index}`}
+            className={cn("smoke-overlay__particle", particle.animationClass)}
             style={{
-              top: `${sparkle.top}%`,
-              left: `${sparkle.left}%`,
-              width: `${sparkle.size}px`,
-              height: `${sparkle.size}px`,
-              ["--sparkle-delay" as const]: `${sparkle.delay}s`,
-              ["--sparkle-duration" as const]: `${sparkle.duration}s`,
-              ["--sparkle-drift" as const]: `${sparkle.drift}px`,
+              ...optimizedParticle,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              animationDelay: `${particle.delay}s`,
+              animationDuration: `${particle.duration}s`,
+              filter: `blur(${particle.blur}px)` as string,
+              opacity: particle.opacity,
+              backgroundColor: particle.color,
             } as CSSProperties}
           />
         ))}
       </div>
-      <div className="atmosphere-overlay__veil" />
+
+      <div className="smoke-overlay__layer">
+        {slowParticles.map((particle, index) => (
+          <div
+            key={`slow-${index}`}
+            className={cn("smoke-overlay__particle", particle.animationClass)}
+            style={{
+              ...optimizedParticle,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              animationDelay: `${particle.delay}s`,
+              animationDuration: `${particle.duration}s`,
+              filter: `blur(${particle.blur}px)` as string,
+              opacity: particle.opacity,
+              backgroundColor: particle.color,
+            } as CSSProperties}
+          />
+        ))}
+      </div>
     </div>
   );
 };

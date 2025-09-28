@@ -2,6 +2,29 @@
 
 ## Recent Updates & Changes
 
+### Unified Dashboard Shell & Smoke Overlay Optimization – 2025-09-28
+
+#### **Overview**
+- Consolidated the air quality experience into a single high-impact glass container and restored the reference HTML’s layered composition.
+- Rebuilt the atmospheric smoke layer with adaptive particle counts and hardware-accelerated transforms to sustain 60fps across devices.
+
+#### **UI Architecture Changes**
+- `src/components/AirQualityDashboard.tsx`
+  - Replaced the multi-card stack with a unified glass wrapper via `renderUnifiedShell()` to ensure all dashboard sections (header, AQI metrics, stats, weather, footer) share the same visual hierarchy.
+  - Embedded loading, error, and permission states inside the same container so the layout never “jumps” during transitions.
+  - Inlined pollutant summaries, buttons, and stat tiles to match the single-card reference while keeping existing data flows (`useAirQuality`, `useUserPoints`).
+
+#### **Smoke Overlay Enhancements**
+- `src/components/backgrounds/InteractiveSmokeOverlay.tsx`
+  - Replaced gradient-only layers with particle-driven smoke using adaptive counts (`getAdaptiveCounts()`) and rAF smoothing.
+  - Added performance safeguards (`willChange`, `translate3d`, reduced opacity) to minimize layout thrash while retaining the signature floating effect.
+  - Supports a `highVisibility` flag for QA passes and respects reduced-motion preferences.
+
+#### **Performance & Testing Notes**
+- Adaptive particle density scales down to 10/6 particles on low-end/mobile hardware while keeping 25/15 on desktop.
+- Pointer-follow animations are eased (`0.08` interpolation) to avoid sudden jumps and reduce CPU load.
+- Pending follow-up: run manual FPS checks on dashboard route after deployment to confirm smoke overlay remains within budget on Chromebooks/tablets.
+
 ### Console Logging Optimization System Implementation – 2025-01-22
 
 #### **Complete Professional Logging System with Performance Monitoring and WebSocket Health Management**
