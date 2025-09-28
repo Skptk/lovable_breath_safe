@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 
 - **Landing Experience Refresh**: Reimagined `src/pages/Landing.tsx`, `tailwind.config.ts`, and global design tokens to adopt Inter/Plus Jakarta Sans typography, glassmorphism cards, and BuildAI-inspired hero metrics without impacting routing or onboarding flows.
 - **Atmospheric Background Overlay**: Introduced `src/components/backgrounds/InteractiveSmokeOverlay.tsx` and layered it into `BackgroundManager.tsx` so the weather-driven imagery gains the interactive, smoke-like distortion from the reference design while retaining existing fallback behavior.
+- **Atmospheric Overlay Refinements**: Lightened `InteractiveSmokeOverlay.tsx` by throttling pointer-driven parallax updates, lowering sparkle density, and relying on CSS-driven smoke layers to eliminate the forced reflow warnings observed after the initial integration.
 - **React Query Memory Budgets**: Tuned `src/main.tsx` defaults (`gcTime` 60 s, `staleTime` 30 s) and tagged queries with `meta.budget` to shrink idle cache footprint while preserving refetch behavior. Verified with `npm run test`.
 - **Build Chunk Strategy**: Updated `vite.config.ts` to use `splitVendorChunkPlugin()` and a deterministic `manualChunks` function that emits domain-specific bundles (`vendor-react`, `vendor-query`, `vendor-supabase`, etc.), improving lazy-loading behavior across routes rendered in `src/pages/Index.tsx`.
 

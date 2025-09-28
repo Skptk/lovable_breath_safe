@@ -8,7 +8,7 @@ const DEFAULT_COLORS = [
   "rgba(147, 112, 219, 0.28)",
 ];
 
-const SPARKLE_COUNT = 28;
+const SPARKLE_COUNT = 18;
 
 const prefersReducedMotion = () => {
   if (typeof window === "undefined") {
@@ -42,13 +42,8 @@ const InteractiveSmokeOverlay: React.FC<InteractiveSmokeOverlayProps> = ({
 }) => {
   const reducedMotion = useMemo(prefersReducedMotion, []);
   const parallaxRef = useRef<HTMLDivElement | null>(null);
-  const animationRef = useRef<number | null>(null);
-  const pointerRef = useRef({
-    x: 0,
-    y: 0,
-    targetX: 0,
-    targetY: 0,
-  });
+  const rafRef = useRef<number | null>(null);
+  const pointerTargetRef = useRef({ x: 0, y: 0 });
 
   const palette = useMemo(() => {
     const source = colors && colors.length > 0 ? colors : DEFAULT_COLORS;
@@ -88,34 +83,36 @@ const InteractiveSmokeOverlay: React.FC<InteractiveSmokeOverlayProps> = ({
       return undefined;
     }
 
-    const handlePointerMove = (event: PointerEvent) => {
-      const { innerWidth, innerHeight } = window;
-      pointerRef.current.targetX = (event.clientX / innerWidth - 0.5) * 2;
-      pointerRef.current.targetY = (event.clientY / innerHeight - 0.5) * 2;
-    };
-
-    const resetPointer = () => {
-      pointerRef.current.targetX = 0;
-      pointerRef.current.targetY = 0;
-    };
-
-    const animate = () => {
-      const pointer = pointerRef.current;
-      pointer.x += (pointer.targetX - pointer.x) * 0.075;
-      pointer.y += (pointer.targetY - pointer.y) * 0.075;
-
-      const shiftX = pointer.x * 26 * intensity;
-      const shiftY = pointer.y * 20 * intensity;
+    const applyParallax = () => {
+      rafRef.current = null;
+      const shiftX = pointerTargetRef.current.x * 24 * intensity;
+      const shiftY = pointerTargetRef.current.y * 18 * intensity;
 
       if (parallaxRef.current) {
         parallaxRef.current.style.setProperty("--smoke-shift-x", `${shiftX}px`);
         parallaxRef.current.style.setProperty("--smoke-shift-y", `${shiftY}px`);
       }
-
-      animationRef.current = window.requestAnimationFrame(animate);
     };
 
-    animationRef.current = window.requestAnimationFrame(animate);
+    const scheduleParallax = () => {
+      if (rafRef.current !== null) {
+        return;
+      }
+      rafRef.current = window.requestAnimationFrame(applyParallax);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const { innerWidth, innerHeight } = window;
+      pointerTargetRef.current.x = (event.clientX / innerWidth - 0.5) * 2;
+      pointerTargetRef.current.y = (event.clientY / innerHeight - 0.5) * 2;
+      scheduleParallax();
+    };
+
+    const resetPointer = () => {
+      pointerTargetRef.current.x = 0;
+      pointerTargetRef.current.y = 0;
+      scheduleParallax();
+    };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerleave", resetPointer, { passive: true });
@@ -124,9 +121,9 @@ const InteractiveSmokeOverlay: React.FC<InteractiveSmokeOverlayProps> = ({
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerleave", resetPointer);
 
-      if (animationRef.current) {
-        window.cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
     };
   }, [intensity, reducedMotion]);
