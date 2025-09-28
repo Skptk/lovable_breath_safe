@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Landing Aura Utilities**: Added reusable aura gradients, hero glows, and glass overlays in `src/index.css` to support immersive landing visuals while keeping the utilities available to other sections.
 - **Maintenance Mode Gate**: Introduced `MaintenanceGate` wrapper and `VITE_MAINTENANCE_MODE`/`VITE_MAINTENANCE_TOKEN` controls to limit production access during live debugging sessions. The gate surfaces a secure password prompt and preserves existing app state for authorized testers.
 - **Supabase Cron Auth Migration**: Added `20250925205100_update_cron_use_http_auth.sql` to recreate the `environmental-data-collection` job using pg_net’s auth registry so the edge function can be triggered every minute without depending on restricted database settings.
 - **MapView AQI Integration**: Refactored `src/components/MapView.tsx` to consume the cron-collected readings via `useGlobalEnvironmentalData`, reconcile them with `fetchAQI` fallback state, and synchronize the map, charts, and badges against a single `activeAirQualityData` source.
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Landing Experience Refresh**: Reimagined `src/pages/Landing.tsx`, `tailwind.config.ts`, and global design tokens to adopt Inter/Plus Jakarta Sans typography, glassmorphism cards, and BuildAI-inspired hero metrics without impacting routing or onboarding flows.
 - **React Query Memory Budgets**: Tuned `src/main.tsx` defaults (`gcTime` 60 s, `staleTime` 30 s) and tagged queries with `meta.budget` to shrink idle cache footprint while preserving refetch behavior. Verified with `npm run test`.
 - **Build Chunk Strategy**: Updated `vite.config.ts` to use `splitVendorChunkPlugin()` and a deterministic `manualChunks` function that emits domain-specific bundles (`vendor-react`, `vendor-query`, `vendor-supabase`, etc.), improving lazy-loading behavior across routes rendered in `src/pages/Index.tsx`.
 

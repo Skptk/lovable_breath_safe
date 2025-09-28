@@ -1,9 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-interface GlassCardProps {
-  children: React.ReactNode;
-  className?: string;
+interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   blur?: 'sm' | 'md' | 'lg';
   opacity?: 'light' | 'medium' | 'heavy';
   variant?: 'default' | 'elevated' | 'subtle';
@@ -14,7 +12,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   className,
   blur = 'md',
   opacity = 'medium',
-  variant = 'default'
+  variant = 'default',
+  ...props
 }) => {
   const blurClasses = {
     sm: 'backdrop-blur-sm',
@@ -35,7 +34,9 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   };
 
   return (
-    <div className={cn(
+    <div
+      {...props}
+      className={cn(
       'rounded-xl border transition-all duration-300 ease-out',
       'backdrop-blur-md -webkit-backdrop-blur-md',
       blurClasses[blur],
@@ -44,7 +45,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({
       'hover:transform hover:translate-y-[-2px] hover:shadow-xl',
       'dark:hover:shadow-black/40',
       className
-    )}>
+    )}
+    >
       {children}
     </div>
   );

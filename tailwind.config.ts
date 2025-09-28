@@ -19,9 +19,9 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['Titillium Web', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-				heading: ['Titillium Web', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-				body: ['Titillium Web', 'ui-sans-serif', 'system-ui', 'sans-serif']
+				sans: ['Inter', 'Plus Jakarta Sans', 'Titillium Web', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				heading: ['Inter', 'Plus Jakarta Sans', 'Titillium Web', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				body: ['Inter', 'Plus Jakarta Sans', 'Titillium Web', 'ui-sans-serif', 'system-ui', 'sans-serif']
 			},
 			colors: {
 				border: 'hsl(var(--border))',
