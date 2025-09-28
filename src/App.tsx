@@ -162,12 +162,8 @@ const App = (): JSX.Element => {
       return false;
     }
 
-    if (user && !locationData && !hasRequestedPermission) {
-      return false;
-    }
-
     return true;
-  }, [authLoading, user, locationData, locationRequesting, hasRequestedPermission]);
+  }, [authLoading, user, locationRequesting]);
 
   useEffect(() => {
     setLoading(!shouldShowApp);
