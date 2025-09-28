@@ -5,7 +5,6 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
 import BackgroundManager from "@/components/BackgroundManager";
-import InteractiveSmokeOverlay from "@/components/backgrounds/InteractiveSmokeOverlay";
 import { DeveloperTools } from "@/components/DeveloperTools";
 import { cleanupAllChannels } from "@/lib/realtimeClient";
 import EnhancedErrorBoundary from "@/components/EnhancedErrorBoundary";
@@ -251,8 +250,6 @@ export default function Index(): JSX.Element | null {
   return (
     <BackgroundManager>
       <div className="relative min-h-screen">
-        <InteractiveSmokeOverlay className="fixed inset-0 z-0 pointer-events-none opacity-70" intensity={0.8} />
-
         <div className="relative z-10 flex min-h-screen bg-gradient-to-br from-background/60 via-background/30 to-background/80">
           <DeveloperTools 
             isVisible={showDeveloperTools}

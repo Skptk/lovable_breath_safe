@@ -11,7 +11,6 @@ import { getAQIColor, getAQILabel } from "@/config/maps";
 
 import DataSourceValidator from "./DataSourceValidator";
 import { Button } from "@/components/ui/button";
-import Footer from "@/components/Footer";
 
 import { LoadingState } from "./AirQualityDashboard/LoadingState";
 import { PermissionRequest } from "./AirQualityDashboard/PermissionRequest";
@@ -354,10 +353,6 @@ function AirQualityDashboardContent({
                 <section className="mt-12 pt-12 border-t border-white/10">
                   <WeatherSection coordinates={coordinates} />
                 </section>
-
-                <footer className="mt-12 pt-12 border-t border-white/10 text-slate-300">
-                  <Footer />
-                </footer>
       </>
     );
   };

@@ -8,7 +8,6 @@ import { useWeatherStore } from '@/store/weatherStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { getBackgroundImage, isNightTime, isSunriseSunsetPeriod } from '@/lib/weatherBackgrounds';
-import InteractiveSmokeOverlay from '@/components/backgrounds/InteractiveSmokeOverlay';
 
 // Background refresh settings
 const BACKGROUND_REFRESH_LOCK_DURATION = 5 * 60 * 1000; // 5 minutes to prevent rapid switching
@@ -149,7 +148,6 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-black/40" />
-          <InteractiveSmokeOverlay className="opacity-60" intensity={0.7} />
         </div>
         <div className="relative z-10">
           {children}
@@ -571,53 +569,35 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
   const overlayOpacity = theme === 'light' ? '0.2' : '0.4';
 
   try {
-    const renderResult = (
+    return (
       <div className="relative min-h-screen">
-        {/* Weather Background */}
-        <div 
-          className="fixed inset-0 transition-opacity duration-500"
-          style={{ 
-            opacity: isTransitioning ? 0.3 : 1 
-          }}
-        >
-          <div className="absolute inset-0 z-[-1]">
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <div
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+              isTransitioning ? 'opacity-30' : 'opacity-100'
+            }`}
+          >
             <img
               src={getBackgroundForState()}
               alt="Weather background"
-              className="w-full h-full object-cover"
-              onError={() => {
-                console.warn('BackgroundManager: Failed to load background image:', getBackgroundForState());
-                // Fallback to default background
-                setCurrentBackground(DEFAULT_BACKGROUND);
-                hasAppliedBackgroundRef.current = true;
-              }}
+              className="h-full w-full object-cover"
             />
-            {/* Overlay for better text readability */}
-            <div 
+            <div
               className="absolute inset-0"
-              style={{ 
-                backgroundColor: `rgba(0, 0, 0, ${overlayOpacity})` 
-              }}
+              style={{ backgroundColor: `rgba(0, 0, 0, ${overlayOpacity})` }}
             />
           </div>
-          <InteractiveSmokeOverlay className="z-0" intensity={0.85} />
         </div>
 
-        {/* Content */}
         <div className="relative z-10">
           {children}
         </div>
       </div>
     );
-
-    return renderResult;
   } catch (error) {
     console.error('❌ [BG-MANAGER] Render error:', error);
     throw error;
   }
-
-  // Fallback return to satisfy TypeScript control flow (should be unreachable)
-  return null;
 });
 
 export default BackgroundManager;

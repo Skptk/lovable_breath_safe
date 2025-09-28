@@ -52,6 +52,8 @@ All notable changes to this project will be documented in this file.
   - Add lock key and duration constants for deterministic bundling and tests
 - **Realtime Visibility Suspension**: Removed tab-visibility gating in `src/contexts/RealtimeContext.tsx` and hidden-tab dispatch suppression in `src/lib/realtimeConnectionManager.ts` so Supabase events continue flowing when the app is backgrounded.
 - **Weather Watchdog**: Adjusted `src/components/BackgroundManager.tsx` to retry the initial weather fetch after 12 seconds using stored coordinates, avoiding IP-based fallbacks while preventing first-load stalls.
+- **Atmospheric Overlay Rollback**: Removed `InteractiveSmokeOverlay` usage from `src/components/BackgroundManager.tsx` and `src/pages/Index.tsx`, simplifying the background pipeline to reduce forced reflows and improve time-to-interactive on all routes.
+- **Dashboard Footer Cleanup**: Ensured the primary footer only renders once by removing the secondary footer from `src/components/AirQualityDashboard.tsx`.
 
 - **Tooling**: Harden static analysis and regression detection for TDZ issues
   - Promote `@typescript-eslint/no-use-before-define` and `no-undef` to errors in `eslint.config.js`
