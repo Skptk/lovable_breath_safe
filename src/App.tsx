@@ -222,6 +222,18 @@ const App = (): JSX.Element => {
       debugTracker.trackVariableAccess("App", "App.tsx:render");
     }
 
+    const shouldShowLoading = !shouldShowApp;
+    console.log('🔍 [LOADING-DEBUG] Full state check:', {
+      authLoading,
+      weatherLoading,
+      locationLoading: locationRequesting,
+      hasUser: Boolean(user),
+      hasWeatherData: Boolean(weatherData),
+      hasLocationData: Boolean(locationData),
+      shouldShowLoading,
+      timestamp: new Date().toISOString(),
+    });
+
     const isDev = import.meta.env.DEV;
     const isProd = import.meta.env.PROD;
 
@@ -299,7 +311,17 @@ const App = (): JSX.Element => {
         </ThemeProvider>
       </MaintenanceGate>
     );
-  }, [setError, shouldTrackVariables]);
+  }, [
+    setError,
+    shouldTrackVariables,
+    authLoading,
+    weatherLoading,
+    locationRequesting,
+    user,
+    weatherData,
+    locationData,
+    shouldShowApp,
+  ]);
 
   if (!shouldShowApp) {
     if (import.meta.env.DEV) {
