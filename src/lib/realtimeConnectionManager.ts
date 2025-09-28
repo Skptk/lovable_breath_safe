@@ -399,16 +399,32 @@ export class RealtimeConnectionManager {
 
   private dispatch(channelName: string, payload: any): void {
     const entry = this.channels.get(channelName);
-    if (!entry) {
+    if (!entry || entry.callbacks.size === 0) {
       return;
     }
 
-    for (const callback of Array.from(entry.callbacks)) {
-      try {
-        callback(payload);
-      } catch (error) {
-        console.error('[RealtimeConnectionManager] Subscription callback error', { channelName, error });
+    if (typeof document !== 'undefined' && document.hidden) {
+      return;
+    }
+
+    const callbacks = Array.from(entry.callbacks);
+
+    const invokeCallbacks = () => {
+      for (const callback of callbacks) {
+        try {
+          callback(payload);
+        } catch (error) {
+          console.error('[RealtimeConnectionManager] Subscription callback error', { channelName, error });
+        }
       }
+    };
+
+    if (typeof queueMicrotask === 'function') {
+      queueMicrotask(invokeCallbacks);
+    } else {
+      Promise.resolve().then(invokeCallbacks).catch((error) => {
+        console.error('[RealtimeConnectionManager] Deferred dispatch failed', { channelName, error });
+      });
     }
   }
 

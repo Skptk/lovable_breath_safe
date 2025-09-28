@@ -34,6 +34,7 @@ All notable changes to this project will be documented in this file.
 ### Performance
 
 - **Memory Guard Rail Enhancements**: Combined query cache tuning, heap fail-safe dispatching, and badge history pruning reduces steady-state heap usage recorded by `memoryMonitor.addListener()` and ensures reload safeguards trigger before crossing the 200 MB threshold.
+- **Realtime Dispatch Offloading**: Deferred channel callback execution in `src/lib/realtimeConnectionManager.ts` to microtasks and suppressed hidden-tab dispatch, eliminating Chrome's "[Violation] 'message' handler" spam and keeping WebSocket handlers under the long-task threshold.
 
 ### Migration
 

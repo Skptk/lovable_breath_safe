@@ -27,6 +27,9 @@
 - Adaptive particle density scales down to 10/6 particles on low-end/mobile hardware while keeping 25/15 on desktop.
 - Pointer-follow animations are eased (`0.08` interpolation) to avoid sudden jumps and reduce CPU load.
 - Pending follow-up: run manual FPS checks on dashboard route after deployment to confirm smoke overlay remains within budget on Chromebooks/tablets.
+- `src/lib/realtimeConnectionManager.ts`
+  - Defer channel callback dispatching to `queueMicrotask`/Promise to keep the WebSocket thread light and avoid "[Violation] 'message' handler" spam in Chrome.
+  - Skip dispatch when the document is hidden so background tabs do not accumulate stale payloads or trigger memory monitors.
 
 ### Console Logging Optimization System Implementation – 2025-01-22
 
