@@ -15,6 +15,7 @@ import { ConnectionResilienceProvider } from "./components/ConnectionResilienceP
 import { debugTracker } from "./utils/errorTracker";
 import TDZDetector from "./components/TDZDetector";
 import MaintenanceGate from "./components/MaintenanceGate";
+import { useLocationContext } from "@/contexts/LocationContext";
 
 // Retry mechanism for lazy loading
 const retry = (fn: () => Promise<any>, retriesLeft: number = 3, interval: number = 1000): Promise<any> => {
@@ -124,6 +125,7 @@ const App = (): JSX.Element => {
   const weatherData = useWeatherStore((state) => state.weatherData);
   const weatherError = useWeatherStore((state) => state.error);
   const { locationData, isRequesting: locationRequesting, error: locationError } = useGeolocation();
+  const { hasRequestedPermission } = useLocationContext();
 
   const shouldTrackVariables = useMemo(() => {
     return resolveTrackingFlag();
@@ -156,12 +158,16 @@ const App = (): JSX.Element => {
       return false;
     }
 
-    if (user && !locationData) {
+    if (user && locationRequesting) {
+      return false;
+    }
+
+    if (user && !locationData && !hasRequestedPermission) {
       return false;
     }
 
     return true;
-  }, [authLoading, user, locationData]);
+  }, [authLoading, user, locationData, locationRequesting, hasRequestedPermission]);
 
   useEffect(() => {
     setLoading(!shouldShowApp);

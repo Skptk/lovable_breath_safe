@@ -13,6 +13,9 @@
   - Replaced the multi-card stack with a unified glass wrapper via `renderUnifiedShell()` to ensure all dashboard sections (header, AQI metrics, stats, weather, footer) share the same visual hierarchy.
   - Embedded loading, error, and permission states inside the same container so the layout never “jumps” during transitions.
   - Inlined pollutant summaries, buttons, and stat tiles to match the single-card reference while keeping existing data flows (`useAirQuality`, `useUserPoints`).
+- `src/App.tsx`
+  - Relaxed the dashboard readiness gate so the main shell renders once location permission checks finish, even when only IP-based fallback coordinates are available.
+  - Prevents the app from freezing on the “Loading Breath Safe...” screen when geolocation is still resolving but cached AQI data can be shown.
 
 #### **Smoke Overlay Enhancements**
 - `src/components/backgrounds/InteractiveSmokeOverlay.tsx`
