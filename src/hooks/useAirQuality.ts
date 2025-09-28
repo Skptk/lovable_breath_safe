@@ -21,12 +21,12 @@ const CACHE_CONFIG = {
     TTL: 10 * 60 * 1000, // 10 minutes
   },
   MEMORY: {
-    MAX_READINGS: 250, // Maximum readings to keep in memory
-    CHUNK_SIZE: 50,    // Process readings in chunks of 50
+    MAX_READINGS: 60, // Maximum readings to keep in memory (~1 hour at 1/min cadence)
+    CHUNK_SIZE: 50,   // Process readings in chunks of 50
   },
 };
 
-const AIR_QUALITY_HISTORY_TTL_MS = 12 * 60 * 60 * 1000; // Retain 12 hours of history
+const AIR_QUALITY_HISTORY_TTL_MS = 30 * 60 * 1000; // Retain 30 minutes of history
 
 const LAST_READING_STORAGE_KEY = 'breath_safe_last_air_quality_reading';
 
@@ -136,6 +136,16 @@ const createScheduledAirQualityReading = (
     },
   };
 };
+
+const isDuplicateReading = (
+  entries: AirQualityData[],
+  candidate: AirQualityData,
+): boolean =>
+  entries.some(entry =>
+    entry.dataSource === candidate.dataSource &&
+    entry.timestamp === candidate.timestamp &&
+    (entry.stationUid ?? entry.location) === (candidate.stationUid ?? candidate.location)
+  );
 
 // Enhanced interface for AQICN-only air quality data
 export interface AirQualityData {
@@ -553,8 +563,7 @@ export const useAirQuality = () => {
       return;
     }
 
-    const latest = readingsRef.current[readingsRef.current.length - 1];
-    if (latest && latest.timestamp === scheduledReading.timestamp && latest.dataSource === scheduledReading.dataSource) {
+    if (isDuplicateReading(readingsRef.current, scheduledReading)) {
       return;
     }
 
@@ -587,6 +596,10 @@ export const useAirQuality = () => {
   useEffect(() => {
     const latestReading = aqicnQuery.data;
     if (!latestReading) return;
+
+    if (isDuplicateReading(readingsRef.current, latestReading)) {
+      return;
+    }
 
     const now = Date.now();
     if (now - lastLogTime.current > 5_000) {
