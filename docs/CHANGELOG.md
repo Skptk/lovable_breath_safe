@@ -26,6 +26,7 @@ All notable changes to this project will be documented in this file.
 - **Atmospheric Background Overlay**: Introduced `src/components/backgrounds/InteractiveSmokeOverlay.tsx` and layered it into `BackgroundManager.tsx` so the weather-driven imagery gains the interactive, smoke-like distortion from the reference design while retaining existing fallback behavior.
 - **Atmospheric Overlay Refinements**: Lightened `InteractiveSmokeOverlay.tsx` by throttling pointer-driven parallax updates, lowering sparkle density, relying on CSS-driven smoke layers, and correcting `BackgroundManager.tsx` stacking so the smoke layer consistently renders between the weather imagery and glass content.
 - **TDZ Diagnostics Guardrails**: Defaulted `App.tsx` variable tracking and `TDZDetector.tsx` instrumentation to opt-in only, eliminating the heavy debug logging that stalled dashboard loads unless `globalThis.__TRACK_VARIABLES__` explicitly enables it.
+- **Auth Loading Resilience**: Updated `src/contexts/AuthContext.tsx` to clear the global loading flag on `SIGNED_IN`, `TOKEN_REFRESHED`, and `SIGNED_OUT` events so the dashboard spinner releases immediately after Supabase reports the session state.
 - **React Query Memory Budgets**: Tuned `src/main.tsx` defaults (`gcTime` 60 s, `staleTime` 30 s) and tagged queries with `meta.budget` to shrink idle cache footprint while preserving refetch behavior. Verified with `npm run test`.
 - **Build Chunk Strategy**: Updated `vite.config.ts` to use `splitVendorChunkPlugin()` and a deterministic `manualChunks` function that emits domain-specific bundles (`vendor-react`, `vendor-query`, `vendor-supabase`, etc.), improving lazy-loading behavior across routes rendered in `src/pages/Index.tsx`.
 
@@ -105,6 +106,8 @@ All notable changes to this project will be documented in this file.
 - **BackgroundManager**: Removed global debug trackers, trimmed interval cadence to 5 minutes, and reduced console chatter to keep the background system lightweight while preserving weather-based theming.
 - **Dashboard UX**: Added a dedicated `DataLoadingOverlay` skeleton and reworked the `useAirQuality` loading state so users see a smooth loading experience instead of the transient dashboard error placeholder.
 - **Dashboard Layout Stabilization**: Adopted `useReflowOptimization` across `src/components/AirQualityDashboard.tsx`, `src/components/AirQualityDashboard/PointsGrid.tsx`, and `src/components/AirQualityDashboard/WeatherSection.tsx` to schedule DOM measurements outside the render path, reducing layout thrash when AQI metrics and weather data refresh.
+- **App Progressive Loading**: Relaxed the global loading gate in `src/App.tsx` so the shell renders once auth and location contexts finish initializing, while weather data continues to hydrate individual cards with dedicated skeletons and debug telemetry.
+- **Dashboard Glass Layout Refresh**: Reworked `src/components/AirQualityDashboard.tsx` to orchestrate the dashboard within layered `GlassCard` containers, introducing component-level loading and error handling atop `BackgroundManager` and `InteractiveSmokeOverlay` for a unified glassmorphism aesthetic.
 
 - **Realtime Subscriptions**: Hardened Supabase channel hook lifecycle
   - Refactored `useStableChannelSubscription` to register hooks before conditional returns

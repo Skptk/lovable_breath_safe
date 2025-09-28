@@ -6,6 +6,8 @@ import { useAuth } from "./contexts/AuthContext";
 import EnhancedErrorBoundary from "@/components/EnhancedErrorBoundary";
 import { usePerformanceMonitor, usePreload } from "@/hooks/usePerformance";
 import { useAppStore } from "@/store";
+import { useWeatherStore } from "@/store/weatherStore";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { Suspense, lazy, useEffect, useMemo } from "react";
 import type { ErrorInfo } from "react";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -44,7 +46,7 @@ const Demo = lazy(() => retry(() => import("./pages/Demo")));
 const Contact = lazy(() => retry(() => import("./pages/Contact")));
 
 // Loading component
-const LoadingSpinner = () => (
+const LoadingScreen = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
     <div className="text-center space-y-4">
       <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
@@ -89,7 +91,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // Don't redirect while loading
   if (loading) {
-    return <LoadingSpinner />;
+    return <LoadingScreen />;
   }
 
   // If user exists, show the protected content
@@ -116,8 +118,12 @@ const resolveTrackingFlag = (): boolean => {
 };
 
 const App = (): JSX.Element => {
-  const { loading, isAuthenticated, user, validateProfile } = useAuth();
+  const { loading: authLoading, isAuthenticated, user, validateProfile } = useAuth();
   const { setLoading, setError } = useAppStore();
+  const weatherLoading = useWeatherStore((state) => state.isLoading);
+  const weatherData = useWeatherStore((state) => state.weatherData);
+  const weatherError = useWeatherStore((state) => state.error);
+  const { locationData, isRequesting: locationRequesting, error: locationError } = useGeolocation();
 
   const shouldTrackVariables = useMemo(() => {
     return resolveTrackingFlag();
@@ -145,35 +151,69 @@ const App = (): JSX.Element => {
   }, [shouldTrackVariables]);
 
   // Sync loading state with global store
+  const shouldShowApp = useMemo(() => {
+    if (authLoading) {
+      return false;
+    }
+
+    if (user && !locationData) {
+      return false;
+    }
+
+    return true;
+  }, [authLoading, user, locationData]);
+
   useEffect(() => {
-    setLoading(loading);
-  }, [loading, setLoading]);
+    setLoading(!shouldShowApp);
+  }, [setLoading, shouldShowApp]);
 
   // Validate profile when user is authenticated
   useEffect(() => {
-    if (user && !loading) {
+    if (user && !authLoading) {
       validateProfile();
     }
-  }, [user, loading, validateProfile]);
+  }, [user, authLoading, validateProfile]);
 
   useEffect(() => {
-    if (!loading && !isAuthenticated && user) {
+    if (!authLoading && !isAuthenticated && user) {
       // Only set error if we have a user but authentication failed
       setError("Authentication required");
     } else {
       setError(null);
     }
-  }, [loading, isAuthenticated, user, setError]);
+  }, [authLoading, isAuthenticated, user, setError]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      return;
+    }
+
+    const debugSnapshot = {
+      authLoading,
+      weatherLoading,
+      locationRequesting,
+      hasWeatherData: Boolean(weatherData),
+      hasUser: Boolean(user),
+      hasLocationData: Boolean(locationData),
+      weatherError: weatherError ?? null,
+      locationError: locationError ?? null,
+    };
+
+    console.log("🔍 [DEBUG] Loading states:", debugSnapshot);
+    console.log("🔍 [LOADING-DEBUG] State check:", {
+      authLoading,
+      weatherLoading,
+      hasUser: Boolean(user),
+      hasWeatherData: Boolean(weatherData),
+      hasLocationData: Boolean(locationData),
+      timestamp: new Date().toISOString(),
+    });
+  }, [authLoading, weatherLoading, locationRequesting, weatherData, user, locationData, weatherError, locationError]);
 
   const appContent = useMemo<JSX.Element>(() => {
     console.log("🧩 [RENDER] App rendering at:", new Date().toISOString());
     if (shouldTrackVariables) {
       debugTracker.trackVariableAccess("App", "App.tsx:render");
-    }
-
-    if (loading) {
-      console.log("🧩 [RENDER] App returning loading state");
-      return <LoadingSpinner />;
     }
 
     const isDev = import.meta.env.DEV;
@@ -217,7 +257,7 @@ const App = (): JSX.Element => {
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
-                  <Suspense fallback={<LoadingSpinner />}>
+                  <Suspense fallback={<LoadingScreen />}>
                     <EnhancedErrorBoundary
                       onError={(error: Error, errorInfo: ErrorInfo) => {
                         console.error("Route loading error:", error, errorInfo);
@@ -253,7 +293,18 @@ const App = (): JSX.Element => {
         </ThemeProvider>
       </MaintenanceGate>
     );
-  }, [loading, setError, shouldTrackVariables]);
+  }, [setError, shouldTrackVariables]);
+
+  if (!shouldShowApp) {
+    if (import.meta.env.DEV) {
+      console.log("🧩 [RENDER] App waiting for prerequisites", {
+        authLoading,
+        hasUser: Boolean(user),
+        hasLocationData: Boolean(locationData),
+      });
+    }
+    return <LoadingScreen />;
+  }
 
   return appContent;
 };

@@ -11,6 +11,9 @@ import { TrendingDown, RefreshCw, MapPin } from "lucide-react";
 import Header from "@/components/Header";
 import DataSourceValidator from "./DataSourceValidator";
 import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/ui/GlassCard";
+import InteractiveSmokeOverlay from "@/components/backgrounds/InteractiveSmokeOverlay";
+import BackgroundManager from "@/components/BackgroundManager";
 
 // Import components directly to avoid circular dependencies
 import { LoadingState } from "./AirQualityDashboard/LoadingState";
@@ -174,176 +177,154 @@ function AirQualityDashboardContent({
   }, [hasUserConsent, refreshData]);
 
   // Permission check UI - brief loading while waiting for permission or timeout
-  if (!hasRequestedPermission && !permissionTimeoutReached) {
-    return <LoadingState title={`Hello, ${userName}!`} subtitle="Checking location permissions..." />;
-  }
+  const renderDashboardContent = () => {
+    const showSkeleton = isLoading && !data;
+    const showError = !isLoading && !data && error;
 
-  // Show permission request if not consented
-  if (!hasUserConsent) {
     return (
-      <PermissionRequest
-        onRequest={handleRequestLocationPermission}
-        requesting={isRequestingPermission}
-        userName={userName}
-        showMobileMenu={showMobileMenu}
-        onMobileMenuToggle={onMobileMenuToggle}
-      />
-    );
-  }
+      <div className="space-y-6">
+        <GlassCard variant="subtle" className="p-0">
+          <div className="p-6">
+            <Header 
+              title={`Hello, ${userName}!`} 
+              subtitle={data?.location ? `Air quality in ${data.location}` : "Monitoring your environment"}
+              showMobileMenu={showMobileMenu} 
+              onMobileMenuToggle={onMobileMenuToggle} 
+            />
 
-  // If there's data, show the dashboard
-  if (data) {
-    return (
-      <div className="space-y-6 lg:space-y-8">
-        <Header 
-          title={`Hello, ${userName}!`} 
-          subtitle={`Air quality in ${data.location ?? "your area"}`} 
-          showMobileMenu={showMobileMenu} 
-          onMobileMenuToggle={onMobileMenuToggle} 
-        />
+            <div className="mt-6 grid gap-6 md:grid-cols-2">
+              <GlassCard variant="default" className="p-0">
+                <div className="p-6 space-y-4">
+                  <div ref={aqiCardRef}>
+                    <AQICard
+                      data={data}
+                      timeUntilRefresh={timeUntilRefresh}
+                      isRefreshing={isRefreshing}
+                      onRefresh={handleRefresh}
+                      onNavigate={onNavigate}
+                      showMobileMenu={showMobileMenu}
+                      onMobileMenuToggle={onMobileMenuToggle}
+                      isDemoMode={isDemoMode}
+                      setSelectedPollutant={setSelectedPollutant}
+                    />
+                  </div>
+                  <RefreshProgressBar 
+                    timeUntilRefresh={timeUntilRefresh} 
+                    isRefreshing={isRefreshing} 
+                    onManualRefresh={handleRefresh} 
+                  />
+                  {data && (
+                    <DataSourceValidator 
+                      dataSource={data.dataSource} 
+                      aqi={data.aqi} 
+                      location={data.location} 
+                      timestamp={data.timestamp} 
+                      userLocation={data.location} 
+                    />
+                  )}
+                </div>
+              </GlassCard>
 
-        <RefreshProgressBar 
-          timeUntilRefresh={timeUntilRefresh} 
-          isRefreshing={isRefreshing} 
-          onManualRefresh={handleRefresh} 
-        />
+              <div className="space-y-6">
+                <GlassCard variant="subtle" className="p-6 h-full">
+                  {!pointsLoading && userPoints ? (
+                    <PointsGrid userPoints={userPoints} onNavigate={onNavigate} />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-muted-foreground">
+                      Tracking points...
+                    </div>
+                  )}
+                </GlassCard>
 
-        {data && (
-          <DataSourceValidator 
-            dataSource={data.dataSource} 
-            aqi={data.aqi} 
-            location={data.location} 
-            timestamp={data.timestamp} 
-            userLocation={data.location} 
-          />
-        )}
-
-        {isDemoMode && (
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">Demo Mode Active</h3>
-                <p className="text-blue-100 text-sm">Showing sample data for demonstration purposes</p>
+                <GlassCard variant="subtle" className="p-6">
+                  <WeatherSection coordinates={coordinates} />
+                </GlassCard>
               </div>
-              <span className="bg-white/20 text-white text-xs font-medium px-2.5 py-0.5 rounded">
-                DEMO
-              </span>
             </div>
+
+            <PollutantModal 
+              pollutant={selectedPollutant} 
+              onClose={() => setSelectedPollutant(null)} 
+            />
           </div>
+        </GlassCard>
+
+        {showSkeleton && (
+          <GlassCard variant="subtle" className="p-6">
+            <DataLoadingOverlay
+              userName={userName}
+              showMobileMenu={showMobileMenu}
+              onMobileMenuToggle={onMobileMenuToggle}
+            />
+          </GlassCard>
         )}
 
-        <div ref={aqiCardRef}>
-          <AQICard
-            data={data}
-            timeUntilRefresh={timeUntilRefresh}
-            isRefreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            onNavigate={onNavigate}
-            showMobileMenu={showMobileMenu}
-            onMobileMenuToggle={onMobileMenuToggle}
-            isDemoMode={isDemoMode}
-            setSelectedPollutant={setSelectedPollutant}
-          />
-        </div>
-
-        {!pointsLoading && userPoints && (
-          <PointsGrid userPoints={userPoints} onNavigate={onNavigate} />
+        {showError && (
+          <GlassCard variant="elevated" className="p-6">
+            <div className="space-y-4 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+                <TrendingDown className="h-8 w-8 text-destructive" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold">Unable to load data</h3>
+                <p className="text-muted-foreground">
+                  {error?.message || "We couldn't fetch the latest air quality details. Please try again."}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Button onClick={handleRefresh} disabled={isRefreshing}>
+                  {isRefreshing ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Retrying...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Try again
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={handleRequestLocationPermission}>
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Re-check location
+                </Button>
+              </div>
+            </div>
+          </GlassCard>
         )}
-
-        <WeatherSection coordinates={coordinates} />
-
-        <PollutantModal 
-          pollutant={selectedPollutant} 
-          onClose={() => setSelectedPollutant(null)} 
-        />
       </div>
     );
-  }
+  };
 
-  // Structured loading state during initial fetch or silent refresh without data
-  if (isLoading && !data) {
-    return (
-      <DataLoadingOverlay
-        userName={userName}
-        showMobileMenu={showMobileMenu}
-        onMobileMenuToggle={onMobileMenuToggle}
-      />
-    );
-  }
-
-  // Error state with retry wired to refreshData
-  if (error) {
-    return (
-      <div className="space-y-6 lg:space-y-8">
-        <Header 
-          title={`Hello, ${userName}!`} 
-          subtitle="Error loading air quality data" 
-          showMobileMenu={showMobileMenu} 
-          onMobileMenuToggle={onMobileMenuToggle} 
-        />
-        <div className="text-center py-12">
-          <div className="max-w-md mx-auto space-y-6">
-            <div className="w-24 h-24 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
-              <TrendingDown className="w-12 h-12 text-destructive" />
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-xl font-semibold">Failed to Load Data</h3>
-              <p className="text-muted-foreground">
-                {error.message || "Unable to fetch air quality data. Please try again."}
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <Button 
-                onClick={handleRefresh} 
-                disabled={isRefreshing} 
-                className="w-full" 
-                size="lg"
-              >
-                {isRefreshing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                    Retrying...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Try Again
-                  </>
-                )}
-              </Button>
-
-              <Button 
-                variant="outline" 
-                onClick={handleRequestLocationPermission} 
-                className="w-full"
-              >
-                <MapPin className="w-4 h-4 mr-2" />
-                Re-check Location
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Fallback
   return (
-    <div className="space-y-6 lg:space-y-8">
-      <Header 
-        title={`Hello, ${userName}!`} 
-        subtitle="Something went wrong" 
-        showMobileMenu={showMobileMenu} 
-        onMobileMenuToggle={onMobileMenuToggle} 
-      />
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">
-          Unable to display dashboard. Please refresh the page.
-        </p>
+    <BackgroundManager>
+      <div className="relative min-h-screen">
+        <InteractiveSmokeOverlay className="fixed inset-0 z-[0] opacity-50" intensity={0.7} />
+        <div className="relative z-10 container mx-auto px-4 py-6 lg:px-8 lg:py-10">
+          {!hasRequestedPermission && !permissionTimeoutReached ? (
+            <GlassCard className="p-6">
+              <LoadingState
+                title={`Hello, ${userName}!`}
+                subtitle="Checking location permissions..."
+              />
+            </GlassCard>
+          ) : !hasUserConsent ? (
+            <GlassCard className="p-6">
+              <PermissionRequest
+                onRequest={handleRequestLocationPermission}
+                requesting={isRequestingPermission}
+                userName={userName}
+                showMobileMenu={showMobileMenu}
+                onMobileMenuToggle={onMobileMenuToggle}
+              />
+            </GlassCard>
+          ) : (
+            renderDashboardContent()
+          )}
+        </div>
       </div>
-    </div>
+    </BackgroundManager>
   );
 }
 
