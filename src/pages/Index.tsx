@@ -5,6 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
 import BackgroundManager from "@/components/BackgroundManager";
+import InteractiveSmokeOverlay from "@/components/backgrounds/InteractiveSmokeOverlay";
 import { DeveloperTools } from "@/components/DeveloperTools";
 import { cleanupAllChannels } from "@/lib/realtimeClient";
 import EnhancedErrorBoundary from "@/components/EnhancedErrorBoundary";
@@ -249,46 +250,46 @@ export default function Index(): JSX.Element | null {
 
   return (
     <BackgroundManager>
-      <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex flex-col">
-        {/* Developer Tools */}
-        <DeveloperTools 
-          isVisible={showDeveloperTools}
-          onToggle={() => setShowDeveloperTools(false)}
-        />
-        
-        {/* Sidebar Navigation */}
-        <Sidebar currentView={currentView} onViewChange={handleViewChange} />
-        
-        {/* Mobile Navigation */}
-        <MobileNavigation 
-          currentView={currentView} 
-          onViewChange={handleViewChange}
-          isOpen={showMobileMenu}
-          onClose={() => setShowMobileMenu(false)}
-        />
-        
-        {/* Main Content Area */}
-        <div className="flex-1 md:ml-16 ml-0">
-          <div className="p-4 sm:p-6 lg:p-8 w-full">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentView}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ 
-                  duration: 0.3, 
-                  ease: "easeInOut"
-                }}
-              >
-                {renderView()}
-              </motion.div>
-            </AnimatePresence>
+      <div className="relative min-h-screen">
+        <InteractiveSmokeOverlay className="fixed inset-0 z-0 pointer-events-none opacity-70" intensity={0.8} />
+
+        <div className="relative z-10 flex min-h-screen bg-gradient-to-br from-background/60 via-background/30 to-background/80">
+          <DeveloperTools 
+            isVisible={showDeveloperTools}
+            onToggle={() => setShowDeveloperTools(false)}
+          />
+
+          <Sidebar currentView={currentView} onViewChange={handleViewChange} />
+
+          <div className="flex-1 md:ml-16">
+            <div className="relative">
+              <MobileNavigation 
+                currentView={currentView} 
+                onViewChange={handleViewChange}
+                isOpen={showMobileMenu}
+                onClose={() => setShowMobileMenu(false)}
+              />
+
+              <main className="px-4 py-6 sm:px-6 lg:px-10">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentView}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                  >
+                    {renderView()}
+                  </motion.div>
+                </AnimatePresence>
+              </main>
+
+              <footer className="px-4 pb-6 sm:px-6 lg:px-10">
+                <Footer />
+              </footer>
+            </div>
           </div>
         </div>
-
-        {/* Footer */}
-        <Footer />
       </div>
     </BackgroundManager>
   );
