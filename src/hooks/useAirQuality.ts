@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { memoryMonitor } from '@/utils/memoryMonitor';
 import { useAuth } from './useAuth';
 import { useGeolocation } from './useGeolocation';
 import { useToast } from './use-toast';
-import { memoryMonitor } from '@/utils/memoryMonitor';
+import useGlobalEnvironmentalData from './useGlobalEnvironmentalData';
+import type { GlobalEnvironmentalData } from '@/types';
 import {
   setRefreshLockTimestamp,
   getTimeUntilNextRefresh,
@@ -27,6 +29,113 @@ const CACHE_CONFIG = {
 const AIR_QUALITY_HISTORY_TTL_MS = 12 * 60 * 60 * 1000; // Retain 12 hours of history
 
 const LAST_READING_STORAGE_KEY = 'breath_safe_last_air_quality_reading';
+
+const SCHEDULED_REFRESH_INTERVAL_MS = 60_000;
+const SCHEDULED_MAX_DISTANCE_KM = 100;
+const SCHEDULED_DATA_STALE_MINUTES = 30;
+
+const POLLUTANT_LABELS: Record<string, string> = {
+  pm25: 'PM2.5',
+  pm10: 'PM10',
+  no2: 'NO2',
+  so2: 'SO2',
+  co: 'CO',
+  o3: 'O3',
+};
+
+interface Coordinates {
+  lat: number;
+  lon: number;
+}
+
+const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+
+const haversineDistanceKm = (
+  origin: Coordinates,
+  destination: Coordinates,
+): number => {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(destination.lat - origin.lat);
+  const dLon = toRadians(destination.lon - origin.lon);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(origin.lat)) *
+      Math.cos(toRadians(destination.lat)) *
+      Math.sin(dLon / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const computeDominantPollutantFromScheduled = (
+  record: GlobalEnvironmentalData,
+): string | undefined => {
+  let dominantKey: keyof typeof POLLUTANT_LABELS | null = null;
+  let highest = -Infinity;
+
+  (Object.keys(POLLUTANT_LABELS) as (keyof typeof POLLUTANT_LABELS)[]).forEach((key) => {
+    const value = record[key];
+    if (typeof value === 'number' && Number.isFinite(value) && value > highest) {
+      highest = value;
+      dominantKey = key;
+    }
+  });
+
+  return dominantKey ? POLLUTANT_LABELS[dominantKey] : undefined;
+};
+
+const createScheduledAirQualityReading = (
+  record: GlobalEnvironmentalData,
+  userCoordinates?: Coordinates | null,
+): AirQualityData => {
+  const stationCoordinates: Coordinates = {
+    lat: record.latitude,
+    lon: record.longitude,
+  };
+
+  const userCoords = userCoordinates ?? stationCoordinates;
+  const locationName = record.country
+    ? `${record.city_name}, ${record.country}`
+    : record.city_name;
+
+  const distanceKm = userCoordinates
+    ? haversineDistanceKm(userCoords, stationCoordinates)
+    : null;
+
+  return {
+    aqi: typeof record.aqi === 'number' ? record.aqi : 0,
+    pm25: record.pm25 ?? 0,
+    pm10: record.pm10 ?? 0,
+    no2: record.no2 ?? 0,
+    so2: record.so2 ?? 0,
+    co: record.co ?? 0,
+    o3: record.o3 ?? 0,
+    location: locationName,
+    userLocation: locationName,
+    coordinates: stationCoordinates,
+    userCoordinates: userCoords,
+    timestamp: record.collection_timestamp,
+    dataSource: 'AQICN (Scheduled)',
+    stationName: record.city_name,
+    stationUid: record.id,
+    distance: distanceKm !== null ? distanceKm.toFixed(2) : undefined,
+    country: record.country,
+    dominantPollutant: computeDominantPollutantFromScheduled(record),
+    environmental: {
+      temperature: record.temperature ?? undefined,
+      humidity: record.humidity ?? undefined,
+      pressure: record.air_pressure ?? undefined,
+      windSpeed: record.wind_speed ?? undefined,
+      windDirection: record.wind_direction ?? undefined,
+      windGust: record.wind_gust ?? undefined,
+      visibility: record.visibility ?? undefined,
+      feelsLikeTemperature: record.feels_like_temperature ?? undefined,
+      sunriseTime: record.sunrise_time ?? undefined,
+      sunsetTime: record.sunset_time ?? undefined,
+      weatherCondition: record.weather_condition ?? undefined,
+    },
+  };
+};
 
 // Enhanced interface for AQICN-only air quality data
 export interface AirQualityData {
@@ -143,6 +252,18 @@ export const useAirQuality = () => {
   const { locationData } = useGeolocation();
   const { toast } = useToast();
 
+  const {
+    data: scheduledData,
+    isLoading: scheduledLoading,
+    error: scheduledError,
+    refetch: refetchScheduledData,
+  } = useGlobalEnvironmentalData({
+    latitude: locationData?.latitude,
+    longitude: locationData?.longitude,
+    maxDistanceKm: SCHEDULED_MAX_DISTANCE_KM,
+    refreshInterval: SCHEDULED_REFRESH_INTERVAL_MS,
+  });
+
   // Rate limiting for console logs to prevent spam
   const lastLogTime = useRef<number>(0);
 
@@ -165,6 +286,35 @@ export const useAirQuality = () => {
   const initialLockActive = typeof window !== 'undefined' ? isRefreshLocked() : false;
 
   const [queryEnabled, setQueryEnabled] = useState<boolean>(() => !initialLockActive);
+
+  const userCoordinates: Coordinates | null = useMemo(() => {
+    if (!safeCoordinates?.lat || !safeCoordinates?.lng) {
+      return null;
+    }
+    return { lat: safeCoordinates.lat, lon: safeCoordinates.lng };
+  }, [safeCoordinates?.lat, safeCoordinates?.lng]);
+
+  const scheduledReading = useMemo(() => {
+    if (!scheduledData) {
+      return null;
+    }
+
+    return createScheduledAirQualityReading(scheduledData, userCoordinates);
+  }, [scheduledData, userCoordinates?.lat, userCoordinates?.lon]);
+
+  const scheduledIsFresh = useMemo(() => {
+    if (!scheduledReading) {
+      return false;
+    }
+
+    const timestamp = new Date(scheduledReading.timestamp).getTime();
+    if (!Number.isFinite(timestamp)) {
+      return false;
+    }
+
+    const ageMinutes = (Date.now() - timestamp) / 60000;
+    return ageMinutes <= SCHEDULED_DATA_STALE_MINUTES;
+  }, [scheduledReading?.timestamp]);
 
   const pruneHistory = useCallback((entries: AirQualityData[]) => {
     const cutoff = Date.now() - AIR_QUALITY_HISTORY_TTL_MS;
@@ -368,8 +518,12 @@ export const useAirQuality = () => {
         };
       }
     },
-    enabled: queryEnabled && !!safeCoordinates?.lat && !!safeCoordinates?.lng,
+    enabled: queryEnabled && !scheduledIsFresh && !!safeCoordinates?.lat && !!safeCoordinates?.lng,
     placeholderData: () => {
+      if (scheduledIsFresh && scheduledReading) {
+        return scheduledReading;
+      }
+
       const storedReading = loadStoredAirQualityReading();
       if (!storedReading) {
         return undefined;
@@ -393,6 +547,41 @@ export const useAirQuality = () => {
     retry: 2,
     retryDelay: attempt => Math.min(1000 * Math.pow(2, attempt), 30_000),
   });
+
+  useEffect(() => {
+    if (!scheduledReading || !scheduledIsFresh) {
+      return;
+    }
+
+    const latest = readingsRef.current[readingsRef.current.length - 1];
+    if (latest && latest.timestamp === scheduledReading.timestamp && latest.dataSource === scheduledReading.dataSource) {
+      return;
+    }
+
+    console.log('♻️ [useAirQuality] Using scheduled AQICN data for dashboard rendering', {
+      location: scheduledReading.location,
+      aqi: scheduledReading.aqi,
+      timestamp: scheduledReading.timestamp,
+    });
+
+    persistAirQualityReading(scheduledReading);
+
+    const mergedReadings = [...readingsRef.current, scheduledReading];
+    const prunedReadings = pruneHistory(mergedReadings);
+    readingsRef.current = prunedReadings;
+    setReadings(prunedReadings);
+  }, [scheduledIsFresh, scheduledReading, pruneHistory]);
+
+  useEffect(() => {
+    if (scheduledIsFresh) {
+      return;
+    }
+
+    const lockActive = typeof window !== 'undefined' ? isRefreshLocked() : false;
+    if (!lockActive) {
+      setQueryEnabled(true);
+    }
+  }, [scheduledIsFresh]);
 
   // Persist successful responses into the readings buffers so UI consumers receive data
   useEffect(() => {
@@ -444,6 +633,20 @@ export const useAirQuality = () => {
       }
 
       try {
+        if (!options.force && scheduledIsFresh) {
+          await refetchScheduledData();
+          setRefreshLockTimestamp();
+          setQueryEnabled(false);
+          if (!options.silent) {
+            toast({
+              title: "Data refreshed",
+              description: "Latest scheduled air quality data retrieved successfully.",
+              variant: "default",
+            });
+          }
+          return { refreshed: true, source: 'scheduled' } as const;
+        }
+
         console.log('🔄 [useAirQuality] Initiating air quality refresh');
         await aqicnQuery.refetch({ throwOnError: true });
         backoffAttemptRef.current = 0;
@@ -474,7 +677,7 @@ export const useAirQuality = () => {
         return { error: true, cause: error } as const;
       }
     },
-    [aqicnQuery, locationData?.latitude, locationData?.longitude, toast]
+    [aqicnQuery, locationData?.latitude, locationData?.longitude, refetchScheduledData, scheduledIsFresh, toast]
   );
 
   // Effect to fetch data when location changes (debounced)
@@ -515,8 +718,11 @@ export const useAirQuality = () => {
 
   // Memoize the result to prevent unnecessary re-renders
   const result = useMemo(() => {
-    const queryError = (aqicnQuery.error as Error) ?? null;
-    const isInitialLoading = aqicnQuery.isLoading || (!readings.length && aqicnQuery.isFetching);
+    const queryError = (aqicnQuery.error as Error) ?? scheduledError ?? null;
+    const isInitialLoading =
+      scheduledLoading ||
+      aqicnQuery.isLoading ||
+      (!readings.length && (aqicnQuery.isFetching || scheduledLoading));
 
     const baseResult = {
       data: readings.length > 0 ? readings[readings.length - 1] : null,
