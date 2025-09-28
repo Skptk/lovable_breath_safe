@@ -29,7 +29,12 @@
 - Pending follow-up: run manual FPS checks on dashboard route after deployment to confirm smoke overlay remains within budget on Chromebooks/tablets.
 - `src/lib/realtimeConnectionManager.ts`
   - Defer channel callback dispatching to `queueMicrotask`/Promise to keep the WebSocket thread light and avoid "[Violation] 'message' handler" spam in Chrome.
-  - Skip dispatch when the document is hidden so background tabs do not accumulate stale payloads or trigger memory monitors.
+  - Dispatch continues even when tabs are hidden so realtime payloads stay current across visibility swaps.
+- **Realtime & background resilience (2025-09-28)**
+  - `src/utils/safeTimers.ts`: default intervals now continue in background tabs; callers can explicitly opt into pause behaviour.
+  - `src/contexts/RealtimeContext.tsx`: removed visibility-based suspension so Supabase subscriptions stay live regardless of tab focus.
+  - `src/lib/realtimeConnectionManager.ts`: callback dispatch is no longer blocked when `document.hidden` to keep queued payloads flowing.
+  - `src/hooks/useReflowOptimization.ts`: measurement scheduler no longer cancels on tab hide; queued layout work resumes automatically.
 
 ### Console Logging Optimization System Implementation – 2025-01-22
 

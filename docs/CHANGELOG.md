@@ -50,6 +50,7 @@ All notable changes to this project will be documented in this file.
   - Only persist background refresh lock when applying non-default weather imagery
   - Declare `timeAnalysisCache` and `hasAppliedBackgroundRef` refs explicitly to avoid TDZ crashes
   - Add lock key and duration constants for deterministic bundling and tests
+- **Realtime Visibility Suspension**: Removed tab-visibility gating in `src/contexts/RealtimeContext.tsx` and hidden-tab dispatch suppression in `src/lib/realtimeConnectionManager.ts` so Supabase events continue flowing when the app is backgrounded.
 
 - **Tooling**: Harden static analysis and regression detection for TDZ issues
   - Promote `@typescript-eslint/no-use-before-define` and `no-undef` to errors in `eslint.config.js`
@@ -118,6 +119,7 @@ All notable changes to this project will be documented in this file.
   - Refactored `useStableChannelSubscription` to register hooks before conditional returns
   - Persist callback references with internal refs to avoid temporal dead zone errors
   - Added defensive logging and retry guards for more reliable reconnect behavior
+- **Async Resilience**: Default `createSafeInterval()` behavior now keeps timers active across tab visibility changes, and `useReflowOptimization.ts` schedules measurements without relying on Page Visibility API cues.
 
 - **Error Handling**: Converted UI error boundary to functional architecture
   - Replaced legacy class-based `ErrorBoundary` with hook-driven implementation

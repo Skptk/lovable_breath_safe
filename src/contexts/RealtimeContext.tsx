@@ -64,10 +64,6 @@ function useRealtimeContextValue() {
   const activeSubscriptionsRef = useRef<Map<string, SubscriptionEntry>>(new Map());
   const statusListenerCleanupRef = useRef<(() => void) | null>(null);
   const mountedRef = useRef(true);
-  const realtimeSuspendedRef = useRef<boolean>(
-    !realtimePermitted || (hasWindow && typeof document !== 'undefined' ? document.hidden : false)
-  );
-  const [isRealtimeSuspended, setRealtimeSuspended] = useState<boolean>(realtimeSuspendedRef.current);
   
   // Throttle the connection status updates
   const throttledSetConnectionStatus = useThrottle((status: 'connected' | 'connecting' | 'reconnecting' | 'disconnected') => {
@@ -99,12 +95,6 @@ function useRealtimeContextValue() {
         timeoutId = null;
 
         if (!hasPendingPayload) {
-          return;
-        }
-
-        if (realtimeSuspendedRef.current) {
-          hasPendingPayload = false;
-          pendingPayload = undefined;
           return;
         }
 
@@ -202,30 +192,11 @@ function useRealtimeContextValue() {
   }, [cleanup, throttledSetConnectionStatus]);
 
   useEffect(() => {
-    if (!realtimePermitted || !hasWindow || typeof document === 'undefined') {
-      return;
-    }
-
-    const handleVisibilityChange = () => {
-      const hidden = document.visibilityState === 'hidden';
-      realtimeSuspendedRef.current = hidden;
-      setRealtimeSuspended(hidden);
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    handleVisibilityChange();
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!realtimePermitted) {
       return;
     }
 
-    if (isRealtimeSuspended) {
+    if (!user?.id) {
       activeSubscriptionsRef.current.forEach((entry, channelName) => {
         if (entry.isSubscribed) {
           unsubscribeFromChannel(channelName, entry.aggregator);
@@ -234,15 +205,16 @@ function useRealtimeContextValue() {
         entry.cancelScheduledFlush();
       });
       cleanupAllChannels();
-    } else {
-      activeSubscriptionsRef.current.forEach((entry, channelName) => {
-        if (!entry.isSubscribed && entry.callbacks.size > 0 && user?.id) {
-          subscribeToChannel(channelName, entry.aggregator);
-          entry.isSubscribed = true;
-        }
-      });
+      return;
     }
-  }, [isRealtimeSuspended, user?.id]);
+
+    activeSubscriptionsRef.current.forEach((entry, channelName) => {
+      if (!entry.isSubscribed && entry.callbacks.size > 0) {
+        subscribeToChannel(channelName, entry.aggregator);
+        entry.isSubscribed = true;
+      }
+    });
+  }, [user?.id]);
 
   // Define the cleanup function outside the useCallback to avoid hooks after early returns
   const subscribe = useCallback((
@@ -274,7 +246,7 @@ function useRealtimeContextValue() {
     const wasEmpty = entry.callbacks.size === 0;
     entry.callbacks.add(callback);
 
-    if (!isRealtimeSuspended && (!entry.isSubscribed || wasEmpty)) {
+    if (!entry.isSubscribed || wasEmpty) {
       subscribeToChannel(channelName, entry.aggregator);
       entry.isSubscribed = true;
     }
@@ -297,19 +269,19 @@ function useRealtimeContextValue() {
         activeSubscriptionsRef.current.delete(channelName);
       }
     };
-  }, [createAggregatedDispatcher, isRealtimeSuspended, user?.id]);
+  }, [createAggregatedDispatcher, user?.id]);
 
   // Exposed methods
   const contextValue = useMemo(() => ({
     connectionStatus,
-    isConnected: realtimePermitted && !isRealtimeSuspended && connectionStatus === 'connected',
+    isConnected: realtimePermitted && connectionStatus === 'connected',
     subscribeToNotifications: (callback: (payload: any) => void) =>
       subscribe(`user-notifications-${user?.id}`, callback, { isPersistent: true }),
     subscribeToUserPoints: (callback: (payload: any) => void) =>
       subscribe(`user-points-${user?.id}`, callback, { isPersistent: true }),
     subscribeToUserProfilePoints: (callback: (payload: any) => void) =>
       subscribe(`user-profile-points-${user?.id}`, callback, { isPersistent: false }),
-  }), [connectionStatus, isRealtimeSuspended, subscribe, user?.id]);
+  }), [connectionStatus, subscribe, user?.id]);
   
   return contextValue;
 }

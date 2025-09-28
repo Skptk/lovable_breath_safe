@@ -257,23 +257,12 @@ export function useReflowOptimization<T = DOMRect>(
   }, [cleanupScheduled, resolvePending]);
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        cleanupScheduled();
-      } else if (measure) {
-        scheduleMeasurement();
-      }
-    };
-
-    if (hasWindow && typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      return () => {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      };
+    if (!measure) {
+      return;
     }
 
-    return undefined;
-  }, [cleanupScheduled, measure, scheduleMeasurement]);
+    scheduleMeasurement();
+  }, [measure, scheduleMeasurement]);
 
   const handle = useMemo<ReflowOptimizationHandle<T>>(
     () => ({

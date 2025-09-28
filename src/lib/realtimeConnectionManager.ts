@@ -403,10 +403,6 @@ export class RealtimeConnectionManager {
       return;
     }
 
-    if (typeof document !== 'undefined' && document.hidden) {
-      return;
-    }
-
     const callbacks = Array.from(entry.callbacks);
 
     const invokeCallbacks = () => {

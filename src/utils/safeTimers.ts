@@ -23,7 +23,7 @@ export function createSafeInterval(
   }
 
   const {
-    pauseWhenHidden = true,
+    pauseWhenHidden = false,
     shouldRun,
     immediate = false,
     onSkip
