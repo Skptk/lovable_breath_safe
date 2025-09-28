@@ -300,6 +300,48 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     };
   }, [user, hasInitialData, locationData, fetchWeatherData]);
 
+  // Startup watchdog: if auth is ready but weather hasn't populated within 12s,
+  // retry fetching using the last known coordinates to avoid stalls.
+  useEffect(() => {
+    if (!isMountedRef.current) return;
+
+    if (!user || hasInitialData) {
+      return;
+    }
+
+    let cancelled = false;
+    const timerId = window.setTimeout(async () => {
+      if (cancelled || !isMountedRef.current) return;
+      const noWeather = !currentWeather && !weatherLoading;
+
+      if (noWeather) {
+        try {
+          const storedCoordinates = useWeatherStore.getState().currentCoordinates;
+          if (storedCoordinates) {
+            await fetchWeatherData({
+              latitude: storedCoordinates.latitude,
+              longitude: storedCoordinates.longitude,
+            });
+            if (isMountedRef.current) {
+              setHasInitialData(true);
+              setBackgroundState('success');
+            }
+          }
+        } catch (err) {
+          if (isMountedRef.current) {
+            setBackgroundState('error');
+            setHasInitialData(true);
+          }
+        }
+      }
+    }, 12000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timerId);
+    };
+  }, [user, hasInitialData, currentWeather, weatherLoading, fetchWeatherData]);
+
   // Update background state based on weather loading status
   useEffect(() => {
     if (!isMountedRef.current) return;

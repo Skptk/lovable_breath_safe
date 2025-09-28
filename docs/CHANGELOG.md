@@ -51,6 +51,7 @@ All notable changes to this project will be documented in this file.
   - Declare `timeAnalysisCache` and `hasAppliedBackgroundRef` refs explicitly to avoid TDZ crashes
   - Add lock key and duration constants for deterministic bundling and tests
 - **Realtime Visibility Suspension**: Removed tab-visibility gating in `src/contexts/RealtimeContext.tsx` and hidden-tab dispatch suppression in `src/lib/realtimeConnectionManager.ts` so Supabase events continue flowing when the app is backgrounded.
+- **Weather Watchdog**: Adjusted `src/components/BackgroundManager.tsx` to retry the initial weather fetch after 12 seconds using stored coordinates, avoiding IP-based fallbacks while preventing first-load stalls.
 
 - **Tooling**: Harden static analysis and regression detection for TDZ issues
   - Promote `@typescript-eslint/no-use-before-define` and `no-undef` to errors in `eslint.config.js`
