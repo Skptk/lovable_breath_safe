@@ -678,6 +678,27 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
         setIsInitialized(false);
       }
     };
+
+    void initializeSubscription();
+
+    return () => {
+      isActive = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (abortController) {
+        abortController.abort();
+      }
+      if (subscriptionRef.current) {
+        const unsubscribe = subscriptionRef.current;
+        subscriptionRef.current = null;
+        unsubscribe();
+      }
+      if (isMountedRef.current) {
+        setSubscriptionStatus('idle');
+        setIsInitialized(false);
+      }
+    };
   }, [userId, isInitialized]);
 
   // Mobile performance optimization - pause expensive operations when app is backgrounded
@@ -685,20 +706,18 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         queueRefresh();
+      } else {
+        cancelQueuedRefresh();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      cancelScheduled();
+      cancelQueuedRefresh();
     };
-  }, [userId, loadProfileData]);
+  }, [queueRefresh, cancelQueuedRefresh]);
 
-  if (loading) {
-    return (
-      <div className="space-y-6 lg:space-y-8">
-        <Header
           title="Profile"
           subtitle="Loading your profile..."
           showMobileMenu={showMobileMenu}
