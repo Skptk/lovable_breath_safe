@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Lock, ArrowRight, Home, Map, User, Trophy, ShoppingBag, Settings, Newspaper } from "lucide-react";
 import BackgroundManager from "@/components/BackgroundManager";
+import { SmokeEffect } from "@/components";
 import Footer from "@/components/Footer";
 
 // Lazy load only the components needed for demo mode
@@ -200,6 +201,7 @@ export default function Demo(): JSX.Element {
   return (
     <BackgroundManager>
       <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex flex-col">
+        <SmokeEffect />
         {/* Demo Navigation Bar */}
         <motion.nav 
           className="bg-card border-b border-border backdrop-blur-xl sticky top-0 z-50"
