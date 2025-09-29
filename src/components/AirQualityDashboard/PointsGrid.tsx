@@ -22,7 +22,17 @@ function PointsGridComponent({
 
   React.useEffect(() => {
     if (!userPoints) return;
-    scheduleMeasurement();
+
+    let frameId: number | null = requestAnimationFrame(() => {
+      scheduleMeasurement();
+    });
+
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+    };
   }, [scheduleMeasurement, userPoints?.totalPoints, userPoints?.todayReadings, userPoints?.weeklyReadings]);
 
   if (!userPoints) return null;

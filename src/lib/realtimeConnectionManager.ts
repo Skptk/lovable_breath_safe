@@ -26,6 +26,8 @@ const REALTIME_ENVIRONMENT_ENABLED = ENV_FLAGS.hasWindow && !ENV_FLAGS.isTestEnv
 const MAX_CHANNELS = 12;
 const MAX_CALLBACKS_PER_CHANNEL = 10;
 const MAX_PENDING_RESOLVERS_PER_CHANNEL = 5;
+const PERFORMANCE_LOG_THRESHOLD_MS = 120;
+const CALLBACK_WARN_THRESHOLD_MS = 24;
 
 export type ChannelSubscriptionConfig = {
   event?: string;
@@ -406,12 +408,48 @@ export class RealtimeConnectionManager {
     const callbacks = Array.from(entry.callbacks);
 
     const invokeCallbacks = () => {
+      const start = performance.now();
+      let slowestCallbackDuration = 0;
+      let slowestCallbackName: string | null = null;
+      const slowCallbacks: { name: string; duration: number }[] = [];
+
       for (const callback of callbacks) {
+        const callbackStart = performance.now();
         try {
           callback(payload);
         } catch (error) {
           console.error('[RealtimeConnectionManager] Subscription callback error', { channelName, error });
         }
+        const callbackDuration = performance.now() - callbackStart;
+        if (callbackDuration > slowestCallbackDuration) {
+          slowestCallbackDuration = callbackDuration;
+          slowestCallbackName = callback.name || 'anonymous';
+        }
+        if (callbackDuration >= CALLBACK_WARN_THRESHOLD_MS) {
+          slowCallbacks.push({
+            name: callback.name || 'anonymous',
+            duration: callbackDuration,
+          });
+        }
+      }
+
+      const duration = performance.now() - start;
+      if (duration >= PERFORMANCE_LOG_THRESHOLD_MS) {
+        console.warn('[RealtimeConnectionManager] Slow message dispatch detected', {
+          channelName,
+          duration,
+          callbackCount: callbacks.length,
+          slowestCallback: slowestCallbackName,
+          slowestCallbackDuration,
+        });
+      }
+
+      if (slowCallbacks.length > 0) {
+        slowCallbacks.sort((a, b) => b.duration - a.duration);
+        console.warn('[RealtimeConnectionManager] Slow subscription callbacks detected', {
+          channelName,
+          callbacks: slowCallbacks.slice(0, 5),
+        });
       }
     };
 

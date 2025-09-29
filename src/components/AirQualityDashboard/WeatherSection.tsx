@@ -20,7 +20,16 @@ function WeatherSectionComponent({ coordinates }: WeatherSectionProps) {
 
   React.useEffect(() => {
     if (!coordinates) return;
-    scheduleMeasurement();
+    let frameId: number | null = requestAnimationFrame(() => {
+      scheduleMeasurement();
+    });
+
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+    };
   }, [coordinates?.latitude, coordinates?.longitude, scheduleMeasurement]);
 
   // Early return if coordinates are not available
@@ -33,9 +42,9 @@ function WeatherSectionComponent({ coordinates }: WeatherSectionProps) {
   return (
     <motion.div 
       ref={containerRef}
-      initial={{ opacity: 0, y: 20 }} 
+      initial={{ opacity: 0, y: 12 }} 
       animate={{ opacity: 1, y: 0 }} 
-      transition={{ duration: 0.6, ease: "easeOut", delay: 0.4 }}
+      transition={{ duration: 0.32, ease: "easeOut", delay: 0.18 }}
     >
       <WeatherStatsCard 
         latitude={coordinates.latitude} 

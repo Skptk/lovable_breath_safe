@@ -41,6 +41,24 @@ const dispatchHeapEvent = (level: HeapFailSafeLevel, detail: { usedMb: number })
   window.dispatchEvent(new CustomEvent<HeapFailSafeEventDetail>(DISPATCH_EVENT_NAME, { detail: eventDetail }));
 };
 
+const readMemoryDiagnostics = () => {
+  try {
+    const stats = (memoryMonitor as any)?.getStats?.();
+    if (!stats) {
+      return undefined;
+    }
+    return {
+      highWaterMark: stats.highWaterMark,
+      listeners: stats.listeners,
+      historyLength: stats.history?.length,
+      recentUsage: stats.current,
+    };
+  } catch (error) {
+    console.warn('[HeapFailSafe] Failed to read memory diagnostics', error);
+    return undefined;
+  }
+};
+
 const trimQueryCache = async (queryClient: QueryClient, clearAll: boolean) => {
   if (!queryClient) {
     return;
@@ -120,7 +138,10 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
     if (usedMb >= emergencyThresholdMb) {
       if (now - lastEmergency >= throttleMs) {
         lastEmergency = now;
-        console.error('🚨 [HeapFailSafe] Emergency threshold exceeded. Reloading application.', { usedMb });
+        console.error('🚨 [HeapFailSafe] Emergency threshold exceeded. Reloading application.', {
+          usedMb,
+          diagnostics: readMemoryDiagnostics(),
+        });
         onEmergency?.(usedMb);
         dispatchHeapEvent('emergency', { usedMb });
         window.location.reload();
@@ -131,7 +152,10 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
     if (usedMb >= criticalThresholdMb) {
       if (now - lastCritical >= throttleMs) {
         lastCritical = now;
-        console.error('⚠️ [HeapFailSafe] Critical heap usage detected. Clearing caches.', { usedMb });
+        console.error('⚠️ [HeapFailSafe] Critical heap usage detected. Clearing caches.', {
+          usedMb,
+          diagnostics: readMemoryDiagnostics(),
+        });
         void trimQueryCache(queryClient!, false);
         trimSessionStorage(false);
         onCritical?.(usedMb);
@@ -142,7 +166,10 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
 
     if (usedMb >= warnThresholdMb && now - lastWarned >= throttleMs) {
       lastWarned = now;
-      console.warn('🟡 [HeapFailSafe] High heap usage detected. Monitoring closely.', { usedMb });
+      console.warn('🟡 [HeapFailSafe] High heap usage detected. Monitoring closely.', {
+        usedMb,
+        diagnostics: readMemoryDiagnostics(),
+      });
       onWarn?.(usedMb);
       dispatchHeapEvent('warn', { usedMb });
     }

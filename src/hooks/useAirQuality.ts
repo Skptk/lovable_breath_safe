@@ -419,35 +419,43 @@ export const useAirQuality = () => {
         source,
       });
 
-      void (async () => {
-        try {
-          const { error: insertError } = await supabase
-            .from('air_quality_readings')
-            .insert(record);
+      const runInsert = () => {
+        void (async () => {
+          try {
+            const { error: insertError } = await supabase
+              .from('air_quality_readings')
+              .insert(record);
 
-          if (insertError) {
-            const errorPayload = insertError as { message?: string; details?: string; hint?: string; code?: string };
-            console.error(`❌ [useAirQuality] ${source} insert failed`, {
-              message: errorPayload.message,
-              details: errorPayload.details,
-              hint: errorPayload.hint,
-              code: errorPayload.code,
-            });
-            console.error('❌ [useAirQuality] Data that failed to insert:', JSON.stringify(record, null, 2));
+            if (insertError) {
+              const errorPayload = insertError as { message?: string; details?: string; hint?: string; code?: string };
+              console.error(`❌ [useAirQuality] ${source} insert failed`, {
+                message: errorPayload.message,
+                details: errorPayload.details,
+                hint: errorPayload.hint,
+                code: errorPayload.code,
+              });
+              console.error('❌ [useAirQuality] Data that failed to insert:', JSON.stringify(record, null, 2));
+              lastHistoryInsertRef.current = null;
+              return;
+            }
+
+            console.log(`✅ [useAirQuality] Successfully recorded ${source} AQI reading in history`);
+            lastRecordedAtRef.current = Date.now();
+            if (source === 'live') {
+              setRefreshLockTimestamp();
+            }
+          } catch (insertError: unknown) {
+            console.error(`❌ [useAirQuality] ${source} history insert threw`, insertError);
             lastHistoryInsertRef.current = null;
-            return;
           }
+        })();
+      };
 
-          console.log(`✅ [useAirQuality] Successfully recorded ${source} AQI reading in history`);
-          lastRecordedAtRef.current = Date.now();
-          if (source === 'live') {
-            setRefreshLockTimestamp();
-          }
-        } catch (insertError: unknown) {
-          console.error(`❌ [useAirQuality] ${source} history insert threw`, insertError);
-          lastHistoryInsertRef.current = null;
-        }
-      })();
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback?.(() => runInsert(), { timeout: 1500 });
+      } else {
+        setTimeout(runInsert, 0);
+      }
     },
     [scheduledReading?.timestamp, user]
   );

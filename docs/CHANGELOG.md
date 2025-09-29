@@ -49,6 +49,9 @@ All notable changes to this project will be documented in this file.
 - **Memory Guard Rail Enhancements**: Combined query cache tuning, heap fail-safe dispatching, and badge history pruning reduces steady-state heap usage recorded by `memoryMonitor.addListener()` and ensures reload safeguards trigger before crossing the 200 MB threshold.
 - **AirParticles Performance Pass**: Reduced particle count in `src/components/AirParticles.tsx`, throttled glow/opacity updates, and debounced resize-driven reinitialization to cut per-frame paint cost and stabilize memory usage during dashboard sessions.
 - **Realtime Dispatch Offloading**: Deferred channel callback execution in `src/lib/realtimeConnectionManager.ts` to microtasks and suppressed hidden-tab dispatch, eliminating Chrome's "[Violation] 'message' handler" spam and keeping WebSocket handlers under the long-task threshold.
+- **Realtime Dispatch Diagnostics**: `src/lib/realtimeConnectionManager.ts` now records total dispatch duration plus per-callback timings above 24 ms, highlighting the slowest subscription handlers to target remaining long tasks.
+- **Dashboard Animation Tightening**: Shortened key Framer Motion transitions in `src/components/AirQualityDashboard/AQICard.tsx` and `WeatherSection.tsx`, memoizing motion configs and deferring layout measurements with `requestAnimationFrame` to reduce forced reflows and Interaction to Next Paint (INP) regressions.
+- **Heap Fail-safe Telemetry**: `src/utils/heapFailSafe.ts` logs `memoryMonitor.getStats()` diagnostics (high-water mark, listener count, recent usage) whenever warn/critical/emergency thresholds fire, improving visibility into cache and listener pressure before auto-clearing.
 
 ### Migration
 

@@ -127,13 +127,16 @@ function AQICardComponent(props: AQICardProps) {
     },
   ], [data]);
 
+  const initialMotion = React.useMemo(() => ({ opacity: 0, y: 12 }), []);
+  const animateMotion = React.useMemo(() => ({ opacity: 1, y: 0 }), []);
+
   // Early return if no data is available
   if (!data) {
     return (
       <motion.div 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        initial={initialMotion} 
+        animate={animateMotion} 
+        transition={{ duration: 0.28, ease: "easeOut" }}
       >
         <GlassCard variant="elevated" className="p-6">
           <GlassCardHeader className="text-center">
@@ -167,9 +170,9 @@ function AQICardComponent(props: AQICardProps) {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      transition={{ duration: 0.6, ease: "easeOut" }}
+      initial={initialMotion} 
+      animate={animateMotion} 
+      transition={{ duration: 0.28, ease: "easeOut" }}
       aria-live="polite"
       aria-atomic="true"
     >
