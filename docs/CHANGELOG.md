@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Interactive Air Particles Layer**: Introduced `src/components/AirParticles.tsx`, a requestAnimationFrame-driven particulate system rendered between `BackgroundManager` and dashboard glass panes. The overlay spawns 40 GPU-accelerated particles (26 on mobile), applies Brownian drift, inverse-square cursor/touch repulsion, and spring-damped return to base positions while maintaining 60fps through direct DOM transforms.
 - **Atmospheric Smoke Layer**: Introduced `src/components/SmokeEffect.tsx`, a CSS-only particle system inserted between `BackgroundManager` and dashboard content in `src/pages/Index.tsx` and `src/pages/Demo.tsx` to deliver the high-priority animated smoke effect while honoring the existing z-index hierarchy and performance constraints.
 - **ReferenceError Bundle Guard**: Updated `scripts/check-bundle-reference-errors.js` to ignore the benign "ReferenceError: this hasn't been initialised - super() hasn't been called" helper string emitted by Babel so builds no longer fail on safe constructor checks while still blocking real TDZ issues.
 - **Performance Guardrails & WebSocket Resilience**: Documented the four-phase optimisation work spanning throttled memory monitors, memoised dashboard components, idle-scheduled handlers, hardened WebSocket reconnection logic, and the new `tests/connectionManager.test.ts` coverage used by Netlify/GitHub pipelines.
@@ -28,6 +29,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Atmospheric Overlay Migration**: Swapped `SmokeEffect` usage for the new `AirParticles` component in `src/pages/Index.tsx` and `src/pages/Demo.tsx`, retaining the dedicated z-index band (`z-[0]`) while delivering denser, mouse/touch-reactive particulate visuals and reducing React render overhead via ref-managed DOM updates.
 - **Dashboard Render Optimisations**: Memoised `src/components/DataSourceValidator.tsx` and the dashboard header/air-quality cards while routing pointer and resize handlers through requestAnimationFrame to reduce redundant renders and layout thrash.
 - **Landing Experience Refresh**: Reimagined `src/pages/Landing.tsx`, `tailwind.config.ts`, and global design tokens to adopt Inter/Plus Jakarta Sans typography, glassmorphism cards, and BuildAI-inspired hero metrics without impacting routing or onboarding flows.
 - **Atmospheric Background Overlay**: Introduced `src/components/backgrounds/InteractiveSmokeOverlay.tsx` and layered it into `BackgroundManager.tsx` so the weather-driven imagery gains the interactive, smoke-like distortion from the reference design while retaining existing fallback behavior.

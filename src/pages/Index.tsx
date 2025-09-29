@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
 import BackgroundManager from "@/components/BackgroundManager";
-import { SmokeEffect } from "@/components";
+import { AirParticles } from "@/components";
 import { DeveloperTools } from "@/components/DeveloperTools";
 import { cleanupAllChannels } from "@/lib/realtimeClient";
 import EnhancedErrorBoundary from "@/components/EnhancedErrorBoundary";
@@ -251,7 +251,7 @@ export default function Index(): JSX.Element | null {
   return (
     <BackgroundManager>
       <div className="relative min-h-screen">
-        <SmokeEffect />
+        <AirParticles />
         <div className="relative z-10 flex min-h-screen bg-gradient-to-br from-background/60 via-background/30 to-background/80">
           <DeveloperTools 
             isVisible={showDeveloperTools}
