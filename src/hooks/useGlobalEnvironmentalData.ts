@@ -23,6 +23,21 @@ interface UseGlobalEnvironmentalDataReturn {
 }
 
 const DEFAULT_REFRESH_INTERVAL = 900_000; // 15 minutes
+const MIN_REFRESH_INTERVAL = 180_000; // Do not poll faster than every 3 minutes by default
+
+const createBoundingBox = (latitude: number, longitude: number, distanceKm: number) => {
+  const latDelta = distanceKm / 111;
+  const constrainedLat = Math.max(-89.9, Math.min(89.9, latitude));
+  const lonDenominator = Math.cos((constrainedLat * Math.PI) / 180);
+  const lonDelta = lonDenominator === 0 ? 180 : distanceKm / (111 * lonDenominator);
+
+  return {
+    minLat: Math.max(-90, latitude - latDelta),
+    maxLat: Math.min(90, latitude + latDelta),
+    minLon: Math.max(-180, longitude - lonDelta),
+    maxLon: Math.min(180, longitude + lonDelta),
+  };
+};
 
 const calculateHaversineDistance = (
   lat1: number,
@@ -58,37 +73,66 @@ export const useGlobalEnvironmentalData = (
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const fetchGlobalData = useCallback(async (): Promise<GlobalEnvironmentalData[]> => {
-    console.log(' [GlobalData] Fetching environmental data for all cities');
+    const shouldFilterByLocation =
+      typeof latitude === 'number' && !Number.isNaN(latitude) &&
+      typeof longitude === 'number' && !Number.isNaN(longitude);
 
-    // Try to use the RPC helper first (preferred path)
-    try {
-      const { data, error } = await supabase.rpc('get_all_active_environmental_data');
+    const effectiveDistance = Math.min(Math.max(maxDistanceKm ?? 50, 5), 200);
 
-      if (error) {
-        console.warn(' [GlobalData] RPC failed, falling back to table query:', error);
-        throw error;
+    if (!shouldFilterByLocation) {
+      console.log(' [GlobalData] Fetching environmental data (all active records)');
+
+      try {
+        const { data, error } = await supabase.rpc('get_all_active_environmental_data');
+
+        if (error) {
+          console.warn(' [GlobalData] RPC failed, falling back to scoped query:', error);
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          const mostRecent = data.reduce((latest, current) =>
+            new Date(current.collection_timestamp) > new Date(latest.collection_timestamp) ? current : latest
+          );
+          setLastUpdated(mostRecent.collection_timestamp);
+          return data as GlobalEnvironmentalData[];
+        }
+      } catch (rpcError) {
+        console.log(' [GlobalData] RPC unavailable. Using scoped table query.', rpcError);
       }
-
-      if (data && data.length > 0) {
-        const mostRecent = data.reduce((latest, current) =>
-          new Date(current.collection_timestamp) > new Date(latest.collection_timestamp) ? current : latest
-        );
-        setLastUpdated(mostRecent.collection_timestamp);
-        return data as GlobalEnvironmentalData[];
-      }
-    } catch (rpcError) {
-      console.log(' [GlobalData] RPC unavailable. Using direct table query.', rpcError);
     }
 
-    // Fallback: query the table directly
-    const { data, error } = await supabase
+    console.log(' [GlobalData] Fetching environmental data with scoped bounds', {
+      latitude,
+      longitude,
+      maxDistanceKm: effectiveDistance,
+      cityName,
+    });
+
+    let queryBuilder = supabase
       .from('global_environmental_data')
       .select('*')
-      .eq('is_active', true)
-      .order('collection_timestamp', { ascending: false });
+      .eq('is_active', true);
+
+    if (shouldFilterByLocation) {
+      const bounds = createBoundingBox(latitude!, longitude!, effectiveDistance);
+      queryBuilder = queryBuilder
+        .gte('latitude', bounds.minLat)
+        .lte('latitude', bounds.maxLat)
+        .gte('longitude', bounds.minLon)
+        .lte('longitude', bounds.maxLon);
+    }
+
+    if (cityName) {
+      queryBuilder = queryBuilder.ilike('city_name', `${cityName}%`);
+    }
+
+    const { data, error } = await queryBuilder
+      .order('collection_timestamp', { ascending: false })
+      .limit(100);
 
     if (error) {
-      console.error(' [GlobalData] Error fetching table data:', error);
+      console.error(' [GlobalData] Error fetching scoped table data:', error);
       throw error;
     }
 
@@ -100,15 +144,15 @@ export const useGlobalEnvironmentalData = (
       return data as GlobalEnvironmentalData[];
     }
 
-    console.log(' [GlobalData] No environmental data returned.');
+    console.log(' [GlobalData] No environmental data returned for scoped query.');
     setLastUpdated(null);
     return [];
-  }, []);
+  }, [latitude, longitude, maxDistanceKm, cityName]);
 
   const query = useQuery<GlobalEnvironmentalData[], Error>({
     queryKey: ['global-environmental-data'],
     queryFn: fetchGlobalData,
-    refetchInterval: autoRefresh ? refreshInterval : false,
+    refetchInterval: autoRefresh ? Math.max(refreshInterval, MIN_REFRESH_INTERVAL) : false,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     retry: 3,
