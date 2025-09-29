@@ -376,6 +376,20 @@ export const useAirQuality = () => {
       if (lastHistoryInsertRef.current === insertKey) {
         return;
       }
+
+      if (source === 'live' && scheduledReading?.timestamp) {
+        const liveTime = new Date(reading.timestamp).getTime();
+        const scheduledTime = new Date(scheduledReading.timestamp).getTime();
+
+        if (Number.isFinite(liveTime) && Number.isFinite(scheduledTime) && liveTime <= scheduledTime) {
+          console.log('⏭️ [useAirQuality] Skipping live history insert; live reading is not newer than scheduled baseline', {
+            live: reading.timestamp,
+            scheduled: scheduledReading.timestamp,
+          });
+          return;
+        }
+      }
+
       lastHistoryInsertRef.current = insertKey;
 
       const latestReading = readingsRef.current.at(-1) ?? reading;
@@ -435,7 +449,7 @@ export const useAirQuality = () => {
         }
       })();
     },
-    [user]
+    [scheduledReading?.timestamp, user]
   );
 
   // AQICN-only API fetch with enhanced station discovery
@@ -547,7 +561,12 @@ export const useAirQuality = () => {
         };
       }
     },
-    enabled: queryEnabled && !scheduledIsFresh && !!safeCoordinates?.lat && !!safeCoordinates?.lng,
+    enabled:
+      queryEnabled &&
+      !scheduledLoading &&
+      !scheduledIsFresh &&
+      !!safeCoordinates?.lat &&
+      !!safeCoordinates?.lng,
     placeholderData: () => {
       if (scheduledIsFresh && scheduledReading) {
         return scheduledReading;
