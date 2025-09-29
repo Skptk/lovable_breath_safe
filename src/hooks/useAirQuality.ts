@@ -147,6 +147,9 @@ const isDuplicateReading = (
     (entry.stationUid ?? entry.location) === (candidate.stationUid ?? candidate.location)
   );
 
+const toNullableNumber = (value: number | undefined) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
+
 // Enhanced interface for AQICN-only air quality data
 export interface AirQualityData {
   aqi: number;
@@ -293,6 +296,7 @@ export const useAirQuality = () => {
   });
   const readingsRef = useRef<AirQualityData[]>(readings);
   const prunedCountRef = useRef(0);
+  const lastHistoryInsertRef = useRef<string | null>(null);
   const initialLockActive = typeof window !== 'undefined' ? isRefreshLocked() : false;
 
   const [queryEnabled, setQueryEnabled] = useState<boolean>(() => !initialLockActive);
@@ -350,6 +354,72 @@ export const useAirQuality = () => {
 
     return trimmed;
   }, []);
+
+  const enqueueHistoryInsert = useCallback(
+    (reading: AirQualityData, source: 'scheduled' | 'live') => {
+      if (!user || reading.error) {
+        return;
+      }
+
+      const insertKey = `${source}:${reading.timestamp}`;
+      if (lastHistoryInsertRef.current === insertKey) {
+        return;
+      }
+      lastHistoryInsertRef.current = insertKey;
+
+      const latitude = reading.userCoordinates?.lat ?? reading.coordinates?.lat ?? null;
+      const longitude = reading.userCoordinates?.lon ?? reading.coordinates?.lon ?? null;
+      const record = {
+        user_id: user.id,
+        timestamp: reading.timestamp ?? new Date().toISOString(),
+        location_name: reading.location,
+        latitude,
+        longitude,
+        aqi: toNullableNumber(reading.aqi),
+        pm25: toNullableNumber(reading.pm25),
+        pm10: toNullableNumber(reading.pm10),
+        no2: toNullableNumber(reading.no2),
+        so2: toNullableNumber(reading.so2),
+        co: toNullableNumber(reading.co),
+        o3: toNullableNumber(reading.o3),
+        points_awarded: source === 'live' ? 10 : 0,
+        created_at: new Date().toISOString(),
+      };
+
+      console.log(`📝 [useAirQuality] Scheduling ${source} AQI history insert`, {
+        location: reading.location,
+        timestamp: reading.timestamp,
+        source,
+      });
+
+      void (async () => {
+        try {
+          const { error: insertError } = await supabase
+            .from('air_quality_readings')
+            .insert(record);
+
+          if (insertError) {
+            const errorPayload = insertError as { message?: string; details?: string; hint?: string; code?: string };
+            console.error(`❌ [useAirQuality] ${source} insert failed`, {
+              message: errorPayload.message,
+              details: errorPayload.details,
+              hint: errorPayload.hint,
+              code: errorPayload.code,
+            });
+            console.error('❌ [useAirQuality] Data that failed to insert:', JSON.stringify(record, null, 2));
+            lastHistoryInsertRef.current = null;
+            return;
+          }
+
+          console.log(`✅ [useAirQuality] Successfully recorded ${source} AQI reading in history`);
+        } catch (insertError: unknown) {
+          console.error(`❌ [useAirQuality] ${source} history insert threw`, insertError);
+          lastHistoryInsertRef.current = null;
+        }
+      })();
+    },
+    [user]
+  );
 
   // AQICN-only API fetch with enhanced station discovery
   const backoffAttemptRef = useRef(0);
@@ -439,72 +509,6 @@ export const useAirQuality = () => {
           globalSupport: 'worldwide'
         });
         console.log(`✅ [DataSourceValidator] Global AQICN Integration - Station: ${transformedData.stationName}, Location: ${transformedData.location}, AQI: ${transformedData.aqi}, Distance: ${transformedData.distance}km, Country: ${transformedData.country}, UID: ${data.stationUid}`);
-        // --- BEGIN: Record AQI check in history (if user is logged in) ---
-        if (user && !data.error) {
-          // Prepare the reading record
-          const reading = {
-            user_id: user.id,
-            timestamp: new Date().toISOString(),
-            location_name: data.city || 'Unknown Location',
-            latitude: safeCoordinates.lat,
-            longitude: safeCoordinates.lng,
-            aqi: data.aqi,
-            pm25: data.pollutants?.pm25 || null,
-            pm10: data.pollutants?.pm10 || null,
-            no2: data.pollutants?.no2 || null,
-            so2: data.pollutants?.so2 || null,
-            co: data.pollutants?.co || null,
-            o3: data.pollutants?.o3 || null,
-            points_awarded: 10, // Points awarded for this AQI check
-            created_at: new Date().toISOString()
-          };
-
-          console.log('📝 [useAirQuality] Scheduling AQI history insert');
-
-          void (async () => {
-            try {
-              const { data: insertData, error: insertError } = await supabase
-                .from('air_quality_readings')
-                .insert(reading);
-
-              if (insertError) {
-                const errorPayload = insertError as { message?: string; details?: string; hint?: string; code?: string };
-                console.error('❌ [useAirQuality] Insert failed with detailed error:', {
-                  message: errorPayload.message,
-                  details: errorPayload.details,
-                  hint: errorPayload.hint,
-                  code: errorPayload.code
-                });
-                console.error('❌ [useAirQuality] Data that failed to insert:', JSON.stringify(reading, null, 2));
-                return;
-              }
-
-              console.log('✅ [useAirQuality] Successfully recorded AQI check in history');
-              if (process.env?.['NODE_ENV'] === 'development') {
-                console.debug('✅ [useAirQuality] Supabase insert payload:', insertData);
-              }
-            } catch (insertError: unknown) {
-              console.error('❌ [useAirQuality] CATCH BLOCK - Failed to record AQI check in history:');
-              const supabaseError = insertError as { message?: string; details?: string; hint?: string; code?: string };
-              console.error('❌ [useAirQuality] Error type:', typeof insertError);
-              console.error('❌ [useAirQuality] Error constructor:', (insertError as any)?.constructor?.name);
-              console.error('❌ [useAirQuality] Error message:', supabaseError?.message);
-              console.error('❌ [useAirQuality] Error details:', supabaseError?.details);
-              console.error('❌ [useAirQuality] Error hint:', supabaseError?.hint);
-              console.error('❌ [useAirQuality] Error code:', supabaseError?.code);
-              if (process.env?.['NODE_ENV'] === 'development') {
-                console.error('❌ [useAirQuality] Full error object:', insertError);
-              }
-              const stringifyCandidate = insertError as Record<string, unknown>;
-              try {
-                console.error('❌ [useAirQuality] Error stringified:', JSON.stringify(stringifyCandidate, null, 2));
-              } catch {
-                // ignore JSON stringify errors
-              }
-            }
-          })();
-        }
-        // --- END: Record AQI check in history ---
         return transformedData;
       } catch (error) {
         console.error('❌ [useAirQuality] fetchAQI API fetch failed:', error);
@@ -579,6 +583,8 @@ export const useAirQuality = () => {
     const prunedReadings = pruneHistory(mergedReadings);
     readingsRef.current = prunedReadings;
     setReadings(prunedReadings);
+
+    enqueueHistoryInsert(scheduledReading, 'scheduled');
   }, [scheduledIsFresh, scheduledReading, pruneHistory]);
 
   useEffect(() => {
@@ -619,6 +625,8 @@ export const useAirQuality = () => {
     const prunedReadings = pruneHistory(mergedReadings);
     readingsRef.current = prunedReadings;
     setReadings(prunedReadings);
+
+    enqueueHistoryInsert(latestReading, 'live');
   }, [aqicnQuery.data, pruneHistory]);
 
   // Memoized function to fetch air quality data with caching
