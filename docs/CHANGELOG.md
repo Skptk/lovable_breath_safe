@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - **Atmospheric Smoke Layer**: Introduced `src/components/SmokeEffect.tsx`, a CSS-only particle system inserted between `BackgroundManager` and dashboard content in `src/pages/Index.tsx` and `src/pages/Demo.tsx` to deliver the high-priority animated smoke effect while honoring the existing z-index hierarchy and performance constraints.
+- **ReferenceError Bundle Guard**: Updated `scripts/check-bundle-reference-errors.js` to ignore the benign "ReferenceError: this hasn't been initialised - super() hasn't been called" helper string emitted by Babel so builds no longer fail on safe constructor checks while still blocking real TDZ issues.
 - **Performance Guardrails & WebSocket Resilience**: Documented the four-phase optimisation work spanning throttled memory monitors, memoised dashboard components, idle-scheduled handlers, hardened WebSocket reconnection logic, and the new `tests/connectionManager.test.ts` coverage used by Netlify/GitHub pipelines.
 - **Landing Aura Utilities**: Added reusable aura gradients, hero glows, and glass overlays in `src/index.css` to support immersive landing visuals while keeping the utilities available to other sections.
 - **Maintenance Mode Gate**: Introduced `MaintenanceGate` wrapper and `VITE_MAINTENANCE_MODE`/`VITE_MAINTENANCE_TOKEN` controls to limit production access during live debugging sessions. The gate surfaces a secure password prompt and preserves existing app state for authorized testers.

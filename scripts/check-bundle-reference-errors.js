@@ -8,6 +8,10 @@ const ERROR_PATTERNS = [
   /is not defined/i
 ];
 
+const SAFE_REFERENCE_PATTERNS = [
+  /ReferenceError\("this hasn't been initialised - super\(\) hasn't been called"\)/g
+];
+
 async function collectJsFiles(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
   const files = await Promise.all(
@@ -26,7 +30,11 @@ async function collectJsFiles(dir) {
 }
 
 async function scanFile(file) {
-  const contents = await fs.readFile(file, 'utf8');
+  let contents = await fs.readFile(file, 'utf8');
+
+  SAFE_REFERENCE_PATTERNS.forEach((safePattern) => {
+    contents = contents.replace(safePattern, '');
+  });
   const matches = ERROR_PATTERNS
     .filter((pattern) => pattern.test(contents))
     .map((pattern) => pattern.toString());
