@@ -365,7 +365,7 @@ export const useAirQuality = () => {
       const lockRemaining = getTimeUntilNextRefresh();
       const lockActive = lockRemaining > 0;
 
-      if (lockActive) {
+      if (lockActive && source === 'live') {
         if (import.meta.env.DEV) {
           console.log(`🔒 [useAirQuality] Skipping ${source} history insert; lock active for ${Math.ceil(lockRemaining / 1000)}s`);
         }
@@ -426,7 +426,9 @@ export const useAirQuality = () => {
 
           console.log(`✅ [useAirQuality] Successfully recorded ${source} AQI reading in history`);
           lastRecordedAtRef.current = Date.now();
-          setRefreshLockTimestamp();
+          if (source === 'live') {
+            setRefreshLockTimestamp();
+          }
         } catch (insertError: unknown) {
           console.error(`❌ [useAirQuality] ${source} history insert threw`, insertError);
           lastHistoryInsertRef.current = null;

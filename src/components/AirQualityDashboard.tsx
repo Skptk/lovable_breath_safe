@@ -79,6 +79,148 @@ const PointsSummary = React.memo(function PointsSummary({ cards }: PointsSummary
 
 PointsSummary.displayName = "PointsSummary";
 
+interface DashboardHeaderProps {
+  userName: string;
+  locationLabel?: string;
+  onRefresh: () => void;
+  onNavigate?: (route: string) => void;
+  isRefreshing: boolean;
+}
+
+const DashboardHeader = React.memo(function DashboardHeader({
+  userName,
+  locationLabel,
+  onRefresh,
+  onNavigate,
+  isRefreshing,
+}: DashboardHeaderProps) {
+  return (
+    <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-10">
+      <div className="space-y-3">
+        <p className="text-sm font-semibold uppercase tracking-[0.35em] text-teal-200/80">Welcome back</p>
+        <h1 className="text-3xl sm:text-4xl font-semibold text-white">
+          Hello, {userName}!
+        </h1>
+        <p className="text-lg text-slate-300">
+          {locationLabel ? `Air quality in ${locationLabel}` : "Your personalized air quality command center"}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          variant="outline"
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className="bg-white/5 hover:bg-white/10 text-white border-white/20"
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+          {isRefreshing ? "Refreshing" : "Refresh Data"}
+        </Button>
+        <Button
+          variant="default"
+          onClick={() => onNavigate?.("history")}
+          className="bg-teal-400 hover:bg-teal-300 text-slate-900"
+        >
+          <History className="mr-2 h-4 w-4" />
+          View History
+        </Button>
+      </div>
+    </header>
+  );
+});
+
+DashboardHeader.displayName = "DashboardHeader";
+
+interface CurrentAirQualityCardProps {
+  lastUpdated: string;
+  aqiValue: number | string;
+  aqiLabel: string;
+  aqiColor: string;
+  pollutantCards: PollutantCard[];
+  onSelect: (pollutant: PollutantCard) => void;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+  onNavigate?: (route: string) => void;
+}
+
+const CurrentAirQualityCard = React.memo(function CurrentAirQualityCard({
+  lastUpdated,
+  aqiValue,
+  aqiLabel,
+  aqiColor,
+  pollutantCards,
+  onSelect,
+  isRefreshing,
+  onRefresh,
+  onNavigate,
+}: CurrentAirQualityCardProps) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5/5 p-8 text-center">
+      <h2 className="text-xl font-semibold text-white mb-2">Current Air Quality</h2>
+      <p className="text-slate-400">Last updated: {lastUpdated}</p>
+      <div className="mt-10 space-y-6">
+        <div className="text-7xl sm:text-8xl font-bold" style={{ color: aqiColor }}>
+          {aqiValue}
+        </div>
+        <div className="inline-flex items-center px-5 py-2 rounded-full" style={{ backgroundColor: `${aqiColor}20` }}>
+          <span className="text-lg font-medium" style={{ color: aqiColor }}>
+            {aqiLabel}
+          </span>
+        </div>
+      </div>
+      <PollutantCardGrid cards={pollutantCards} onSelect={onSelect} disabled={isRefreshing} />
+
+      <div className="mt-10 flex flex-wrap justify-center gap-4">
+        <Button
+          variant="outline"
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className="bg-slate-900/60 hover:bg-slate-900/40 text-white border-white/20"
+        >
+          <RefreshCw className={`mr-2 h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
+          {isRefreshing ? "Refreshing..." : "Refresh Now"}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => onNavigate?.("history")}
+          className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+        >
+          <History className="mr-2 h-5 w-5" />
+          View History
+        </Button>
+      </div>
+    </div>
+  );
+});
+
+CurrentAirQualityCard.displayName = "CurrentAirQualityCard";
+
+interface RefreshProgressCardProps {
+  timeUntilRefresh: number;
+  isRefreshing: boolean;
+  onManualRefresh: () => void;
+  isUsingCachedData?: boolean;
+}
+
+const RefreshProgressCard = React.memo(function RefreshProgressCard({
+  timeUntilRefresh,
+  isRefreshing,
+  onManualRefresh,
+  isUsingCachedData,
+}: RefreshProgressCardProps) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+      <RefreshProgressBar
+        timeUntilRefresh={timeUntilRefresh}
+        isRefreshing={isRefreshing}
+        onManualRefresh={onManualRefresh}
+        isUsingCachedData={isUsingCachedData}
+      />
+    </div>
+  );
+});
+
+RefreshProgressCard.displayName = "RefreshProgressCard";
+
 interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
   showMobileMenu?: boolean;
@@ -305,88 +447,33 @@ function AirQualityDashboardContent({
 
     return renderUnifiedShell(
       <>
-                <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-10">
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold uppercase tracking-[0.35em] text-teal-200/80">Welcome back</p>
-                    <h1 className="text-3xl sm:text-4xl font-semibold text-white">
-                      Hello, {userName}!
-                    </h1>
-                    <p className="text-lg text-slate-300">
-                      {data?.location ? `Air quality in ${data.location}` : "Your personalized air quality command center"}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={handleRefresh}
-                      disabled={isRefreshing}
-                      className="bg-white/5 hover:bg-white/10 text-white border-white/20"
-                    >
-                      <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                      {isRefreshing ? "Refreshing" : "Refresh Data"}
-                    </Button>
-                    <Button
-                      variant="default"
-                      onClick={() => onNavigate?.("history")}
-                      className="bg-teal-400 hover:bg-teal-300 text-slate-900"
-                    >
-                      <History className="mr-2 h-4 w-4" />
-                      View History
-                    </Button>
-                  </div>
-                </header>
+                <DashboardHeader
+                  userName={userName}
+                  locationLabel={data?.location}
+                  onRefresh={handleRefresh}
+                  onNavigate={onNavigate}
+                  isRefreshing={isRefreshing}
+                />
 
                 <section className="grid gap-8 lg:grid-cols-3">
                   <div className="lg:col-span-2 space-y-8">
-                    <div className="rounded-2xl border border-white/10 bg-white/5/5 p-8 text-center">
-                      <h2 className="text-xl font-semibold text-white mb-2">Current Air Quality</h2>
-                      <p className="text-slate-400">Last updated: {lastUpdated}</p>
-                      <div className="mt-10 space-y-6">
-                        <div className="text-7xl sm:text-8xl font-bold" style={{ color: aqiColor }}>
-                          {aqiValue}
-                        </div>
-                        <div className="inline-flex items-center px-5 py-2 rounded-full" style={{
-                          backgroundColor: `${aqiColor}20`,
-                        }}>
-                          <span className="text-lg font-medium" style={{ color: aqiColor }}>
-                            {aqiLabel}
-                          </span>
-                        </div>
-                      </div>
-                      <PollutantCardGrid
-                        cards={pollutantCards}
-                        onSelect={handlePollutantSelect}
-                        disabled={isRefreshing}
-                      />
+                    <CurrentAirQualityCard
+                      lastUpdated={lastUpdated}
+                      aqiValue={aqiValue}
+                      aqiLabel={aqiLabel}
+                      aqiColor={aqiColor}
+                      pollutantCards={pollutantCards}
+                      onSelect={handlePollutantSelect}
+                      isRefreshing={isRefreshing}
+                      onRefresh={handleRefresh}
+                      onNavigate={onNavigate}
+                    />
 
-                      <div className="mt-10 flex flex-wrap justify-center gap-4">
-                        <Button
-                          variant="outline"
-                          onClick={handleRefresh}
-                          disabled={isRefreshing}
-                          className="bg-slate-900/60 hover:bg-slate-900/40 text-white border-white/20"
-                        >
-                          <RefreshCw className={`mr-2 h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
-                          {isRefreshing ? "Refreshing..." : "Refresh Now"}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => onNavigate?.("history")}
-                          className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-                        >
-                          <History className="mr-2 h-5 w-5" />
-                          View History
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                      <RefreshProgressBar
-                        timeUntilRefresh={timeUntilRefresh}
-                        isRefreshing={isRefreshing}
-                        onManualRefresh={handleRefresh}
-                      />
-                    </div>
+                    <RefreshProgressCard
+                      timeUntilRefresh={timeUntilRefresh}
+                      isRefreshing={isRefreshing}
+                      onManualRefresh={handleRefresh}
+                    />
 
                     {data && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-6">

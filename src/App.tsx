@@ -8,7 +8,7 @@ import { usePerformanceMonitor, usePreload } from "@/hooks/usePerformance";
 import { useAppStore } from "@/store";
 import { useWeatherStore } from "@/store/weatherStore";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { Suspense, lazy, useEffect, useMemo } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef } from "react";
 import type { ErrorInfo } from "react";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ConnectionResilienceProvider } from "./components/ConnectionResilienceProvider";
@@ -130,7 +130,11 @@ const App = (): JSX.Element => {
   const shouldTrackVariables = useMemo(() => {
     return resolveTrackingFlag();
   }, []);
-  
+
+  const debugSnapshotRef = useRef<string>("");
+  const renderSnapshotRef = useRef<string>("");
+  const lastRenderLogRef = useRef<number>(0);
+
   // Performance monitoring
   usePerformanceMonitor("App");
   
@@ -190,45 +194,41 @@ const App = (): JSX.Element => {
       return;
     }
 
-    const debugSnapshot = {
+    const snapshotPayload = {
       authLoading,
       weatherLoading,
       locationRequesting,
       hasWeatherData: Boolean(weatherData),
       hasUser: Boolean(user),
       hasLocationData: Boolean(locationData),
+      hasRequestedPermission,
       weatherError: weatherError ?? null,
       locationError: locationError ?? null,
     };
 
-    console.log("🔍 [DEBUG] Loading states:", debugSnapshot);
-    console.log("🔍 [LOADING-DEBUG] State check:", {
-      authLoading,
-      weatherLoading,
-      hasUser: Boolean(user),
-      hasWeatherData: Boolean(weatherData),
-      hasLocationData: Boolean(locationData),
-      timestamp: new Date().toISOString(),
-    });
-  }, [authLoading, weatherLoading, locationRequesting, weatherData, user, locationData, weatherError, locationError]);
+    const serialized = JSON.stringify(snapshotPayload);
+    if (serialized === debugSnapshotRef.current) {
+      return;
+    }
+
+    debugSnapshotRef.current = serialized;
+    console.log("🔍 [DEBUG] Loading states:", snapshotPayload);
+  }, [
+    authLoading,
+    weatherLoading,
+    locationRequesting,
+    weatherData,
+    user,
+    locationData,
+    hasRequestedPermission,
+    weatherError,
+    locationError,
+  ]);
 
   const appContent = useMemo<JSX.Element>(() => {
-    console.log("🧩 [RENDER] App rendering at:", new Date().toISOString());
     if (shouldTrackVariables) {
       debugTracker.trackVariableAccess("App", "App.tsx:render");
     }
-
-    const shouldShowLoading = !shouldShowApp;
-    console.log('🔍 [LOADING-DEBUG] Full state check:', {
-      authLoading,
-      weatherLoading,
-      locationLoading: locationRequesting,
-      hasUser: Boolean(user),
-      hasWeatherData: Boolean(weatherData),
-      hasLocationData: Boolean(locationData),
-      shouldShowLoading,
-      timestamp: new Date().toISOString(),
-    });
 
     const isDev = import.meta.env.DEV;
     const isProd = import.meta.env.PROD;
@@ -329,6 +329,42 @@ const App = (): JSX.Element => {
     }
     return <LoadingScreen />;
   }
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      return;
+    }
+
+    const snapshotPayload = {
+      authLoading,
+      weatherLoading,
+      locationLoading: locationRequesting,
+      hasUser: Boolean(user),
+      hasWeatherData: Boolean(weatherData),
+      hasLocationData: Boolean(locationData),
+      timestamp: new Date().toISOString(),
+    };
+
+    const serialized = JSON.stringify(snapshotPayload);
+    const now = Date.now();
+    if (
+      serialized === renderSnapshotRef.current &&
+      now - lastRenderLogRef.current < 2_000
+    ) {
+      return;
+    }
+
+    renderSnapshotRef.current = serialized;
+    lastRenderLogRef.current = now;
+    console.log("🔍 [LOADING-DEBUG] Full state check:", snapshotPayload);
+  }, [
+    authLoading,
+    weatherLoading,
+    locationRequesting,
+    weatherData,
+    user,
+    locationData,
+  ]);
 
   return appContent;
 };

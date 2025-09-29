@@ -7,6 +7,10 @@ export interface ConnectionOptions {
   maxReconnectDelay?: number;
   timeout?: number;
   debug?: boolean;
+  retryJitter?: number;
+  retryBackoffMultiplier?: number;
+  suppressCodes?: number[];
+  logThrottleMs?: number;
 }
 
 export interface ConnectionStatus {
@@ -33,8 +37,15 @@ export class ConnectionManager extends EventEmitter {
     reconnectDelay: 1000,
     maxReconnectDelay: 30000,
     timeout: 10000,
-    debug: process.env.NODE_ENV === 'development',
+    debug: process.env['NODE_ENV'] === 'development',
+    retryJitter: 250,
+    retryBackoffMultiplier: 2,
+    suppressCodes: [1000, 1001, 1005],
+    logThrottleMs: 2000,
   };
+
+  private lastLogMessage = '';
+  private lastLogTimestamp = 0;
   
   private constructor() {
     super();
@@ -65,7 +76,21 @@ export class ConnectionManager extends EventEmitter {
   
   private log(...args: any[]) {
     if (this.defaultOptions.debug) {
-      console.log('[ConnectionManager]', ...args);
+      const message = args.map(arg => {
+        if (typeof arg === 'string') return arg;
+        try {
+          return JSON.stringify(arg);
+        } catch {
+          return String(arg);
+        }
+      }).join(' ');
+
+      const now = Date.now();
+      if (message !== this.lastLogMessage || now - this.lastLogTimestamp > this.defaultOptions.logThrottleMs) {
+        console.log('[ConnectionManager]', ...args);
+        this.lastLogMessage = message;
+        this.lastLogTimestamp = now;
+      }
     }
   }
   
@@ -108,7 +133,7 @@ export class ConnectionManager extends EventEmitter {
           isConnected = true;
           this.log(`Connected to ${url}`);
           
-          const connection = this.setupConnection(connectionId, ws, mergedOptions);
+          this.setupConnection(connectionId, ws, mergedOptions);
           this.emit('connect', { url, connectionId });
           resolve(ws);
         };
@@ -203,41 +228,50 @@ export class ConnectionManager extends EventEmitter {
     });
     
     // Attempt to reconnect if needed
+    if (connection.options.suppressCodes.includes(event.code)) {
+      this.log(`Not reconnecting ${connectionId}; close code ${event.code} is suppressed.`);
+      this.cleanupConnection(connectionId);
+      return;
+    }
+
     if (connection.status.reconnectAttempts < connection.options.maxReconnectAttempts) {
-      this.attemptReconnect(connectionId);
+      this.attemptReconnect(connectionId, event.code);
     } else {
       this.emit('reconnect_failed', { connectionId, reason: 'Max reconnection attempts reached' });
       this.cleanupConnection(connectionId);
     }
   }
   
-  private attemptReconnect(connectionId: string) {
+  private attemptReconnect(connectionId: string, code?: number) {
     const connection = this.connections.get(connectionId);
     if (!connection) return;
-    
+  
     connection.status.reconnectAttempts++;
-    
+  
     // Calculate delay with exponential backoff
     const delay = Math.min(
-      connection.options.reconnectDelay * Math.pow(2, connection.status.reconnectAttempts - 1),
+      connection.options.reconnectDelay * Math.pow(connection.options.retryBackoffMultiplier, connection.status.reconnectAttempts - 1),
       connection.options.maxReconnectDelay
     );
-    
-    this.log(`Attempting to reconnect to ${connectionId} in ${delay}ms (attempt ${connection.status.reconnectAttempts})`);
-    
+
+    const jitter = Math.random() * connection.options.retryJitter;
+    const effectiveDelay = delay + jitter;
+
+    this.log(`Attempting to reconnect to ${connectionId} in ${Math.round(effectiveDelay)}ms (attempt ${connection.status.reconnectAttempts})`, { code });
+  
     connection.reconnectTimeout = setTimeout(() => {
-      if (connection.ws?.readyState === WebSocket.CLOSED) {
+      const shouldReconnect = connection.ws?.readyState === WebSocket.CLOSED || connection.ws?.readyState === WebSocket.CLOSING;
+      if (shouldReconnect) {
         this.connect(connectionId, connection.options).catch(error => {
           this.error(`Reconnection attempt ${connection.status.reconnectAttempts} failed:`, error);
         });
       }
-    }, delay);
+    }, effectiveDelay);
   }
   
   private handleConnectionError(connectionId: string, error: Error) {
     const connection = this.connections.get(connectionId);
     if (!connection) return;
-    
     connection.status.lastError = error;
     this.emit('error', { connectionId, error });
     
@@ -253,7 +287,12 @@ export class ConnectionManager extends EventEmitter {
     }
     
     while (connection.messageQueue.length > 0) {
-      const { data, resolve, reject } = connection.messageQueue[0];
+      const next = connection.messageQueue[0];
+      if (!next) {
+        break;
+      }
+
+      const { data, resolve, reject } = next;
       
       try {
         await this.sendMessage(connection.ws, data);

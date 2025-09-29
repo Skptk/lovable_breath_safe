@@ -8,14 +8,43 @@ interface MemoryUsage {
   timestamp: number;
 }
 
+type IdleCallbackDeadline = {
+  didTimeout: boolean;
+  timeRemaining(): number;
+};
+
+type RequestIdleCallback = (callback: (deadline: IdleCallbackDeadline) => void, options?: { timeout?: number }) => number;
+type CancelIdleCallback = (handle: number) => void;
+
+const hasWindow = typeof window !== 'undefined';
+const hasIdleCallback = hasWindow && typeof (window as unknown as { requestIdleCallback?: RequestIdleCallback }).requestIdleCallback === 'function';
+const requestIdle: RequestIdleCallback | null = hasIdleCallback
+  ? (window as unknown as { requestIdleCallback: RequestIdleCallback }).requestIdleCallback
+  : null;
+const cancelIdle: CancelIdleCallback | null = hasIdleCallback
+  ? (window as unknown as { cancelIdleCallback: CancelIdleCallback }).cancelIdleCallback
+  : null;
+
+const MIN_INTERVAL_MS = 15_000;
+const MAX_INTERVAL_MS = 60_000;
+const HIGH_USAGE_THRESHOLD = 0.7;
+const LOW_USAGE_THRESHOLD = 0.45;
+const LISTENER_THROTTLE_MS = 2_000;
+const HISTORY_LIMIT = 60;
+const MAX_POOL_SIZE = 32;
+
 export class MemoryMonitor {
   private static instance: MemoryMonitor;
   private highWaterMark = 0;
   private checkInterval: CancelSafeInterval | null = null;
   private listeners: Array<(usage: MemoryUsage) => void> = [];
   private history: MemoryUsage[] = [];
-  private readonly MAX_HISTORY = 100; // Keep last 100 readings
+  private usagePool: MemoryUsage[] = [];
   private observeIntervalMs = 30_000;
+  private pendingIdleHandle: number | null = null;
+  private notifyScheduled = false;
+  private pendingUsage: MemoryUsage | null = null;
+  private lastDispatchTs = 0;
 
   private constructor() {
     this.startMonitoring();
@@ -35,14 +64,15 @@ export class MemoryMonitor {
     if (!performance?.memory) return null;
 
     const { usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit } = performance.memory;
-    
-    return {
-      used: usedJSHeapSize,
-      total: totalJSHeapSize,
-      limit: jsHeapSizeLimit,
-      percentUsed: (usedJSHeapSize / jsHeapSizeLimit) * 100,
-      timestamp: Date.now()
-    };
+
+    const usage = this.usagePool.pop() ?? { used: 0, total: 0, limit: 0, percentUsed: 0, timestamp: 0 };
+    usage.used = usedJSHeapSize;
+    usage.total = totalJSHeapSize;
+    usage.limit = jsHeapSizeLimit;
+    usage.percentUsed = (usedJSHeapSize / jsHeapSizeLimit) * 100;
+    usage.timestamp = Date.now();
+
+    return usage;
   }
 
   private checkMemory() {
@@ -54,12 +84,15 @@ export class MemoryMonitor {
     
     // Add to history
     this.history.push(memory);
-    if (this.history.length > this.MAX_HISTORY) {
-      this.history.shift();
+    if (this.history.length > HISTORY_LIMIT) {
+      const removed = this.history.shift();
+      if (removed && this.usagePool.length < MAX_POOL_SIZE) {
+        this.usagePool.push(removed);
+      }
     }
 
     // Notify listeners
-    this.notifyListeners(memory);
+    this.queueListenerNotification(memory);
 
     // Log warning if memory usage is high
     if (memory.percentUsed > 80) {
@@ -72,21 +105,57 @@ export class MemoryMonitor {
       }
     }
 
-    if (memory.percentUsed > 70 && this.observeIntervalMs !== 10_000) {
-      this.startMonitoring(10_000);
-    } else if (memory.percentUsed < 50 && this.observeIntervalMs !== 30_000) {
-      this.startMonitoring(30_000);
+    if (memory.percentUsed > HIGH_USAGE_THRESHOLD * 100 && this.observeIntervalMs !== MIN_INTERVAL_MS) {
+      this.startMonitoring(Math.max(MIN_INTERVAL_MS, Math.floor(this.observeIntervalMs * 0.75)));
+    } else if (memory.percentUsed < LOW_USAGE_THRESHOLD * 100 && this.observeIntervalMs !== MAX_INTERVAL_MS) {
+      this.startMonitoring(Math.min(MAX_INTERVAL_MS, Math.floor(this.observeIntervalMs * 1.25)));
     }
   }
 
-  private notifyListeners(memory: MemoryUsage) {
+  private flushNotifications() {
+    this.notifyScheduled = false;
+    this.pendingIdleHandle = null;
+    if (!this.pendingUsage) {
+      return;
+    }
+
+    const snapshot = this.pendingUsage;
+    this.pendingUsage = null;
+    this.lastDispatchTs = Date.now();
+
     for (const listener of this.listeners) {
       try {
-        listener(memory);
+        listener(snapshot);
       } catch (error) {
         console.error('Error in memory monitor listener:', error);
       }
     }
+  }
+
+  private queueListenerNotification(memory: MemoryUsage) {
+    this.pendingUsage = memory;
+    if (this.notifyScheduled) {
+      return;
+    }
+
+    const scheduleFlush = (delay: number) => {
+      if (delay > 0) {
+        setTimeout(() => this.flushNotifications(), delay);
+        return;
+      }
+
+      if (requestIdle) {
+        this.pendingIdleHandle = requestIdle(() => this.flushNotifications(), { timeout: LISTENER_THROTTLE_MS });
+      } else {
+        setTimeout(() => this.flushNotifications(), 0);
+      }
+    };
+
+    this.notifyScheduled = true;
+    const now = Date.now();
+    const elapsed = now - this.lastDispatchTs;
+    const remaining = LISTENER_THROTTLE_MS - elapsed;
+    scheduleFlush(Math.max(0, remaining));
   }
 
   formatMemory(bytes: number): string {
@@ -112,7 +181,8 @@ export class MemoryMonitor {
 
   startMonitoring(intervalMs: number = 10000) {
     this.stopMonitoring();
-    this.observeIntervalMs = intervalMs;
+    const clampedInterval = Math.min(MAX_INTERVAL_MS, Math.max(MIN_INTERVAL_MS, intervalMs));
+    this.observeIntervalMs = clampedInterval;
     this.checkInterval = createSafeInterval(() => this.checkMemory(), this.observeIntervalMs, {
       pauseWhenHidden: true,
       onSkip: reason => {
@@ -126,6 +196,13 @@ export class MemoryMonitor {
   stopMonitoring() {
     this.checkInterval?.();
     this.checkInterval = null;
+
+    if (this.pendingIdleHandle !== null && cancelIdle) {
+      cancelIdle(this.pendingIdleHandle);
+      this.pendingIdleHandle = null;
+    }
+    this.notifyScheduled = false;
+    this.pendingUsage = null;
   }
 
   getHistory(): MemoryUsage[] {

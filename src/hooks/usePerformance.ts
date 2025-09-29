@@ -120,18 +120,32 @@ export const useMemoWithCompare = <T>(
 export const usePerformanceMonitor = (componentName: string) => {
   const renderCount = useRef(0);
   const lastRenderTime = useRef(performance.now());
+  const lastLoggedSnapshot = useRef<string>("");
+  const lastLogTs = useRef<number>(0);
+  const THROTTLE_MS = 2_000;
 
   useEffect(() => {
     renderCount.current += 1;
     const currentTime = performance.now();
     const renderTime = currentTime - lastRenderTime.current;
-    
+
     if (process.env.NODE_ENV === 'development') {
-      console.log(
-        `[${componentName}] Render #${renderCount.current} took ${renderTime.toFixed(2)}ms`
-      );
+      const snapshot = JSON.stringify({
+        render: renderCount.current,
+        duration: Number(renderTime.toFixed(2)),
+      });
+      const now = Date.now();
+
+      if (
+        snapshot !== lastLoggedSnapshot.current &&
+        now - lastLogTs.current >= THROTTLE_MS
+      ) {
+        console.log(`[${componentName}] Render #${renderCount.current} took ${renderTime.toFixed(2)}ms`);
+        lastLoggedSnapshot.current = snapshot;
+        lastLogTs.current = now;
+      }
     }
-    
+
     lastRenderTime.current = currentTime;
   });
 
@@ -213,15 +227,65 @@ export const useMemoryManagement = () => {
 export const useNetworkStatus = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [connectionType, setConnectionType] = useState<string>('unknown');
+  const idleHandleRef = useRef<number | null>(null);
+  const pendingUpdateRef = useRef<{ online: boolean; type: string } | null>(null);
+  const lastDispatchRef = useRef<number>(0);
+  const THROTTLE_MS = 1_000;
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    const handleConnectionChange = () => {
-      const connection = (navigator as any).connection;
-      if (connection) {
-        setConnectionType(connection.effectiveType || 'unknown');
+    const dispatchUpdate = (payload: { online: boolean; type: string }) => {
+      setIsOnline(payload.online);
+      setConnectionType(payload.type);
+    };
+
+    const flushPending = () => {
+      idleHandleRef.current = null;
+      const pending = pendingUpdateRef.current;
+      if (!pending) {
+        return;
       }
+      pendingUpdateRef.current = null;
+      dispatchUpdate(pending);
+      lastDispatchRef.current = Date.now();
+    };
+
+    const scheduleFlush = () => {
+      if (typeof window !== 'undefined' && window.requestIdleCallback) {
+        idleHandleRef.current = window.requestIdleCallback(() => {
+          flushPending();
+        }, { timeout: THROTTLE_MS });
+      } else {
+        idleHandleRef.current = window.setTimeout(() => {
+          idleHandleRef.current = null;
+          flushPending();
+        }, THROTTLE_MS) as unknown as number;
+      }
+    };
+
+    const queueUpdate = (online: boolean) => {
+      const connection = (navigator as any).connection;
+      const nextType = connection?.effectiveType || 'unknown';
+      pendingUpdateRef.current = { online, type: nextType };
+
+      const elapsed = Date.now() - lastDispatchRef.current;
+      if (elapsed >= THROTTLE_MS) {
+        if (idleHandleRef.current !== null && typeof window !== 'undefined' && window.cancelIdleCallback) {
+          window.cancelIdleCallback(idleHandleRef.current);
+          idleHandleRef.current = null;
+        }
+        flushPending();
+        return;
+      }
+
+      if (idleHandleRef.current === null) {
+        scheduleFlush();
+      }
+    };
+
+    const handleOnline = () => queueUpdate(true);
+    const handleOffline = () => queueUpdate(false);
+    const handleConnectionChange = () => {
+      queueUpdate(navigator.onLine);
     };
 
     window.addEventListener('online', handleOnline);
@@ -229,7 +293,7 @@ export const useNetworkStatus = () => {
     
     if ((navigator as any).connection) {
       (navigator as any).connection.addEventListener('change', handleConnectionChange);
-      handleConnectionChange();
+      queueUpdate(navigator.onLine);
     }
 
     return () => {
@@ -239,6 +303,16 @@ export const useNetworkStatus = () => {
       if ((navigator as any).connection) {
         (navigator as any).connection.removeEventListener('change', handleConnectionChange);
       }
+
+      if (idleHandleRef.current !== null) {
+        if (typeof window !== 'undefined' && window.cancelIdleCallback) {
+          window.cancelIdleCallback(idleHandleRef.current);
+        } else {
+          clearTimeout(idleHandleRef.current);
+        }
+        idleHandleRef.current = null;
+      }
+      pendingUpdateRef.current = null;
     };
   }, []);
 

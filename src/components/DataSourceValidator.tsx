@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useRef, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle, Info, Shield } from 'lucide-react';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
@@ -15,7 +15,23 @@ interface DataSourceValidatorProps {
   userLocation?: string; // Add user location to detect fallback usage
 }
 
-export default function DataSourceValidator({ 
+const arePropsEqual = (prev: DataSourceValidatorProps, next: DataSourceValidatorProps) => {
+  return (
+    prev.dataSource === next.dataSource &&
+    prev.aqi === next.aqi &&
+    prev.location === next.location &&
+    prev.timestamp === next.timestamp &&
+    prev.stationName === next.stationName &&
+    prev.distance === next.distance &&
+    prev.stationUid === next.stationUid &&
+    prev.country === next.country &&
+    prev.userLocation === next.userLocation
+  );
+};
+
+export default React.memo(DataSourceValidator, arePropsEqual);
+
+function DataSourceValidator({ 
   dataSource, 
   aqi, 
   location, 
@@ -56,9 +72,8 @@ export default function DataSourceValidator({
     return { isLegitimateSource, isSuspiciousAQI, isUsingFallback };
   }, [dataSource, aqi, userLocation, location]);
 
-  // Only log when data actually changes (using a stable reference)
-  const logData = useCallback(() => {
-    console.log('🔍 [DataSourceValidator] Validating data:', {
+  const serializedSnapshot = useMemo(() => {
+    return JSON.stringify({
       dataSource,
       aqi,
       location,
@@ -66,25 +81,56 @@ export default function DataSourceValidator({
       stationName,
       distance,
       stationUid,
-      country
+      country,
+      validation: validationResults,
     });
-    
-    // Enhanced logging for AQICN data with station details
-    if (dataSource === 'AQICN' && stationName && distance && stationUid) {
-      console.log(`✅ [DataSourceValidator] dataSource: 'AQICN' - Station: ${stationName}, AQI: ${aqi}, Distance: ${distance}km, uid: ${stationUid}`);
-    } else {
-      console.log('🔍 [DataSourceValidator] Validation result:', {
-        dataSource,
-        isLegitimateSource: validationResults.isLegitimateSource,
-        isSuspiciousAQI: validationResults.isSuspiciousAQI
-      });
-    }
-  }, [dataSource, aqi, location, timestamp, stationName, distance, stationUid, country, validationResults.isLegitimateSource, validationResults.isSuspiciousAQI]);
+  }, [
+    dataSource,
+    aqi,
+    location,
+    timestamp,
+    stationName,
+    distance,
+    stationUid,
+    country,
+    validationResults,
+  ]);
 
-  // Log data on mount and when it changes
-  React.useEffect(() => {
-    logData();
-  }, [logData]);
+  const lastLoggedRef = useRef<string>('');
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      lastLoggedRef.current = serializedSnapshot;
+      return;
+    }
+
+    if (serializedSnapshot === lastLoggedRef.current) {
+      return;
+    }
+
+    const handle = window.setTimeout(() => {
+      const payload = JSON.parse(serializedSnapshot);
+      console.log('🔍 [DataSourceValidator] Validating data:', payload);
+
+      if (payload.dataSource === 'AQICN' && payload.stationName && payload.distance && payload.stationUid) {
+        console.log(
+          `✅ [DataSourceValidator] dataSource: 'AQICN' - Station: ${payload.stationName}, AQI: ${payload.aqi}, Distance: ${payload.distance}, uid: ${payload.stationUid}`
+        );
+      } else {
+        console.log('🔍 [DataSourceValidator] Validation result:', {
+          dataSource: payload.dataSource,
+          isLegitimateSource: payload.validation.isLegitimateSource,
+          isSuspiciousAQI: payload.validation.isSuspiciousAQI,
+        });
+      }
+
+      lastLoggedRef.current = serializedSnapshot;
+    }, 120);
+
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [serializedSnapshot]);
 
   // Determine validation status
   const getValidationStatus = useCallback(() => {

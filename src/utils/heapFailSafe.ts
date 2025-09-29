@@ -41,6 +41,58 @@ const dispatchHeapEvent = (level: HeapFailSafeLevel, detail: { usedMb: number })
   window.dispatchEvent(new CustomEvent<HeapFailSafeEventDetail>(DISPATCH_EVENT_NAME, { detail: eventDetail }));
 };
 
+const trimQueryCache = async (queryClient: QueryClient, clearAll: boolean) => {
+  if (!queryClient) {
+    return;
+  }
+
+  try {
+    if (clearAll) {
+      queryClient.clear();
+      return;
+    }
+
+    const queries = queryClient.getQueryCache().getAll();
+    const targets = queries
+      .filter(query => !query.isActive())
+      .sort((a, b) => (a.state.dataUpdatedAt ?? 0) - (b.state.dataUpdatedAt ?? 0))
+      .slice(0, Math.max(5, Math.ceil(queries.length * 0.1)));
+
+    for (const query of targets) {
+      queryClient.getQueryCache().remove(query);
+    }
+  } catch (error) {
+    console.warn('[HeapFailSafe] Failed to trim query cache', error);
+  }
+};
+
+const trimSessionStorage = (clearAll: boolean) => {
+  if (typeof sessionStorage === 'undefined') {
+    return;
+  }
+
+  try {
+    if (clearAll) {
+      sessionStorage.clear();
+      return;
+    }
+
+    const keys = Object.keys(sessionStorage);
+    const targetCount = Math.max(3, Math.ceil(keys.length * 0.3));
+    let removed = 0;
+
+    for (const key of keys) {
+      sessionStorage.removeItem(key);
+      removed += 1;
+      if (removed >= targetCount) {
+        break;
+      }
+    }
+  } catch (error) {
+    console.warn('[HeapFailSafe] Failed to trim session storage', error);
+  }
+};
+
 export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
   if (typeof window === 'undefined') {
     return () => {};
@@ -80,14 +132,8 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
       if (now - lastCritical >= throttleMs) {
         lastCritical = now;
         console.error('⚠️ [HeapFailSafe] Critical heap usage detected. Clearing caches.', { usedMb });
-        if (queryClient) {
-          queryClient.clear();
-        }
-        try {
-          sessionStorage.clear();
-        } catch (error) {
-          console.warn('[HeapFailSafe] Failed to clear session storage', error);
-        }
+        void trimQueryCache(queryClient!, false);
+        trimSessionStorage(false);
         onCritical?.(usedMb);
         dispatchHeapEvent('critical', { usedMb });
       }

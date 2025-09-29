@@ -2,6 +2,29 @@
 
 ## Recent Updates & Changes
 
+### Performance Guardrails & WebSocket Resilience – 2025-09-29
+
+#### **Overview**
+- Landed a four-phase optimisation effort that trims render churn, hardens memory guardrails, and stabilises WebSocket reconnect loops. Changes emphasise browser-friendly throttling (idle callbacks, rAF scheduling) to avoid Chrome long-task warnings while preserving dashboards’ glass aesthetic.
+
+#### **Key Enhancements**
+- `src/utils/memoryMonitor.ts`, `src/utils/heapFailSafe.ts`
+  - Throttled memory sampling to a 2 s cadence, pooled metric objects, and swapped full-cache purges for incremental query/session trimming.
+  - Added clamped polling windows (15–60 s) and idle-callback listener flushes to reduce hidden-tab work.
+- `src/components/DataSourceValidator.tsx`, `src/components/AirQualityDashboard.tsx`
+  - Memoised render-heavy cards (`DashboardHeader`, `CurrentAirQualityCard`, etc.) and debounced validation logging to curb duplicate console output during data refreshes.
+- `src/components/ProfileView.tsx`, `src/hooks/usePerformance.ts`, `src/components/backgrounds/InteractiveSmokeOverlay.tsx`
+  - Routed visibility/network/resize handlers through idle scheduling, requestAnimationFrame batching, and jittered throttles so background transitions no longer flood the main thread.
+- `src/lib/connectionManager.ts`, `src/hooks/useWebSocket.ts`
+  - Introduced jittered exponential backoff, close-code suppression, and log throttling to keep reconnect attempts bounded and CI logs clean.
+- `tests/connectionManager.test.ts`
+  - Added a Vitest suite that validates jitter bounds, suppressed close codes, and throttled logging behaviour for Netlify/GitHub CI.
+
+#### **Validation & Profiling Notes**
+- Run `npm test -- connectionManager` (or the Netlify/GitHub pipeline) to exercise the new Vitest coverage while local tooling is offline.
+- In staging, manually close the WebSocket with codes `1000` and `1011` to confirm suppression/backoff behaviour and capture timestamps from the console for Netlify QA notes.
+- Profile `App` and `AirQualityDashboard` with React Profiler before/after to verify reduced render counts when AQI data updates; document results alongside heap snapshots recorded from `memoryMonitor`’s listener output.
+
 ### Unified Dashboard Shell & Smoke Overlay Optimization – 2025-09-28
 
 #### **Overview**

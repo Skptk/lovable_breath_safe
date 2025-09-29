@@ -136,12 +136,61 @@ const InteractiveSmokeOverlay: React.FC<InteractiveSmokeOverlayProps> = ({
       return undefined;
     }
 
-    const updateCounts = () => setCounts(getAdaptiveCounts());
+    let pendingUpdate: ReturnType<typeof getAdaptiveCounts> | null = null;
+    let idleHandle: number | null = null;
+    let throttleTimer: number | null = null;
+    const THROTTLE_MS = 250;
+
+    const flush = () => {
+      if (!pendingUpdate) {
+        return;
+      }
+      setCounts(pendingUpdate);
+      pendingUpdate = null;
+    };
+
+    const scheduleFlush = () => {
+      if (typeof window !== "undefined" && window.requestIdleCallback) {
+        idleHandle = window.requestIdleCallback(() => {
+          idleHandle = null;
+          flush();
+        }, { timeout: THROTTLE_MS });
+      } else {
+        idleHandle = window.setTimeout(() => {
+          idleHandle = null;
+          flush();
+        }, THROTTLE_MS) as unknown as number;
+      }
+    };
+
+    const updateCounts = () => {
+      pendingUpdate = getAdaptiveCounts();
+      if (throttleTimer !== null) {
+        return;
+      }
+      throttleTimer = window.setTimeout(() => {
+        throttleTimer = null;
+        if (idleHandle === null) {
+          scheduleFlush();
+        }
+      }, THROTTLE_MS);
+    };
+
     updateCounts();
     window.addEventListener("resize", updateCounts);
 
     return () => {
       window.removeEventListener("resize", updateCounts);
+      if (throttleTimer !== null) {
+        clearTimeout(throttleTimer);
+      }
+      if (idleHandle !== null) {
+        if (typeof window !== "undefined" && window.cancelIdleCallback) {
+          window.cancelIdleCallback(idleHandle);
+        } else {
+          clearTimeout(idleHandle);
+        }
+      }
     };
   }, []);
 
@@ -180,18 +229,42 @@ const InteractiveSmokeOverlay: React.FC<InteractiveSmokeOverlayProps> = ({
 
     animationId = window.requestAnimationFrame(animate);
 
+    let pendingPointer: { x: number; y: number } | null = null;
+    let pointerFrame: number | null = null;
+
+    const commitPointerUpdate = () => {
+      pointerFrame = null;
+      if (!pendingPointer) {
+        return;
+      }
+      pointerTargetRef.current.x = pendingPointer.x;
+      pointerTargetRef.current.y = pendingPointer.y;
+      pendingPointer = null;
+    };
+
+    const schedulePointerCommit = () => {
+      if (pointerFrame !== null) {
+        return;
+      }
+      pointerFrame = window.requestAnimationFrame(commitPointerUpdate);
+    };
+
     const handlePointerMove = (event: PointerEvent) => {
       const { innerWidth, innerHeight } = window;
       const normalizedX = (event.clientX / innerWidth - 0.5) * 2;
       const normalizedY = (event.clientY / innerHeight - 0.5) * 2;
 
-      pointerTargetRef.current.x = normalizedX * 30 * intensity;
-      pointerTargetRef.current.y = normalizedY * 24 * intensity;
+      pendingPointer = {
+        x: normalizedX * 30 * intensity,
+        y: normalizedY * 24 * intensity,
+      };
+
+      schedulePointerCommit();
     };
 
     const resetPointer = () => {
-      pointerTargetRef.current.x = 0;
-      pointerTargetRef.current.y = 0;
+      pendingPointer = { x: 0, y: 0 };
+      schedulePointerCommit();
     };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
@@ -200,6 +273,9 @@ const InteractiveSmokeOverlay: React.FC<InteractiveSmokeOverlayProps> = ({
     return () => {
       if (animationId) {
         window.cancelAnimationFrame(animationId);
+      }
+      if (pointerFrame !== null) {
+        window.cancelAnimationFrame(pointerFrame);
       }
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerleave", resetPointer);

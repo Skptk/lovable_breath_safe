@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Performance Guardrails & WebSocket Resilience**: Documented the four-phase optimisation work spanning throttled memory monitors, memoised dashboard components, idle-scheduled handlers, hardened WebSocket reconnection logic, and the new `tests/connectionManager.test.ts` coverage used by Netlify/GitHub pipelines.
 - **Landing Aura Utilities**: Added reusable aura gradients, hero glows, and glass overlays in `src/index.css` to support immersive landing visuals while keeping the utilities available to other sections.
 - **Maintenance Mode Gate**: Introduced `MaintenanceGate` wrapper and `VITE_MAINTENANCE_MODE`/`VITE_MAINTENANCE_TOKEN` controls to limit production access during live debugging sessions. The gate surfaces a secure password prompt and preserves existing app state for authorized testers.
 - **Supabase Cron Auth Migration**: Added `20250925205100_update_cron_use_http_auth.sql` to recreate the `environmental-data-collection` job using pg_net’s auth registry so the edge function can be triggered every minute without depending on restricted database settings.
@@ -23,6 +24,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **Dashboard Render Optimisations**: Memoised `src/components/DataSourceValidator.tsx` and the dashboard header/air-quality cards while routing pointer and resize handlers through requestAnimationFrame to reduce redundant renders and layout thrash.
 - **Landing Experience Refresh**: Reimagined `src/pages/Landing.tsx`, `tailwind.config.ts`, and global design tokens to adopt Inter/Plus Jakarta Sans typography, glassmorphism cards, and BuildAI-inspired hero metrics without impacting routing or onboarding flows.
 - **Atmospheric Background Overlay**: Introduced `src/components/backgrounds/InteractiveSmokeOverlay.tsx` and layered it into `BackgroundManager.tsx` so the weather-driven imagery gains the interactive, smoke-like distortion from the reference design while retaining existing fallback behavior.
 - **Atmospheric Overlay Refinements**: Lightened `InteractiveSmokeOverlay.tsx` by throttling pointer-driven parallax updates, lowering sparkle density, relying on CSS-driven smoke layers, and correcting `BackgroundManager.tsx` stacking so the smoke layer consistently renders between the weather imagery and glass content.
@@ -33,6 +35,7 @@ All notable changes to this project will be documented in this file.
 
 ### Performance
 
+- **Throttled Memory & Event Scheduling**: `src/utils/memoryMonitor.ts` dispatches no more than once every 2 s, clamps polling windows to 15–60 s, and reuses pooled objects while `src/components/ProfileView.tsx`, `src/hooks/usePerformance.ts`, and `src/components/backgrounds/InteractiveSmokeOverlay.tsx` shift visibility/network/pointer work to idle callbacks and rAF.
 - **Memory Guard Rail Enhancements**: Combined query cache tuning, heap fail-safe dispatching, and badge history pruning reduces steady-state heap usage recorded by `memoryMonitor.addListener()` and ensures reload safeguards trigger before crossing the 200 MB threshold.
 - **Realtime Dispatch Offloading**: Deferred channel callback execution in `src/lib/realtimeConnectionManager.ts` to microtasks and suppressed hidden-tab dispatch, eliminating Chrome's "[Violation] 'message' handler" spam and keeping WebSocket handlers under the long-task threshold.
 

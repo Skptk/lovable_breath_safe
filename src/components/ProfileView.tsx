@@ -649,21 +649,15 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   // Mobile performance optimization - pause expensive operations when app is backgrounded
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        if (subscriptionRef.current) {
-          subscriptionRef.current();
-          subscriptionRef.current = null;
-          setSubscriptionStatus('idle');
-          setIsInitialized(false);
-        }
-      } else if (!subscriptionRef.current && userId) {
-        void loadProfileData(false);
+      if (document.visibilityState === 'visible') {
+        queueRefresh();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      cancelScheduled();
     };
   }, [userId, loadProfileData]);
 
