@@ -27,9 +27,9 @@ const PARTICLE_COUNT = 40;
 const MOBILE_PARTICLE_COUNT = 26;
 const MAX_INTERACTION_DISTANCE = 150;
 const REPULSION_MULTIPLIER = 3;
-const SPRING_STRENGTH = 0.015;
-const DAMPING = 0.92;
-const DRIFT_FORCE = 0.018;
+const SPRING_STRENGTH = 0.018;
+const DAMPING = 0.9;
+const DRIFT_FORCE = 0.024;
 const COLORS = [
   'rgba(255, 255, 255, 0.6)',
   'rgba(220, 220, 220, 0.5)',
@@ -45,6 +45,12 @@ const AirParticles: React.FC = () => {
   const pointerRef = useRef<PointerPosition | null>(null);
   const pendingPointerRef = useRef<PointerPosition | null>(null);
   const pointerRafRef = useRef<number | null>(null);
+  const viewportRef = useRef<{ width: number; height: number }>({
+    width: hasWindow ? window.innerWidth : 0,
+    height: hasWindow ? window.innerHeight : 0
+  });
+  const lastFrameTimeRef = useRef<number>(hasWindow ? performance.now() : 0);
+  const isRunningRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!hasWindow) {
@@ -58,7 +64,7 @@ const AirParticles: React.FC = () => {
 
     let isUnmounted = false;
 
-    const computeParticleCount = () => (window.innerWidth < 768 ? MOBILE_PARTICLE_COUNT : PARTICLE_COUNT);
+    const computeParticleCount = () => (viewportRef.current.width < 768 ? MOBILE_PARTICLE_COUNT : PARTICLE_COUNT);
 
     const clearParticles = () => {
       particlesRef.current.forEach((particle) => {
@@ -94,6 +100,8 @@ const AirParticles: React.FC = () => {
       clearParticles();
       const width = window.innerWidth;
       const height = window.innerHeight;
+      viewportRef.current.width = width;
+      viewportRef.current.height = height;
       const count = computeParticleCount();
 
       particlesRef.current = Array.from({ length: count }, (_, index) => {
@@ -166,17 +174,31 @@ const AirParticles: React.FC = () => {
     };
 
     const animationLoop = () => {
+      if (!isRunningRef.current) {
+        return;
+      }
+
+      const now = performance.now();
+      const delta = now - lastFrameTimeRef.current;
+      lastFrameTimeRef.current = now;
+
+      const baseFrame = 1000 / 60;
+      const clampedDelta = Math.min(Math.max(delta, 6), 48);
+      const timeScale = Math.min(Math.max(clampedDelta / baseFrame, 0.75), 2.2);
+
       const particles = particlesRef.current;
       const pointer = pointerRef.current;
-      const width = window.innerWidth;
-      const height = window.innerHeight;
+      const { width, height } = viewportRef.current;
       const maxDistSq = MAX_INTERACTION_DISTANCE * MAX_INTERACTION_DISTANCE;
+      const driftForce = DRIFT_FORCE * timeScale;
+      const springStrength = SPRING_STRENGTH * timeScale;
+      const dampingFactor = Math.pow(DAMPING, timeScale);
 
       for (const particle of particles) {
         // Gentle drift
-        particle.driftAngle += particle.driftSpeed;
-        particle.vx += Math.cos(particle.driftAngle) * DRIFT_FORCE;
-        particle.vy += Math.sin(particle.driftAngle) * DRIFT_FORCE;
+        particle.driftAngle += particle.driftSpeed * timeScale;
+        particle.vx += Math.cos(particle.driftAngle) * driftForce;
+        particle.vy += Math.sin(particle.driftAngle) * driftForce;
 
         if (pointer) {
           const dx = particle.x - pointer.x;
@@ -186,23 +208,23 @@ const AirParticles: React.FC = () => {
           if (distanceSq > 0 && distanceSq < maxDistSq) {
             const distance = Math.sqrt(distanceSq);
             const strength = Math.max(0, (MAX_INTERACTION_DISTANCE - distance) / MAX_INTERACTION_DISTANCE);
-            const force = strength * strength * REPULSION_MULTIPLIER;
+            const force = strength * strength * REPULSION_MULTIPLIER * timeScale;
             const angle = Math.atan2(dy, dx);
             particle.vx += Math.cos(angle) * force;
             particle.vy += Math.sin(angle) * force;
           }
         }
 
-        const springX = (particle.baseX - particle.x) * SPRING_STRENGTH;
-        const springY = (particle.baseY - particle.y) * SPRING_STRENGTH;
+        const springX = (particle.baseX - particle.x) * springStrength;
+        const springY = (particle.baseY - particle.y) * springStrength;
         particle.vx += springX;
         particle.vy += springY;
 
-        particle.vx *= DAMPING;
-        particle.vy *= DAMPING;
+        particle.vx *= dampingFactor;
+        particle.vy *= dampingFactor;
 
-        particle.x += particle.vx;
-        particle.y += particle.vy;
+        particle.x += particle.vx * timeScale;
+        particle.y += particle.vy * timeScale;
 
         const margin = 30;
         if (particle.x < -margin) particle.x = -margin;
@@ -215,16 +237,51 @@ const AirParticles: React.FC = () => {
         }
       }
 
-      if (!isUnmounted) {
+      if (!isUnmounted && isRunningRef.current) {
         animationRef.current = window.requestAnimationFrame(animationLoop);
       }
     };
 
+    const startAnimation = () => {
+      if (isRunningRef.current) {
+        return;
+      }
+      isRunningRef.current = true;
+      lastFrameTimeRef.current = performance.now();
+      animationRef.current = window.requestAnimationFrame(animationLoop);
+    };
+
+    const stopAnimation = () => {
+      if (!isRunningRef.current) {
+        return;
+      }
+      isRunningRef.current = false;
+      if (animationRef.current !== null) {
+        window.cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+      pointerRef.current = null;
+      pendingPointerRef.current = null;
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        startAnimation();
+      } else {
+        stopAnimation();
+      }
+    };
+
     initializeParticles();
-    animationRef.current = window.requestAnimationFrame(animationLoop);
+    startAnimation();
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const handleResize = () => {
       initializeParticles();
+      if (!isRunningRef.current) {
+        startAnimation();
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
@@ -237,16 +294,14 @@ const AirParticles: React.FC = () => {
     return () => {
       isUnmounted = true;
 
-      if (animationRef.current !== null) {
-        window.cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-      }
+      stopAnimation();
 
       if (pointerRafRef.current !== null) {
         window.cancelAnimationFrame(pointerRafRef.current);
         pointerRafRef.current = null;
       }
 
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseleave', handleMouseLeave);
       window.removeEventListener('touchmove', handleTouchMove);
