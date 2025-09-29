@@ -648,6 +648,7 @@ export const useAirQuality = () => {
 
   // Memoized function to fetch air quality data with caching
   const refreshOnce = useRef(initialLockActive);
+  const refreshInFlightRef = useRef(false);
 
   const manualRefresh = useCallback(
     async (options: { force?: boolean; silent?: boolean } = {}) => {
@@ -655,6 +656,14 @@ export const useAirQuality = () => {
         return { skipped: true } as const;
       }
 
+      if (refreshInFlightRef.current) {
+        if (!options.silent) {
+          console.log('⏳ [useAirQuality] Skipping refresh; another refresh is still in flight');
+        }
+        return { skipped: true } as const;
+      }
+
+      refreshInFlightRef.current = true;
       if (!options.force && isRefreshLocked()) {
         const remainingMs = getTimeUntilNextRefresh();
         if (!options.silent) {
@@ -667,6 +676,7 @@ export const useAirQuality = () => {
             variant: "default",
           });
         }
+        refreshInFlightRef.current = false;
         return { locked: true, remainingMs } as const;
       }
 
@@ -714,6 +724,9 @@ export const useAirQuality = () => {
         }
         return { error: true, cause: error } as const;
       }
+      finally {
+        refreshInFlightRef.current = false;
+      }
     },
     [aqicnQuery, locationData?.latitude, locationData?.longitude, refetchScheduledData, scheduledIsFresh, toast]
   );
@@ -734,6 +747,9 @@ export const useAirQuality = () => {
     }
 
     const timer = setTimeout(() => {
+      if (refreshInFlightRef.current) {
+        return;
+      }
       const hasRefreshedOnce = refreshOnce.current;
       manualRefresh({
         force: !hasRefreshedOnce,

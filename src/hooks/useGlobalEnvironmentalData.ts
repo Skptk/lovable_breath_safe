@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { GlobalEnvironmentalData } from '@/types';
@@ -71,6 +71,7 @@ export const useGlobalEnvironmentalData = (
   } = options;
 
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const manualRefetchInFlightRef = useRef(false);
 
   const shouldFilterByLocation =
     typeof latitude === 'number' && !Number.isNaN(latitude) &&
@@ -189,11 +190,19 @@ export const useGlobalEnvironmentalData = (
   }, [lastUpdated]);
 
   const refetch = useCallback(async () => {
+    if (manualRefetchInFlightRef.current) {
+      console.log(' [GlobalData] Skipping manual refetch; previous request still in flight');
+      return;
+    }
+
+    manualRefetchInFlightRef.current = true;
     console.log(' [GlobalData] Manual refetch requested');
     try {
       await query.refetch();
     } catch (error) {
       console.error(' [GlobalData] Manual refetch failed:', error);
+    } finally {
+      manualRefetchInFlightRef.current = false;
     }
   }, [query]);
 

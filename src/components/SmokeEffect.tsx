@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 
 type ParticleDirection = 'left' | 'right';
 
@@ -74,8 +74,26 @@ const SmokeEffectComponent: React.FC = () => {
 
   const particles = useMemo(() => generateParticles(), []);
   const keyframeStyles = useMemo(() => KEYFRAME_STYLES, []);
+  const [isReady, setIsReady] = useState(() => !hasWindow);
 
-  if (!hasWindow) {
+  useEffect(() => {
+    if (!hasWindow) {
+      return;
+    }
+
+    let frameId: number;
+    frameId = window.requestAnimationFrame(() => {
+      frameId = window.requestAnimationFrame(() => {
+        setIsReady(true);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [hasWindow]);
+
+  if (!hasWindow || !isReady) {
     return null;
   }
 
