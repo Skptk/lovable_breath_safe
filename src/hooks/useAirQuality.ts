@@ -750,11 +750,16 @@ export const useAirQuality = () => {
       if (refreshInFlightRef.current) {
         return;
       }
+
       const hasRefreshedOnce = refreshOnce.current;
+      const lockRemaining = getTimeUntilNextRefresh();
+      const shouldForceInitial = !hasRefreshedOnce && lockRemaining === 0;
+
       manualRefresh({
-        force: !hasRefreshedOnce,
+        force: shouldForceInitial,
         silent: hasRefreshedOnce,
       });
+
       refreshOnce.current = true;
     }, 500);
 
