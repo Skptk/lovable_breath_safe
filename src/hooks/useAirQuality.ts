@@ -297,6 +297,7 @@ export const useAirQuality = () => {
   const readingsRef = useRef<AirQualityData[]>(readings);
   const prunedCountRef = useRef(0);
   const lastHistoryInsertRef = useRef<string | null>(null);
+  const lastRecordedAtRef = useRef<number | null>(null);
   const initialLockActive = typeof window !== 'undefined' ? isRefreshLocked() : false;
 
   const [queryEnabled, setQueryEnabled] = useState<boolean>(() => !initialLockActive);
@@ -361,34 +362,46 @@ export const useAirQuality = () => {
         return;
       }
 
+      const lockRemaining = getTimeUntilNextRefresh();
+      const lockActive = lockRemaining > 0;
+
+      if (lockActive) {
+        if (import.meta.env.DEV) {
+          console.log(`🔒 [useAirQuality] Skipping ${source} history insert; lock active for ${Math.ceil(lockRemaining / 1000)}s`);
+        }
+        return;
+      }
+
       const insertKey = `${source}:${reading.timestamp}`;
       if (lastHistoryInsertRef.current === insertKey) {
         return;
       }
       lastHistoryInsertRef.current = insertKey;
 
-      const latitude = reading.userCoordinates?.lat ?? reading.coordinates?.lat ?? null;
-      const longitude = reading.userCoordinates?.lon ?? reading.coordinates?.lon ?? null;
+      const latestReading = readingsRef.current.at(-1) ?? reading;
+
+      const latitude = latestReading.userCoordinates?.lat ?? latestReading.coordinates?.lat ?? null;
+      const longitude = latestReading.userCoordinates?.lon ?? latestReading.coordinates?.lon ?? null;
       const record = {
         user_id: user.id,
-        timestamp: reading.timestamp ?? new Date().toISOString(),
-        location_name: reading.location,
+        timestamp: latestReading.timestamp ?? reading.timestamp ?? new Date().toISOString(),
+        location_name: latestReading.location,
         latitude,
         longitude,
-        aqi: toNullableNumber(reading.aqi),
-        pm25: toNullableNumber(reading.pm25),
-        pm10: toNullableNumber(reading.pm10),
-        no2: toNullableNumber(reading.no2),
-        so2: toNullableNumber(reading.so2),
-        co: toNullableNumber(reading.co),
-        o3: toNullableNumber(reading.o3),
+        aqi: toNullableNumber(latestReading.aqi),
+        pm25: toNullableNumber(latestReading.pm25),
+        pm10: toNullableNumber(latestReading.pm10),
+        no2: toNullableNumber(latestReading.no2),
+        so2: toNullableNumber(latestReading.so2),
+        co: toNullableNumber(latestReading.co),
+        o3: toNullableNumber(latestReading.o3),
         points_awarded: source === 'live' ? 10 : 0,
         created_at: new Date().toISOString(),
       };
 
       console.log(`📝 [useAirQuality] Scheduling ${source} AQI history insert`, {
-        location: reading.location,
-        timestamp: reading.timestamp,
+        location: latestReading.location,
+        timestamp: latestReading.timestamp,
         source,
       });
 
@@ -412,6 +425,8 @@ export const useAirQuality = () => {
           }
 
           console.log(`✅ [useAirQuality] Successfully recorded ${source} AQI reading in history`);
+          lastRecordedAtRef.current = Date.now();
+          setRefreshLockTimestamp();
         } catch (insertError: unknown) {
           console.error(`❌ [useAirQuality] ${source} history insert threw`, insertError);
           lastHistoryInsertRef.current = null;
@@ -585,7 +600,7 @@ export const useAirQuality = () => {
     setReadings(prunedReadings);
 
     enqueueHistoryInsert(scheduledReading, 'scheduled');
-  }, [scheduledIsFresh, scheduledReading, pruneHistory]);
+  }, [scheduledIsFresh, scheduledReading, pruneHistory, enqueueHistoryInsert]);
 
   useEffect(() => {
     if (scheduledIsFresh) {
@@ -627,7 +642,7 @@ export const useAirQuality = () => {
     setReadings(prunedReadings);
 
     enqueueHistoryInsert(latestReading, 'live');
-  }, [aqicnQuery.data, pruneHistory]);
+  }, [aqicnQuery.data, pruneHistory, enqueueHistoryInsert]);
 
   // Memoized function to fetch air quality data with caching
   const refreshOnce = useRef(initialLockActive);
