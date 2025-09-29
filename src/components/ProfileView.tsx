@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import { motion } from "framer-motion";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
-
+import React, { useRef, useCallback } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -525,6 +525,39 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
     };
   }
 
+  const refreshTimeoutRef = useRef<number | null>(null);
+
+  const cancelQueuedRefresh = useCallback(() => {
+    if (refreshTimeoutRef.current !== null) {
+      clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
+    }
+  }, []);
+
+  const queueRefresh = useCallback(
+    (priority: 'immediate' | 'idle' = 'idle') => {
+      if (!userId) {
+        return Promise.resolve();
+      }
+
+      if (priority === 'immediate') {
+        cancelQueuedRefresh();
+        return loadProfileData(false);
+      }
+
+      cancelQueuedRefresh();
+
+      return new Promise<void>((resolve) => {
+        const timeoutId = window.setTimeout(() => {
+          refreshTimeoutRef.current = null;
+          loadProfileData(false).finally(resolve);
+        }, 300);
+        refreshTimeoutRef.current = timeoutId;
+      });
+    },
+    [userId, loadProfileData, cancelQueuedRefresh]
+  );
+
   useEffect(() => {
     if (!userId) {
       setProfile(null);
@@ -624,6 +657,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
       }
     };
 
+    
     void initializeSubscription();
 
     return () => {
