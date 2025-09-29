@@ -4,6 +4,8 @@
 
 import { isDebugBuild } from '@/utils/debugFlags';
 
+type ListenerCallback = (event: Event) => void;
+
 // Track component instances to detect leaks (debug builds only)
 const componentInstances = isDebugBuild ? new Map<string, Set<object>>() : null;
 
@@ -173,7 +175,7 @@ export function trackEventListeners() {
   (window as any)._originalRemoveEventListener = window.removeEventListener.bind(window);
   
   // Track all event listeners
-  const listeners = new Map<string, Map<EventListenerOrEventListenerObject, EventListener>>();
+  const listeners = new Map<string, Map<EventListenerOrEventListenerObject, ListenerCallback>>();
   
   // Override addEventListener
   window.addEventListener = function<K extends keyof WindowEventMap>(
@@ -187,9 +189,9 @@ export function trackEventListeners() {
       listeners.set(eventType, new Map());
     }
     
-    const wrappedListener = function(this: Window, event: Event) {
+    const wrappedListener: ListenerCallback = function(this: Window, event: Event) {
       try {
-        return (listener as EventListener).call(this, event);
+        return (listener as ListenerCallback).call(this, event);
       } catch (e) {
         console.error(`Error in event listener for '${eventType}':`, e);
         throw e;

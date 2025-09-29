@@ -678,27 +678,6 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
         setIsInitialized(false);
       }
     };
-
-    void initializeSubscription();
-
-    return () => {
-      isActive = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      if (abortController) {
-        abortController.abort();
-      }
-      if (subscriptionRef.current) {
-        const unsubscribe = subscriptionRef.current;
-        subscriptionRef.current = null;
-        unsubscribe();
-      }
-      if (isMountedRef.current) {
-        setSubscriptionStatus('idle');
-        setIsInitialized(false);
-      }
-    };
   }, [userId, isInitialized]);
 
   // Mobile performance optimization - pause expensive operations when app is backgrounded
@@ -717,19 +696,6 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
       cancelQueuedRefresh();
     };
   }, [queueRefresh, cancelQueuedRefresh]);
-
-          title="Profile"
-          subtitle="Loading your profile..."
-          showMobileMenu={showMobileMenu}
-          onMobileMenuToggle={onMobileMenuToggle}
-        />
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 lg:space-y-8">
