@@ -72,35 +72,20 @@ export const useGlobalEnvironmentalData = (
 
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
+  const shouldFilterByLocation =
+    typeof latitude === 'number' && !Number.isNaN(latitude) &&
+    typeof longitude === 'number' && !Number.isNaN(longitude);
+
+  const shouldFetch = shouldFilterByLocation || (typeof cityName === 'string' && cityName.trim().length > 0);
+
   const fetchGlobalData = useCallback(async (): Promise<GlobalEnvironmentalData[]> => {
-    const shouldFilterByLocation =
-      typeof latitude === 'number' && !Number.isNaN(latitude) &&
-      typeof longitude === 'number' && !Number.isNaN(longitude);
+    if (!shouldFetch) {
+      console.log(' [GlobalData] Skipping fetch: no location or city context provided');
+      setLastUpdated(null);
+      return [];
+    }
 
     const effectiveDistance = Math.min(Math.max(maxDistanceKm ?? 50, 5), 200);
-
-    if (!shouldFilterByLocation) {
-      console.log(' [GlobalData] Fetching environmental data (all active records)');
-
-      try {
-        const { data, error } = await supabase.rpc('get_all_active_environmental_data');
-
-        if (error) {
-          console.warn(' [GlobalData] RPC failed, falling back to scoped query:', error);
-          throw error;
-        }
-
-        if (data && data.length > 0) {
-          const mostRecent = data.reduce((latest, current) =>
-            new Date(current.collection_timestamp) > new Date(latest.collection_timestamp) ? current : latest
-          );
-          setLastUpdated(mostRecent.collection_timestamp);
-          return data as GlobalEnvironmentalData[];
-        }
-      } catch (rpcError) {
-        console.log(' [GlobalData] RPC unavailable. Using scoped table query.', rpcError);
-      }
-    }
 
     console.log(' [GlobalData] Fetching environmental data with scoped bounds', {
       latitude,
@@ -129,7 +114,7 @@ export const useGlobalEnvironmentalData = (
 
     const { data, error } = await queryBuilder
       .order('collection_timestamp', { ascending: false })
-      .limit(100);
+      .limit(60);
 
     if (error) {
       console.error(' [GlobalData] Error fetching scoped table data:', error);
@@ -147,11 +132,12 @@ export const useGlobalEnvironmentalData = (
     console.log(' [GlobalData] No environmental data returned for scoped query.');
     setLastUpdated(null);
     return [];
-  }, [latitude, longitude, maxDistanceKm, cityName]);
+  }, [shouldFetch, latitude, longitude, maxDistanceKm, cityName]);
 
   const query = useQuery<GlobalEnvironmentalData[], Error>({
-    queryKey: ['global-environmental-data'],
+    queryKey: ['global-environmental-data', latitude ?? null, longitude ?? null, cityName ?? null],
     queryFn: fetchGlobalData,
+    enabled: shouldFetch,
     refetchInterval: autoRefresh ? Math.max(refreshInterval, MIN_REFRESH_INTERVAL) : false,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
