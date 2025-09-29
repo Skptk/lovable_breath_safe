@@ -319,17 +319,6 @@ const App = (): JSX.Element => {
     shouldShowApp,
   ]);
 
-  if (!shouldShowApp) {
-    if (import.meta.env.DEV) {
-      console.log("🧩 [RENDER] App waiting for prerequisites", {
-        authLoading,
-        hasUser: Boolean(user),
-        hasLocationData: Boolean(locationData),
-      });
-    }
-    return <LoadingScreen />;
-  }
-
   useEffect(() => {
     if (!import.meta.env.DEV) {
       return;
@@ -366,7 +355,17 @@ const App = (): JSX.Element => {
     locationData,
   ]);
 
-  return appContent;
+  const renderedContent = shouldShowApp ? appContent : <LoadingScreen />;
+
+  if (!shouldShowApp && import.meta.env.DEV) {
+    console.log("🧩 [RENDER] App waiting for prerequisites", {
+      authLoading,
+      hasUser: Boolean(user),
+      hasLocationData: Boolean(locationData),
+    });
+  }
+
+  return renderedContent;
 };
 
 export default App;
