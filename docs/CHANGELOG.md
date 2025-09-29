@@ -52,6 +52,7 @@ All notable changes to this project will be documented in this file.
 - **Realtime Dispatch Diagnostics**: `src/lib/realtimeConnectionManager.ts` now records total dispatch duration plus per-callback timings above 24 ms, highlighting the slowest subscription handlers to target remaining long tasks.
 - **Dashboard Animation Tightening**: Shortened key Framer Motion transitions in `src/components/AirQualityDashboard/AQICard.tsx` and `WeatherSection.tsx`, memoizing motion configs and deferring layout measurements with `requestAnimationFrame` to reduce forced reflows and Interaction to Next Paint (INP) regressions.
 - **Heap Fail-safe Telemetry**: `src/utils/heapFailSafe.ts` logs `memoryMonitor.getStats()` diagnostics (high-water mark, listener count, recent usage) whenever warn/critical/emergency thresholds fire, improving visibility into cache and listener pressure before auto-clearing.
+- **AQI Refresh Batching**: Deferred scheduled/live reading merges in `src/hooks/useAirQuality.ts` to `requestAnimationFrame`, wrapped `setReadings` inside `startTransition`, and microtask-scheduled history inserts to cut main-thread blocking during realtime bursts while retaining slow-update diagnostics.
 
 ### Migration
 

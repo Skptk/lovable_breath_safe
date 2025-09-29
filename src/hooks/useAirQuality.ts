@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, startTransition } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { memoryMonitor } from '@/utils/memoryMonitor';
@@ -621,12 +621,62 @@ export const useAirQuality = () => {
 
     persistAirQualityReading(scheduledReading);
 
-    const mergedReadings = [...readingsRef.current, scheduledReading];
-    const prunedReadings = pruneHistory(mergedReadings);
-    readingsRef.current = prunedReadings;
-    setReadings(prunedReadings);
+    let cancelled = false;
 
-    enqueueHistoryInsert(scheduledReading, 'scheduled');
+    const scheduleHistoryInsert = () => {
+      const invoke = () => {
+        if (!cancelled) {
+          enqueueHistoryInsert(scheduledReading, 'scheduled');
+        }
+      };
+
+      if (typeof queueMicrotask === 'function') {
+        queueMicrotask(invoke);
+      } else {
+        Promise.resolve().then(invoke).catch(() => {
+          // enqueueHistoryInsert already logs failures
+        });
+      }
+    };
+
+    const runUpdate = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const start = performance.now();
+
+      const mergedReadings = [...readingsRef.current, scheduledReading];
+      const prunedReadings = pruneHistory(mergedReadings);
+      readingsRef.current = prunedReadings;
+
+      startTransition(() => {
+        if (!cancelled) {
+          setReadings(prunedReadings);
+        }
+      });
+
+      const duration = performance.now() - start;
+      if (duration > 32) {
+        console.warn('[useAirQuality] Slow scheduled readings update', { duration });
+      }
+
+      scheduleHistoryInsert();
+    };
+
+    if (typeof window !== 'undefined') {
+      const frameId = requestAnimationFrame(runUpdate);
+      return () => {
+        cancelled = true;
+        cancelAnimationFrame(frameId);
+      };
+    }
+
+    runUpdate();
+
+    return () => {
+      cancelled = true;
+    };
   }, [scheduledIsFresh, scheduledReading, pruneHistory, enqueueHistoryInsert]);
 
   useEffect(() => {
@@ -663,12 +713,62 @@ export const useAirQuality = () => {
       persistAirQualityReading(latestReading);
     }
 
-    const mergedReadings = [...readingsRef.current, latestReading];
-    const prunedReadings = pruneHistory(mergedReadings);
-    readingsRef.current = prunedReadings;
-    setReadings(prunedReadings);
+    let cancelled = false;
 
-    enqueueHistoryInsert(latestReading, 'live');
+    const scheduleHistoryInsert = () => {
+      const invoke = () => {
+        if (!cancelled) {
+          enqueueHistoryInsert(latestReading, 'live');
+        }
+      };
+
+      if (typeof queueMicrotask === 'function') {
+        queueMicrotask(invoke);
+      } else {
+        Promise.resolve().then(invoke).catch(() => {
+          // enqueueHistoryInsert already logs failures
+        });
+      }
+    };
+
+    const runUpdate = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const start = performance.now();
+
+      const mergedReadings = [...readingsRef.current, latestReading];
+      const prunedReadings = pruneHistory(mergedReadings);
+      readingsRef.current = prunedReadings;
+
+      startTransition(() => {
+        if (!cancelled) {
+          setReadings(prunedReadings);
+        }
+      });
+
+      const duration = performance.now() - start;
+      if (duration > 32) {
+        console.warn('[useAirQuality] Slow live readings update', { duration });
+      }
+
+      scheduleHistoryInsert();
+    };
+
+    if (typeof window !== 'undefined') {
+      const frameId = requestAnimationFrame(runUpdate);
+      return () => {
+        cancelled = true;
+        cancelAnimationFrame(frameId);
+      };
+    }
+
+    runUpdate();
+
+    return () => {
+      cancelled = true;
+    };
   }, [aqicnQuery.data, pruneHistory, enqueueHistoryInsert]);
 
   // Memoized function to fetch air quality data with caching
@@ -840,3 +940,4 @@ export const useAirQuality = () => {
 
   return result;
 };
+
