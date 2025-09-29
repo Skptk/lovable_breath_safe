@@ -16,20 +16,26 @@ interface Particle {
   vx: number;
   vy: number;
   size: number;
-  opacity: number;
+  baseOpacity: number;
   color: ParticleColor;
   element: HTMLDivElement | null;
   driftAngle: number;
   driftSpeed: number;
+  twinkleTimer: number;
+  twinkleSpeed: number;
+  glowStrength: number;
+  styleElapsed: number;
 }
 
-const PARTICLE_COUNT = 40;
-const MOBILE_PARTICLE_COUNT = 26;
+const PARTICLE_COUNT = 80;
+const MOBILE_PARTICLE_COUNT = 18;
 const MAX_INTERACTION_DISTANCE = 150;
 const REPULSION_MULTIPLIER = 3;
 const SPRING_STRENGTH = 0.018;
 const DAMPING = 0.9;
 const DRIFT_FORCE = 0.024;
+const STYLE_UPDATE_INTERVAL_MS = 120;
+const RESIZE_DEBOUNCE_MS = 220;
 const COLORS = [
   'rgba(255, 255, 255, 0.6)',
   'rgba(220, 220, 220, 0.5)',
@@ -71,6 +77,7 @@ const AirParticles: React.FC = () => {
         if (particle.element && particle.element.parentNode === container) {
           container.removeChild(particle.element);
         }
+        particle.element = null;
       });
       particlesRef.current = [];
     };
@@ -80,15 +87,16 @@ const AirParticles: React.FC = () => {
       element.className = 'absolute pointer-events-none rounded-full will-change-transform';
       element.style.width = `${particle.size}px`;
       element.style.height = `${particle.size}px`;
-      element.style.opacity = particle.opacity.toFixed(3);
+      element.style.opacity = particle.baseOpacity.toFixed(3);
       element.style.backgroundColor = particle.color;
+      element.style.backgroundImage = 'radial-gradient(circle at 40% 35%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.45) 35%, rgba(255,255,255,0) 75%)';
       element.style.position = 'absolute';
       element.style.left = '0px';
       element.style.top = '0px';
       element.style.transform = `translate3d(${particle.x}px, ${particle.y}px, 0)`;
       element.style.mixBlendMode = 'screen';
-      element.style.boxShadow = '0 0 6px rgba(255, 255, 255, 0.22)';
-      element.style.filter = 'blur(0.3px)';
+      element.style.boxShadow = `0 0 ${12 * particle.glowStrength}px rgba(255,255,255,0.55), 0 0 ${24 * particle.glowStrength}px rgba(195,215,255,0.35)`;
+      element.style.filter = 'blur(0.3px) saturate(1.2)';
       element.style.transition = 'opacity 0.35s ease';
       element.style.borderRadius = '9999px';
       element.style.pointerEvents = 'none';
@@ -106,7 +114,7 @@ const AirParticles: React.FC = () => {
 
       particlesRef.current = Array.from({ length: count }, (_, index) => {
         const size = 4 + Math.random() * 12;
-        const opacity = 0.4 + Math.random() * 0.3;
+        const baseOpacity = 0.45 + Math.random() * 0.3;
         const color = COLORS[Math.floor(Math.random() * COLORS.length)] ?? COLORS[0];
         const baseX = Math.random() * width;
         const baseY = Math.random() * height;
@@ -119,11 +127,15 @@ const AirParticles: React.FC = () => {
           vx: (Math.random() - 0.5) * 0.2,
           vy: (Math.random() - 0.5) * 0.2,
           size,
-          opacity,
+          baseOpacity,
           color,
           element: null,
           driftAngle: Math.random() * Math.PI * 2,
-          driftSpeed: 0.002 + Math.random() * 0.003
+          driftSpeed: 0.002 + Math.random() * 0.003,
+          twinkleTimer: Math.random() * Math.PI * 2,
+          twinkleSpeed: 0.7 + Math.random() * 1.3,
+          glowStrength: 0.75 + Math.random() * 0.75,
+          styleElapsed: Math.random() * STYLE_UPDATE_INTERVAL_MS
         };
 
         createParticleElement(particle);
@@ -234,6 +246,16 @@ const AirParticles: React.FC = () => {
 
         if (particle.element) {
           particle.element.style.transform = `translate3d(${particle.x}px, ${particle.y}px, 0)`;
+          particle.styleElapsed += clampedDelta;
+          if (particle.styleElapsed >= STYLE_UPDATE_INTERVAL_MS) {
+            particle.styleElapsed = 0;
+            particle.twinkleTimer += (clampedDelta / 1000) * particle.twinkleSpeed * Math.PI * 2;
+            const sparkle = 0.65 + Math.sin(particle.twinkleTimer) * 0.35;
+            const opacity = Math.min(1, Math.max(0.2, particle.baseOpacity * sparkle));
+            particle.element.style.opacity = opacity.toFixed(3);
+            const glow = particle.glowStrength * sparkle;
+            particle.element.style.boxShadow = `0 0 ${(12 * glow).toFixed(1)}px rgba(255,255,255,${(0.45 * sparkle).toFixed(3)}), 0 0 ${(26 * glow).toFixed(1)}px rgba(190,220,255,${(0.28 * sparkle).toFixed(3)})`;
+          }
         }
       }
 
@@ -260,6 +282,10 @@ const AirParticles: React.FC = () => {
         window.cancelAnimationFrame(animationRef.current);
         animationRef.current = null;
       }
+      if (pointerRafRef.current !== null) {
+        window.cancelAnimationFrame(pointerRafRef.current);
+        pointerRafRef.current = null;
+      }
       pointerRef.current = null;
       pendingPointerRef.current = null;
     };
@@ -277,13 +303,20 @@ const AirParticles: React.FC = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    const handleResize = () => {
-      initializeParticles();
-      if (!isRunningRef.current) {
-        startAnimation();
-      }
-    };
+    let resizeTimeoutId: number | null = null;
 
+    const handleResize = () => {
+      if (resizeTimeoutId !== null) {
+        window.clearTimeout(resizeTimeoutId);
+      }
+      resizeTimeoutId = window.setTimeout(() => {
+        resizeTimeoutId = null;
+        initializeParticles();
+        if (!isRunningRef.current) {
+          startAnimation();
+        }
+      }, RESIZE_DEBOUNCE_MS);
+    };
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('mouseleave', handleMouseLeave, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
@@ -299,6 +332,11 @@ const AirParticles: React.FC = () => {
       if (pointerRafRef.current !== null) {
         window.cancelAnimationFrame(pointerRafRef.current);
         pointerRafRef.current = null;
+      }
+
+      if (resizeTimeoutId !== null) {
+        window.clearTimeout(resizeTimeoutId);
+        resizeTimeoutId = null;
       }
 
       document.removeEventListener('visibilitychange', handleVisibilityChange);
