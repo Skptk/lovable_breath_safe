@@ -21,6 +21,8 @@ All notable changes to this project will be documented in this file.
 - **Profile Subscription Cleanup**: Hardened `src/components/ProfileView.tsx` by applying `PROFILE_HISTORY_BUDGET`, limiting badge arrays via `BudgetedArray()`, and cancelling Supabase subscriptions when the tab hides to prevent orphaned listeners. Confirmed through `npm run test`.
 - **Dashboard Refresh Lock Persistence**: Updated `src/hooks/useAirQuality.ts` to persist the last successful air quality reading and honor the 15-minute refresh lock across navigation/reloads so users cannot bypass rate limits by reloading the dashboard.
 - **Dashboard Loading Gate**: Relaxed `src/App.tsx` shell gating so the dashboard renders once location permission checks finish, preventing the app from stalling on the “Loading Breath Safe...” screen when only fallback coordinates are available.
+- **Production Memory Tooling Guard**: Wrapped `src/utils/memory.ts` helpers in an explicit `VITE_ENABLE_MEMORY_DEBUG`/`__ENABLE_MEMORY_DEBUG__` gate so production bundles no longer install global event-listener trackers or DOM walkers by default, eliminating the runaway heap growth that previously stemmed from the debug tooling.
+- **Dashboard Reading Counters**: Reworked `src/hooks/useUserPoints.ts` to derive daily/weekly/monthly readings and totals directly from `air_quality_readings`, and added a realtime subscription so “Today’s Readings” and “Weekly Activity” tiles update as soon as new measurements land.
 
 ### Changed
 

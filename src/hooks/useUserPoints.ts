@@ -8,6 +8,7 @@ interface UserPoints {
   todayReadings: number;
   weeklyReadings: number;
   monthlyReadings: number;
+  totalReadings: number;
   pointsHistory: PointRecord[];
   recentEarnings: PointRecord[];
   streaks?: {
@@ -34,6 +35,16 @@ type UserPointsRealtimePayload = {
   [key: string]: unknown;
 };
 
+type AirQualityReadingRealtimePayload = {
+  eventType?: string;
+  new?: {
+    id: string;
+    user_id: string;
+    timestamp: string;
+  } | null;
+  [key: string]: unknown;
+};
+
 export const useUserPoints = () => {
   const { user } = useAuth();
   const [userPoints, setUserPoints] = useState<UserPoints>({
@@ -41,6 +52,7 @@ export const useUserPoints = () => {
     todayReadings: 0,
     weeklyReadings: 0,
     monthlyReadings: 0,
+    totalReadings: 0,
     pointsHistory: [],
     recentEarnings: []
   });
@@ -76,9 +88,6 @@ export const useUserPoints = () => {
           ...prev,
           pointsHistory: [newPointRecord, ...prev.pointsHistory],
           recentEarnings: [newPointRecord, ...prev.recentEarnings.slice(0, 9)],
-          todayReadings: prev.todayReadings + 1,
-          weeklyReadings: prev.weeklyReadings + 1,
-          monthlyReadings: prev.monthlyReadings + 1
         }));
 
         fetchUserPoints();
@@ -86,6 +95,23 @@ export const useUserPoints = () => {
     },
     enabled: Boolean(user?.id),
     debugLabel: 'useUserPoints'
+  });
+
+  const { isConnected: userReadingsConnected } = useMemorySafeSubscription<AirQualityReadingRealtimePayload>({
+    channelName: `user-readings-${user?.id ?? 'anonymous'}`,
+    postgres: {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'air_quality_readings',
+      filter: user?.id ? `user_id=eq.${user.id}` : undefined
+    },
+    onMessage: (payload) => {
+      if (payload?.eventType === 'INSERT' && payload.new) {
+        fetchUserPoints();
+      }
+    },
+    enabled: Boolean(user?.id),
+    debugLabel: 'useUserPoints.readings'
   });
 
   // Fetch user points data
@@ -117,23 +143,36 @@ export const useUserPoints = () => {
 
       if (pointsError) throw pointsError;
 
-      // Calculate reading counts
+      // Calculate reading counts using air_quality_readings data
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
       const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
 
-      const todayReadings = pointsData?.filter(record => 
-        new Date(record.created_at) >= today
+      const { data: recentReadingsData, error: recentReadingsError } = await supabase
+        .from('air_quality_readings')
+        .select('id, timestamp')
+        .eq('user_id', user.id)
+        .gte('timestamp', monthAgo.toISOString());
+
+      if (recentReadingsError) throw recentReadingsError;
+
+      const { count: totalReadingsCount, error: totalReadingsError } = await supabase
+        .from('air_quality_readings')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (totalReadingsError) throw totalReadingsError;
+
+      const todayReadings = recentReadingsData?.filter(record =>
+        new Date(record.timestamp) >= today
       ).length || 0;
 
-      const weeklyReadings = pointsData?.filter(record => 
-        new Date(record.created_at) >= weekAgo
+      const weeklyReadings = recentReadingsData?.filter(record =>
+        new Date(record.timestamp) >= weekAgo
       ).length || 0;
 
-      const monthlyReadings = pointsData?.filter(record => 
-        new Date(record.created_at) >= monthAgo
-      ).length || 0;
+      const monthlyReadings = recentReadingsData?.length || 0;
 
       // Get recent earnings (last 10)
       const recentEarnings = pointsData?.slice(0, 10) || [];
@@ -160,6 +199,7 @@ export const useUserPoints = () => {
         todayReadings,
         weeklyReadings,
         monthlyReadings,
+        totalReadings: totalReadingsCount ?? 0,
         pointsHistory: pointsData || [],
         recentEarnings,
         streaks
@@ -182,10 +222,10 @@ export const useUserPoints = () => {
 
   // Calculate additional metrics
   const averagePointsPerReading = userPoints.pointsHistory.length > 0 
-    ? userPoints.totalPoints / userPoints.pointsHistory.length 
+    ? userPoints.totalPoints / (userPoints.totalReadings || userPoints.pointsHistory.length || 1) 
     : 0;
 
-  const totalReadings = userPoints.pointsHistory.length;
+  const totalReadings = userPoints.totalReadings || userPoints.pointsHistory.length;
   const currencyValue = (userPoints.totalPoints / 1000) * 0.1; // $0.1 per 1000 points
   const canWithdraw = userPoints.totalPoints >= 500000;
 
@@ -239,6 +279,7 @@ export const useUserPoints = () => {
     streaks: userPoints.streaks,
     profilePointsConnected: undefined, // Removed as per edit hint
     userPointsConnected,
+    userReadingsConnected,
     updateTotalPoints
   };
 };
