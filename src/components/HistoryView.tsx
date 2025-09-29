@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -357,27 +357,32 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         throw new Error(`Failed to fetch air quality data: ${error.message}`);
       }
 
-      if (!response) {
-        throw new Error('No air quality data received');
+      if (!response || response.error) {
+        throw new Error(response?.message || 'No air quality data received');
       }
 
-      // Save the reading to the database
+      const stationLat = response.stationLat ?? latitude;
+      const stationLon = response.stationLon ?? longitude;
+      const locationLabel = response.location ?? response.city ?? 'Unknown Location';
+      const recordedAt = response.timestamp ?? new Date().toISOString();
+
+      // Save the reading to the database with scheduled-aligned fields
       const reading = {
         user_id: user.id,
-        timestamp: new Date().toISOString(),
-        location_name: response.location || 'Unknown Location',
-        latitude: latitude,
-        longitude: longitude,
-        aqi: response.aqi,
-        pm25: response.pollutants?.pm25 || null,
-        pm10: response.pollutants?.pm10 || null,
-        no2: response.pollutants?.no2 || null,
-        so2: response.pollutants?.so2 || null,
-        co: response.pollutants?.co || null,
-        o3: response.pollutants?.o3 || null,
-        temperature: response.environmental?.temperature || null,
-        humidity: response.environmental?.humidity || null,
-        data_source: response.dataSource || 'Manual Fetch',
+        timestamp: recordedAt,
+        location_name: locationLabel,
+        latitude: stationLat,
+        longitude: stationLon,
+        aqi: response.aqi ?? 0,
+        pm25: response.pollutants?.pm25 ?? null,
+        pm10: response.pollutants?.pm10 ?? null,
+        no2: response.pollutants?.no2 ?? null,
+        so2: response.pollutants?.so2 ?? null,
+        co: response.pollutants?.co ?? null,
+        o3: response.pollutants?.o3 ?? null,
+        temperature: response.environmental?.temperature ?? null,
+        humidity: response.environmental?.humidity ?? null,
+        data_source: response.dataSource ?? 'AQICN (Scheduled)',
         created_at: new Date().toISOString()
       };
 

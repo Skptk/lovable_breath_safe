@@ -106,8 +106,6 @@ const POLLUTANT_LABELS: Record<string, string> = {
   o3: 'O3',
 };
 
-const MIN_ACCEPTABLE_AQI = 10;
-const MAX_FALLBACK_DISTANCE_KM = 150;
 const MAX_FETCHED_ROWS = 200;
 const MAX_RECORD_AGE_MINUTES = 8 * 60; // 8 hours
 const SCHEDULED_COLUMNS =
@@ -126,10 +124,6 @@ function computeDominantPollutant(record: GlobalEnvironmentalDataRecord): string
   });
 
   return dominantKey ? POLLUTANT_LABELS[dominantKey] : 'unknown';
-}
-
-function isAQIReasonable(aqi: number | null | undefined): boolean {
-  return typeof aqi === 'number' && Number.isFinite(aqi) && aqi >= MIN_ACCEPTABLE_AQI;
 }
 
 function buildPollutantPayload(record: GlobalEnvironmentalDataRecord) {
@@ -216,25 +210,12 @@ function sanitizeRecord(record: GlobalEnvironmentalDataRecord): GlobalEnvironmen
 }
 
 function selectBestCandidate(candidates: CandidateRecord[]): SelectionResult {
-  const acceptable = candidates.filter((candidate) => isAQIReasonable(candidate.record.aqi));
-  if (acceptable.length > 0) {
-    return { candidate: acceptable[0], strategy: 'nearest-acceptable' };
-  }
-
-  const withinRange = candidates.filter((candidate) => candidate.distanceKm <= MAX_FALLBACK_DISTANCE_KM);
-  const pool = withinRange.length ? withinRange : candidates;
-  if (!pool.length) {
+  if (!candidates.length) {
     return { candidate: undefined, strategy: 'none' };
   }
 
-  const bestAvailable = [...pool].sort((a, b) => {
-    const aAqi = a.record.aqi ?? -Infinity;
-    const bAqi = b.record.aqi ?? -Infinity;
-    if (bAqi !== aAqi) return bAqi - aAqi;
-    return a.distanceKm - b.distanceKm;
-  })[0];
-
-  return { candidate: bestAvailable, strategy: 'best-available' };
+  // Always prefer the nearest scheduled record so results align with scheduled-data-collection output.
+  return { candidate: candidates[0], strategy: 'nearest-active' };
 }
 
 function buildCandidateMeta(candidates: CandidateRecord[]) {
@@ -256,15 +237,19 @@ function buildResponsePayload(
   candidates: CandidateRecord[],
   startedAt: number,
 ) {
+  const locationLabel = candidate.record.country
+    ? `${candidate.record.city_name}, ${candidate.record.country}`
+    : candidate.record.city_name;
+
   const pollutants = buildPollutantPayload(candidate.record);
   const environmental = buildEnvironmentalPayload(candidate.record);
   const candidateMeta = buildCandidateMeta(candidates);
 
   return {
     aqi: candidate.record.aqi,
-    city: candidate.record.city_name,
+    city: locationLabel,
     stationUid: candidate.record.id,
-    stationName: candidate.record.city_name,
+    stationName: locationLabel,
     stationLat: candidate.record.latitude,
     stationLon: candidate.record.longitude,
     computedDistanceKm: Number(candidate.distanceKm.toFixed(2)),
@@ -272,7 +257,13 @@ function buildResponsePayload(
     pollutants,
     environmental,
     timestamp: candidate.record.collection_timestamp,
-    dataSource: candidate.record.data_source ?? 'AQICN',
+    dataSource: 'AQICN (Scheduled)',
+    scheduledMeta: {
+      id: candidate.record.id,
+      collectionTimestamp: candidate.record.collection_timestamp,
+      dataSource: candidate.record.data_source ?? 'AQICN',
+    },
+    location: locationLabel,
     country: candidate.record.country,
     coordinates: {
       user: { lat, lon },
@@ -282,10 +273,7 @@ function buildResponsePayload(
       chosen: 'scheduled-collection',
       selectionStrategy: strategy,
       userCountry,
-      selectionReason:
-        strategy === 'nearest-acceptable'
-          ? `Nearest station with AQI ≥ ${MIN_ACCEPTABLE_AQI}`
-          : `Best available station within ${MAX_FALLBACK_DISTANCE_KM}km`,
+      selectionReason: 'Nearest scheduled AQICN record',
       candidates: candidateMeta,
       dataAgeMinutes: Math.floor(
         (Date.now() - new Date(candidate.record.collection_timestamp).getTime()) / 60000,

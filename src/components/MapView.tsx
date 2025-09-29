@@ -140,26 +140,28 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
         return;
       }
 
-      const resolved = response?.data ?? response;
-
-      if (resolved) {
-        setFallbackAirQualityData({
-          aqi: resolved.aqi || 0,
-          pm25: resolved.pollutants?.pm25 ?? undefined,
-          pm10: resolved.pollutants?.pm10 ?? undefined,
-          no2: resolved.pollutants?.no2 ?? undefined,
-          so2: resolved.pollutants?.so2 ?? undefined,
-          co: resolved.pollutants?.co ?? undefined,
-          o3: resolved.pollutants?.o3 ?? undefined,
-          location: resolved.city || resolved.stationName || resolved.location || 'Your Location',
-          timestamp: resolved.timestamp || new Date().toISOString()
-        });
-        setError(null);
-      } else {
-        console.warn('fetchAQI returned no data to use as fallback');
+      if (!response || response.error) {
+        console.warn('fetchAQI returned an error response');
         setFallbackAirQualityData(null);
         setHasFetchedFallback(false);
+        return;
       }
+
+      const locationLabel = response.location ?? response.city ?? response.stationName ?? 'Your Location';
+      const fallbackPayload: AirQualityData = {
+        aqi: response.aqi ?? 0,
+        pm25: response.pollutants?.pm25 ?? undefined,
+        pm10: response.pollutants?.pm10 ?? undefined,
+        no2: response.pollutants?.no2 ?? undefined,
+        so2: response.pollutants?.so2 ?? undefined,
+        co: response.pollutants?.co ?? undefined,
+        o3: response.pollutants?.o3 ?? undefined,
+        location: locationLabel,
+        timestamp: response.timestamp ?? new Date().toISOString()
+      };
+
+      setFallbackAirQualityData(fallbackPayload);
+      setError(null);
     } catch (err) {
       console.error('Error fetching fallback air quality data:', err);
       setError('Failed to fetch air quality data');

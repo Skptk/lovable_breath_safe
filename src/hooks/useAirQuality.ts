@@ -461,7 +461,6 @@ export const useAirQuality = () => {
         if (error) throw error;
         if (!data) throw new Error('No data received');
 
-        // Check if API returned an error
         if (data.error) {
           console.warn('⚠️ [useAirQuality] fetchAQI API returned error:', data.message);
           // Do not update staleData here, just return error object
@@ -484,25 +483,24 @@ export const useAirQuality = () => {
           };
         }
 
-        // Transform successful fetchAQI API response with enhanced station data
+        const locationLabel = data.location ?? data.city ?? 'Unknown Location';
+
         const transformedData: AirQualityData = {
           aqi: data.aqi || 0,
-          pm25: data.pollutants?.pm25 || 0,
-          pm10: data.pollutants?.pm10 || 0,
-          no2: data.pollutants?.no2 || 0,
-          so2: data.pollutants?.so2 || 0,
-          co: data.pollutants?.co || 0,
-          o3: data.pollutants?.o3 || 0,
-          location: data.city || 'Unknown Location',
-          userLocation: data.city || 'Unknown Location',
-          coordinates: data.stationLat && data.stationLon ?
-            { lat: data.stationLat, lon: data.stationLon } :
-            { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
+          pm25: data.pollutants?.pm25 ?? 0,
+          pm10: data.pollutants?.pm10 ?? 0,
+          no2: data.pollutants?.no2 ?? 0,
+          so2: data.pollutants?.so2 ?? 0,
+          co: data.pollutants?.co ?? 0,
+          o3: data.pollutants?.o3 ?? 0,
+          location: locationLabel,
+          userLocation: locationLabel,
+          coordinates: { lat: data.stationLat ?? safeCoordinates.lat, lon: data.stationLon ?? safeCoordinates.lng },
           userCoordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           timestamp: data.timestamp || new Date().toISOString(),
-          dataSource: 'AQICN',
-          stationName: data.stationName,
-          stationUid: data.stationUid, // Station UID for identification
+          dataSource: data.dataSource ?? 'AQICN (Scheduled)',
+          stationName: data.stationName ?? locationLabel,
+          stationUid: data.stationUid,
           distance: data.computedDistanceKm !== undefined ? `${data.computedDistanceKm}` : undefined,
           country: data.meta?.userCountry,
           dominantPollutant: data.dominantPollutant,

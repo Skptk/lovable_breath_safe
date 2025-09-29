@@ -134,7 +134,6 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
 
   const fetchAirQualityData = async (lat: number, lon: number): Promise<void> => {
     try {
-
       const { data: response, error } = await supabase.functions.invoke('fetchAQI', {
         body: { lat, lon }
       });
@@ -144,13 +143,18 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
         return;
       }
 
-      if (response) {
-        setAirQualityData({
-          aqi: response.aqi,
-          location: response.location,
-          timestamp: response.timestamp
-        });
+      if (!response || response.error) {
+        console.warn('WeatherStats: fetchAQI returned an error response');
+        return;
       }
+
+      const locationLabel = response.location ?? response.city ?? response.stationName ?? 'Unknown Location';
+
+      setAirQualityData({
+        aqi: response.aqi ?? 0,
+        location: locationLabel,
+        timestamp: response.timestamp ?? new Date().toISOString()
+      });
     } catch (err) {
       console.error('Error fetching air quality data:', err);
     }
