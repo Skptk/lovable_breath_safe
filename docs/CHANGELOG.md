@@ -57,6 +57,9 @@ All notable changes to this project will be documented in this file.
 - **AQI Refresh Batching**: Deferred scheduled/live reading merges in `src/hooks/useAirQuality.ts` to `requestAnimationFrame`, wrapped `setReadings` inside `startTransition`, and microtask-scheduled history inserts to cut main-thread blocking during realtime bursts while retaining slow-update diagnostics.
 - **AirParticles Idle Initialization**: Deferred particle setup in `src/components/AirParticles.tsx` to `requestIdleCallback`/timeout fallbacks, batched DOM insertion via `DocumentFragment`, and ensured idle handles cancel on cleanup to lighten first-paint scripting cost.
 - **Data Source Validator CLS Guard**: Memoized the dashboard "Last Updated" timestamp in `src/components/DataSourceValidator.tsx` and reserved layout space to eliminate the residual text-driven layout shift flagged during profiling.
+- **Event Timing Observer Enhancements**: Extended `useEventTimingObserver()` in `src/hooks/usePerformance.ts` with pointer hover/out coverage, `targetRef` filtering, and resilient composed-path inspection so INP instrumentation can target specific dashboard panes without false positives.
+- **AQICard INP Instrumentation**: Wired the enhanced observer into `src/components/AirQualityDashboard/AQICard.tsx`, logging `[INP][AQICard]` interactions ≥120 ms to correlate slow renders with realtime callback diagnostics.
+- **PointsGrid Layout Simplification**: Removed `useReflowOptimization` measurements from `src/components/AirQualityDashboard/PointsGrid.tsx`, eliminating redundant synchronous `getBoundingClientRect()` reads during AQI refreshes to reduce forced reflow pressure.
 
 ### Migration
 

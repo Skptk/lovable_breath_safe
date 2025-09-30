@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, RefreshCw, Clock, User, Satellite } from 'lucide-react';
 import { getAQIColor, getAQILabel } from '@/config/maps';
+import { useEventTimingObserver } from '@/hooks/usePerformance';
 
 // Define interfaces at the top level to avoid hoisting issues
 export interface Pollutant {
@@ -65,6 +66,22 @@ function AQICardComponent(props: AQICardProps) {
     onNavigate,
     setSelectedPollutant,
   } = props;
+  const cardRef = React.useRef<HTMLDivElement | null>(null);
+
+  useEventTimingObserver({
+    label: 'AQICard',
+    minDuration: 120,
+    targetRef: cardRef,
+    onEntry: (entry) => {
+      console.log('[INP][AQICard]', {
+        duration: Number(entry.duration.toFixed(2)),
+        startTime: Number(entry.startTime.toFixed(2)),
+        interactionName: entry.name,
+        interactionId: (entry as any).interactionId ?? null,
+      });
+    },
+  });
+
   const aqiColor = getAQIColor(data?.aqi ?? 0);
   const aqiLabel = getAQILabel(data?.aqi ?? 0);
 
@@ -134,6 +151,7 @@ function AQICardComponent(props: AQICardProps) {
   if (!data) {
     return (
       <motion.div 
+        ref={cardRef}
         initial={initialMotion} 
         animate={animateMotion} 
         transition={{ duration: 0.28, ease: "easeOut" }}
@@ -170,6 +188,7 @@ function AQICardComponent(props: AQICardProps) {
 
   return (
     <motion.div 
+      ref={cardRef}
       initial={initialMotion} 
       animate={animateMotion} 
       transition={{ duration: 0.28, ease: "easeOut" }}

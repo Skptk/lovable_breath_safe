@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
+import { useCallback, useMemo, useRef, useEffect, useState, RefObject } from 'react';
 
 // Debounce hook for expensive operations
 export const useDebounce = <T>(value: T, delay: number): T => {
@@ -47,7 +47,11 @@ export const useIntersectionObserver = (
     const element = elementRef.current;
     if (!element) return;
 
-    const observer = new IntersectionObserver(([entry]) => {
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
       setIsIntersecting(entry.isIntersecting);
       if (entry.isIntersecting && !hasIntersected) {
         setHasIntersected(true);
@@ -129,7 +133,7 @@ export const usePerformanceMonitor = (componentName: string) => {
     const currentTime = performance.now();
     const renderTime = currentTime - lastRenderTime.current;
 
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env['NODE_ENV'] === 'development') {
       const snapshot = JSON.stringify({
         render: renderCount.current,
         duration: Number(renderTime.toFixed(2)),
@@ -164,6 +168,7 @@ type EventTimingObserverOptions = {
   minDuration?: number;
   eventTypes?: string[];
   targetSelector?: string;
+  targetRef?: RefObject<Element | null>;
   onEntry?: (entry: PerformanceEventTiming) => void;
 };
 
@@ -171,8 +176,9 @@ export const useEventTimingObserver = (options?: EventTimingObserverOptions) => 
   const {
     label = 'EventTimingObserver',
     minDuration = 160,
-    eventTypes = ['click', 'pointerdown', 'pointerup'],
+    eventTypes = ['click', 'pointerdown', 'pointerup', 'pointerover', 'pointerout'],
     targetSelector,
+    targetRef,
     onEntry,
   } = options ?? {};
 
@@ -182,15 +188,34 @@ export const useEventTimingObserver = (options?: EventTimingObserverOptions) => 
     if (typeof window === 'undefined' || typeof PerformanceObserver === 'undefined') {
       return;
     }
-
     const supportedTypes = (PerformanceObserver as any).supportedEntryTypes;
     if (!supportedTypes || !supportedTypes.includes('event')) {
       return;
     }
 
+    const matcher = (element: Element | null | undefined): boolean => {
+      if (!element) {
+        return false;
+      }
+
+      const refElement = targetRef?.current;
+      if (refElement && (refElement === element || refElement.contains(element))) {
+        return true;
+      }
+
+      if (targetSelector) {
+        if (element.matches?.(targetSelector) || element.closest?.(targetSelector)) {
+          return true;
+        }
+      }
+
+      return false;
+    };
+
     const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         const eventEntry = entry as PerformanceEventTiming;
+
         if (eventEntry.duration < minDuration) {
           continue;
         }
@@ -199,9 +224,17 @@ export const useEventTimingObserver = (options?: EventTimingObserverOptions) => 
           continue;
         }
 
-        if (targetSelector) {
-          const target = eventEntry.target as Element | null | undefined;
-          if (!target || !target.closest(targetSelector)) {
+        if (targetSelector || targetRef) {
+          const primaryTarget = (eventEntry as any).target as Element | null | undefined;
+          let passesTargetFilter = matcher(primaryTarget);
+
+          if (!passesTargetFilter) {
+            const sourceEvent = (eventEntry as any).sourceEvent as Event | undefined;
+            const composedPath = sourceEvent?.composedPath?.() ?? [];
+            passesTargetFilter = composedPath.some((node) => node instanceof Element && matcher(node));
+          }
+
+          if (!passesTargetFilter) {
             continue;
           }
         }
@@ -211,20 +244,18 @@ export const useEventTimingObserver = (options?: EventTimingObserverOptions) => 
           continue;
         }
 
-        const duration = Number(eventEntry.duration.toFixed(2));
-        const startTime = Number(eventEntry.startTime.toFixed(2));
         console.log('[INP]', {
           label,
           name: eventEntry.name,
-          duration,
-          startTime,
+          duration: Number(eventEntry.duration.toFixed(2)),
+          startTime: Number(eventEntry.startTime.toFixed(2)),
           interactionId: (eventEntry as any).interactionId ?? null,
         });
       }
     });
 
     try {
-      observer.observe({ type: 'event', buffered: true, durationThreshold: minDuration });
+      observer.observe({ type: 'event', buffered: true });
     } catch (error) {
       console.warn('[useEventTimingObserver] Failed to observe event timings', error);
       observer.disconnect();
@@ -234,7 +265,7 @@ export const useEventTimingObserver = (options?: EventTimingObserverOptions) => 
     return () => {
       observer.disconnect();
     };
-  }, [label, minDuration, eventTypesKey, targetSelector, onEntry]);
+  }, [label, minDuration, eventTypesKey, targetSelector, targetRef, onEntry]);
 };
 
 // Resource preloading hook

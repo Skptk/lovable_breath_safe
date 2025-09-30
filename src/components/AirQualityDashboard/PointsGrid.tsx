@@ -2,7 +2,6 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Award, Zap, TrendingUp } from 'lucide-react';
 import { StatCard } from '@/components/ui/StatCard';
-import { useReflowOptimization } from '@/hooks/useReflowOptimization';
 
 interface PointsGridProps {
   userPoints: any;
@@ -13,33 +12,10 @@ function PointsGridComponent({
   userPoints,
   onNavigate,
 }: PointsGridProps) {
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const { scheduleMeasurement } = useReflowOptimization<DOMRect>({
-    debugLabel: 'PointsGridLayout',
-    measure: () => containerRef.current?.getBoundingClientRect() ?? new DOMRect(),
-    minMeasureIntervalMs: 48,
-  });
-
-  React.useEffect(() => {
-    if (!userPoints) return;
-
-    let frameId: number | null = requestAnimationFrame(() => {
-      scheduleMeasurement();
-    });
-
-    return () => {
-      if (frameId !== null) {
-        cancelAnimationFrame(frameId);
-        frameId = null;
-      }
-    };
-  }, [scheduleMeasurement, userPoints?.totalPoints, userPoints?.todayReadings, userPoints?.weeklyReadings]);
-
   if (!userPoints) return null;
 
   return (
     <motion.div 
-      ref={containerRef}
       initial={{ opacity: 0, y: 20 }} 
       animate={{ opacity: 1, y: 0 }} 
       transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }} 
