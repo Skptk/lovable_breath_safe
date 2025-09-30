@@ -159,6 +159,84 @@ export const usePerformanceMonitor = (componentName: string) => {
   return { getPerformanceMetrics };
 };
 
+type EventTimingObserverOptions = {
+  label?: string;
+  minDuration?: number;
+  eventTypes?: string[];
+  targetSelector?: string;
+  onEntry?: (entry: PerformanceEventTiming) => void;
+};
+
+export const useEventTimingObserver = (options?: EventTimingObserverOptions) => {
+  const {
+    label = 'EventTimingObserver',
+    minDuration = 160,
+    eventTypes = ['click', 'pointerdown', 'pointerup'],
+    targetSelector,
+    onEntry,
+  } = options ?? {};
+
+  const eventTypesKey = useMemo(() => eventTypes.slice().sort().join(','), [eventTypes]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof PerformanceObserver === 'undefined') {
+      return;
+    }
+
+    const supportedTypes = (PerformanceObserver as any).supportedEntryTypes;
+    if (!supportedTypes || !supportedTypes.includes('event')) {
+      return;
+    }
+
+    const observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        const eventEntry = entry as PerformanceEventTiming;
+        if (eventEntry.duration < minDuration) {
+          continue;
+        }
+
+        if (eventTypes.length > 0 && !eventTypes.includes(eventEntry.name)) {
+          continue;
+        }
+
+        if (targetSelector) {
+          const target = eventEntry.target as Element | null | undefined;
+          if (!target || !target.closest(targetSelector)) {
+            continue;
+          }
+        }
+
+        if (onEntry) {
+          onEntry(eventEntry);
+          continue;
+        }
+
+        const duration = Number(eventEntry.duration.toFixed(2));
+        const startTime = Number(eventEntry.startTime.toFixed(2));
+        console.log('[INP]', {
+          label,
+          name: eventEntry.name,
+          duration,
+          startTime,
+          interactionId: (eventEntry as any).interactionId ?? null,
+        });
+      }
+    });
+
+    try {
+      observer.observe({ type: 'event', buffered: true, durationThreshold: minDuration });
+    } catch (error) {
+      console.warn('[useEventTimingObserver] Failed to observe event timings', error);
+      observer.disconnect();
+      return;
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [label, minDuration, eventTypesKey, targetSelector, onEntry]);
+};
+
 // Resource preloading hook
 export const usePreload = (resources: string[]) => {
   const [loadedResources, setLoadedResources] = useState<Set<string>>(new Set());

@@ -27,8 +27,8 @@ interface Particle {
   styleElapsed: number;
 }
 
-const PARTICLE_COUNT = 80;
-const MOBILE_PARTICLE_COUNT = 18;
+const PARTICLE_COUNT = 40;
+const MOBILE_PARTICLE_COUNT = 10;
 const MAX_INTERACTION_DISTANCE = 150;
 const REPULSION_MULTIPLIER = 3;
 const SPRING_STRENGTH = 0.018;
@@ -57,6 +57,7 @@ const AirParticles: React.FC = () => {
   });
   const lastFrameTimeRef = useRef<number>(hasWindow ? performance.now() : 0);
   const isRunningRef = useRef<boolean>(false);
+  const idleInitHandleRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!hasWindow) {
@@ -82,7 +83,7 @@ const AirParticles: React.FC = () => {
       particlesRef.current = [];
     };
 
-    const createParticleElement = (particle: Particle) => {
+    const createParticleElement = (particle: Particle, target: HTMLElement | DocumentFragment) => {
       const element = document.createElement('div');
       element.className = 'absolute pointer-events-none rounded-full will-change-transform';
       element.style.width = `${particle.size}px`;
@@ -100,7 +101,7 @@ const AirParticles: React.FC = () => {
       element.style.transition = 'opacity 0.35s ease';
       element.style.borderRadius = '9999px';
       element.style.pointerEvents = 'none';
-      container.appendChild(element);
+      target.appendChild(element);
       particle.element = element;
     };
 
@@ -112,6 +113,7 @@ const AirParticles: React.FC = () => {
       viewportRef.current.height = height;
       const count = computeParticleCount();
 
+      const fragment = document.createDocumentFragment();
       particlesRef.current = Array.from({ length: count }, (_, index) => {
         const size = 4 + Math.random() * 12;
         const baseOpacity = 0.45 + Math.random() * 0.3;
@@ -138,9 +140,11 @@ const AirParticles: React.FC = () => {
           styleElapsed: Math.random() * STYLE_UPDATE_INTERVAL_MS
         };
 
-        createParticleElement(particle);
+        createParticleElement(particle, fragment);
         return particle;
       });
+
+      container.appendChild(fragment);
     };
 
     const schedulePointerUpdate = (point: PointerPosition | null) => {
@@ -298,10 +302,38 @@ const AirParticles: React.FC = () => {
       }
     };
 
-    initializeParticles();
-    startAnimation();
+    const runInitialization = () => {
+      if (isUnmounted) {
+        return;
+      }
+      initializeParticles();
+      startAnimation();
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const scheduleInitialization = () => {
+      if (idleInitHandleRef.current !== null) {
+        return;
+      }
+
+      const start = () => {
+        idleInitHandleRef.current = null;
+        runInitialization();
+      };
+
+      const anyWindow = window as typeof window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        cancelIdleCallback?: (handle: number) => void;
+      };
+
+      if (typeof anyWindow.requestIdleCallback === 'function') {
+        idleInitHandleRef.current = anyWindow.requestIdleCallback(start, { timeout: 500 });
+      } else {
+        idleInitHandleRef.current = window.setTimeout(start, 120) as unknown as number;
+      }
+    };
+
+    scheduleInitialization();
 
     let resizeTimeoutId: number | null = null;
 
@@ -328,6 +360,18 @@ const AirParticles: React.FC = () => {
       isUnmounted = true;
 
       stopAnimation();
+
+      if (idleInitHandleRef.current !== null) {
+        const anyWindow = window as typeof window & {
+          cancelIdleCallback?: (handle: number) => void;
+        };
+        if (typeof anyWindow.cancelIdleCallback === 'function') {
+          anyWindow.cancelIdleCallback(idleInitHandleRef.current);
+        } else {
+          window.clearTimeout(idleInitHandleRef.current);
+        }
+        idleInitHandleRef.current = null;
+      }
 
       if (pointerRafRef.current !== null) {
         window.cancelAnimationFrame(pointerRafRef.current);

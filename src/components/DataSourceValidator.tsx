@@ -1,7 +1,6 @@
 import React, { useMemo, useCallback, useRef, useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, CheckCircle, Info, Shield } from 'lucide-react';
-import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
+import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/GlassCard';
 
 interface DataSourceValidatorProps {
   dataSource: string;
@@ -132,6 +131,21 @@ function DataSourceValidator({
     };
   }, [serializedSnapshot]);
 
+  const formattedTimestamp = useMemo(() => {
+    if (!timestamp) {
+      return null;
+    }
+
+    const parsed = new Date(timestamp);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+
+    return `${parsed.toLocaleDateString()} ${parsed.toLocaleTimeString()}`;
+  }, [timestamp]);
+
+  const timestampDisplay = formattedTimestamp ?? '—';
+
   // Determine validation status
   const getValidationStatus = useCallback(() => {
     if (!validationResults.isLegitimateSource) {
@@ -159,8 +173,6 @@ function DataSourceValidator({
       message: 'Data source verified'
     };
   }, [validationResults.isLegitimateSource, validationResults.isSuspiciousAQI]);
-
-  const validation = useMemo(() => getValidationStatus(), [getValidationStatus]);
 
   return (
     <div className="p-6 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg mb-4">
@@ -192,8 +204,8 @@ function DataSourceValidator({
       </div>
       
       <div className="text-sm text-gray-300 mb-3">
-        <span className="text-gray-400">Last Updated:</span>
-        <span className="ml-2">{new Date(timestamp).toLocaleDateString()} {new Date(timestamp).toLocaleTimeString()}</span>
+        <span className="text-gray-400 block">Last Updated:</span>
+        <span className="mt-1 block min-h-[1.25rem] text-white font-medium">{timestampDisplay}</span>
       </div>
 
       {/* Fallback Detection */}

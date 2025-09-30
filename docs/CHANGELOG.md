@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - **Reflow Optimization Hook**: Added `src/hooks/useReflowOptimization.ts`, a reusable measurement scheduler that batches DOM reads, throttles layout work, and surfaces layout thrash diagnostics for any component that needs guarded DOM measurements.
 - **Heap Fail-safe Event Bus**: Implemented centralized heap protection via `src/utils/heapFailSafe.ts`, exposing `initHeapFailSafe()` and `addHeapFailSafeListener()` so UI surfaces warn/critical/emergency tiers. Integrated listeners in `src/hooks/useHeapFailSafe.ts` and `src/components/ConnectionResilienceProvider.tsx` to clear caches and display toasts. Validated with `npm run test` (Vitest).
 - **Network Visibility & Cache Maintenance Utilities**: Added `src/hooks/useNetworkStatus.ts` for offline awareness and scheduled cache purging helpers (`initializeStoreMaintenance()` / `stopStoreMaintenance()`) in `src/store/index.ts` using `createSafeInterval()`, preventing expired entries from accumulating. Covered by `npm run test`.
+- **Event Timing Observer Hook**: Added `useEventTimingObserver()` to `src/hooks/usePerformance.ts`, exposing a reusable PerformanceObserver wrapper for Interaction to Next Paint (INP) diagnostics with optional filtering by event type, duration, and target selector.
 
 ### Fixed
 
@@ -50,9 +51,12 @@ All notable changes to this project will be documented in this file.
 - **AirParticles Performance Pass**: Reduced particle count in `src/components/AirParticles.tsx`, throttled glow/opacity updates, and debounced resize-driven reinitialization to cut per-frame paint cost and stabilize memory usage during dashboard sessions.
 - **Realtime Dispatch Offloading**: Deferred channel callback execution in `src/lib/realtimeConnectionManager.ts` to microtasks and suppressed hidden-tab dispatch, eliminating Chrome's "[Violation] 'message' handler" spam and keeping WebSocket handlers under the long-task threshold.
 - **Realtime Dispatch Diagnostics**: `src/lib/realtimeConnectionManager.ts` now records total dispatch duration plus per-callback timings above 24 ms, highlighting the slowest subscription handlers to target remaining long tasks.
+- **Realtime Dispatch Telemetry Enhancements**: Augmented `src/lib/realtimeConnectionManager.ts` logging with payload metadata, guarded execution, and consolidated microtask scheduling to isolate callbacks behind the remaining 200 ms WebSocket message violations.
 - **Dashboard Animation Tightening**: Shortened key Framer Motion transitions in `src/components/AirQualityDashboard/AQICard.tsx` and `WeatherSection.tsx`, memoizing motion configs and deferring layout measurements with `requestAnimationFrame` to reduce forced reflows and Interaction to Next Paint (INP) regressions.
 - **Heap Fail-safe Telemetry**: `src/utils/heapFailSafe.ts` logs `memoryMonitor.getStats()` diagnostics (high-water mark, listener count, recent usage) whenever warn/critical/emergency thresholds fire, improving visibility into cache and listener pressure before auto-clearing.
 - **AQI Refresh Batching**: Deferred scheduled/live reading merges in `src/hooks/useAirQuality.ts` to `requestAnimationFrame`, wrapped `setReadings` inside `startTransition`, and microtask-scheduled history inserts to cut main-thread blocking during realtime bursts while retaining slow-update diagnostics.
+- **AirParticles Idle Initialization**: Deferred particle setup in `src/components/AirParticles.tsx` to `requestIdleCallback`/timeout fallbacks, batched DOM insertion via `DocumentFragment`, and ensured idle handles cancel on cleanup to lighten first-paint scripting cost.
+- **Data Source Validator CLS Guard**: Memoized the dashboard "Last Updated" timestamp in `src/components/DataSourceValidator.tsx` and reserved layout space to eliminate the residual text-driven layout shift flagged during profiling.
 
 ### Migration
 

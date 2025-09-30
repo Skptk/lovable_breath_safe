@@ -441,6 +441,9 @@ export class RealtimeConnectionManager {
           callbackCount: callbacks.length,
           slowestCallback: slowestCallbackName,
           slowestCallbackDuration,
+          payloadMetadata: {
+            keys: payload ? Object.keys(payload) : [],
+          },
         });
       }
 
@@ -453,10 +456,18 @@ export class RealtimeConnectionManager {
       }
     };
 
+    const schedule = () => {
+      try {
+        invokeCallbacks();
+      } catch (error) {
+        console.error('[RealtimeConnectionManager] Dispatch execution failed', { channelName, error });
+      }
+    };
+
     if (typeof queueMicrotask === 'function') {
-      queueMicrotask(invokeCallbacks);
+      queueMicrotask(schedule);
     } else {
-      Promise.resolve().then(invokeCallbacks).catch((error) => {
+      Promise.resolve().then(schedule).catch((error) => {
         console.error('[RealtimeConnectionManager] Deferred dispatch failed', { channelName, error });
       });
     }
