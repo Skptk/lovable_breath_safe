@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, lazy } from "react";
+import { useState, useEffect, Suspense, lazy, startTransition, useRef } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "@/components/Sidebar";
@@ -9,13 +9,15 @@ import { DeveloperTools } from "@/components/DeveloperTools";
 import { cleanupAllChannels } from "@/lib/realtimeClient";
 import EnhancedErrorBoundary from "@/components/EnhancedErrorBoundary";
 import { logNavigation } from "@/lib/logger";
+import { useEventTimingObserver } from "@/hooks/usePerformance";
 
 // Lazy load heavy components
-const AirQualityDashboard = lazy(() => 
+const loadAirQualityDashboard = () =>
   import("@/components/AirQualityDashboard").then(module => ({
     default: module.AirQualityDashboard
-  }))
-);
+  }));
+
+const AirQualityDashboard = lazy(loadAirQualityDashboard);
 const HistoryView = lazy(() => import("@/components/HistoryView"));
 const WeatherStats = lazy(() => import("@/components/WeatherStats"));
 const ProfileView = lazy(() => import("@/components/ProfileView"));
@@ -26,11 +28,26 @@ const NewsPage = lazy(() => import("@/components/NewsPage"));
 
 // Loading skeleton for lazy components
 const PageSkeleton = () => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="text-center space-y-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-      <p className="text-muted-foreground">Loading...</p>
+  <div className="min-h-[60vh] flex flex-col items-center justify-center gap-10 px-6 py-12">
+    <div className="w-full max-w-5xl space-y-6">
+      <div className="h-12 w-3/4 rounded-3xl bg-primary/10 backdrop-blur animate-pulse" aria-hidden="true" />
+      <div className="rounded-3xl border border-border/40 bg-card/70 p-8 shadow-lg">
+        <div className="grid gap-6 md:grid-cols-2" aria-hidden="true">
+          <div className="space-y-4">
+            <div className="h-8 w-1/2 rounded-full bg-primary/20 animate-pulse" />
+            <div className="h-24 rounded-2xl bg-primary/10 animate-pulse" />
+            <div className="h-6 w-3/5 rounded-full bg-primary/10 animate-pulse" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="h-24 rounded-2xl bg-primary/10 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="h-28 rounded-3xl border border-border/40 bg-card/50 animate-pulse" aria-hidden="true" />
     </div>
+    <span className="text-sm text-muted-foreground">Preparing dashboard&hellip;</span>
   </div>
 );
 
@@ -41,6 +58,55 @@ export default function Index(): JSX.Element | null {
   const [currentView, setCurrentView] = useState("dashboard");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showDeveloperTools, setShowDeveloperTools] = useState(false);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const shouldLogInteractions = import.meta.env.DEV;
+
+  useEventTimingObserver({
+    label: "IndexShell",
+    minDuration: 180,
+    targetRef: shellRef,
+    onEntry: (entry) => {
+      if (!shouldLogInteractions) {
+        return;
+      }
+
+      const duration = Number(entry.duration.toFixed(2));
+      const interactionId = (entry as any).interactionId ?? null;
+      console.warn("[INP][IndexShell]", {
+        duration,
+        startTime: Number(entry.startTime.toFixed(2)),
+        interactionId,
+        name: entry.name,
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const prefetch = () => {
+      void loadAirQualityDashboard();
+    };
+
+    const idleWindow = window as typeof window & {
+      requestIdleCallback?: (cb: IdleRequestCallback, opts?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      const idleHandle = idleWindow.requestIdleCallback(prefetch, { timeout: 1500 });
+      return () => {
+        idleWindow.cancelIdleCallback?.(idleHandle);
+      };
+    }
+
+    const timeoutId = window.setTimeout(prefetch, 0);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
   
   // Listen for custom view change events
   useEffect(() => {
@@ -106,7 +172,9 @@ export default function Index(): JSX.Element | null {
   }, []);
 
   const handleViewChange = (view: string) => {
-    setCurrentView(view);
+    startTransition(() => {
+      setCurrentView(view);
+    });
     // Update URL without page reload
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.set('view', view);
@@ -249,7 +317,7 @@ export default function Index(): JSX.Element | null {
 
   return (
     <BackgroundManager>
-      <div className="relative min-h-screen">
+      <div ref={shellRef} className="relative min-h-screen">
         <div className="relative z-10 flex min-h-screen bg-gradient-to-br from-background/60 via-background/30 to-background/80">
           <DeveloperTools 
             isVisible={showDeveloperTools}

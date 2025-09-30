@@ -1,15 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
+import { isDebugBuild } from '@/utils/debugFlags';
 
 // Get environment variables with better error handling
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'];
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_ANON_KEY'];
 
 // Enhanced validation function with detailed logging
 function validateSupabaseConfig(url: string | undefined, key: string | undefined): { isValid: boolean; error?: string } {
-  console.log('🔍 [Supabase Config] Validating environment variables...');
-  console.log('  - VITE_SUPABASE_URL:', url ? '✅ Set' : '❌ Missing');
-  console.log('  - VITE_SUPABASE_ANON_KEY:', key ? '✅ Set' : '❌ Missing');
+  if (isDebugBuild || import.meta.env.DEV) {
+    console.log('🔍 [Supabase Config] Validating environment variables...');
+    console.log('  - VITE_SUPABASE_URL:', url ? '✅ Set' : '❌ Missing');
+    console.log('  - VITE_SUPABASE_ANON_KEY:', key ? '✅ Set' : '❌ Missing');
+  }
   
   if (!url || url.trim() === '') {
     const error = 'Missing VITE_SUPABASE_URL environment variable. Please set it in Netlify dashboard under Site Settings > Environment Variables.';
@@ -30,7 +33,9 @@ function validateSupabaseConfig(url: string | undefined, key: string | undefined
     return { isValid: false, error };
   }
   
-  console.log('✅ [Supabase Config] Environment variables are valid');
+  if (isDebugBuild || import.meta.env.DEV) {
+    console.log('✅ [Supabase Config] Environment variables are valid');
+  }
   return { isValid: true };
 }
 
@@ -66,7 +71,9 @@ const getRealtimeConfig = () => {
   );
   const isDevelopment = typeof window !== 'undefined' && window.location.hostname === 'localhost';
   
-  console.log('🔍 [Config] Environment detected:', { isNetlify, isDevelopment });
+  if (isDebugBuild || import.meta.env.DEV) {
+    console.log('🔍 [Config] Environment detected:', { isNetlify, isDevelopment });
+  }
   
   // IMPROVED CONFIG: Better WebSocket connection handling and postgres_changes configuration
   const baseConfig = {
@@ -92,7 +99,9 @@ const getRealtimeConfig = () => {
     }
   };
   
-  console.log('🔧 [Config] Realtime config:', baseConfig);
+  if (isDebugBuild || import.meta.env.DEV) {
+    console.log('🔧 [Config] Realtime config:', baseConfig);
+  }
   return baseConfig;
 };
 
@@ -113,7 +122,9 @@ if (configValidation.isValid) {
         detectSessionInUrl: false,
       },
     });
-    console.log('✅ [Supabase] Client created successfully');
+    if (isDebugBuild || import.meta.env.DEV) {
+      console.log('✅ [Supabase] Client created successfully');
+    }
   } catch (error) {
     console.error('❌ [Supabase] Failed to create client:', error);
     supabaseError = `Failed to create Supabase client: ${error}`;
@@ -135,21 +146,27 @@ export const diagnoseConnection = async (): Promise<void> => {
     return;
   }
   
-  console.log('🔍 [Diagnostics] Starting WebSocket connection diagnosis...');
+  if (isDebugBuild || import.meta.env.DEV) {
+    console.log('🔍 [Diagnostics] Starting WebSocket connection diagnosis...');
+  }
   
   // Check if Supabase URL is accessible
   try {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
       headers: { 'apikey': SUPABASE_PUBLISHABLE_KEY! }
     });
-    console.log('✅ [Diagnostics] REST API accessible:', response.status);
+    if (isDebugBuild || import.meta.env.DEV) {
+      console.log('✅ [Diagnostics] REST API accessible:', response.status);
+    }
   } catch (error) {
     console.error('❌ [Diagnostics] REST API failed:', error);
   }
   
   // Check WebSocket endpoint specifically with better error handling
   const wsUrl = SUPABASE_URL!.replace('https://', 'wss://') + '/realtime/v1/websocket';
-  console.log('🔍 [Diagnostics] Attempting WebSocket connection to:', wsUrl);
+  if (isDebugBuild || import.meta.env.DEV) {
+    console.log('🔍 [Diagnostics] Attempting WebSocket connection to:', wsUrl);
+  }
   
   try {
     const testWs = new WebSocket(wsUrl + `?apikey=${SUPABASE_PUBLISHABLE_KEY}&vsn=1.0.0`);
@@ -161,7 +178,9 @@ export const diagnoseConnection = async (): Promise<void> => {
     }, 10000);
     
     testWs.onopen = () => {
-      console.log('✅ [Diagnostics] Direct WebSocket connection successful');
+      if (isDebugBuild || import.meta.env.DEV) {
+        console.log('✅ [Diagnostics] Direct WebSocket connection successful');
+      }
       clearTimeout(connectionTimeout);
       
       // Send a ping to test connection health
@@ -203,7 +222,9 @@ export const diagnoseConnection = async (): Promise<void> => {
     };
     
     testWs.onmessage = (event) => {
-      console.log('📨 [Diagnostics] WebSocket message received:', event.data);
+      if (isDebugBuild || import.meta.env.DEV) {
+        console.log('📨 [Diagnostics] WebSocket message received:', event.data);
+      }
     };
     
   } catch (error) {
@@ -212,7 +233,7 @@ export const diagnoseConnection = async (): Promise<void> => {
 };
 
 // Run diagnostics on app start only if configuration is valid
-if (configValidation.isValid) {
+if (configValidation.isValid && (isDebugBuild || import.meta.env.DEV)) {
   diagnoseConnection();
 }
 

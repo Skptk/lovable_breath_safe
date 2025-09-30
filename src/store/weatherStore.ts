@@ -1,13 +1,18 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { debugTracker } from '@/utils/errorTracker';
+import { isDebugBuild } from '@/utils/debugFlags';
+
+const ENABLE_WEATHER_LOGS = import.meta.env.DEV || isDebugBuild;
 
 const shouldTrackWeatherState = typeof __TRACK_VARIABLES__ === 'undefined' || __TRACK_VARIABLES__;
 const MIN_WEATHER_FETCH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 const MIN_FORECAST_FETCH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
 const trackWeatherState = (action: string, payload: unknown) => {
-  console.log(`🏪 [STORE] Weather state changing via ${action}:`, payload);
+  if (ENABLE_WEATHER_LOGS) {
+    console.log(`🏪 [STORE] Weather state changing via ${action}:`, payload);
+  }
   if (shouldTrackWeatherState) {
     debugTracker.trackVariableDeclaration(
       'weatherState',
