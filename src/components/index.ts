@@ -13,7 +13,6 @@ export { default as NewsPage } from './NewsPage';
 export { default as PollutantModal } from './PollutantModal';
 export { default as BackgroundManager } from './BackgroundManager';
 export { default as SmokeEffect } from './SmokeEffect';
-export { default as AirParticles } from './AirParticles';
 export { Header } from './Header';
 export { default as LazyHeader } from './LazyHeader';
 export { ConnectionResilienceProvider } from './ConnectionResilienceProvider';
