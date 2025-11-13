@@ -14,15 +14,15 @@ import {
   REFRESH_LOCK_DURATION_MS
 } from '@/utils/refreshLock';
 
-// Cache configuration
+// Cache configuration - optimized for memory efficiency
 const CACHE_CONFIG = {
   VALIDATION: {
     KEY: 'airquality_validation_cache',
     TTL: 10 * 60 * 1000, // 10 minutes
   },
   MEMORY: {
-    MAX_READINGS: 15, // Keep roughly 15 minutes of readings at the 1/min cadence
-    CHUNK_SIZE: 30,   // Process readings in manageable batches
+    MAX_READINGS: 10, // Reduced from 15 to 10 for lower memory footprint
+    CHUNK_SIZE: 20,   // Reduced from 30 to 20 for smaller batch processing
   },
 };
 

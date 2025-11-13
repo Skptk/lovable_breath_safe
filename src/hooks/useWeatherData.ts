@@ -411,8 +411,8 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
     },
     enabled: !!(memoizedCoordinates?.latitude && memoizedCoordinates?.longitude),
     refetchInterval: autoRefresh ? refreshInterval : false,
-    staleTime: 300000, // 5 minutes
-    gcTime: 900000, // 15 minutes
+    staleTime: 180000, // 3 minutes (reduced from 5)
+    gcTime: 5 * 60 * 1000, // 5 minutes (reduced from 15 for faster GC)
     retry: 3,
     retryDelay: 1000,
   });
@@ -428,13 +428,14 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
         .select('*')
         .eq('user_id', user.id)
         .order('timestamp', { ascending: false })
-        .limit(50);
+        .limit(30); // Reduced from 50 to 30 for lower memory usage
 
       if (error) throw error;
       return data || [];
     },
     enabled: !!user,
     staleTime: 60000, // 1 minute
+    gcTime: 3 * 60 * 1000, // 3 minutes for faster GC
   });
 
   // Mutation for saving comprehensive readings

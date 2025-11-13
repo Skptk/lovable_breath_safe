@@ -24,6 +24,10 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') {
+      return 'system';
+    }
+
     // Check localStorage first
     const savedTheme = localStorage.getItem('breath-safe-theme') as Theme;
     if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
@@ -36,6 +40,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     const root = window.document.documentElement;
     
     const updateTheme = () => {
@@ -68,6 +76,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }, [theme]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     localStorage.setItem('breath-safe-theme', theme);
   }, [theme]);
 

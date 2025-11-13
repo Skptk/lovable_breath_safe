@@ -115,7 +115,7 @@ export const useGlobalEnvironmentalData = (
 
     const { data, error } = await queryBuilder
       .order('collection_timestamp', { ascending: false })
-      .limit(60);
+      .limit(30); // Reduced from 60 to 30 for lower memory usage
 
     if (error) {
       console.error(' [GlobalData] Error fetching scoped table data:', error);
@@ -140,8 +140,8 @@ export const useGlobalEnvironmentalData = (
     queryFn: fetchGlobalData,
     enabled: shouldFetch,
     refetchInterval: autoRefresh ? Math.max(refreshInterval, MIN_REFRESH_INTERVAL) : false,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: 3 * 60 * 1000, // Reduced from 5 to 3 minutes
+    gcTime: 5 * 60 * 1000, // Reduced from 15 to 5 minutes for faster garbage collection
     retry: 3,
     retryDelay: 2000,
   });

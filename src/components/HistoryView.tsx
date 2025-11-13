@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import HistoryDetailModal from "./HistoryDetailModal";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 20; // Reduced from 25 to 20 for lower memory usage
 
 interface HistoryEntry {
   id: string;

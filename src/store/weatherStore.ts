@@ -110,7 +110,7 @@ export const useWeatherStore = create<WeatherStore>()(
     (set, get) => ({
       // Initial state
       weatherData: null,
-      forecastData: [],
+      forecastData: [], // Limited to 7 days max in fetchForecastData
       isLoading: false,
       error: null,
       lastFetchTime: null,

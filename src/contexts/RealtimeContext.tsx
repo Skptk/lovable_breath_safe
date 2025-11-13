@@ -20,6 +20,10 @@ const hasWindow = typeof window !== 'undefined';
 const globalScope: typeof globalThis | undefined =
   typeof globalThis !== 'undefined' ? globalThis : undefined;
 
+const realtimeTestOverride = Boolean(
+  globalScope && (globalScope as any).__ENABLE_REALTIME_IN_TESTS__
+);
+
 const isTestEnvironment = Boolean(
   (typeof process !== 'undefined' && (process.env?.['VITEST'] || process.env?.['NODE_ENV'] === 'test')) ||
     (typeof import.meta !== 'undefined' &&
@@ -27,7 +31,7 @@ const isTestEnvironment = Boolean(
     (globalScope && ((globalScope as any).__vitest_worker__ || (globalScope as any).__vitest__ || (globalScope as any).vitest))
 );
 
-const realtimePermitted = hasWindow && !isTestEnvironment;
+const realtimePermitted = (hasWindow && !isTestEnvironment) || realtimeTestOverride;
 const BATCH_DISPATCH_FALLBACK_MS = 16;
 
 interface RealtimeContextType {
@@ -76,8 +80,7 @@ function useRealtimeContextValue() {
     (channelName: string): { handler: (payload: any) => void; cancel: () => void } => {
       let rafId: number | null = null;
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      let hasPendingPayload = false;
-      let pendingPayload: any;
+      const pendingPayloads: any[] = [];
 
       const clearScheduledFlush = () => {
         if (rafId !== null && hasWindow && typeof cancelAnimationFrame === 'function') {
@@ -94,26 +97,28 @@ function useRealtimeContextValue() {
         rafId = null;
         timeoutId = null;
 
-        if (!hasPendingPayload) {
+        if (pendingPayloads.length === 0) {
           return;
         }
 
         const entry = activeSubscriptionsRef.current.get(channelName);
         if (!entry || entry.callbacks.size === 0) {
-          hasPendingPayload = false;
-          pendingPayload = undefined;
+          pendingPayloads.length = 0;
           return;
         }
 
-        const payloadToProcess = pendingPayload;
-        hasPendingPayload = false;
-        pendingPayload = undefined;
+        const payloadsToProcess = pendingPayloads.splice(0, pendingPayloads.length);
 
-        for (const callback of Array.from(entry.callbacks)) {
-          try {
-            callback(payloadToProcess);
-          } catch (error) {
-            console.error(`[RealtimeContext] Error in subscription callback for ${channelName}:`, error);
+        for (const payload of payloadsToProcess) {
+          for (const callback of Array.from(entry.callbacks)) {
+            try {
+              callback(payload);
+            } catch (error) {
+              console.error(
+                `[RealtimeContext] Error in subscription callback for ${channelName}:`,
+                error
+              );
+            }
           }
         }
       };
@@ -131,15 +136,13 @@ function useRealtimeContextValue() {
       };
 
       const handler = (payload: any) => {
-        pendingPayload = payload;
-        hasPendingPayload = true;
+        pendingPayloads.push(payload);
         scheduleFlush();
       };
 
       const cancel = () => {
         clearScheduledFlush();
-        hasPendingPayload = false;
-        pendingPayload = undefined;
+        pendingPayloads.length = 0;
       };
 
       return { handler, cancel };

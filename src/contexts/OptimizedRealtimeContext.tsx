@@ -24,6 +24,13 @@ interface RealtimeProviderProps {
   children: React.ReactNode;
 }
 
+type SubscriptionEntry = {
+  callbacks: Set<(payload: any) => void>;
+  listener: (payload: any) => void;
+  options: { isPersistent?: boolean };
+  isSubscribed: boolean;
+};
+
 export function RealtimeProvider({ children }: RealtimeProviderProps) {
   const { user } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState<
@@ -31,7 +38,7 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
   >('disconnected');
   
   // Track active subscriptions
-  const subscriptionsRef = useRef<Map<string, Set<Function>>>(new Map());
+  const subscriptionsRef = useRef<Map<string, SubscriptionEntry>>(new Map());
   const isMounted = useRef(true);
   
   // Set up connection status listener
@@ -56,50 +63,103 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
   }, []);
   
   // Subscribe to a channel with automatic cleanup
-  const subscribe = useCallback((
-    channelName: string,
-    callback: (payload: any) => void,
-    options: { isPersistent?: boolean } = {}
-  ) => {
-    if (!isMounted.current || !user) {
-      return () => {};
-    }
-    
-    const fullChannelName = `${channelName}-${user.id}`;
-    
-    // Initialize the channel if it doesn't exist
-    if (!subscriptionsRef.current.has(fullChannelName)) {
-      subscriptionsRef.current.set(fullChannelName, new Set());
-    }
-    
-    const channelSubscriptions = subscriptionsRef.current.get(fullChannelName)!;
-    
-    // Add the callback to the subscription set
-    channelSubscriptions.add(callback);
-    
-    // Subscribe to the channel if this is the first subscription
-    if (channelSubscriptions.size === 1) {
-      realtimeManager.subscribe(fullChannelName, (payload: any) => {
-        const callbacks = subscriptionsRef.current.get(fullChannelName);
-        callbacks?.forEach(cb => cb(payload));
-      });
-    }
-    
-    // Return cleanup function
-    return () => {
-      if (!isMounted.current) return;
-      
-      const callbacks = subscriptionsRef.current.get(fullChannelName);
-      if (callbacks) {
-        callbacks.delete(callback);
-        
-        // If no more callbacks, unsubscribe from the channel
-        if (callbacks.size === 0 && !options.isPersistent) {
-          realtimeManager.unsubscribe(fullChannelName);
-          subscriptionsRef.current.delete(fullChannelName);
-        }
+  const subscribe = useCallback(
+    (
+      channelName: string,
+      callback: (payload: any) => void,
+      options: { isPersistent?: boolean } = {}
+    ) => {
+      if (!isMounted.current || !user?.id) {
+        return () => {};
       }
-    };
+
+      const fullChannelName = `${channelName}-${user.id}`;
+      const subscriptions = subscriptionsRef.current;
+
+      let entry = subscriptions.get(fullChannelName);
+
+      if (!entry) {
+        const callbacks = new Set<(payload: any) => void>();
+        const listener = (payload: any) => {
+          const currentEntry = subscriptions.get(fullChannelName);
+          if (!currentEntry || currentEntry.callbacks.size === 0) {
+            return;
+          }
+
+          currentEntry.callbacks.forEach((cb) => {
+            try {
+              cb(payload);
+            } catch (error) {
+              console.error(
+                '[OptimizedRealtimeContext] Subscription callback error',
+                error
+              );
+            }
+          });
+        };
+
+        entry = {
+          callbacks,
+          listener,
+          options: { ...options },
+          isSubscribed: false
+        };
+
+        subscriptions.set(fullChannelName, entry);
+      } else if (options.isPersistent) {
+        entry.options.isPersistent = true;
+      }
+
+      entry.callbacks.add(callback);
+
+      if (!entry.isSubscribed) {
+        realtimeManager.subscribe(fullChannelName, entry.listener);
+        entry.isSubscribed = true;
+      }
+
+      return () => {
+        if (!isMounted.current) {
+          return;
+        }
+
+        const currentEntry = subscriptions.get(fullChannelName);
+        if (!currentEntry) {
+          return;
+        }
+
+        currentEntry.callbacks.delete(callback);
+
+        if (currentEntry.callbacks.size === 0) {
+          if (!currentEntry.options.isPersistent) {
+            if (currentEntry.isSubscribed) {
+              realtimeManager.unsubscribe(fullChannelName, currentEntry.listener);
+              currentEntry.isSubscribed = false;
+            }
+            subscriptions.delete(fullChannelName);
+          } else {
+            // For persistent channels keep the subscription active but avoid duplicate subscribes
+            currentEntry.isSubscribed = true;
+          }
+        }
+      };
+    },
+    [user?.id]
+  );
+
+  useEffect(() => {
+    if (user?.id) {
+      return;
+    }
+
+    const subscriptions = subscriptionsRef.current;
+    subscriptions.forEach((entry, channelName) => {
+      if (entry.isSubscribed) {
+        realtimeManager.unsubscribe(channelName, entry.listener);
+      }
+    });
+    subscriptions.clear();
+    cleanupAllChannels();
+    setConnectionStatus('disconnected');
   }, [user?.id]);
   
   // Context value with memoized callbacks

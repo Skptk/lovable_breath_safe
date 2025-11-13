@@ -60,7 +60,7 @@ const initialState: AppState = {
   currentAQI: null,
   currentLocation: null,
   lastReading: null,
-  cache: new LRUCache(100), // Initialize LRU cache with a size of 100
+  cache: new LRUCache(30), // Initialize LRU cache with reduced size for memory efficiency
 };
 
 // Create store
@@ -70,7 +70,7 @@ export const useAppStore = create<AppStore>()(
       (set, get) => ({
         ...initialState,
         // Ensure cache is always a proper LRU instance
-        cache: new LRUCache(100),
+        cache: new LRUCache(30), // Reduced size for memory efficiency
         
         // UI Actions
         setLoading: (loading) => set({ isLoading: loading }),
@@ -89,7 +89,7 @@ export const useAppStore = create<AppStore>()(
             currentAQI: null,
             currentLocation: null,
             lastReading: null,
-            cache: new LRUCache(100), // Reset cache on logout
+            cache: new LRUCache(30), // Reset cache on logout
           });
         },
         
@@ -136,16 +136,27 @@ export const useAppStore = create<AppStore>()(
       {
         name: 'breath-safe-store',
         partialize: (state) => ({
-          // Pick only what must survive reloads
-          user: state.user,
-          profile: state.profile,
+          // Pick only what must survive reloads - minimal footprint
+          user: state.user ? {
+            id: state.user.id,
+            email: state.user.email,
+            // Exclude large metadata objects to reduce localStorage size
+          } : null,
+          profile: state.profile ? {
+            id: state.profile.id,
+            user_id: state.profile.user_id,
+            email: state.profile.email,
+            full_name: state.profile.full_name,
+            total_points: state.profile.total_points,
+            // Exclude large objects and arrays to reduce memory footprint
+          } : null,
           currentLocation: state.currentLocation,
           // EXCLUDE: cache, lastReading, error, isLoading, etc.
         }),
         onRehydrateStorage: () => (state) => {
           // Reinitialize cache after rehydration since it's not persisted
           if (state) {
-            state.cache = new LRUCache(100);
+            state.cache = new LRUCache(30); // Reduced size for memory efficiency
           }
         },
       }

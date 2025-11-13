@@ -578,9 +578,12 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
             }`}
           >
             <img
+              key={getBackgroundForState()} // Force remount on change to release memory
               src={getBackgroundForState()}
               alt="Weather background"
               className="h-full w-full object-cover"
+              loading="lazy"
+              decoding="async"
             />
             <div
               className="absolute inset-0"
