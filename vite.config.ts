@@ -1,8 +1,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import { componentTagger } from "lovable-tagger";
 import inspect from "vite-plugin-inspect";
+
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -12,8 +18,14 @@ export default defineConfig(({ mode }) => {
   const enableSourceMaps = isDebug || process.env.GENERATE_SOURCEMAPS === "true";
 
   // Ensure React is only loaded once
-  const reactPath = require.resolve('react');
-  const reactDomPath = require.resolve('react-dom');
+  const reactPath = require.resolve("react");
+  const reactDomPath = require.resolve("react-dom");
+  const reactDomClientPath = require.resolve("react-dom/client");
+  const reactJsxRuntimePath = require.resolve("react/jsx-runtime");
+  const reactJsxDevRuntimePath = require.resolve("react/jsx-dev-runtime");
+
+  const minifySetting = isDebug ? false : "esbuild";
+  const sourcemapSetting = isDebug ? true : enableSourceMaps;
 
   // Log environment info for debugging
   console.log('Vite Config:');
@@ -32,19 +44,18 @@ export default defineConfig(({ mode }) => {
     },
     // Force single instance of React
     resolve: {
-      alias: [
-        // Force React to use a single instance
-        { find: 'react', replacement: reactPath },
-        { find: 'react-dom', replacement: reactDomPath },
-        { find: 'react/jsx-runtime', replacement: reactPath },
-        { find: 'react/jsx-dev-runtime', replacement: reactPath },
-        // Alias for src directory
-        { find: '@', replacement: path.resolve(__dirname, './src') },
-      ],
+      alias: {
+        react: reactPath,
+        "react-dom": reactDomPath,
+        "react-dom/client": reactDomClientPath,
+        "react/jsx-runtime": reactJsxRuntimePath,
+        "react/jsx-dev-runtime": reactJsxDevRuntimePath,
+        "@": path.resolve(__dirname, "./src"),
+      },
       // Ensure consistent file resolution order
-      extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json'],
+      extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
       // Ensure node_modules resolution uses the same instance
-      dedupe: ['react', 'react-dom', 'react-dom/client'],
+      dedupe: ["react", "react-dom", "react-dom/client"],
       // Ensure consistent module resolution
       preserveSymlinks: false,
     },
@@ -104,65 +115,53 @@ export default defineConfig(({ mode }) => {
       mode === "development" && componentTagger(),
       mode === "development" && inspect(),
     ].filter(Boolean),
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-      },
-    },
     build: {
       target: "esnext",
       cssCodeSplit: true,
-      minify: isDebug ? false : "esbuild",
-      sourcemap: enableSourceMaps,
+      minify: minifySetting,
+      sourcemap: sourcemapSetting,
       chunkSizeWarningLimit: 1000,
       reportCompressedSize: true,
+      brotliSize: !isDebug,
       rollupOptions: {
         // Enable tree shaking for production
         treeshake: !isDebug,
         output: {
           // Optimize chunk splitting
           manualChunks: (id) => {
-            if (id.includes('node_modules')) {
+            if (id.includes("node_modules")) {
               // Split node_modules into vendor chunks
-              if (id.includes('react-dom') || id.includes('@emotion')) {
-                return 'vendor-react';
+              if (id.includes("react-dom") || id.includes("@emotion")) {
+                return "vendor-react";
               }
-              if (id.includes('@tanstack')) {
-                return 'vendor-tanstack';
+              if (id.includes("@tanstack")) {
+                return "vendor-tanstack";
               }
-              return 'vendor';
+              return "vendor";
             }
             // Group pages into route-based chunks
-            if (id.includes('src/pages/')) {
-              const page = id.split('pages/')[1].split('/')[0];
+            if (id.includes("src/pages/")) {
+              const page = id.split("pages/")[1].split("/")[0];
               return `page-${page}`;
             }
           },
-          chunkFileNames: 'js/[name]-[hash:8].js',
-          entryFileNames: 'js/[name]-[hash:8].js',
-          assetFileNames: 'assets/[name]-[hash:8][extname]',
+          chunkFileNames: "js/[name]-[hash:8].js",
+          entryFileNames: "js/[name]-[hash:8].js",
+          assetFileNames: "assets/[name]-[hash:8][extname]",
           // Ensure consistent chunk naming in production
-          ...(isDebug ? {} : {
-            compact: true,
-            minifyInternalExports: true,
-          }),
+          ...(isDebug
+            ? {}
+            : {
+                compact: true,
+                minifyInternalExports: true,
+              }),
         },
       },
-      // Enable sourcemaps in development and debug modes
-      sourcemap: enableSourceMaps,
-      // Disable minification in debug mode
-      minify: isDebug ? false : 'esbuild',
-      // Enable brotli compression in production
-      brotliSize: !isDebug,
-      // Disable sourcemap in production
-      ...(isDebug ? {} : {
-        sourcemap: false,
-      }),
       esbuild: {
         keepNames: true,
         minifyIdentifiers: false,
         minifySyntax: false,
-        minifyWhitespace: isDebug ? false : true,
+        minifyWhitespace: !isDebug,
         legalComments: "none",
         target: "esnext",
         treeShaking: false,

@@ -129,9 +129,17 @@
     "vite-plugin-inspect": "^0.8.9",
     "vitest": "^2.1.1"
   },
+  "resolutions": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react/jsx-runtime": "18.3.1",
+    "react/jsx-dev-runtime": "18.3.1"
+  },
   "overrides": {
     "lovable-tagger": {
       "vite": "$vite"
-    }
+    },
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   }
 }
