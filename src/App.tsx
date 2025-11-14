@@ -17,20 +17,37 @@ import TDZDetector from "./components/TDZDetector";
 import MaintenanceGate from "./components/MaintenanceGate";
 import { useLocationContext } from "@/contexts/LocationContext";
 
-// Retry mechanism for lazy loading
-const retry = (fn: () => Promise<any>, retriesLeft: number = 3, interval: number = 1000): Promise<any> => {
+// Enhanced retry mechanism for lazy loading with better error handling
+const retry = (
+  fn: () => Promise<any>,
+  retriesLeft: number = 3,
+  interval: number = 1000,
+  maxInterval: number = 5000
+): Promise<any> => {
   return new Promise((resolve, reject) => {
-    fn()
-      .then(resolve)
-      .catch((error) => {
-        if (retriesLeft === 0) {
+    const attempt = async (attemptsLeft: number) => {
+      try {
+        const result = await fn();
+        resolve(result);
+      } catch (error) {
+        if (attemptsLeft <= 1) {
+          console.error(`Failed to load module after ${retriesLeft} attempts:`, error);
           reject(error);
           return;
         }
+
+        // Exponential backoff with jitter
+        const backoff = Math.min(interval * Math.pow(2, retriesLeft - attemptsLeft) + Math.random() * 1000, maxInterval);
+        
+        console.warn(`Loading module failed, retrying in ${Math.round(backoff)}ms... (${attemptsLeft - 1} attempts left)`);
+        
         setTimeout(() => {
-          retry(fn, retriesLeft - 1, interval).then(resolve, reject);
-        }, interval);
-      });
+          attempt(attemptsLeft - 1);
+        }, backoff);
+      }
+    };
+
+    attempt(retriesLeft);
   });
 };
 
@@ -233,6 +250,27 @@ const App = (): JSX.Element => {
     const isDev = import.meta.env.DEV;
     const isProd = import.meta.env.PROD;
 
+    // Create a route configuration for better maintainability
+    const routes = [
+      { path: "/", element: <Landing />, protected: false },
+      { path: "/auth", element: <Auth />, protected: false },
+      { path: "/onboarding", element: <Onboarding />, protected: false },
+      { path: "/products", element: <Products />, protected: false },
+      { path: "/privacy", element: <Privacy />, protected: false },
+      { path: "/terms", element: <Terms />, protected: false },
+      { path: "/demo", element: <Demo />, protected: false },
+      { path: "/contact", element: <Contact />, protected: false },
+      { 
+        path: "/dashboard/*", 
+        element: (
+          <ProtectedRoute>
+            <Index />
+          </ProtectedRoute>
+        ), 
+        protected: true 
+      },
+    ];
+
     return (
       <MaintenanceGate>
         <ThemeProvider>
@@ -264,38 +302,93 @@ const App = (): JSX.Element => {
                   heartbeatInterval: isDev ? 60000 : 120000,
                   showDebugPanel: isDev,
                   maxReconnectAttempts: isProd ? 5 : 10,
-                  alertAutoHide: 5000
+                  alertAutoHide: 5000,
+                  // Enable retries for chunk loading errors
+                  retryOnChunkError: true,
+                  retryCount: 3
                 }}
               >
                 <TDZDetector />
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
-                  <Suspense fallback={<LoadingScreen />}>
+                  <Suspense 
+                    fallback={
+                      <div className="min-h-screen bg-background flex items-center justify-center">
+                        <div className="text-center space-y-4">
+                          <div className="animate-pulse flex space-x-4">
+                            <div className="flex-1 space-y-6 py-1">
+                              <div className="h-4 bg-muted rounded w-3/4 mx-auto"></div>
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-3 gap-4">
+                                  <div className="h-2 bg-muted rounded col-span-2"></div>
+                                  <div className="h-2 bg-muted rounded col-span-1"></div>
+                                </div>
+                                <div className="h-2 bg-muted rounded"></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-muted-foreground text-sm">Loading application...</p>
+                      </div>
+                    }
+                  >
                     <EnhancedErrorBoundary
                       onError={(error: Error, errorInfo: ErrorInfo) => {
                         console.error("Route loading error:", error, errorInfo);
                         setError(error.message);
+                        // Log the error to an error tracking service
+                        if (import.meta.env.PROD) {
+                          // Replace with your error tracking service
+                          console.error('Route loading error:', { error, errorInfo });
+                        }
                       }}
-                      fallback={<LazyErrorFallback error={new Error("Failed to load route")} retry={() => window.location.reload()} />}
+                      fallback={({ error, resetErrorBoundary }) => (
+                        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+                          <div className="text-center space-y-4 max-w-md">
+                            <h1 className="text-2xl font-bold text-red-600">Something went wrong</h1>
+                            <p className="text-muted-foreground">
+                              We're having trouble loading this page. This might be a temporary issue.
+                            </p>
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => {
+                                  resetErrorBoundary();
+                                  window.location.reload();
+                                }}
+                                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 w-full"
+                              >
+                                Reload Page
+                              </button>
+                              <button
+                                onClick={() => window.location.href = "/"}
+                                className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 w-full"
+                              >
+                                Go to Homepage
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     >
                       <Routes>
-                        <Route path="/" element={<Landing />} />
-                        <Route path="/auth" element={<Auth />} />
-                        <Route path="/onboarding" element={<Onboarding />} />
-                        <Route path="/products" element={<Products />} />
-                        <Route path="/privacy" element={<Privacy />} />
-                        <Route path="/terms" element={<Terms />} />
-                        <Route path="/demo" element={<Demo />} />
-                        <Route path="/contact" element={<Contact />} />
-                        <Route
-                          path="/dashboard"
-                          element={
-                            <ProtectedRoute>
-                              <Index />
-                            </ProtectedRoute>
-                          }
-                        />
+                        {routes.map((route) => (
+                          <Route
+                            key={route.path}
+                            path={route.path}
+                            element={
+                              <Suspense 
+                                fallback={
+                                  <div className="min-h-[60vh] flex items-center justify-center">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                                  </div>
+                                }
+                              >
+                                {route.element}
+                              </Suspense>
+                            }
+                          />
+                        ))}
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </EnhancedErrorBoundary>

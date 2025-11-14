@@ -52,38 +52,51 @@ export default defineConfig(({ mode }) => {
       target: "esnext",
       cssCodeSplit: true,
       minify: isDebug ? false : "esbuild",
-      brotliSize: false,
       sourcemap: enableSourceMaps,
       chunkSizeWarningLimit: 1000,
+      reportCompressedSize: true,
       rollupOptions: {
-        // Disable tree shaking at Rollup level to prevent initialization issues
-        treeshake: false,
+        // Enable tree shaking for production
+        treeshake: !isDebug,
         output: {
-          // Preserve original variable names and structure
-          compact: false,
-          minifyInternalExports: false,
-          chunkFileNames: "js/[name]-[hash].js",
-          entryFileNames: "js/[name]-[hash].js",
-          assetFileNames: "assets/[name]-[hash].[ext]",
+          // Optimize chunk splitting
+          manualChunks: (id) => {
+            if (id.includes('node_modules')) {
+              // Split node_modules into vendor chunks
+              if (id.includes('react-dom') || id.includes('@emotion')) {
+                return 'vendor-react';
+              }
+              if (id.includes('@tanstack')) {
+                return 'vendor-tanstack';
+              }
+              return 'vendor';
+            }
+            // Group pages into route-based chunks
+            if (id.includes('src/pages/')) {
+              const page = id.split('pages/')[1].split('/')[0];
+              return `page-${page}`;
+            }
+          },
+          chunkFileNames: 'js/[name]-[hash:8].js',
+          entryFileNames: 'js/[name]-[hash:8].js',
+          assetFileNames: 'assets/[name]-[hash:8][extname]',
+          // Ensure consistent chunk naming in production
+          ...(isDebug ? {} : {
+            compact: true,
+            minifyInternalExports: true,
+          }),
         },
       },
-      ...(isDebug
-        ? {
-            sourcemap: enableSourceMaps,
-            minify: false,
-            rollupOptions: {
-              treeshake: false,
-              output: {
-                ...{
-                  sourcemap: enableSourceMaps,
-                  preserveModules: false,
-                  manualChunks: undefined,
-                  inlineDynamicImports: false,
-                },
-              },
-            },
-          }
-        : {}),
+      // Enable sourcemaps in development and debug modes
+      sourcemap: enableSourceMaps,
+      // Disable minification in debug mode
+      minify: isDebug ? false : 'esbuild',
+      // Enable brotli compression in production
+      brotliSize: !isDebug,
+      // Disable sourcemap in production
+      ...(isDebug ? {} : {
+        sourcemap: false,
+      }),
       esbuild: {
         keepNames: true,
         minifyIdentifiers: false,
