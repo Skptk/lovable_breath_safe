@@ -1,8 +1,10 @@
-// Import error tracker first
-import './utils/errorTracker'
+// React must be imported first
+import { createRoot } from 'react-dom/client';
+import React from 'react';
+import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query';
 
-import { createRoot } from 'react-dom/client'
-import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query'
+// Import error tracker after React is loaded
+import './utils/errorTracker';
 import App from './App.tsx'
 import './index.css'
 import Profiler from './devtools/Profiler'
