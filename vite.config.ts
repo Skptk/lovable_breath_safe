@@ -10,25 +10,33 @@ export default defineConfig(({ mode }) => {
   const enableSourceMaps = isDebug || process.env.GENERATE_SOURCEMAPS === "true";
   const isDev = mode === "development";
 
+  // Ensure React is only loaded once
+  const reactPath = require.resolve('react');
+  const reactDomPath = require.resolve('react-dom');
+
   return {
     base: "/", // Ensure proper base path for Netlify
     define: {
-      __DEBUG_MODE__: JSON.stringify(isDebug),
-      __TRACK_VARIABLES__: JSON.stringify(isDebug || isDev),
       // Ensure React is in production mode when building for production
       'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'production'),
+      __DEBUG_MODE__: JSON.stringify(isDebug),
+      __TRACK_VARIABLES__: JSON.stringify(isDebug || isDev),
     },
-    // Ensure React is only included once in the bundle
+    // Force single instance of React
     resolve: {
-      alias: {
-        // Ensure React is resolved to a single copy
-        'react': path.resolve(__dirname, './node_modules/react'),
-        'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
-        // Add any other aliases here
-        '@': path.resolve(__dirname, './src'),
-      },
-      // Ensure .jsx and .tsx extensions are resolved
+      alias: [
+        // Force React to use a single instance
+        { find: 'react', replacement: reactPath },
+        { find: 'react-dom', replacement: reactDomPath },
+        { find: 'react/jsx-runtime', replacement: reactPath },
+        { find: 'react/jsx-dev-runtime', replacement: reactPath },
+        // Alias for src directory
+        { find: '@', replacement: path.resolve(__dirname, './src') },
+      ],
+      // Ensure consistent file resolution order
       extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json'],
+      // Ensure node_modules resolution uses the same instance
+      dedupe: ['react', 'react-dom', 'react-dom/client'],
     },
     // Optimize dependencies to prevent duplicates
     optimizeDeps: {
@@ -39,14 +47,17 @@ export default defineConfig(({ mode }) => {
         'react-router-dom',
         '@tanstack/react-query',
       ],
+      // Force esbuild to process JSX
       esbuildOptions: {
-        // Ensure React is only included once
-        loader: {
-          '.js': 'jsx',
-        },
-        // Ensure React is in production mode when building for production
+        loader: { '.js': 'jsx' },
+        jsx: 'automatic',
+        // Ensure proper React runtime is used
+        jsxImportSource: 'react',
+        // Force production mode in production builds
         define: {
-          'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'production'),
+          'process.env.NODE_ENV': JSON.stringify(
+            isDev ? 'development' : 'production'
+          ),
         },
       },
     },

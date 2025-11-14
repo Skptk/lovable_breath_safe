@@ -1,7 +1,12 @@
-// React must be imported first
+// React must be imported first and only once
+import * as React from 'react';
 import { createRoot } from 'react-dom/client';
-import React from 'react';
 import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query';
+
+// Ensure React is properly initialized
+if (!window.React) {
+  window.React = React;
+}
 
 // Import error tracker after React is loaded
 import './utils/errorTracker';
