@@ -86,6 +86,8 @@ export default defineConfig(({ mode }) => {
           ),
         },
       },
+      // Ensure React is pre-bundled to prevent loading issues
+      force: true,
     },
     server: {
       host: "::",
@@ -130,8 +132,12 @@ export default defineConfig(({ mode }) => {
           // Optimize chunk splitting
           manualChunks: (id) => {
             if (id.includes("node_modules")) {
+              // CRITICAL: React must load first, before any UI libraries
+              if (id.includes("react/") || id.includes("react-dom/") || id === "react" || id === "react-dom") {
+                return "vendor-react";
+              }
               // Split node_modules into vendor chunks
-              if (id.includes("react-dom") || id.includes("@emotion")) {
+              if (id.includes("@emotion")) {
                 return "vendor-react";
               }
               if (id.includes("@tanstack")) {

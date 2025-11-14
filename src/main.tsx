@@ -1,11 +1,12 @@
-// React must be imported first and only once
+// React must be imported first and only once - CRITICAL: Must execute synchronously
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query';
 
-// Ensure React is properly initialized
-if (!window.React) {
-  window.React = React;
+// CRITICAL: Ensure React is globally available BEFORE any other code runs
+// This prevents libraries from trying to access React.Children before React is loaded
+if (typeof window !== 'undefined') {
+  (window as any).React = React;
 }
 
 // Import error tracker after React is loaded
