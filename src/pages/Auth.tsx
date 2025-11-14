@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -34,281 +34,6 @@ export default function Auth(): JSX.Element {
 
   // Check if we're in development mode
   const isDevelopment = import.meta.env.DEV;
-
-  // Declare all handler functions with useCallback to avoid TDZ errors in minified code
-  const handleSubmit = useCallback(async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              full_name: formData.fullName
-            },
-            emailRedirectTo: `${window.location.origin}/`
-          }
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account.",
-        });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Welcome back!",
-          description: "You have been signed in successfully.",
-        });
-
-        // Redirect to dashboard after successful login
-        navigate('/dashboard?view=dashboard');
-      }
-    } catch (error: any) {
-      console.error('Authentication error:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isSignUp, formData, toast, navigate]);
-
-  const handlePasswordReset = useCallback(async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(passwordResetEmail, {
-        redirectTo: `${window.location.origin}/auth`
-      });
-
-      if (error) throw error;
-
-      setPasswordResetSent(true);
-      toast({
-        title: "Password reset email sent!",
-        description: "Check your email for a link to reset your password.",
-      });
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-      toast({
-        title: "Error",
-        description: error.message || 'Failed to send password reset email',
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [passwordResetEmail, toast]);
-
-  const handleBackToSignIn = useCallback((): void => {
-    setShowForgotPassword(false);
-    setPasswordResetEmail('');
-    setPasswordResetSent(false);
-    setShowPasswordResetForm(false);
-    setNewPassword('');
-    setConfirmPassword('');
-  }, []);
-
-  const handlePasswordResetSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure both passwords are identical.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters long.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Use the recovery flow to set the new password
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Password updated successfully!",
-        description: "You can now sign in with your new password.",
-      });
-
-      // Reset form and show sign in
-      setShowPasswordResetForm(false);
-      setShowForgotPassword(false);
-      setNewPassword('');
-      setConfirmPassword('');
-      setIsSignUp(false);
-      
-      // Clean up the URL by removing the recovery code parameter
-      const url = new URL(window.location.href);
-      url.searchParams.delete('code');
-      url.searchParams.delete('access_token');
-      url.searchParams.delete('refresh_token');
-      url.searchParams.delete('type');
-      url.searchParams.delete('reset');
-      
-      // Update the URL without the recovery parameters
-      window.history.replaceState({}, '', url.toString());
-      console.log('URL cleaned up after successful password reset');
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-      
-      // If session is missing, provide better error message
-      if (error.message?.includes('Auth session missing')) {
-        toast({
-          title: "Reset link expired",
-          description: "The password reset link has expired. Please request a new one.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: error.message || 'Failed to update password',
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [newPassword, confirmPassword, toast]);
-
-  const handleDevLogin = useCallback(async (): Promise<void> => {
-    setIsLoading(true);
-    
-    try {
-      const { email, password } = devFormData;
-      
-      // First, try to sign in with existing account
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInData.user) {
-        // Successfully signed in
-        toast({
-          title: "Developer Login Successful!",
-          description: "Welcome back to development mode!",
-        });
-        
-        // Redirect to dashboard after successful login
-        navigate('/dashboard?view=dashboard');
-        return;
-      }
-
-      // Log detailed error information
-      if (signInError) {
-        console.error('Sign in error details:', {
-          message: signInError.message,
-          status: signInError.status,
-          name: signInError.name,
-          details: signInError
-        });
-      }
-
-      // If sign in failed due to unverified email, we need to handle this differently
-      if (signInError?.message?.includes('Email not confirmed')) {
-        // Try to resend confirmation email
-        const { error: resendError } = await supabase.auth.resend({
-          type: 'signup',
-          email: email,
-        });
-
-        if (resendError) {
-          console.error('Resend error:', resendError);
-        }
-
-        toast({
-          title: "Email Verification Required",
-          description: "Account exists but email not verified. Check your email or try creating a new account.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // If sign in failed for other reasons, try to create a new account
-      if (signInError) {
-        
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: 'Developer User'
-            }
-          }
-        });
-
-        if (signUpError) {
-          console.error('Signup error details:', {
-            message: signUpError.message,
-            status: signUpError.status,
-            name: signUpError.name,
-            details: signUpError
-          });
-          throw signUpError;
-        }
-
-        if (signUpData.user) {
-          // Account created successfully
-          toast({
-            title: "Developer Account Created!",
-            description: "Account created successfully. Check your email for verification.",
-          });
-          
-          // In development, we can try to sign in without verification
-          // This might work if the account is auto-confirmed
-          setTimeout(async () => {
-            const { error: retrySignInError } = await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
-
-            if (retrySignInError) {
-              // Retry signin still requires verification
-            }
-          }, 2000);
-        }
-      }
-    } catch (error: any) {
-      console.error('Developer login error:', error);
-      toast({
-        title: "Developer Login Error",
-        description: error.message || 'An error occurred during developer login',
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [devFormData, toast, navigate]);
 
   // Check if user is already authenticated and redirect
   useEffect(() => {
@@ -445,6 +170,265 @@ export default function Auth(): JSX.Element {
 
   // Render the component
   const renderAuthForm = () => {
+    // Define handlers inside render function to avoid TDZ issues with minification
+    const handleSubmit = async (e: React.FormEvent): Promise<void> => {
+      e.preventDefault();
+      setIsLoading(true);
+
+      try {
+        if (isSignUp) {
+          const { error } = await supabase.auth.signUp({
+            email: formData.email,
+            password: formData.password,
+            options: {
+              data: {
+                full_name: formData.fullName
+              },
+              emailRedirectTo: `${window.location.origin}/`
+            }
+          });
+
+          if (error) throw error;
+
+          toast({
+            title: "Account created!",
+            description: "Please check your email to verify your account.",
+          });
+        } else {
+          const { error } = await supabase.auth.signInWithPassword({
+            email: formData.email,
+            password: formData.password,
+          });
+
+          if (error) throw error;
+
+          toast({
+            title: "Welcome back!",
+            description: "You have been signed in successfully.",
+          });
+
+          // Redirect to dashboard after successful login
+          navigate('/dashboard?view=dashboard');
+        }
+      } catch (error: any) {
+        console.error('Authentication error:', error);
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const handlePasswordReset = async (e: React.FormEvent): Promise<void> => {
+      e.preventDefault();
+      setIsLoading(true);
+
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(passwordResetEmail, {
+          redirectTo: `${window.location.origin}/auth`
+        });
+
+        if (error) throw error;
+
+        setPasswordResetSent(true);
+        toast({
+          title: "Password reset email sent!",
+          description: "Check your email for a link to reset your password.",
+        });
+      } catch (error: any) {
+        console.error('Password reset error:', error);
+        toast({
+          title: "Error",
+          description: error.message || 'Failed to send password reset email',
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const handleBackToSignIn = (): void => {
+      setShowForgotPassword(false);
+      setPasswordResetEmail('');
+      setPasswordResetSent(false);
+      setShowPasswordResetForm(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    };
+
+    const handlePasswordResetSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      
+      if (newPassword !== confirmPassword) {
+        toast({
+          title: "Passwords don't match",
+          description: "Please make sure both passwords are identical.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        toast({
+          title: "Password too short",
+          description: "Password must be at least 6 characters long.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const { error } = await supabase.auth.updateUser({
+          password: newPassword
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Password updated successfully!",
+          description: "You can now sign in with your new password.",
+        });
+
+        setShowPasswordResetForm(false);
+        setShowForgotPassword(false);
+        setNewPassword('');
+        setConfirmPassword('');
+        setIsSignUp(false);
+        
+        const url = new URL(window.location.href);
+        url.searchParams.delete('code');
+        url.searchParams.delete('access_token');
+        url.searchParams.delete('refresh_token');
+        url.searchParams.delete('type');
+        url.searchParams.delete('reset');
+        
+        window.history.replaceState({}, '', url.toString());
+        console.log('URL cleaned up after successful password reset');
+      } catch (error: any) {
+        console.error('Password reset error:', error);
+        
+        if (error.message?.includes('Auth session missing')) {
+          toast({
+            title: "Reset link expired",
+            description: "The password reset link has expired. Please request a new one.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: error.message || 'Failed to update password',
+            variant: "destructive",
+          });
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const handleDevLogin = async (): Promise<void> => {
+      setIsLoading(true);
+      
+      try {
+        const { email, password } = devFormData;
+        
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInData.user) {
+          toast({
+            title: "Developer Login Successful!",
+            description: "Welcome back to development mode!",
+          });
+          
+          navigate('/dashboard?view=dashboard');
+          return;
+        }
+
+        if (signInError) {
+          console.error('Sign in error details:', {
+            message: signInError.message,
+            status: signInError.status,
+            name: signInError.name,
+            details: signInError
+          });
+        }
+
+        if (signInError?.message?.includes('Email not confirmed')) {
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: email,
+          });
+
+          if (resendError) {
+            console.error('Resend error:', resendError);
+          }
+
+          toast({
+            title: "Email Verification Required",
+            description: "Account exists but email not verified. Check your email or try creating a new account.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (signInError) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                full_name: 'Developer User'
+              }
+            }
+          });
+
+          if (signUpError) {
+            console.error('Signup error details:', {
+              message: signUpError.message,
+              status: signUpError.status,
+              name: signUpError.name,
+              details: signUpError
+            });
+            throw signUpError;
+          }
+
+          if (signUpData.user) {
+            toast({
+              title: "Developer Account Created!",
+              description: "Account created successfully. Check your email for verification.",
+            });
+            
+            setTimeout(async () => {
+              const { error: retrySignInError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+              });
+
+              if (retrySignInError) {
+                // Retry signin still requires verification
+              }
+            }, 2000);
+          }
+        }
+      } catch (error: any) {
+        console.error('Developer login error:', error);
+        toast({
+          title: "Developer Login Error",
+          description: error.message || 'An error occurred during developer login',
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     return (
     <div className="min-h-screen bg-background flex flex-col">
       <div className="flex-1 flex items-center justify-center page-padding">
