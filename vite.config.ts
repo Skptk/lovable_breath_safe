@@ -7,15 +7,23 @@ import inspect from "vite-plugin-inspect";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const isDebug = mode === "debug";
-  const enableSourceMaps = isDebug || process.env.GENERATE_SOURCEMAPS === "true";
   const isDev = mode === "development";
+  const isProduction = mode === "production" || process.env.NODE_ENV === "production";
+  const enableSourceMaps = isDebug || process.env.GENERATE_SOURCEMAPS === "true";
 
   // Ensure React is only loaded once
   const reactPath = require.resolve('react');
   const reactDomPath = require.resolve('react-dom');
 
+  // Log environment info for debugging
+  console.log('Vite Config:');
+  console.log('- Mode:', mode);
+  console.log('- NODE_ENV:', process.env.NODE_ENV);
+  console.log('- isProduction:', isProduction);
+
   return {
-    base: "/", // Ensure proper base path for Netlify
+    // Ensure proper base path for Netlify
+    base: "/",
     define: {
       // Ensure React is in production mode when building for production
       'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'production'),
@@ -37,6 +45,13 @@ export default defineConfig(({ mode }) => {
       extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json'],
       // Ensure node_modules resolution uses the same instance
       dedupe: ['react', 'react-dom', 'react-dom/client'],
+      // Ensure consistent module resolution
+      preserveSymlinks: false,
+    },
+    // Enable production optimizations
+    esbuild: {
+      drop: isProduction ? ['console', 'debugger'] : [],
+      pure: isProduction ? ['console.log', 'console.debug'] : [],
     },
     // Optimize dependencies to prevent duplicates
     optimizeDeps: {

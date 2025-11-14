@@ -1,10 +1,19 @@
 [build]
   publish = "dist"
-  command = "npm ci --legacy-peer-deps && npm run build"
+  command = "npm run netlify-build"
 
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
+  NODE_OPTIONS = "--max-old-space-size=4096"
+  
+  # Force production mode for Vite
+  NODE_ENV = "production"
+  VITE_NODE_ENV = "production"
+  
+  # Enable source maps for debugging (optional)
+  GENERATE_SOURCEMAPS = "false"
+  
   # Environment variables should be set in Netlify dashboard under Site settings > Environment variables
   # VITE_SUPABASE_URL = "your_supabase_project_url"
   # VITE_SUPABASE_ANON_KEY = "your_supabase_anon_key"
