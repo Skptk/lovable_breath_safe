@@ -29,7 +29,7 @@
     "lhci:upload": "lhci upload",
     "security:check": "npm run secret-scan && npm run lint",
     "security:fix": "npm run lint -- --fix",
-    "prepare": "husky",
+    "prepare": "command -v husky > /dev/null && husky || true",
     "prebuild": "npm run type-check",
     "prebuild:with-lint": "npm run type-check && npm run lint",
     "prebuild:local": "npm run check-init-issues && npm run type-check && npm run lint",
