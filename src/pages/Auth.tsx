@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,48 @@ import { Input } from '@/components/ui/input';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Eye, EyeOff, Code, AlertTriangle, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
+
+// Custom hook to isolate state initialization from minifier
+function useAuthState() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showDevLogin, setShowDevLogin] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [passwordResetEmail, setPasswordResetEmail] = useState('');
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
+  const [showPasswordResetForm, setShowPasswordResetForm] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [devFormData, setDevFormData] = useState({
+    email: 'dev@breathsafe.com',
+    password: 'devpassword123'
+  });
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: ''
+  });
+
+  return {
+    isLoading, setIsLoading,
+    isSignUp, setIsSignUp,
+    showPassword, setShowPassword,
+    showDevLogin, setShowDevLogin,
+    showForgotPassword, setShowForgotPassword,
+    passwordResetEmail, setPasswordResetEmail,
+    passwordResetSent, setPasswordResetSent,
+    showPasswordResetForm, setShowPasswordResetForm,
+    newPassword, setNewPassword,
+    confirmPassword, setConfirmPassword,
+    showNewPassword, setShowNewPassword,
+    showConfirmPassword, setShowConfirmPassword,
+    devFormData, setDevFormData,
+    formData, setFormData
+  };
+}
 
 interface AuthFormProps {
   isLoading: boolean;
@@ -667,27 +709,7 @@ function AuthForm(props: AuthFormProps): JSX.Element {
 }
 
 export default function Auth(): JSX.Element {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showDevLogin, setShowDevLogin] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [passwordResetEmail, setPasswordResetEmail] = useState('');
-  const [passwordResetSent, setPasswordResetSent] = useState(false);
-  const [showPasswordResetForm, setShowPasswordResetForm] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [devFormData, setDevFormData] = useState({
-    email: 'dev@breathsafe.com',
-    password: 'devpassword123'
-  });
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    fullName: ''
-  });
+  const authState = useAuthState();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -742,9 +764,9 @@ export default function Auth(): JSX.Element {
       });
       
       // Hide all other forms and show only password reset form
-      setIsSignUp(false);
-      setShowForgotPassword(false);
-      setShowPasswordResetForm(true);
+      authState.setIsSignUp(false);
+      authState.setShowForgotPassword(false);
+      authState.setShowPasswordResetForm(true);
       
       // If we have a code, exchange it for a session
       if (code) {
@@ -784,7 +806,7 @@ export default function Auth(): JSX.Element {
     } else {
       console.log('No password reset flow detected');
     }
-  }, []);
+  }, [authState]);
 
   // Listen for auth state changes to handle recovery flow
   useEffect(() => {
@@ -794,69 +816,69 @@ export default function Auth(): JSX.Element {
       // If we get a recovery event and have a session, show password reset form
       if (event === 'PASSWORD_RECOVERY' && session?.user) {
         console.log('Password recovery event detected, showing reset form');
-        setIsSignUp(false);
-        setShowForgotPassword(false);
-        setShowPasswordResetForm(true);
+        authState.setIsSignUp(false);
+        authState.setShowForgotPassword(false);
+        authState.setShowPasswordResetForm(true);
       }
       
       // If we get a token refreshed event and it's a recovery session, show password reset form
       if (event === 'TOKEN_REFRESHED' && session?.user && window.location.hash.includes('type=recovery')) {
         console.log('Token refreshed for recovery, showing reset form');
-        setIsSignUp(false);
-        setShowForgotPassword(false);
-        setShowPasswordResetForm(true);
+        authState.setIsSignUp(false);
+        authState.setShowForgotPassword(false);
+        authState.setShowPasswordResetForm(true);
       }
       
       // If we get a session and we're in recovery mode, show password reset form
       if (event === 'SIGNED_IN' && session?.user && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))) {
         console.log('Signed in with recovery session, showing reset form');
-        setIsSignUp(false);
-        setShowForgotPassword(false);
-        setShowPasswordResetForm(true);
+        authState.setIsSignUp(false);
+        authState.setShowForgotPassword(false);
+        authState.setShowPasswordResetForm(true);
       }
       
       // If we get a session and we have a code parameter (recovery flow), show password reset form
       if (event === 'SIGNED_IN' && session?.user && window.location.search.includes('code=')) {
         console.log('Signed in with recovery code, showing reset form');
-        setIsSignUp(false);
-        setShowForgotPassword(false);
-        setShowPasswordResetForm(true);
+        authState.setIsSignUp(false);
+        authState.setShowForgotPassword(false);
+        authState.setShowPasswordResetForm(true);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [authState]);
 
   return (
     <AuthForm
-      isLoading={isLoading}
-      setIsLoading={setIsLoading}
-      isSignUp={isSignUp}
-      setIsSignUp={setIsSignUp}
-      showPassword={showPassword}
-      setShowPassword={setShowPassword}
-      showDevLogin={showDevLogin}
-      setShowDevLogin={setShowDevLogin}
-      showForgotPassword={showForgotPassword}
-      setShowForgotPassword={setShowForgotPassword}
-      passwordResetEmail={passwordResetEmail}
-      setPasswordResetEmail={setPasswordResetEmail}
-      passwordResetSent={passwordResetSent}
-      setPasswordResetSent={setPasswordResetSent}
-      showPasswordResetForm={showPasswordResetForm}
-      setShowPasswordResetForm={setShowPasswordResetForm}
-      newPassword={newPassword}
-      setNewPassword={setNewPassword}
-      confirmPassword={confirmPassword}
-      setConfirmPassword={setConfirmPassword}
-      showNewPassword={showNewPassword}
-      setShowNewPassword={setShowNewPassword}
-      showConfirmPassword={showConfirmPassword}
-      setShowConfirmPassword={setShowConfirmPassword}
-      devFormData={devFormData}
-      setDevFormData={setDevFormData}
-      formData={formData}
-      setFormData={setFormData}
+      isLoading={authState.isLoading}
+      setIsLoading={authState.setIsLoading}
+      isSignUp={authState.isSignUp}
+      setIsSignUp={authState.setIsSignUp}
+      showPassword={authState.showPassword}
+      setShowPassword={authState.setShowPassword}
+      showDevLogin={authState.showDevLogin}
+      setShowDevLogin={authState.setShowDevLogin}
+      showForgotPassword={authState.showForgotPassword}
+      setShowForgotPassword={authState.setShowForgotPassword}
+      passwordResetEmail={authState.passwordResetEmail}
+      setPasswordResetEmail={authState.setPasswordResetEmail}
+      passwordResetSent={authState.passwordResetSent}
+      setPasswordResetSent={authState.setPasswordResetSent}
+      showPasswordResetForm={authState.showPasswordResetForm}
+      setShowPasswordResetForm={authState.setShowPasswordResetForm}
+      newPassword={authState.newPassword}
+      setNewPassword={authState.setNewPassword}
+      confirmPassword={authState.confirmPassword}
+      setConfirmPassword={authState.setConfirmPassword}
+      showNewPassword={authState.showNewPassword}
+      setShowNewPassword={authState.setShowNewPassword}
+      showConfirmPassword={authState.showConfirmPassword}
+      setShowConfirmPassword={authState.setShowConfirmPassword}
+      devFormData={authState.devFormData}
+      setDevFormData={authState.setDevFormData}
+      formData={authState.formData}
+      setFormData={authState.setFormData}
       isDevelopment={isDevelopment}
     />
   );
