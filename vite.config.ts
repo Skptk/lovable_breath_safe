@@ -25,69 +25,45 @@ export default defineConfig(({ mode }) => {
   const reactJsxDevRuntimePath = require.resolve("react/jsx-dev-runtime");
 
   const minifySetting = isDebug ? false : "esbuild";
-  const sourcemapSetting = isDebug ? true : enableSourceMaps;
-
-  // Log environment info for debugging
-  console.log('Vite Config:');
-  console.log('- Mode:', mode);
-  console.log('- NODE_ENV:', process.env.NODE_ENV);
-  console.log('- isProduction:', isProduction);
+  const sourcemapSetting = enableSourceMaps;
 
   return {
-    // Ensure proper base path for Netlify
     base: "/",
     define: {
-      // Ensure React is in production mode when building for production
-      'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'production'),
+      "process.env.NODE_ENV": JSON.stringify(isDev ? "development" : "production"),
       __DEBUG_MODE__: JSON.stringify(isDebug),
-      __TRACK_VARIABLES__: JSON.stringify(isDebug || isDev),
     },
-    // Force single instance of React
     resolve: {
       alias: [
-        { find: /^react$/i, replacement: reactPath },
-        { find: /^react-dom$/i, replacement: reactDomPath },
-        { find: /^react-dom\/client$/i, replacement: reactDomClientPath },
-        { find: /^react\/jsx-runtime$/i, replacement: reactJsxRuntimePath },
-        { find: /^react\/jsx-dev-runtime$/i, replacement: reactJsxDevRuntimePath },
+        { find: "react", replacement: reactPath },
+        { find: "react-dom", replacement: reactDomPath },
+        { find: "react-dom/client", replacement: reactDomClientPath },
+        { find: "react/jsx-runtime", replacement: reactJsxRuntimePath },
+        { find: "react/jsx-dev-runtime", replacement: reactJsxDevRuntimePath },
         { find: "@", replacement: path.resolve(__dirname, "./src") },
       ],
-      // Ensure consistent file resolution order
       extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
-      // Ensure node_modules resolution uses the same instance
-      dedupe: ["react", "react-dom", "react-dom/client"],
-      // Ensure consistent module resolution
       preserveSymlinks: false,
     },
-    // Enable production optimizations
     esbuild: {
-      drop: isProduction ? ['console', 'debugger'] : [],
-      pure: isProduction ? ['console.log', 'console.debug'] : [],
+      drop: isProduction ? ["console", "debugger"] : [],
     },
-    // Optimize dependencies to prevent duplicates
     optimizeDeps: {
       include: [
-        'react',
-        'react-dom',
-        'react-dom/client',
-        'react-router-dom',
-        '@tanstack/react-query',
+        "react",
+        "react-dom",
+        "react-dom/client",
+        "react-router-dom",
+        "@tanstack/react-query",
       ],
-      // Force esbuild to process JSX
       esbuildOptions: {
-        loader: { '.js': 'jsx' },
-        jsx: 'automatic',
-        // Ensure proper React runtime is used
-        jsxImportSource: 'react',
-        // Force production mode in production builds
+        loader: { ".js": "jsx" },
+        jsx: "automatic",
+        jsxImportSource: "react",
         define: {
-          'process.env.NODE_ENV': JSON.stringify(
-            isDev ? 'development' : 'production'
-          ),
+          "process.env.NODE_ENV": JSON.stringify(isDev ? "development" : "production"),
         },
       },
-      // Ensure React is pre-bundled to prevent loading issues
-      force: true,
     },
     server: {
       host: "::",
@@ -95,22 +71,15 @@ export default defineConfig(({ mode }) => {
     },
     preview: {
       host: "0.0.0.0",
-      port: 4174, // Changed from 4173 to avoid conflicts
-      strictPort: false, // Allow fallback to other ports if 4174 is busy
-      // Better CI support
+      port: 4174,
+      strictPort: false,
       open: false,
-      // Ensure proper headers for CI
       headers: {
         "Cache-Control": "no-cache, no-store, must-revalidate",
         Pragma: "no-cache",
         Expires: "0",
       },
-      // Enhanced CI support
       cors: true,
-      // Verbose logging for CI
-      logLevel: "info",
-      // Better ready detection
-      hmr: false, // Disable HMR in preview for CI
     },
     plugins: [
       react(),
@@ -124,19 +93,19 @@ export default defineConfig(({ mode }) => {
       sourcemap: sourcemapSetting,
       chunkSizeWarningLimit: 1000,
       reportCompressedSize: true,
-      brotliSize: !isDebug,
       rollupOptions: {
-        // Enable tree shaking for production
         treeshake: !isDebug,
         output: {
-          // Optimize chunk splitting
           manualChunks: (id) => {
             if (id.includes("node_modules")) {
-              // CRITICAL: React must load first, before any UI libraries
-              if (id.includes("react/") || id.includes("react-dom/") || id === "react" || id === "react-dom") {
+              if (
+                id.includes("react/") ||
+                id.includes("react-dom/") ||
+                id === "react" ||
+                id === "react-dom"
+              ) {
                 return "vendor-react";
               }
-              // Split node_modules into vendor chunks
               if (id.includes("@emotion")) {
                 return "vendor-react";
               }
@@ -145,7 +114,6 @@ export default defineConfig(({ mode }) => {
               }
               return "vendor";
             }
-            // Group pages into route-based chunks
             if (id.includes("src/pages/")) {
               const page = id.split("pages/")[1].split("/")[0];
               return `page-${page}`;
@@ -154,31 +122,8 @@ export default defineConfig(({ mode }) => {
           chunkFileNames: "js/[name]-[hash:8].js",
           entryFileNames: "js/[name]-[hash:8].js",
           assetFileNames: "assets/[name]-[hash:8][extname]",
-          // Ensure consistent chunk naming in production
-          ...(isDebug
-            ? {}
-            : {
-                compact: true,
-                minifyInternalExports: true,
-              }),
+          ...(isDebug ? {} : { compact: true, minifyInternalExports: true }),
         },
-      },
-      esbuild: {
-        keepNames: true,
-        minifyIdentifiers: false,
-        minifySyntax: false,
-        minifyWhitespace: !isDebug,
-        legalComments: "none",
-        target: "esnext",
-        treeShaking: false,
-        define: {
-          "process.env.NODE_ENV": '"production"',
-          "__DEBUG_BUILD__": JSON.stringify(isDebug),
-        },
-        format: "esm",
-        platform: "browser",
-        drop: [],
-        pure: [],
       },
     },
   };
