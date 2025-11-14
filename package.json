@@ -8,7 +8,7 @@
     "build": "cross-env NODE_ENV=production npm run check-init-issues && vite build --mode production && node scripts/check-bundle-reference-errors.js",
     "build:debug": "cross-env NODE_ENV=development npm run check-init-issues && vite build --mode debug",
     "build:dev": "cross-env NODE_ENV=development npm run check-init-issues && vite build --mode development",
-    "netlify-build": "npm ci --legacy-peer-deps && npm run build",
+    "netlify-build": "npm ci --legacy-peer-deps --include=dev && npm run build",
     "analyze": "npm run check-init-issues && vite build --mode production && npx rollup-plugin-visualizer --template treemap --open dist/stats.html",
     "test": "vitest run --coverage=false",
     "test:bg-manager": "vitest run tests/backgroundManager.test.tsx",
