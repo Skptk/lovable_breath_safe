@@ -7,6 +7,665 @@ import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Eye, EyeOff, Code, AlertTriangle, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
 
+interface AuthFormProps {
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
+  isSignUp: boolean;
+  setIsSignUp: (signup: boolean) => void;
+  showPassword: boolean;
+  setShowPassword: (show: boolean) => void;
+  showDevLogin: boolean;
+  setShowDevLogin: (show: boolean) => void;
+  showForgotPassword: boolean;
+  setShowForgotPassword: (show: boolean) => void;
+  passwordResetEmail: string;
+  setPasswordResetEmail: (email: string) => void;
+  passwordResetSent: boolean;
+  setPasswordResetSent: (sent: boolean) => void;
+  showPasswordResetForm: boolean;
+  setShowPasswordResetForm: (show: boolean) => void;
+  newPassword: string;
+  setNewPassword: (pwd: string) => void;
+  confirmPassword: string;
+  setConfirmPassword: (pwd: string) => void;
+  showNewPassword: boolean;
+  setShowNewPassword: (show: boolean) => void;
+  showConfirmPassword: boolean;
+  setShowConfirmPassword: (show: boolean) => void;
+  devFormData: { email: string; password: string };
+  setDevFormData: (data: { email: string; password: string }) => void;
+  formData: { email: string; password: string; fullName: string };
+  setFormData: (data: { email: string; password: string; fullName: string }) => void;
+  isDevelopment: boolean;
+}
+
+function AuthForm(props: AuthFormProps): JSX.Element {
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  function handleSubmit(e: React.FormEvent): void {
+    e.preventDefault();
+    props.setIsLoading(true);
+
+    (async () => {
+      try {
+        if (props.isSignUp) {
+          const { error } = await supabase.auth.signUp({
+            email: props.formData.email,
+            password: props.formData.password,
+            options: {
+              data: {
+                full_name: props.formData.fullName
+              },
+              emailRedirectTo: `${window.location.origin}/`
+            }
+          });
+
+          if (error) throw error;
+
+          toast({
+            title: "Account created!",
+            description: "Please check your email to verify your account.",
+          });
+        } else {
+          const { error } = await supabase.auth.signInWithPassword({
+            email: props.formData.email,
+            password: props.formData.password,
+          });
+
+          if (error) throw error;
+
+          toast({
+            title: "Welcome back!",
+            description: "You have been signed in successfully.",
+          });
+
+          navigate('/dashboard?view=dashboard');
+        }
+      } catch (error: any) {
+        console.error('Authentication error:', error);
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        props.setIsLoading(false);
+      }
+    })();
+  }
+
+  function handlePasswordReset(e: React.FormEvent): void {
+    e.preventDefault();
+    props.setIsLoading(true);
+
+    (async () => {
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(props.passwordResetEmail, {
+          redirectTo: `${window.location.origin}/auth`
+        });
+
+        if (error) throw error;
+
+        props.setPasswordResetSent(true);
+        toast({
+          title: "Password reset email sent!",
+          description: "Check your email for a link to reset your password.",
+        });
+      } catch (error: any) {
+        console.error('Password reset error:', error);
+        toast({
+          title: "Error",
+          description: error.message || 'Failed to send password reset email',
+          variant: "destructive",
+        });
+      } finally {
+        props.setIsLoading(false);
+      }
+    })();
+  }
+
+  function handleBackToSignIn(): void {
+    props.setShowForgotPassword(false);
+    props.setPasswordResetEmail('');
+    props.setPasswordResetSent(false);
+    props.setShowPasswordResetForm(false);
+    props.setNewPassword('');
+    props.setConfirmPassword('');
+  }
+
+  function handlePasswordResetSubmit(e: React.FormEvent): void {
+    e.preventDefault();
+
+    if (props.newPassword !== props.confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are identical.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (props.newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    props.setIsLoading(true);
+
+    (async () => {
+      try {
+        const { error } = await supabase.auth.updateUser({
+          password: props.newPassword
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Password updated successfully!",
+          description: "You can now sign in with your new password.",
+        });
+
+        props.setShowPasswordResetForm(false);
+        props.setShowForgotPassword(false);
+        props.setNewPassword('');
+        props.setConfirmPassword('');
+        props.setIsSignUp(false);
+
+        const url = new URL(window.location.href);
+        url.searchParams.delete('code');
+        url.searchParams.delete('access_token');
+        url.searchParams.delete('refresh_token');
+        url.searchParams.delete('type');
+        url.searchParams.delete('reset');
+
+        window.history.replaceState({}, '', url.toString());
+        console.log('URL cleaned up after successful password reset');
+      } catch (error: any) {
+        console.error('Password reset error:', error);
+
+        if (error.message?.includes('Auth session missing')) {
+          toast({
+            title: "Reset link expired",
+            description: "The password reset link has expired. Please request a new one.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: error.message || 'Failed to update password',
+            variant: "destructive",
+          });
+        }
+      } finally {
+        props.setIsLoading(false);
+      }
+    })();
+  }
+
+  function handleDevLogin(): void {
+    props.setIsLoading(true);
+
+    (async () => {
+      try {
+        const { email, password } = props.devFormData;
+
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInData.user) {
+          toast({
+            title: "Developer Login Successful!",
+            description: "Welcome back to development mode!",
+          });
+
+          navigate('/dashboard?view=dashboard');
+          return;
+        }
+
+        if (signInError) {
+          console.error('Sign in error details:', {
+            message: signInError.message,
+            status: signInError.status,
+            name: signInError.name,
+            details: signInError
+          });
+        }
+
+        if (signInError?.message?.includes('Email not confirmed')) {
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: email,
+          });
+
+          if (resendError) {
+            console.error('Resend error:', resendError);
+          }
+
+          toast({
+            title: "Email Verification Required",
+            description: "Account exists but email not verified. Check your email or try creating a new account.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (signInError) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                full_name: 'Developer User'
+              }
+            }
+          });
+
+          if (signUpError) {
+            console.error('Signup error details:', {
+              message: signUpError.message,
+              status: signUpError.status,
+              name: signUpError.name,
+              details: signUpError
+            });
+            throw signUpError;
+          }
+
+          if (signUpData.user) {
+            toast({
+              title: "Developer Account Created!",
+              description: "Account created successfully. Check your email for verification.",
+            });
+
+            setTimeout(async () => {
+              const { error: retrySignInError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+              });
+
+              if (retrySignInError) {
+                // Retry signin still requires verification
+              }
+            }, 2000);
+          }
+        }
+      } catch (error: any) {
+        console.error('Developer login error:', error);
+        toast({
+          title: "Developer Login Error",
+          description: error.message || 'An error occurred during developer login',
+          variant: "destructive",
+        });
+      } finally {
+        props.setIsLoading(false);
+      }
+    })();
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 flex items-center justify-center page-padding">
+        <GlassCard className="w-full max-w-md floating-card">
+          <GlassCardHeader className="text-center">
+            <GlassCardTitle className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
+              {props.isSignUp ? 'Create Account' : 'Welcome Back'}
+            </GlassCardTitle>
+            <p className="body-md text-muted-foreground">
+              {props.isSignUp ? 'Join Air Quality Tracker' : 'Sign in to your account'}
+            </p>
+          </GlassCardHeader>
+
+          <GlassCardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {props.isSignUp && (
+                <div className="space-y-2">
+                  <label htmlFor="fullName" className="text-sm font-medium">
+                    Full Name
+                  </label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    value={props.formData.fullName}
+                    onChange={(e) => props.setFormData({ ...props.formData, fullName: e.target.value })}
+                    required={props.isSignUp}
+                    className="bg-background border-border"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={props.formData.email}
+                  onChange={(e) => props.setFormData({ ...props.formData, email: e.target.value })}
+                  required
+                  className="bg-background border-border"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={props.showPassword ? 'text' : 'password'}
+                    value={props.formData.password}
+                    onChange={(e) => props.setFormData({ ...props.formData, password: e.target.value })}
+                    required
+                    className="bg-background border-border pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => props.setShowPassword(!props.showPassword)}
+                  >
+                    {props.showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {!props.isSignUp && (
+                <div className="text-right">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => props.setShowForgotPassword(true)}
+                    className="text-sm text-muted-foreground hover:text-foreground p-0 h-auto"
+                  >
+                    Forgot your password?
+                  </Button>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary/90"
+                disabled={props.isLoading}
+              >
+                {props.isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {props.isSignUp ? 'Create Account' : 'Sign In'}
+              </Button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <Button
+                variant="ghost"
+                onClick={() => props.setIsSignUp(!props.isSignUp)}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                {props.isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              </Button>
+            </div>
+
+            {props.showForgotPassword && (
+              <div className="mt-6 pt-6 border-t border-border">
+                <div className="text-center space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Mail className="h-4 w-4" />
+                    <span>Reset your password</span>
+                  </div>
+
+                  {!props.passwordResetSent ? (
+                    <form onSubmit={handlePasswordReset} className="space-y-4">
+                      <div className="space-y-2">
+                        <label htmlFor="resetEmail" className="text-sm font-medium text-left block">
+                          Email Address
+                        </label>
+                        <Input
+                          id="resetEmail"
+                          type="email"
+                          value={props.passwordResetEmail}
+                          onChange={(e) => props.setPasswordResetEmail(e.target.value)}
+                          required
+                          className="bg-background border-border"
+                          placeholder="Enter your email address"
+                        />
+                      </div>
+
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="w-full"
+                        disabled={props.isLoading}
+                      >
+                        {props.isLoading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Mail className="mr-2 h-4 w-4" />
+                        )}
+                        Send Reset Link
+                      </Button>
+                    </form>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-center gap-2 text-green-600">
+                        <CheckCircle className="h-5 w-5" />
+                        <span className="font-medium">Reset email sent!</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Check your email for a link to reset your password. The link will expire in 24 hours.
+                      </p>
+                    </div>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBackToSignIn}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to sign in
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {props.showPasswordResetForm && (
+              <div className="mt-6 pt-6 border-t border-border">
+                <div className="text-center space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Set your new password</span>
+                  </div>
+
+                  <form onSubmit={handlePasswordResetSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="newPassword" className="text-sm font-medium text-left block">
+                        New Password
+                      </label>
+                      <div className="relative">
+                        <Input
+                          id="newPassword"
+                          type={props.showNewPassword ? 'text' : 'password'}
+                          value={props.newPassword}
+                          onChange={(e) => props.setNewPassword(e.target.value)}
+                          required
+                          className="bg-background border-border pr-10"
+                          placeholder="Enter your new password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => props.setShowNewPassword(!props.showNewPassword)}
+                        >
+                          {props.showNewPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="confirmPassword" className="text-sm font-medium text-left block">
+                        Confirm New Password
+                      </label>
+                      <div className="relative">
+                        <Input
+                          id="confirmPassword"
+                          type={props.showConfirmPassword ? 'text' : 'password'}
+                          value={props.confirmPassword}
+                          onChange={(e) => props.setConfirmPassword(e.target.value)}
+                          required
+                          className="bg-background border-border pr-10"
+                          placeholder="Confirm your new password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => props.setShowConfirmPassword(!props.showConfirmPassword)}
+                        >
+                          {props.showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full bg-primary hover:bg-primary/90"
+                      disabled={props.isLoading}
+                    >
+                      {props.isLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                      )}
+                      Update Password
+                    </Button>
+                  </form>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBackToSignIn}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to sign in
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {props.isDevelopment && (
+              <div className="mt-6 pt-6 border-t border-border">
+                <div className="text-center space-y-3">
+                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                    <Code className="h-3 w-3" />
+                    <span>Development Mode</span>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => props.setShowDevLogin(!props.showDevLogin)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {props.showDevLogin ? 'Hide' : 'Show'} Developer Login
+                  </Button>
+
+                  {props.showDevLogin && (
+                    <div className="bg-muted/50 rounded-lg p-3 space-y-3">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span>Development login (creates account if needed)</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-left block">
+                            Email
+                          </label>
+                          <Input
+                            type="email"
+                            value={props.devFormData.email}
+                            onChange={(e) => props.setDevFormData({ ...props.devFormData, email: e.target.value })}
+                            className="h-8 text-xs bg-background border-border"
+                            placeholder="dev@breathsafe.dev"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-left block">
+                            Password
+                          </label>
+                          <Input
+                            type="password"
+                            value={props.devFormData.password}
+                            onChange={(e) => props.setDevFormData({ ...props.devFormData, password: e.target.value })}
+                            className="h-8 text-xs bg-background border-border"
+                            placeholder="devpassword123"
+                          />
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDevLogin}
+                        disabled={props.isLoading}
+                        className="w-full text-xs"
+                      >
+                        {props.isLoading ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                        ) : (
+                          <Code className="h-3 w-3 mr-2" />
+                        )}
+                        Developer Authentication
+                      </Button>
+
+                      <div className="text-xs text-muted-foreground text-left">
+                        <div>Default: dev@breathsafe.com / devpassword123</div>
+                        <div>Creates a real Supabase account for development</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+
+      {/* Footer */}
+
+    </div>
+  );
+}
+
 export default function Auth(): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -168,617 +827,39 @@ export default function Auth(): JSX.Element {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              full_name: formData.fullName
-            },
-            emailRedirectTo: `${window.location.origin}/`
-          }
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account.",
-        });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Welcome back!",
-          description: "You have been signed in successfully.",
-        });
-
-        navigate('/dashboard?view=dashboard');
-      }
-    } catch (error: any) {
-      console.error('Authentication error:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [formData, isSignUp, navigate, toast]);
-
-  const handlePasswordReset = useCallback(async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(passwordResetEmail, {
-        redirectTo: `${window.location.origin}/auth`
-      });
-
-      if (error) throw error;
-
-      setPasswordResetSent(true);
-      toast({
-        title: "Password reset email sent!",
-        description: "Check your email for a link to reset your password.",
-      });
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-      toast({
-        title: "Error",
-        description: error.message || 'Failed to send password reset email',
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [passwordResetEmail, toast]);
-
-  const handleBackToSignIn = useCallback((): void => {
-    setShowForgotPassword(false);
-    setPasswordResetEmail('');
-    setPasswordResetSent(false);
-    setShowPasswordResetForm(false);
-    setNewPassword('');
-    setConfirmPassword('');
-  }, []);
-
-  const handlePasswordResetSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure both passwords are identical.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters long.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Password updated successfully!",
-        description: "You can now sign in with your new password.",
-      });
-
-      setShowPasswordResetForm(false);
-      setShowForgotPassword(false);
-      setNewPassword('');
-      setConfirmPassword('');
-      setIsSignUp(false);
-
-      const url = new URL(window.location.href);
-      url.searchParams.delete('code');
-      url.searchParams.delete('access_token');
-      url.searchParams.delete('refresh_token');
-      url.searchParams.delete('type');
-      url.searchParams.delete('reset');
-
-      window.history.replaceState({}, '', url.toString());
-      console.log('URL cleaned up after successful password reset');
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-
-      if (error.message?.includes('Auth session missing')) {
-        toast({
-          title: "Reset link expired",
-          description: "The password reset link has expired. Please request a new one.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: error.message || 'Failed to update password',
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [confirmPassword, newPassword, toast]);
-
-  const handleDevLogin = useCallback(async (): Promise<void> => {
-    setIsLoading(true);
-
-    try {
-      const { email, password } = devFormData;
-
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInData.user) {
-        toast({
-          title: "Developer Login Successful!",
-          description: "Welcome back to development mode!",
-        });
-
-        navigate('/dashboard?view=dashboard');
-        return;
-      }
-
-      if (signInError) {
-        console.error('Sign in error details:', {
-          message: signInError.message,
-          status: signInError.status,
-          name: signInError.name,
-          details: signInError
-        });
-      }
-
-      if (signInError?.message?.includes('Email not confirmed')) {
-        const { error: resendError } = await supabase.auth.resend({
-          type: 'signup',
-          email: email,
-        });
-
-        if (resendError) {
-          console.error('Resend error:', resendError);
-        }
-
-        toast({
-          title: "Email Verification Required",
-          description: "Account exists but email not verified. Check your email or try creating a new account.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (signInError) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: 'Developer User'
-            }
-          }
-        });
-
-        if (signUpError) {
-          console.error('Signup error details:', {
-            message: signUpError.message,
-            status: signUpError.status,
-            name: signUpError.name,
-            details: signUpError
-          });
-          throw signUpError;
-        }
-
-        if (signUpData.user) {
-          toast({
-            title: "Developer Account Created!",
-            description: "Account created successfully. Check your email for verification.",
-          });
-
-          setTimeout(async () => {
-            const { error: retrySignInError } = await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
-
-            if (retrySignInError) {
-              // Retry signin still requires verification
-            }
-          }, 2000);
-        }
-      }
-    } catch (error: any) {
-      console.error('Developer login error:', error);
-      toast({
-        title: "Developer Login Error",
-        description: error.message || 'An error occurred during developer login',
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [devFormData, navigate, toast]);
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 flex items-center justify-center page-padding">
-        <GlassCard className="w-full max-w-md floating-card">
-          <GlassCardHeader className="text-center">
-            <GlassCardTitle className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
-              {isSignUp ? 'Create Account' : 'Welcome Back'}
-            </GlassCardTitle>
-            <p className="body-md text-muted-foreground">
-              {isSignUp ? 'Join Air Quality Tracker' : 'Sign in to your account'}
-            </p>
-          </GlassCardHeader>
-
-          <GlassCardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {isSignUp && (
-                <div className="space-y-2">
-                  <label htmlFor="fullName" className="text-sm font-medium">
-                    Full Name
-                  </label>
-                  <Input
-                    id="fullName"
-                    type="text"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    required={isSignUp}
-                    className="bg-background border-border"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  className="bg-background border-border"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    className="bg-background border-border pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {!isSignUp && (
-                <div className="text-right">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-muted-foreground hover:text-foreground p-0 h-auto"
-                  >
-                    Forgot your password?
-                  </Button>
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full bg-primary hover:bg-primary/90"
-                disabled={isLoading}
-              >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSignUp ? 'Create Account' : 'Sign In'}
-              </Button>
-            </form>
-
-            <div className="mt-4 text-center">
-              <Button
-                variant="ghost"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-              </Button>
-            </div>
-
-            {showForgotPassword && (
-              <div className="mt-6 pt-6 border-t border-border">
-                <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    <span>Reset your password</span>
-                  </div>
-
-                  {!passwordResetSent ? (
-                    <form onSubmit={handlePasswordReset} className="space-y-4">
-                      <div className="space-y-2">
-                        <label htmlFor="resetEmail" className="text-sm font-medium text-left block">
-                          Email Address
-                        </label>
-                        <Input
-                          id="resetEmail"
-                          type="email"
-                          value={passwordResetEmail}
-                          onChange={(e) => setPasswordResetEmail(e.target.value)}
-                          required
-                          className="bg-background border-border"
-                          placeholder="Enter your email address"
-                        />
-                      </div>
-
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        className="w-full"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Mail className="mr-2 h-4 w-4" />
-                        )}
-                        Send Reset Link
-                      </Button>
-                    </form>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-center gap-2 text-green-600">
-                        <CheckCircle className="h-5 w-5" />
-                        <span className="font-medium">Reset email sent!</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Check your email for a link to reset your password. The link will expire in 24 hours.
-                      </p>
-                    </div>
-                  )}
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBackToSignIn}
-                    className="text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to sign in
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {showPasswordResetForm && (
-              <div className="mt-6 pt-6 border-t border-border">
-                <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Set your new password</span>
-                  </div>
-
-                  <form onSubmit={handlePasswordResetSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <label htmlFor="newPassword" className="text-sm font-medium text-left block">
-                        New Password
-                      </label>
-                      <div className="relative">
-                        <Input
-                          id="newPassword"
-                          type={showNewPassword ? 'text' : 'password'}
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          required
-                          className="bg-background border-border pr-10"
-                          placeholder="Enter your new password"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowNewPassword(!showNewPassword)}
-                        >
-                          {showNewPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="confirmPassword" className="text-sm font-medium text-left block">
-                        Confirm New Password
-                      </label>
-                      <div className="relative">
-                        <Input
-                          id="confirmPassword"
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          required
-                          className="bg-background border-border pr-10"
-                          placeholder="Confirm your new password"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full bg-primary hover:bg-primary/90"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                      )}
-                      Update Password
-                    </Button>
-                  </form>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBackToSignIn}
-                    className="text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to sign in
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {isDevelopment && (
-              <div className="mt-6 pt-6 border-t border-border">
-                <div className="text-center space-y-3">
-                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <Code className="h-3 w-3" />
-                    <span>Development Mode</span>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowDevLogin(!showDevLogin)}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    {showDevLogin ? 'Hide' : 'Show'} Developer Login
-                  </Button>
-
-                  {showDevLogin && (
-                    <div className="bg-muted/50 rounded-lg p-3 space-y-3">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <AlertTriangle className="h-3 w-3" />
-                        <span>Development login (creates account if needed)</span>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-left block">
-                            Email
-                          </label>
-                          <Input
-                            type="email"
-                            value={devFormData.email}
-                            onChange={(e) => setDevFormData({ ...devFormData, email: e.target.value })}
-                            className="h-8 text-xs bg-background border-border"
-                            placeholder="dev@breathsafe.dev"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-left block">
-                            Password
-                          </label>
-                          <Input
-                            type="password"
-                            value={devFormData.password}
-                            onChange={(e) => setDevFormData({ ...devFormData, password: e.target.value })}
-                            className="h-8 text-xs bg-background border-border"
-                            placeholder="devpassword123"
-                          />
-                        </div>
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleDevLogin}
-                        disabled={isLoading}
-                        className="w-full text-xs"
-                      >
-                        {isLoading ? (
-                          <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                        ) : (
-                          <Code className="h-3 w-3 mr-2" />
-                        )}
-                        Developer Authentication
-                      </Button>
-
-                      <div className="text-xs text-muted-foreground text-left">
-                        <div>Default: dev@breathsafe.com / devpassword123</div>
-                        <div>Creates a real Supabase account for development</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </GlassCardContent>
-        </GlassCard>
-      </div>
-
-      {/* Footer */}
-
-    </div>
+    <AuthForm
+      isLoading={isLoading}
+      setIsLoading={setIsLoading}
+      isSignUp={isSignUp}
+      setIsSignUp={setIsSignUp}
+      showPassword={showPassword}
+      setShowPassword={setShowPassword}
+      showDevLogin={showDevLogin}
+      setShowDevLogin={setShowDevLogin}
+      showForgotPassword={showForgotPassword}
+      setShowForgotPassword={setShowForgotPassword}
+      passwordResetEmail={passwordResetEmail}
+      setPasswordResetEmail={setPasswordResetEmail}
+      passwordResetSent={passwordResetSent}
+      setPasswordResetSent={setPasswordResetSent}
+      showPasswordResetForm={showPasswordResetForm}
+      setShowPasswordResetForm={setShowPasswordResetForm}
+      newPassword={newPassword}
+      setNewPassword={setNewPassword}
+      confirmPassword={confirmPassword}
+      setConfirmPassword={setConfirmPassword}
+      showNewPassword={showNewPassword}
+      setShowNewPassword={setShowNewPassword}
+      showConfirmPassword={showConfirmPassword}
+      setShowConfirmPassword={setShowConfirmPassword}
+      devFormData={devFormData}
+      setDevFormData={setDevFormData}
+      formData={formData}
+      setFormData={setFormData}
+      isDevelopment={isDevelopment}
+    />
   );
 }
+
+// Removed old useCallback handlers - now in AuthForm subcomponent
