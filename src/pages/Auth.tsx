@@ -776,7 +776,7 @@ export default function Auth(): JSX.Element {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={handleDevAuth}
+                      onClick={handleDevLogin}
                       disabled={isLoading}
                       className="w-full text-xs"
                     >
