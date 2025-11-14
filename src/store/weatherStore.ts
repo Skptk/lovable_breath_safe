@@ -110,7 +110,7 @@ export const useWeatherStore = create<WeatherStore>()(
     (set, get) => ({
       // Initial state
       weatherData: null,
-      forecastData: [], // Limited to 7 days max in fetchForecastData
+      forecastData: [], // CRITICAL: Limited to 7 days max, will be trimmed to 5 for memory
       isLoading: false,
       error: null,
       lastFetchTime: null,
@@ -377,20 +377,22 @@ export const useWeatherStore = create<WeatherStore>()(
 
           const data = await response.json();
           
-          const forecastData: ForecastData[] = data.daily.time.map((date: string, index: number) => ({
-            date,
-            temperature: {
-              min: data.daily.temperature_2m_min[index],
-              max: data.daily.temperature_2m_max[index],
-              avg: data.daily.temperature_2m_mean[index]
-            },
-            humidity: null, // Open-Meteo doesn't provide humidity in daily forecast
-            windSpeed: data.daily.wind_speed_10m_max[index],
-            windDirection: data.daily.wind_direction_10m_dominant[index],
-            rainProbability: data.daily.precipitation_probability_max[index],
-            weatherCondition: null, // Open-Meteo doesn't provide weather conditions
-            uvIndex: undefined
-          }));
+          const forecastData: ForecastData[] = data.daily.time
+            .slice(0, 5) // CRITICAL: Limit to 5 days instead of 7 for memory efficiency
+            .map((date: string, index: number) => ({
+              date,
+              temperature: {
+                min: data.daily.temperature_2m_min[index],
+                max: data.daily.temperature_2m_max[index],
+                avg: data.daily.temperature_2m_mean[index]
+              },
+              humidity: null, // Open-Meteo doesn't provide humidity in daily forecast
+              windSpeed: data.daily.wind_speed_10m_max[index],
+              windDirection: data.daily.wind_direction_10m_dominant[index],
+              rainProbability: data.daily.precipitation_probability_max[index],
+              weatherCondition: null, // Open-Meteo doesn't provide weather conditions
+              uvIndex: undefined
+            }));
 
           // Update store with new data
           get().setForecastData(forecastData);

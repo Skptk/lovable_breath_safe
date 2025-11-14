@@ -599,7 +599,7 @@ export const useAirQuality = () => {
       storedSavedAt: loadStoredAirQualitySavedAt(),
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 30 * 1000, // CRITICAL: Reduced to 30 seconds for faster GC
     retry: 2,
     retryDelay: attempt => Math.min(1000 * Math.pow(2, attempt), 30_000),
   });
@@ -738,7 +738,11 @@ export const useAirQuality = () => {
 
       const start = performance.now();
 
-      const mergedReadings = [...readingsRef.current, latestReading];
+      // CRITICAL: Ensure we don't exceed MAX_READINGS before pruning
+      const currentReadings = readingsRef.current.length >= CACHE_CONFIG.MEMORY.MAX_READINGS
+        ? readingsRef.current.slice(-CACHE_CONFIG.MEMORY.MAX_READINGS + 1) // Make room for new reading
+        : readingsRef.current;
+      const mergedReadings = [...currentReadings, latestReading];
       const prunedReadings = pruneHistory(mergedReadings);
       readingsRef.current = prunedReadings;
 

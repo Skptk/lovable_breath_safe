@@ -135,15 +135,26 @@ export const useGlobalEnvironmentalData = (
     return [];
   }, [shouldFetch, latitude, longitude, maxDistanceKm, cityName]);
 
+  // CRITICAL: Stop polling when tab is hidden
+  const [isTabVisible, setIsTabVisible] = useState(true);
+  
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabVisible(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   const query = useQuery<GlobalEnvironmentalData[], Error>({
     queryKey: ['global-environmental-data', latitude ?? null, longitude ?? null, cityName ?? null],
     queryFn: fetchGlobalData,
-    enabled: shouldFetch,
-    refetchInterval: autoRefresh ? Math.max(refreshInterval, MIN_REFRESH_INTERVAL) : false,
+    enabled: shouldFetch && isTabVisible, // CRITICAL: Only fetch when tab is visible
+    refetchInterval: (autoRefresh && isTabVisible) ? Math.max(refreshInterval, MIN_REFRESH_INTERVAL) : false, // CRITICAL: Stop polling when hidden
     staleTime: 3 * 60 * 1000, // Reduced from 5 to 3 minutes
-    gcTime: 5 * 60 * 1000, // Reduced from 15 to 5 minutes for faster garbage collection
-    retry: 3,
-    retryDelay: 2000,
+    gcTime: 30 * 1000, // CRITICAL: Reduced to 30 seconds for faster GC
+    retry: 1, // Reduced from 3 to 1
+    retryDelay: 1000, // Reduced from 2000
   });
 
   const allCitiesData = query.data ?? [];

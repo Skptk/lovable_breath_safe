@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { describe, expect, test, vi, beforeEach, afterEach } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { RealtimeProvider, useRealtime } from '@/contexts/RealtimeContext';
@@ -36,7 +36,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 }));
 
 vi.mock('@/hooks/usePerformance', () => ({
-  useThrottle: <T extends (...args: any[]) => any>(fn: T) => fn
+  useThrottle: (fn: any) => fn,
 }));
 
 vi.mock('@/lib/realtimeClient', () => ({

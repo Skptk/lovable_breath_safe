@@ -11,65 +11,37 @@ import { RealtimeProvider } from './contexts/RealtimeContext'
 import { LocationProvider } from './contexts/LocationContext'
 import { SupabaseErrorBoundary } from './components/SupabaseErrorBoundary'
 import { initHeapFailSafe } from './utils/heapFailSafe'
+import { memoryBudgetManager } from './utils/memoryBudgetManager'
+import { MemoryMonitorOverlay } from './components/MemoryMonitorOverlay'
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Aggressive memory management - reduce cache retention
-      gcTime: 2 * 60 * 1000, // 2 minutes (was 60s, but need balance)
-      staleTime: 60 * 1000, // 1 minute (was 30s)
+      // CRITICAL: Ultra-aggressive memory management
+      gcTime: 30 * 1000, // 30 seconds - very short retention
+      staleTime: 30 * 1000, // 30 seconds
       refetchOnWindowFocus: false,
-      refetchOnReconnect: true,
+      refetchOnReconnect: false, // Disable auto-refetch on reconnect to prevent memory spikes
       retry: 1,
       meta: {
-        budget: 'low', // Signal low memory budget
+        budget: 'critical', // Signal critical memory budget
       },
     },
     mutations: {
       retry: 1,
-      gcTime: 30 * 1000, // 30 seconds for mutations
+      gcTime: 10 * 1000, // 10 seconds for mutations - very short
     }
   },
   queryCache: new QueryCache({
     onSuccess: () => {
-      if (!queryClient) return
-
-      // More aggressive cache trimming
-      setTimeout(() => {
-        const MAX_QUERIES = 15 // Increased slightly but still limited
-        const MAX_QUERY_DATA_SIZE = 50 // Limit individual query result arrays
-        
-        const allQueries = queryClient.getQueryCache().getAll()
-        
-        // Trim large query results first
-        for (const query of allQueries) {
-          const data = query.state.data
-          if (Array.isArray(data) && data.length > MAX_QUERY_DATA_SIZE) {
-            // Keep only the most recent items
-            query.setState({
-              data: data.slice(0, MAX_QUERY_DATA_SIZE),
-              dataUpdatedAt: Date.now()
-            })
-          }
-        }
-        
-        // Remove inactive queries if we're over limit
-        if (allQueries.length > MAX_QUERIES) {
-          const inactiveQueries = allQueries
-            .filter(q => !q.isActive())
-            .sort((a, b) => (a.state.dataUpdatedAt ?? 0) - (b.state.dataUpdatedAt ?? 0))
-            .slice(0, allQueries.length - MAX_QUERIES)
-          
-          for (const query of inactiveQueries) {
-            queryClient.getQueryCache().remove(query)
-          }
-          
-          console.log(`🧹 Trimmed ${inactiveQueries.length} inactive queries, kept ${MAX_QUERIES} active`)
-        }
-      }, 1000)
+      // Delegate to memory budget manager for consistent cleanup
+      memoryBudgetManager.performCleanup('Query success')
     }
   })
 })
+
+// Register query client with memory budget manager
+memoryBudgetManager.setQueryClient(queryClient)
 
 // Track module loading order
 console.log('🚀 [MODULE] main.tsx loading at:', new Date().toISOString())
@@ -144,23 +116,14 @@ if (typeof window !== 'undefined') {
     })
   }
 
-  // Memory optimization: Clear caches when tab is hidden
+  // CRITICAL: Stop all polling when tab is hidden to prevent memory growth
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        // Tab is hidden - aggressively clean up memory
-        const allQueries = queryClient.getQueryCache().getAll()
-        const inactiveQueries = allQueries.filter(q => !q.isActive())
-        
-        // Remove all inactive queries when tab is hidden
-        for (const query of inactiveQueries) {
-          queryClient.getQueryCache().remove(query)
-        }
-        
-        // Force garbage collection hint
-        if (inactiveQueries.length > 0) {
-          console.log(`🧹 [Memory] Tab hidden - cleared ${inactiveQueries.length} inactive queries`)
-        }
+        // Pause all polling immediately
+        memoryBudgetManager.pauseAllPolling()
+        // Emergency cleanup
+        memoryBudgetManager.emergencyCleanup('Tab hidden')
       }
     })
   }
@@ -173,6 +136,7 @@ createRoot(document.getElementById("root")!).render(
         <RealtimeProvider>
           <LocationProvider>
             {import.meta.env.DEV && <Profiler />}
+            {import.meta.env.DEV && <MemoryMonitorOverlay />}
             <App />
           </LocationProvider>
         </RealtimeProvider>

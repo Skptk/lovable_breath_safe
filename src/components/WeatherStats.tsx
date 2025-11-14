@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Layers, Loader2, AlertTriangle, Wind, Cloud, Sun, CloudRain, Thermometer, Droplets, Eye, Gauge, Compass } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import LeafletMap from "./LeafletMap";
+// CRITICAL: Lazy load LeafletMap to reduce initial bundle size
+const LeafletMap = lazy(() => import("./LeafletMap"));
 import Header from "@/components/Header";
 import WindDashboard from "./WindDashboard";
 import WeatherForecast from "./WeatherForecast";
@@ -657,10 +658,16 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
 
           {/* Leaflet Map Integration - Full width/height within card */}
           <div className="w-full h-full pt-20">
-            <LeafletMap
-              userLocation={locationData}
-              airQualityData={airQualityData}
-            />
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            }>
+              <LeafletMap
+                userLocation={locationData}
+                airQualityData={airQualityData}
+              />
+            </Suspense>
           </div>
         </GlassCardContent>
       </GlassCard>

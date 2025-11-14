@@ -1,10 +1,8 @@
 // Re-export all memory-related utilities
 export * from './memoryUtils';
-export * from './memoryProfiler';
+import * as memoryProfiler from './memoryProfiler';
+export { memoryProfiler };
 export * from './renderOptimization';
-
-// Export types
-export type { MemorySnapshot, MemoryProfile } from './memoryProfiler';
 
 const resolveMemoryDebugEnabled = (): boolean => {
   const hasWindow = typeof window !== 'undefined';
@@ -75,8 +73,7 @@ if (isMemoryDebuggingEnabled) {
       const walker = document.createTreeWalker(
         document,
         NodeFilter.SHOW_ELEMENT,
-        null,
-        false
+        { acceptNode: () => NodeFilter.FILTER_ACCEPT }
       );
 
       const nodes: Element[] = [];
@@ -117,7 +114,7 @@ if (isMemoryDebuggingEnabled) {
           try {
             const value = (window as any)[prop];
             return value && typeof value === 'object' && Object.keys(value).length > 100;
-          } catch (error) {
+          } catch (_error) {
             return false;
           }
         })

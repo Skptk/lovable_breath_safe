@@ -400,6 +400,17 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
     }
   }, [memoizedCoordinates, fetchAllWeatherData]);
 
+  // CRITICAL: Stop polling when tab is hidden
+  const [isTabVisible, setIsTabVisible] = useState(true);
+  
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabVisible(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   // React Query for weather data with memoized coordinates
   const weatherQuery = useQuery({
     queryKey: ['weather-data', memoizedCoordinates?.latitude, memoizedCoordinates?.longitude],
@@ -409,11 +420,11 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
       }
       return fetchAllWeatherData(memoizedCoordinates.latitude, memoizedCoordinates.longitude);
     },
-    enabled: !!(memoizedCoordinates?.latitude && memoizedCoordinates?.longitude),
-    refetchInterval: autoRefresh ? refreshInterval : false,
+    enabled: !!(memoizedCoordinates?.latitude && memoizedCoordinates?.longitude) && isTabVisible, // CRITICAL: Only fetch when visible
+    refetchInterval: (autoRefresh && isTabVisible) ? refreshInterval : false, // CRITICAL: Stop polling when hidden
     staleTime: 180000, // 3 minutes (reduced from 5)
-    gcTime: 5 * 60 * 1000, // 5 minutes (reduced from 15 for faster GC)
-    retry: 3,
+    gcTime: 30 * 1000, // CRITICAL: Reduced to 30 seconds for faster GC
+    retry: 1, // Reduced from 3 to 1
     retryDelay: 1000,
   });
 

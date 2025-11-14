@@ -299,23 +299,56 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
     }
   }, [userLocation, nearbyLocations, leafletLoaded, L, isDark]);
 
-  // Cleanup markers and map on unmount
+  // CRITICAL: Aggressive cleanup on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
       if (mapInstance) {
-        // Remove all layers first
-        mapInstance.eachLayer((layer: any) => {
-          mapInstance.removeLayer(layer);
-        });
-        // Remove all event listeners
-        mapInstance.off();
-        // Remove the map instance
-        mapInstance.remove();
-        setMapInstance(null);
-        setMarkers([]);
+        try {
+          // Remove all layers first
+          mapInstance.eachLayer((layer: any) => {
+            try {
+              mapInstance.removeLayer(layer);
+            } catch (e) {
+              // Ignore errors during cleanup
+            }
+          });
+          
+          // Clear all markers
+          markers.forEach((marker) => {
+            try {
+              if (marker && marker.remove) {
+                marker.remove();
+              }
+            } catch (e) {
+              // Ignore errors
+            }
+          });
+          
+          // Remove all event listeners
+          mapInstance.off();
+          
+          // Clear tile cache if possible
+          if (L && L.Util && L.Util.clearTileCache) {
+            L.Util.clearTileCache();
+          }
+          
+          // Remove the map instance
+          mapInstance.remove();
+        } catch (e) {
+          console.warn('Error during map cleanup:', e);
+        } finally {
+          setMapInstance(null);
+          setMarkers([]);
+          setCurrentTileLayer(null);
+        }
+      }
+      
+      // Clear map ref
+      if (mapRef.current) {
+        mapRef.current.innerHTML = '';
       }
     };
-  }, [mapInstance]); // Include mapInstance in dependencies
+  }, [mapInstance, markers]); // Include markers in dependencies
 
   if (mapError) {
     return (

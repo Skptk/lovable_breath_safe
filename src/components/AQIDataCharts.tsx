@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,8 @@ interface AQIDataChartsProps {
   timestamp: string;
 }
 
-export default function AQIDataCharts({ 
+// CRITICAL: Memoize component to prevent unnecessary re-renders
+const AQIDataCharts = memo(function AQIDataCharts({ 
   aqi, 
   pm25, 
   pm10, 
@@ -495,4 +496,6 @@ export default function AQIDataCharts({
       </Dialog>
     </>
   );
-}
+});
+
+export default AQIDataCharts;

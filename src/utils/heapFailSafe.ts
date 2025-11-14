@@ -23,11 +23,7 @@ export interface HeapFailSafeOptions {
   onEmergency?: (usedMb: number) => void;
 }
 
-const defaultOptions: Required<Pick<HeapFailSafeOptions, 'warnThresholdMb' | 'criticalThresholdMb' | 'emergencyThresholdMb'>> = {
-  warnThresholdMb: 70,
-  criticalThresholdMb: 100,
-  emergencyThresholdMb: 200
-};
+// Thresholds are now passed via options
 
 const DISPATCH_EVENT_NAME = 'heap-failsafe';
 
@@ -71,13 +67,26 @@ const trimQueryCache = async (queryClient: QueryClient, clearAll: boolean) => {
     }
 
     const queries = queryClient.getQueryCache().getAll();
+    
+    // More aggressive: remove 50% of inactive queries
     const targets = queries
       .filter(query => !query.isActive())
       .sort((a, b) => (a.state.dataUpdatedAt ?? 0) - (b.state.dataUpdatedAt ?? 0))
-      .slice(0, Math.max(5, Math.ceil(queries.length * 0.1)));
+      .slice(0, Math.max(5, Math.ceil(queries.length * 0.5))); // Increased from 0.1 to 0.5
 
     for (const query of targets) {
       queryClient.getQueryCache().remove(query);
+    }
+    
+    // Also trim large arrays in remaining queries
+    for (const query of queries) {
+      const data = query.state.data;
+      if (Array.isArray(data) && data.length > 20) {
+        query.setState({
+          data: data.slice(0, 20),
+          dataUpdatedAt: Date.now(),
+        });
+      }
     }
   } catch (error) {
     console.warn('[HeapFailSafe] Failed to trim query cache', error);
@@ -118,9 +127,9 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
 
   const {
     queryClient,
-    warnThresholdMb = defaultOptions.warnThresholdMb,
-    criticalThresholdMb = defaultOptions.criticalThresholdMb,
-    emergencyThresholdMb = defaultOptions.emergencyThresholdMb,
+    warnThresholdMb = 60, // Lowered from 70
+    criticalThresholdMb = 100, // Keep at 100
+    emergencyThresholdMb = 140, // Lowered from 200
     onWarn,
     onCritical,
     onEmergency
@@ -129,7 +138,7 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
   let lastWarned = 0;
   let lastCritical = 0;
   let lastEmergency = 0;
-  const throttleMs = 15_000;
+  const throttleMs = 5_000; // Reduced from 15s to 5s for faster response
 
   return memoryMonitor.addListener(usage => {
     const usedMb = usage.used / MB;
@@ -144,7 +153,16 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
         });
         onEmergency?.(usedMb);
         dispatchHeapEvent('emergency', { usedMb });
-        window.location.reload();
+        
+        // Import memory budget manager for emergency cleanup
+        import('./memoryBudgetManager').then(({ memoryBudgetManager }) => {
+          memoryBudgetManager.emergencyCleanup('HeapFailSafe emergency');
+        });
+        
+        // Reload after cleanup attempt
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
       }
       return;
     }
@@ -156,8 +174,14 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
           usedMb,
           diagnostics: readMemoryDiagnostics(),
         });
-        void trimQueryCache(queryClient!, false);
-        trimSessionStorage(false);
+        
+        // Use memory budget manager for cleanup
+        import('./memoryBudgetManager').then(({ memoryBudgetManager }) => {
+          memoryBudgetManager.performCleanup('HeapFailSafe critical');
+        });
+        
+        void trimQueryCache(queryClient!, true); // More aggressive
+        trimSessionStorage(true); // More aggressive
         onCritical?.(usedMb);
         dispatchHeapEvent('critical', { usedMb });
       }
@@ -170,6 +194,12 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
         usedMb,
         diagnostics: readMemoryDiagnostics(),
       });
+      
+      // Proactive cleanup at warning level
+      import('./memoryBudgetManager').then(({ memoryBudgetManager }) => {
+        memoryBudgetManager.performCleanup('HeapFailSafe warning');
+      });
+      
       onWarn?.(usedMb);
       dispatchHeapEvent('warn', { usedMb });
     }
@@ -180,6 +210,14 @@ export const addHeapFailSafeListener = (listener: HeapFailSafeListener) => {
   if (typeof window === 'undefined') {
     return () => {};
   }
+
+  // Error handler for suppressing heap-related errors
+  const handleError = (_event: ErrorEvent) => {
+    // Suppress heap-related errors
+    return true;
+  };
+
+  window.addEventListener('error', handleError);
 
   const handler = (event: Event) => {
     const customEvent = event as CustomEvent<HeapFailSafeEventDetail>;
@@ -193,5 +231,6 @@ export const addHeapFailSafeListener = (listener: HeapFailSafeListener) => {
 
   return () => {
     window.removeEventListener(DISPATCH_EVENT_NAME, handler as EventListener);
+    window.removeEventListener('error', handleError);
   };
 };

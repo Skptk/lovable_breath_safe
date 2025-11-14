@@ -22,8 +22,8 @@ const MAX_TDZ_EVENTS = 200;
 const MAX_VARIABLE_REGISTRY = 200;
 
 type DebugTracker = {
-  trackVariableDeclaration: (name: string, value: unknown, location: string) => void;
-  trackVariableAccess: (name: string, location: string) => VariableTrace | null;
+  trackVariableDeclaration: (_name: string, _value: unknown, _location: string) => void;
+  trackVariableAccess: (_name: string, _location: string) => VariableTrace | null;
   getAccessLog: () => VariableTrace[];
   getVariableRegistry: () => Map<string, any>;
   getTDZEvents: () => TDZEvent[];

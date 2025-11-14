@@ -8,12 +8,12 @@ interface MemoryUsage {
   timestamp: number;
 }
 
-type IdleCallbackDeadline = {
-  didTimeout: boolean;
-  timeRemaining(): number;
-};
+// Use standard types from lib.dom.d.ts
+type RequestIdleCallback = (
+  callback: (deadline: IdleDeadline) => void, 
+  options?: IdleRequestOptions
+) => number;
 
-type RequestIdleCallback = (callback: (deadline: IdleCallbackDeadline) => void, options?: { timeout?: number }) => number;
 type CancelIdleCallback = (handle: number) => void;
 
 const hasWindow = typeof window !== 'undefined';

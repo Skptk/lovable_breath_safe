@@ -592,7 +592,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
 
       try {
         while (!abortController.signal.aborted && !supabase.realtime.isConnected()) {
-          // eslint-disable-next-line no-await-in-loop
+           
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
 

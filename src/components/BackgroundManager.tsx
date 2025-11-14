@@ -130,6 +130,7 @@ interface BackgroundManagerProps {
 const DEFAULT_BACKGROUND = '/weather-backgrounds/partly-cloudy.webp';
 const ERROR_BACKGROUND = '/weather-backgrounds/overcast.webp';
 const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ children }) => {
+  // All hooks must be called unconditionally at the top level
   const hasWindow = typeof window !== 'undefined';
   const globalScope: typeof globalThis | undefined = typeof globalThis !== 'undefined' ? globalThis : undefined;
   const isTestEnvironment = Boolean(
@@ -137,24 +138,6 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
     (typeof import.meta !== 'undefined' && (((import.meta as any)?.env?.VITEST) || ((import.meta as any)?.env?.MODE === 'test'))) ||
     (globalScope && ((globalScope as any).__vitest_worker__ || (globalScope as any).__vitest__ || (globalScope as any).vitest))
   );
-
-  if (!hasWindow || isTestEnvironment) {
-    return (
-      <div className="relative min-h-screen">
-        <div className="fixed inset-0 z-[-1]">
-          <img
-            src={DEFAULT_BACKGROUND}
-            alt="Weather background"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/40" />
-        </div>
-        <div className="relative z-10">
-          {children}
-        </div>
-      </div>
-    );
-  }
 
   // State
   const [currentBackground, setCurrentBackground] = useState<string>(DEFAULT_BACKGROUND);
@@ -182,33 +165,65 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
 
   const { locationData } = useGeolocation();
 
+  // Early return after all hooks have been called
+  if (!hasWindow || isTestEnvironment) {
+    return (
+      <div className="relative min-h-screen">
+        <div className="fixed inset-0 z-[-1]">
+          <img
+            src={DEFAULT_BACKGROUND}
+            alt="Weather background"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/40" />
+        </div>
+        <div className="relative z-10">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   // Refs for tracking state without causing re-renders
   const fallbackTimeoutRef = useRef<number | null>(null);
   const timeOfDayIntervalRef = useRef<number | null>(null);
   const pendingBackgroundUpdate = useRef<string | null>(null);
   const hasAppliedBackgroundRef = useRef(false);
 
-  // Cleanup function for component unmount
+  // CRITICAL: Aggressive cleanup on component unmount
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
       
+      // Clear all intervals
       if (timeOfDayIntervalRef.current !== null) {
         window.clearInterval(timeOfDayIntervalRef.current);
         timeOfDayIntervalRef.current = null;
       }
 
-      // Clear timeouts
+      // Clear all timeouts
       if (fallbackTimeoutRef.current) {
         clearTimeout(fallbackTimeoutRef.current);
         fallbackTimeoutRef.current = null;
       }
       
-      // Clear any pending updates
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
         updateTimeoutRef.current = null;
       }
+      
+      // CRITICAL: Dispose background images to prevent memory leak
+      if (typeof document !== 'undefined') {
+        const bgImages = document.querySelectorAll('img[alt="Weather background"]');
+        bgImages.forEach((img) => {
+          const htmlImg = img as HTMLImageElement;
+          htmlImg.src = ''; // Clear src to release memory
+          htmlImg.remove();
+        });
+      }
+      
+      // Clear pending background update
+      pendingBackgroundUpdate.current = null;
     };
   }, []);
 
@@ -584,6 +599,26 @@ const BackgroundManager: React.FC<BackgroundManagerProps> = React.memo(({ childr
               className="h-full w-full object-cover"
               loading="lazy"
               decoding="async"
+              onLoad={(e) => {
+                // CRITICAL: Dispose previous image to prevent memory leak
+                const img = e.currentTarget;
+                const parent = img.parentElement;
+                if (parent) {
+                  // Remove any previous image siblings
+                  const prevImages = parent.querySelectorAll('img');
+                  prevImages.forEach((prevImg) => {
+                    if (prevImg !== img) {
+                      // Clear src to release memory
+                      prevImg.src = '';
+                      prevImg.remove();
+                    }
+                  });
+                }
+              }}
+              onError={() => {
+                // Fallback to default on error
+                setCurrentBackground(DEFAULT_BACKGROUND);
+              }}
             />
             <div
               className="absolute inset-0"
