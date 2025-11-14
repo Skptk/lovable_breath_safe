@@ -70,28 +70,11 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         treeshake: !isDebug,
         output: {
-          manualChunks: (id) => {
-            if (id.includes("node_modules")) {
-              if (
-                id.includes("react/") ||
-                id.includes("react-dom/") ||
-                id === "react" ||
-                id === "react-dom"
-              ) {
-                return "vendor-react";
-              }
-              if (id.includes("@emotion")) {
-                return "vendor-react";
-              }
-              if (id.includes("@tanstack")) {
-                return "vendor-tanstack";
-              }
-              return "vendor";
-            }
-            if (id.includes("src/pages/")) {
-              const page = id.split("pages/")[1].split("/")[0];
-              return `page-${page}`;
-            }
+          manualChunks: {
+            "vendor-react": ["react", "react-dom", "react-dom/client"],
+            "vendor-router": ["react-router-dom"],
+            "vendor-query": ["@tanstack/react-query"],
+            "vendor": ["lucide-react"],
           },
           chunkFileNames: "js/[name]-[hash:8].js",
           entryFileNames: "js/[name]-[hash:8].js",
