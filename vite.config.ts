@@ -2,11 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { fileURLToPath } from "url";
-import { createRequire } from "module";
-import { componentTagger } from "lovable-tagger";
-import inspect from "vite-plugin-inspect";
 
-const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -16,13 +12,6 @@ export default defineConfig(({ mode }) => {
   const isDev = mode === "development";
   const isProduction = mode === "production" || process.env.NODE_ENV === "production";
   const enableSourceMaps = isDebug || process.env.GENERATE_SOURCEMAPS === "true";
-
-  // Ensure React is only loaded once
-  const reactPath = require.resolve("react");
-  const reactDomPath = require.resolve("react-dom");
-  const reactDomClientPath = require.resolve("react-dom/client");
-  const reactJsxRuntimePath = require.resolve("react/jsx-runtime");
-  const reactJsxDevRuntimePath = require.resolve("react/jsx-dev-runtime");
 
   const minifySetting = isDebug ? false : "esbuild";
   const sourcemapSetting = enableSourceMaps;
@@ -35,11 +24,6 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: [
-        { find: "react", replacement: reactPath },
-        { find: "react-dom", replacement: reactDomPath },
-        { find: "react-dom/client", replacement: reactDomClientPath },
-        { find: "react/jsx-runtime", replacement: reactJsxRuntimePath },
-        { find: "react/jsx-dev-runtime", replacement: reactJsxDevRuntimePath },
         { find: "@", replacement: path.resolve(__dirname, "./src") },
       ],
       extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
@@ -56,14 +40,6 @@ export default defineConfig(({ mode }) => {
         "react-router-dom",
         "@tanstack/react-query",
       ],
-      esbuildOptions: {
-        loader: { ".js": "jsx" },
-        jsx: "automatic",
-        jsxImportSource: "react",
-        define: {
-          "process.env.NODE_ENV": JSON.stringify(isDev ? "development" : "production"),
-        },
-      },
     },
     server: {
       host: "::",
@@ -83,9 +59,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
-      mode === "development" && componentTagger(),
-      mode === "development" && inspect(),
-    ].filter(Boolean),
+    ],
     build: {
       target: "esnext",
       cssCodeSplit: true,
