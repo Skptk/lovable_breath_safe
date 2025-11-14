@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -35,8 +35,8 @@ export default function Auth(): JSX.Element {
   // Check if we're in development mode
   const isDevelopment = import.meta.env.DEV;
 
-  // Declare all handler functions BEFORE useEffect to avoid TDZ errors
-  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
+  // Declare all handler functions with useCallback to avoid TDZ errors in minified code
+  const handleSubmit = useCallback(async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -85,9 +85,9 @@ export default function Auth(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isSignUp, formData, toast, navigate]);
 
-  const handlePasswordReset = async (e: React.FormEvent): Promise<void> => {
+  const handlePasswordReset = useCallback(async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -113,18 +113,18 @@ export default function Auth(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [passwordResetEmail, toast]);
 
-  const handleBackToSignIn = (): void => {
+  const handleBackToSignIn = useCallback((): void => {
     setShowForgotPassword(false);
     setPasswordResetEmail('');
     setPasswordResetSent(false);
     setShowPasswordResetForm(false);
     setNewPassword('');
     setConfirmPassword('');
-  };
+  }, []);
 
-  const handlePasswordResetSubmit = async (e: React.FormEvent) => {
+  const handlePasswordResetSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (newPassword !== confirmPassword) {
@@ -198,9 +198,9 @@ export default function Auth(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [newPassword, confirmPassword, toast]);
 
-  const handleDevLogin = async (): Promise<void> => {
+  const handleDevLogin = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     
     try {
@@ -308,7 +308,7 @@ export default function Auth(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [devFormData, toast, navigate]);
 
   // Check if user is already authenticated and redirect
   useEffect(() => {
