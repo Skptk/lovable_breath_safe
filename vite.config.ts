@@ -44,14 +44,14 @@ export default defineConfig(({ mode }) => {
     },
     // Force single instance of React
     resolve: {
-      alias: {
-        react: reactPath,
-        "react-dom": reactDomPath,
-        "react-dom/client": reactDomClientPath,
-        "react/jsx-runtime": reactJsxRuntimePath,
-        "react/jsx-dev-runtime": reactJsxDevRuntimePath,
-        "@": path.resolve(__dirname, "./src"),
-      },
+      alias: [
+        { find: /^react$/i, replacement: reactPath },
+        { find: /^react-dom$/i, replacement: reactDomPath },
+        { find: /^react-dom\/client$/i, replacement: reactDomClientPath },
+        { find: /^react\/jsx-runtime$/i, replacement: reactJsxRuntimePath },
+        { find: /^react\/jsx-dev-runtime$/i, replacement: reactJsxDevRuntimePath },
+        { find: "@", replacement: path.resolve(__dirname, "./src") },
+      ],
       // Ensure consistent file resolution order
       extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx", ".json"],
       // Ensure node_modules resolution uses the same instance
