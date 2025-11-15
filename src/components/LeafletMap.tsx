@@ -193,9 +193,30 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       return;
     }
 
-    try {
-      // Create map instance with performance optimizations
-      const map = L.map(mapRef.current, {
+    // CRITICAL: Ensure container has dimensions before initializing Leaflet
+    // Leaflet requires offsetWidth/offsetHeight to be available
+    const checkContainerReady = () => {
+      if (!mapRef.current) return false;
+      const rect = mapRef.current.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+
+    // Wait for container to have dimensions using requestAnimationFrame
+    const initMap = () => {
+      if (!checkContainerReady()) {
+        // Container not ready yet, try again on next frame
+        requestAnimationFrame(initMap);
+        return;
+      }
+
+      try {
+        // Verify container still exists and has dimensions
+        if (!mapRef.current || !checkContainerReady()) {
+          return;
+        }
+
+        // Create map instance with performance optimizations
+        const map = L.map(mapRef.current, {
         center: [userLocation.latitude, userLocation.longitude],
         zoom: LEAFLET_MAPS_CONFIG.DEFAULT_ZOOM,
         zoomControl: true,
@@ -287,17 +308,24 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
 
       setMarkers(newMarkers);
 
-      // Fit map to show all markers
-      if (newMarkers.length > 0) {
-        const group = new L.FeatureGroup([userMarker, ...newMarkers]);
-        map.fitBounds(group.getBounds().pad(0.1));
-      }
+        // Fit map to show all markers
+        if (newMarkers.length > 0) {
+          const group = new L.FeatureGroup([userMarker, ...newMarkers]);
+          map.fitBounds(group.getBounds().pad(0.1));
+        }
 
-    } catch (error) {
-      console.error('Error initializing map:', error);
-      setMapError('Failed to initialize map');
-    }
-  }, [userLocation, nearbyLocations, leafletLoaded, L, isDark]);
+      } catch (error) {
+        console.error('Error initializing map:', error);
+        setMapError('Failed to initialize map');
+        // Reset state on error to allow retry
+        setMapInstance(null);
+        setMapLoaded(false);
+      }
+    };
+
+    // Start initialization check
+    requestAnimationFrame(initMap);
+  }, [userLocation, nearbyLocations, leafletLoaded, L, isDark, createTileLayer]);
 
   // CRITICAL: Aggressive cleanup on unmount to prevent memory leaks
   useEffect(() => {

@@ -407,31 +407,38 @@ export class RealtimeConnectionManager {
 
     const callbacks = Array.from(entry.callbacks);
 
-    const invokeCallbacks = () => {
-      const start = performance.now();
-      let slowestCallbackDuration = 0;
-      let slowestCallbackName: string | null = null;
-      const slowCallbacks: { name: string; duration: number }[] = [];
+      const invokeCallbacks = () => {
+        const start = performance.now();
+        let slowestCallbackDuration = 0;
+        let slowestCallbackName: string | null = null;
+        const slowCallbacks: { name: string; duration: number }[] = [];
 
-      for (const callback of callbacks) {
-        const callbackStart = performance.now();
-        try {
-          callback(payload);
-        } catch (error) {
-          console.error('[RealtimeConnectionManager] Subscription callback error', { channelName, error });
+        // Optimized: Use startTransition for React state updates to avoid blocking
+        const React = (typeof window !== 'undefined' && (window as any).React) || null;
+        const useTransition = React?.startTransition || ((fn: () => void) => fn);
+
+        for (const callback of callbacks) {
+          const callbackStart = performance.now();
+          try {
+            // Wrap callback in startTransition to defer React state updates
+            useTransition(() => {
+              callback(payload);
+            });
+          } catch (error) {
+            console.error('[RealtimeConnectionManager] Subscription callback error', { channelName, error });
+          }
+          const callbackDuration = performance.now() - callbackStart;
+          if (callbackDuration > slowestCallbackDuration) {
+            slowestCallbackDuration = callbackDuration;
+            slowestCallbackName = callback.name || 'anonymous';
+          }
+          if (callbackDuration >= CALLBACK_WARN_THRESHOLD_MS) {
+            slowCallbacks.push({
+              name: callback.name || 'anonymous',
+              duration: callbackDuration,
+            });
+          }
         }
-        const callbackDuration = performance.now() - callbackStart;
-        if (callbackDuration > slowestCallbackDuration) {
-          slowestCallbackDuration = callbackDuration;
-          slowestCallbackName = callback.name || 'anonymous';
-        }
-        if (callbackDuration >= CALLBACK_WARN_THRESHOLD_MS) {
-          slowCallbacks.push({
-            name: callback.name || 'anonymous',
-            duration: callbackDuration,
-          });
-        }
-      }
 
       const duration = performance.now() - start;
       if (duration >= PERFORMANCE_LOG_THRESHOLD_MS) {

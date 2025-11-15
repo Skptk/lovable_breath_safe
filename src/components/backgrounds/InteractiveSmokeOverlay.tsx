@@ -89,7 +89,11 @@ const getAdaptiveCounts = () => {
     return { fast: 25, slow: 15 };
   }
 
-  const isMobile = window.innerWidth < 768;
+  // Optimized: Use matchMedia instead of innerWidth to avoid forced reflow
+  const mql = typeof window.matchMedia === 'function' 
+    ? window.matchMedia('(max-width: 767px)')
+    : null;
+  const isMobile = mql?.matches ?? (typeof window.innerWidth !== 'undefined' ? window.innerWidth < 768 : false);
   const hardwareThreads = typeof navigator.hardwareConcurrency === "number" ? navigator.hardwareConcurrency : 8;
   const isLowEnd = hardwareThreads < 4;
 
@@ -249,10 +253,29 @@ const InteractiveSmokeOverlay: React.FC<InteractiveSmokeOverlayProps> = ({
       pointerFrame = window.requestAnimationFrame(commitPointerUpdate);
     };
 
+    // Cache window dimensions to avoid forced reflows
+    let cachedInnerWidth = window.innerWidth;
+    let cachedInnerHeight = window.innerHeight;
+    let resizeTimeout: number | null = null;
+
+    // Update cached dimensions on resize (throttled)
+    const handleResize = () => {
+      if (resizeTimeout !== null) {
+        clearTimeout(resizeTimeout);
+      }
+      resizeTimeout = window.setTimeout(() => {
+        cachedInnerWidth = window.innerWidth;
+        cachedInnerHeight = window.innerHeight;
+        resizeTimeout = null;
+      }, 100);
+    };
+
+    window.addEventListener('resize', handleResize, { passive: true });
+
     const handlePointerMove = (event: PointerEvent) => {
-      const { innerWidth, innerHeight } = window;
-      const normalizedX = (event.clientX / innerWidth - 0.5) * 2;
-      const normalizedY = (event.clientY / innerHeight - 0.5) * 2;
+      // Use cached dimensions to avoid forced reflow
+      const normalizedX = (event.clientX / cachedInnerWidth - 0.5) * 2;
+      const normalizedY = (event.clientY / cachedInnerHeight - 0.5) * 2;
 
       pendingPointer = {
         x: normalizedX * 30 * intensity,
@@ -279,6 +302,10 @@ const InteractiveSmokeOverlay: React.FC<InteractiveSmokeOverlayProps> = ({
       }
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerleave", resetPointer);
+      window.removeEventListener("resize", handleResize);
+      if (resizeTimeout !== null) {
+        clearTimeout(resizeTimeout);
+      }
     };
   }, [intensity, prefersReduced]);
 
