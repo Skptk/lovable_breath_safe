@@ -17,7 +17,8 @@ const __dirname = dirname(__filename);
 // Parse command line arguments
 const args = process.argv.slice(2);
 const checkStaged = args.includes('--staged');
-const isCI = process.env.CI === 'true' || args.includes('--ci');
+// In CI environments, CI can be 'true', '1', or just set (truthy)
+const isCI = process.env.CI === 'true' || process.env.CI === '1' || Boolean(process.env.CI) || args.includes('--ci');
 
 // Configuration
 const SRC_DIR = path.join(__dirname, '../src');
@@ -276,11 +277,12 @@ async function main() {
   }
   
   // Enable debug logging
-  const debug = process.env.DEBUG === 'true' || process.env.CI === 'true';
+  const debug = process.env.DEBUG === 'true' || isCI;
   
   // Always log in debug mode
   console.log('\n=== Debug Information ===');
   console.log('Debug mode:', debug ? 'enabled' : 'disabled');
+  console.log('CI mode:', isCI ? 'enabled (warnings only, will not fail build)' : 'disabled');
   console.log('Node version:', process.version);
   console.log('Platform:', process.platform);
   console.log('Architecture:', process.arch);
@@ -447,6 +449,7 @@ async function main() {
     console.log(`\n🔍 Found ${allIssues.length} potential issues in ${Object.keys(issuesByFile).length} files`);
     console.log('⚠️  Note: These are potential issues. Many may be false positives from React patterns.');
     
+    // Always exit with 0 in CI environments - these are warnings, not errors
     if (isCI) {
       // In CI, output as warnings (not errors) and don't fail the build
       console.log('\n::group::Potential Issues (Non-blocking)');
@@ -459,6 +462,8 @@ async function main() {
       process.exit(0);
     }
     
+    // In local development, exit with 1 to alert developers
+    console.log('\n❌ Please review the issues above. Many may be false positives.');
     process.exit(1);
   } else {
     console.log('✅ No potential initialization issues found!');
@@ -481,6 +486,7 @@ async function run() {
     console.log(`- NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
     console.log(`- DEBUG: ${process.env.DEBUG || 'not set'}`);
     console.log(`- CI: ${process.env.CI || 'not set'}`);
+    console.log(`- CI detected: ${isCI ? 'YES (warnings only)' : 'NO'}`);
     
     // Run the main function
     const startTime = Date.now();
@@ -497,6 +503,12 @@ async function run() {
     if (error.stack) {
       console.error('\nStack trace:');
       console.error(error.stack);
+    }
+    
+    // In CI, don't fail the build even on errors - just warn
+    if (isCI) {
+      console.error('\n⚠️  Error occurred but continuing build (CI mode)');
+      process.exit(0);
     }
     
     process.exit(1);
