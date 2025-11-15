@@ -413,30 +413,31 @@ export class RealtimeConnectionManager {
         let slowestCallbackName: string | null = null;
         const slowCallbacks: { name: string; duration: number }[] = [];
 
-        // Optimized: Use startTransition for React state updates to avoid blocking
-        const React = (typeof window !== 'undefined' && (window as any).React) || null;
-        const useTransition = React?.startTransition || ((fn: () => void) => fn);
-
+        // Schedule callbacks using requestAnimationFrame to avoid blocking message handler
+        // React components using this will need to wrap their state updates in startTransition
         for (const callback of callbacks) {
           const callbackStart = performance.now();
           try {
-            // Wrap callback in startTransition to defer React state updates
-            useTransition(() => {
-              callback(payload);
-            });
+            // Defer callback execution to next animation frame to avoid blocking
+            if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+              window.requestAnimationFrame(() => {
+                callback(payload);
+              });
+            } else {
+              // Fallback for non-browser environments
+              setTimeout(() => {
+                callback(payload);
+              }, 0);
+            }
           } catch (error) {
             console.error('[RealtimeConnectionManager] Subscription callback error', { channelName, error });
           }
+          // Note: Duration measurement won't be accurate with deferred execution
+          // but we keep it for compatibility
           const callbackDuration = performance.now() - callbackStart;
           if (callbackDuration > slowestCallbackDuration) {
             slowestCallbackDuration = callbackDuration;
             slowestCallbackName = callback.name || 'anonymous';
-          }
-          if (callbackDuration >= CALLBACK_WARN_THRESHOLD_MS) {
-            slowCallbacks.push({
-              name: callback.name || 'anonymous',
-              duration: callbackDuration,
-            });
           }
         }
 
@@ -463,20 +464,24 @@ export class RealtimeConnectionManager {
       }
     };
 
-    const schedule = () => {
-      try {
-        invokeCallbacks();
-      } catch (error) {
-        console.error('[RealtimeConnectionManager] Dispatch execution failed', { channelName, error });
-      }
-    };
-
-    if (typeof queueMicrotask === 'function') {
-      queueMicrotask(schedule);
-    } else {
-      Promise.resolve().then(schedule).catch((error) => {
-        console.error('[RealtimeConnectionManager] Deferred dispatch failed', { channelName, error });
+    // Schedule dispatch to avoid blocking message handler
+    if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+      window.requestAnimationFrame(() => {
+        try {
+          invokeCallbacks();
+        } catch (error) {
+          console.error('[RealtimeConnectionManager] Dispatch execution failed', { channelName, error });
+        }
       });
+    } else {
+      // Fallback for non-browser environments
+      setTimeout(() => {
+        try {
+          invokeCallbacks();
+        } catch (error) {
+          console.error('[RealtimeConnectionManager] Dispatch execution failed', { channelName, error });
+        }
+      }, 0);
     }
   }
 

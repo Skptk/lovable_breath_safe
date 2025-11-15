@@ -133,11 +133,18 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     };
 
     // Initial dimensions from container (only once on mount)
+    // Defer to avoid forced reflow - use requestAnimationFrame
     if (containerRef.current) {
-      const initialWidth = containerRef.current.offsetWidth || 800;
-      const initialHeight = containerRef.current.offsetHeight || 400;
-      lastDimensionsRef.current = { width: initialWidth, height: initialHeight };
-      setDimensions({ width: initialWidth, height: initialHeight });
+      requestAnimationFrame(() => {
+        if (containerRef.current) {
+          const initialWidth = containerRef.current.offsetWidth || 800;
+          const initialHeight = containerRef.current.offsetHeight || 400;
+          lastDimensionsRef.current = { width: initialWidth, height: initialHeight };
+          startTransition(() => {
+            setDimensions({ width: initialWidth, height: initialHeight });
+          });
+        }
+      });
     }
 
     if ('ResizeObserver' in window) {
@@ -157,13 +164,15 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
       });
       resizeObserverRef.current.observe(containerRef.current);
     } else {
-      // Fallback to window resize
+      // Fallback to window resize - defer layout reads to avoid forced reflow
       const fallbackHandler = () => {
-        if (containerRef.current) {
-          const width = containerRef.current.offsetWidth;
-          const height = containerRef.current.offsetHeight;
-          handleResize(width, height);
-        }
+        requestAnimationFrame(() => {
+          if (containerRef.current) {
+            const width = containerRef.current.offsetWidth;
+            const height = containerRef.current.offsetHeight;
+            handleResize(width, height);
+          }
+        });
       };
       window.addEventListener('resize', fallbackHandler, { passive: true });
       return () => {

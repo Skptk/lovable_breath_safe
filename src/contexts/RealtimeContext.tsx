@@ -5,7 +5,8 @@ import React, {
   useRef,
   useState,
   useCallback,
-  useMemo
+  useMemo,
+  startTransition
 } from 'react';
 import { useAuth } from './AuthContext';
 import {
@@ -109,18 +110,21 @@ function useRealtimeContextValue() {
 
         const payloadsToProcess = pendingPayloads.splice(0, pendingPayloads.length);
 
-        for (const payload of payloadsToProcess) {
-          for (const callback of Array.from(entry.callbacks)) {
-            try {
-              callback(payload);
-            } catch (error) {
-              console.error(
-                `[RealtimeContext] Error in subscription callback for ${channelName}:`,
-                error
-              );
+        // Use startTransition to defer React state updates and avoid blocking
+        startTransition(() => {
+          for (const payload of payloadsToProcess) {
+            for (const callback of Array.from(entry.callbacks)) {
+              try {
+                callback(payload);
+              } catch (error) {
+                console.error(
+                  `[RealtimeContext] Error in subscription callback for ${channelName}:`,
+                  error
+                );
+              }
             }
           }
-        }
+        });
       };
 
       const scheduleFlush = () => {
