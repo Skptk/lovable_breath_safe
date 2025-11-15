@@ -2,9 +2,10 @@ import { useState, useEffect, Suspense, lazy } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Lock, ArrowRight, Home, Map, User, Trophy, ShoppingBag, Settings, Newspaper } from "lucide-react";
+import { Lock, ArrowRight, Home, Map, User, Trophy, ShoppingBag, Settings, Newspaper, History } from "lucide-react";
 import BackgroundManager from "@/components/BackgroundManager";
 import Footer from "@/components/Footer";
+import MobileNavigation from "@/components/MobileNavigation";
 
 // Lazy load only the components needed for demo mode
 const AirQualityDashboard = lazy(() => 
@@ -153,13 +154,13 @@ export default function Demo(): JSX.Element {
   // Demo navigation items - only dashboard and weather are accessible
   const demoNavItems = [
     { id: "dashboard", label: "Dashboard", icon: Home, accessible: true },
+    { id: "history", label: "History", icon: History, accessible: false, feature: "Data History" },
     { id: "map", label: "Weather", icon: Map, accessible: true },
-    { id: "history", label: "History", icon: User, accessible: false, feature: "Data History" },
+    { id: "news", label: "News", icon: Newspaper, accessible: false, feature: "Health News" },
     { id: "rewards", label: "Rewards", icon: Trophy, accessible: false, feature: "Rewards System" },
     { id: "store", label: "Store", icon: ShoppingBag, accessible: false, feature: "Rewards Store" },
     { id: "profile", label: "Profile", icon: User, accessible: false, feature: "Personal Profile" },
     { id: "settings", label: "Settings", icon: Settings, accessible: false, feature: "App Settings" },
-    { id: "news", label: "News", icon: Newspaper, accessible: false, feature: "Health News" },
   ];
 
   const renderView = (): JSX.Element => {
@@ -197,101 +198,158 @@ export default function Demo(): JSX.Element {
     setShowMobileMenu(!showMobileMenu);
   };
 
-  return (
-    <BackgroundManager>
-      <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30 flex flex-col">
-        {/* Demo Navigation Bar */}
-        <motion.nav 
-          className="bg-card border-b border-border backdrop-blur-xl sticky top-0 z-50"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              {/* Logo and Title */}
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">B</span>
-                </div>
-                <div>
-                  <h1 className="text-lg font-semibold text-foreground">Breath Safe</h1>
-                  <p className="text-xs text-muted-foreground">Demo Mode</p>
-                </div>
-              </div>
+  // Demo Sidebar Component
+  const DemoSidebar = () => (
+    <motion.aside 
+      className="fixed left-0 top-0 h-full w-16 bg-card border-r border-border z-50 hidden md:flex flex-col items-center py-6 space-y-4 backdrop-blur-xl"
+      initial={{ x: -64 }}
+      animate={{ x: 0 }}
+      transition={{ 
+        type: "spring", 
+        damping: 25, 
+        stiffness: 200,
+        duration: 0.4
+      }}
+    >
+      {/* App Logo */}
+      <motion.div 
+        className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center mb-8 shadow-lg"
+        whileHover={{ scale: 1.1, rotate: 5 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <span className="text-primary-foreground font-bold text-lg">B</span>
+      </motion.div>
 
-              {/* Demo Navigation */}
-              <div className="hidden md:flex items-center space-x-2">
-                {demoNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = currentView === item.id;
-                  const isAccessible = item.accessible;
-                  
-                  return (
-                    <Button
-                      key={item.id}
-                      variant={isActive ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => handleViewChange(item.id)}
-                      className={`transition-all duration-200 ${
-                        isActive 
-                          ? 'bg-gradient-to-br from-primary to-secondary text-primary-foreground' 
-                          : isAccessible
-                            ? 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                            : 'text-muted-foreground opacity-50 cursor-not-allowed'
-                      }`}
-                      disabled={!isAccessible}
-                      title={isAccessible ? item.label : `${item.label} - Sign up required`}
-                    >
-                      <Icon className="h-4 w-4 mr-2" />
-                      {item.label}
-                      {!isAccessible && <Lock className="h-3 w-3 ml-2" />}
-                    </Button>
-                  );
-                })}
-              </div>
-
-              {/* CTA Buttons */}
-              <div className="flex items-center space-x-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => window.location.href = "/auth"}
-                >
-                  Sign In
-                </Button>
-                <Button 
-                  size="sm"
-                  onClick={() => window.location.href = "/onboarding"}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  Get Started
-                </Button>
-              </div>
-            </div>
-          </div>
-        </motion.nav>
-        
-        {/* Main Content Area */}
-        <div className="flex-1 p-4 sm:p-6 lg:p-8 w-full">
-          <AnimatePresence mode="wait">
+      {/* Navigation Items */}
+      <nav className="flex-1 space-y-2">
+        {demoNavItems.map((item, index) => {
+          const Icon = item.icon;
+          const isActive = currentView === item.id;
+          const isAccessible = item.accessible;
+          
+          return (
             <motion.div
-              key={currentView}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
+              key={item.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ 
-                duration: 0.3, 
-                ease: "easeInOut"
+                delay: 0.1 + index * 0.05, 
+                duration: 0.3,
+                ease: "easeOut"
               }}
             >
-              {renderView()}
+              <motion.div
+                whileHover={isAccessible ? { scale: 1.1 } : {}}
+                whileTap={isAccessible ? { scale: 0.95 } : {}}
+              >
+                <Button
+                  variant={isActive ? "default" : "ghost"}
+                  size="icon"
+                  onClick={() => isAccessible && handleViewChange(item.id)}
+                  disabled={!isAccessible}
+                  className={`h-12 w-12 rounded-xl transition-all duration-200 relative ${
+                    isActive 
+                      ? 'bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-lg border-accent' 
+                      : isAccessible
+                        ? 'text-muted-foreground hover:text-foreground hover:bg-accent hover:border-accent border-transparent'
+                        : 'text-muted-foreground opacity-50 cursor-not-allowed border-transparent'
+                  } border`}
+                  title={isAccessible ? item.label : `${item.label} - Sign up required`}
+                  aria-label={`${item.label}${isActive ? ' (current page)' : ''}`}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <Icon className="h-5 w-5" />
+                  {!isAccessible && (
+                    <Lock className="h-3 w-3 absolute -top-1 -right-1 text-muted-foreground" />
+                  )}
+                </Button>
+              </motion.div>
             </motion.div>
-          </AnimatePresence>
-        </div>
+          );
+        })}
+      </nav>
 
-        {/* Footer */}
-        <Footer />
+      {/* Bottom Spacing */}
+      <div className="flex-1"></div>
+    </motion.aside>
+  );
+
+  return (
+    <BackgroundManager>
+      <div className="relative min-h-screen">
+        <div className="relative z-10 flex min-h-screen bg-gradient-to-br from-background/60 via-background/30 to-background/80">
+          <DemoSidebar />
+
+          <div className="flex-1 md:ml-16">
+            <div className="relative">
+              {/* Demo Header Bar */}
+              <motion.nav 
+                className="bg-card border-b border-border backdrop-blur-xl sticky top-0 z-40"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              >
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <div className="flex items-center justify-between h-16">
+                    {/* Logo and Title */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
+                        <span className="text-primary-foreground font-bold text-sm">B</span>
+                      </div>
+                      <div>
+                        <h1 className="text-lg font-semibold text-foreground">Breath Safe</h1>
+                        <p className="text-xs text-muted-foreground">Demo Mode</p>
+                      </div>
+                    </div>
+
+                    {/* CTA Buttons */}
+                    <div className="flex items-center space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.location.href = "/auth"}
+                      >
+                        Sign In
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={() => window.location.href = "/onboarding"}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        Get Started
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </motion.nav>
+
+              <MobileNavigation 
+                currentView={currentView} 
+                onViewChange={handleViewChange}
+                isOpen={showMobileMenu}
+                onClose={() => setShowMobileMenu(false)}
+              />
+
+              <main className="px-4 py-6 sm:px-6 lg:px-10">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentView}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                  >
+                    {renderView()}
+                  </motion.div>
+                </AnimatePresence>
+              </main>
+
+              <footer className="px-4 pb-6 sm:px-6 lg:px-10">
+                <Footer />
+              </footer>
+            </div>
+          </div>
+        </div>
       </div>
     </BackgroundManager>
   );

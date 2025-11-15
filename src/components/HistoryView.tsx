@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, TrendingUp, Loader2, AlertTriangle, Clock, Trash2 } from 'lucide-react';
+import { Calendar, MapPin, TrendingUp, Loader2, AlertTriangle, Clock, Trash2, BarChart3, Table } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
@@ -19,10 +19,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import HistoryDetailModal from './HistoryDetailModal';
 import { HistoryRow } from './HistoryRow';
+import { HistoricalAQIChart } from './HistoryView/HistoricalAQIChart';
+import { TimeRangeSelector } from './HistoryView/TimeRangeSelector';
+import { useHistoricalAQIData } from '@/hooks/useHistoricalAQIData';
+import { transformHistoryForChart, TimeRange, getAdaptivePointThreshold } from './HistoryView/utils/chartDataTransform';
 
 const PAGE_SIZE = 20;
 
-interface HistoryEntry {
+export interface HistoryEntry {
   id: string;
   created_at: string;
   timestamp: string;
@@ -54,7 +58,7 @@ interface HistoryEntry {
   sunset_time?: string | null;
 }
 
-type RawHistoryRow = {
+export type RawHistoryRow = {
   id: string;
   created_at: string;
   timestamp?: string | null;
@@ -167,8 +171,13 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
+  const [timeRange, setTimeRange] = useState<TimeRange>({ type: '30d' });
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Fetch chart data using React Query
+  const { data: chartHistoryData, isLoading: chartLoading, error: chartError } = useHistoricalAQIData(user?.id, timeRange);
 
   const fetchHistory = useCallback(
     async (pageIndex: number = 0): Promise<HistoryEntry[]> => {
@@ -659,6 +668,20 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
   const stats = useMemo(() => calculateStats(), [calculateStats]);
 
+  // Transform chart data
+  const chartData = useMemo(() => {
+    if (!chartHistoryData || chartHistoryData.length === 0) {
+      return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
+    }
+    const threshold = getAdaptivePointThreshold();
+    return transformHistoryForChart(chartHistoryData, timeRange, threshold);
+  }, [chartHistoryData, timeRange]);
+
+  const handleChartPointClick = useCallback((entry: HistoryEntry) => {
+    setSelectedEntry(entry);
+    setIsModalOpen(true);
+  }, []);
+
   if (loading) {
     return (
       <div className="page-container">
@@ -719,34 +742,72 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
             onMobileMenuToggle={onMobileMenuToggle}
           />
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 justify-end w-full max-w-full overflow-hidden">
-            {selectedEntries.size > 0 && (
+          {/* View Toggle and Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 justify-between w-full max-w-full overflow-hidden">
+            <div className="flex items-center gap-2">
               <Button
-                onClick={bulkDeleteSelected}
-                variant="destructive"
+                variant={viewMode === 'chart' ? 'default' : 'outline'}
                 size="sm"
-                disabled={bulkDeleting}
-                className="gap-2 w-full sm:w-auto"
+                onClick={() => setViewMode('chart')}
+                aria-label="Switch to chart view"
               >
-                {bulkDeleting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4" />
-                    Delete Selected ({selectedEntries.size})
-                  </>
-                )}
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Chart
               </Button>
-            )}
+              <Button
+                variant={viewMode === 'table' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('table')}
+                aria-label="Switch to table view"
+              >
+                <Table className="h-4 w-4 mr-2" />
+                Table
+              </Button>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              {selectedEntries.size > 0 && viewMode === 'table' && (
+                <Button
+                  onClick={bulkDeleteSelected}
+                  variant="destructive"
+                  size="sm"
+                  disabled={bulkDeleting}
+                  className="gap-2 w-full sm:w-auto"
+                >
+                  {bulkDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Delete Selected ({selectedEntries.size})
+                    </>
+                  )}
+                </Button>
+              )}
 
-            <Button variant="outline" size="sm" onClick={selectAllEntries} className="gap-2 w-full sm:w-auto">
-              {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
-            </Button>
+              {viewMode === 'table' && (
+                <Button variant="outline" size="sm" onClick={selectAllEntries} className="gap-2 w-full sm:w-auto">
+                  {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
+                </Button>
+              )}
+            </div>
           </div>
+
+          {/* Chart View */}
+          {viewMode === 'chart' && (
+            <div className="space-y-4">
+              <TimeRangeSelector selectedRange={timeRange} onRangeChange={setTimeRange} />
+              <HistoricalAQIChart
+                data={chartData.data}
+                isLoading={chartLoading}
+                error={chartError}
+                onDataPointClick={handleChartPointClick}
+                meta={chartData.meta}
+              />
+            </div>
+          )}
 
           {/* Fetch AQI Data Button - Only shown after clearing history */}
           {showFetchButton && (
@@ -828,8 +889,10 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
             </GlassCard>
           </div>
 
-          {/* History Section */}
-          <div className="space-y-3 w-full max-w-full overflow-hidden">
+          {/* Table View */}
+          {viewMode === 'table' && (
+            <div className="space-y-3 w-full max-w-full overflow-hidden">
+              {/* History Section */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full max-w-full overflow-hidden">
               <h2 className="text-lg font-semibold">
                 Recent Readings {history.length > 0 && `(${history.length})`}
@@ -886,6 +949,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
               </Button>
             )}
           </div>
+          )}
         </div>
       </div>
 

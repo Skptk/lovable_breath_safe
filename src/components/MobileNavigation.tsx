@@ -14,7 +14,7 @@ interface MobileNavigationProps {
 
 export default function MobileNavigation({ currentView, onViewChange, isOpen, onClose }: MobileNavigationProps): JSX.Element {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
 
   // Use external state if provided, otherwise use internal state
@@ -207,21 +207,23 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
                 </Button>
               </motion.div>
 
-              {/* Sign Out */}
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Button
-                  variant="destructive"
-                  onClick={handleSignOut}
-                  className="w-full justify-start h-12 rounded-xl"
-                  aria-label="Sign out"
+              {/* Sign Out - Only show if user is authenticated */}
+              {user && (
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <LogOut className="h-5 w-5 mr-3" />
-                  Sign Out
-                </Button>
-              </motion.div>
+                  <Button
+                    variant="destructive"
+                    onClick={handleSignOut}
+                    className="w-full justify-start h-12 rounded-xl"
+                    aria-label="Sign out"
+                  >
+                    <LogOut className="h-5 w-5 mr-3" />
+                    Sign Out
+                  </Button>
+                </motion.div>
+              )}
             </div>
           </motion.div>
         )}
