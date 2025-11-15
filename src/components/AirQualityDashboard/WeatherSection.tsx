@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import WeatherStatsCard from '../WeatherStatsCard';
 import { useReflowOptimization } from '@/hooks/useReflowOptimization';
 
@@ -40,17 +39,12 @@ function WeatherSectionComponent({ coordinates }: WeatherSectionProps) {
   }
 
   return (
-    <motion.div 
-      ref={containerRef}
-      initial={{ opacity: 0, y: 12 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      transition={{ duration: 0.32, ease: "easeOut", delay: 0.18 }}
-    >
+    <div ref={containerRef}>
       <WeatherStatsCard 
         latitude={coordinates.latitude} 
         longitude={coordinates.longitude} 
       />
-    </motion.div>
+    </div>
   );
 }
 

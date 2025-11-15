@@ -336,18 +336,10 @@ export default function Index(): JSX.Element | null {
               />
 
               <main className="px-4 py-6 sm:px-6 lg:px-10">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentView}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.18, ease: "easeOut" }}
-                    style={{ willChange: 'opacity' }}
-                  >
-                    {renderView()}
-                  </motion.div>
-                </AnimatePresence>
+                {/* Removed AnimatePresence - instant page transitions for better performance */}
+                <div>
+                  {renderView()}
+                </div>
               </main>
 
               <footer className="px-4 pb-6 sm:px-6 lg:px-10">

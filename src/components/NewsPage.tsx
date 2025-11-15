@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+// Removed framer-motion import - animations removed for performance
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,25 +136,15 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
 
       {/* Loading State */}
       {isLoading && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="text-center py-12"
-        >
+        <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading articles...</p>
-        </motion.div>
+        </div>
       )}
 
       {/* Error State */}
       {error && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="text-center py-12"
-        >
+        <div className="text-center py-12">
           <div className="max-w-md mx-auto space-y-4">
             <div className="w-24 h-24 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
               <BookOpen className="w-12 h-12 text-destructive" />
@@ -168,20 +158,15 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
               Try Again
             </Button>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Only show content when not loading and no errors */}
       {!isLoading && !error && (
         <>
           {/* Search and Filter Controls */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="space-y-4"
-          >
-            <GlassCard variant="elevated" className="bg-gradient-to-r from-card/80 to-card/60 backdrop-blur-sm border border-border/20">
+          <div className="space-y-4">
+            <GlassCard variant="elevated" className="bg-gradient-to-r from-card/80 to-card/60 border border-border/20">
               <GlassCardHeader>
                 <GlassCardTitle className="text-xl font-semibold">Search & Filter</GlassCardTitle>
               </GlassCardHeader>
@@ -224,15 +209,10 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
                 </div>
               </GlassCardContent>
             </GlassCard>
-          </motion.div>
+          </div>
 
           {/* Results Summary */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-            className="flex items-center justify-between"
-          >
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-muted-foreground">
               <BookOpen className="h-4 w-4" />
               <span>{filteredArticles.length} article{filteredArticles.length !== 1 ? 's' : ''} found</span>
@@ -247,15 +227,10 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
                 Clear search
               </Button>
             )}
-          </motion.div>
+          </div>
 
           {/* Articles Grid */}
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredArticles.map((article, index) => {
               // Additional safety check for article properties
               if (!article || !article.id || !article.title || !article.imageUrl) {
@@ -263,26 +238,14 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
               }
               
               return (
-                <motion.div
+                <div
                   key={article.id}
                   className="group cursor-pointer"
                   onClick={() => setSelectedArticle(article)}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ 
-                    delay: 0.3 + index * 0.1, 
-                    duration: 0.5,
-                    ease: "easeOut"
-                  }}
-                  whileHover={{ 
-                    scale: 1.02,
-                    transition: { duration: 0.2 }
-                  }}
                   style={{ contain: 'layout paint' }}
                 >
-                  <GlassCard variant="elevated" className="relative overflow-hidden h-full bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300 group-hover:border-primary/30">
-                    {/* Glowing border effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+                  <GlassCard variant="elevated" className="relative overflow-hidden h-full bg-gradient-to-br from-card/80 via-card/60 to-card/40 border border-border/20 shadow-lg transition-opacity duration-150 group-hover:border-primary/30">
+                    {/* Removed glowing border effect - decorative, causes paint overhead */}
                     
                     {/* Gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-lg"></div>
@@ -293,13 +256,13 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
                         src={article.imageUrl} 
                         alt={article.title}
                         loading="lazy"
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                       
                       {/* Category Badge */}
                       <div className="absolute top-4 left-4">
-                        <Badge className={`${getCategoryColor(article.category)} backdrop-blur-sm`}>
+                        <Badge className={`${getCategoryColor(article.category)}`}>
                           {article.category}
                         </Badge>
                       </div>
@@ -345,19 +308,14 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
                       </div>
                     </GlassCardContent>
                   </GlassCard>
-                </motion.div>
+                </div>
               );
             })}
-          </motion.div>
+          </div>
 
           {/* No Results Message */}
           {filteredArticles.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              className="text-center py-12"
-            >
+            <div className="text-center py-12">
               <div className="max-w-md mx-auto space-y-4">
                 <BookOpen className="h-16 w-16 text-muted-foreground mx-auto opacity-50" />
                 <h3 className="text-lg font-semibold text-foreground">No articles found</h3>
@@ -374,7 +332,7 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
                   Clear all filters
                 </Button>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* Article Modal */}

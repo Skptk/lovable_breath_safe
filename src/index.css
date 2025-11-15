@@ -204,12 +204,12 @@
   }
 
   .card-hover {
-    transition: var(--transition-smooth);
+    transition: opacity 0.15s ease, transform 0.15s ease;
   }
 
   .card-hover:hover {
-    box-shadow: 0 15px 35px -15px rgba(8, 47, 73, 0.4);
-    transform: translateY(-4px);
+    box-shadow: 0 8px 24px -12px rgba(8, 47, 73, 0.3);
+    transform: translateY(-2px);
   }
 
   .navbar-height {
@@ -244,10 +244,9 @@
   .glass-card {
     background: linear-gradient(120deg, rgba(15, 23, 42, 0.72), rgba(30, 41, 59, 0.72));
     border: 1px solid rgba(148, 163, 184, 0.18);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    /* Removed backdrop-filter: blur(8px) - expensive paint operation */
     box-shadow: var(--shadow-glass);
-    transition: var(--transition-smooth);
+    transition: opacity 0.15s ease, transform 0.15s ease;
     position: relative;
     overflow: hidden;
     contain: layout paint;
@@ -264,23 +263,21 @@
   }
 
   .glass-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 20px 50px -20px rgba(45, 212, 191, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -12px rgba(45, 212, 191, 0.2);
   }
 
   .glass-surface {
     background: linear-gradient(110deg, rgba(15, 23, 42, 0.7), rgba(30, 41, 59, 0.6));
     border: 1px solid rgba(148, 163, 184, 0.14);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    /* Removed backdrop-filter: blur(8px) - expensive paint operation */
     contain: layout paint;
   }
 
   .glass-overlay {
     background: linear-gradient(140deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.85));
     border: 1px solid rgba(148, 163, 184, 0.18);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    /* Removed backdrop-filter: blur(12px) - expensive paint operation */
     contain: layout paint;
   }
 
@@ -328,13 +325,12 @@
   .floating-card {
     background: linear-gradient(120deg, rgba(15, 23, 42, 0.72), rgba(30, 41, 59, 0.68));
     border: 1px solid rgba(148, 163, 184, 0.14);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    /* Removed backdrop-filter: blur(8px) - expensive paint operation */
     box-shadow: var(--shadow-card);
     position: relative;
     z-index: 1;
     overflow: hidden;
-    transition: var(--transition-smooth);
+    transition: opacity 0.15s ease, transform 0.15s ease;
     contain: layout paint;
   }
 
@@ -349,8 +345,8 @@
   }
 
   .floating-card:hover {
-    transform: translateY(-6px) scale(1.01);
-    box-shadow: 0 20px 50px -15px rgba(8, 47, 73, 0.45);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -12px rgba(8, 47, 73, 0.3);
   }
 
   /* Light mode floating cards */
@@ -373,25 +369,12 @@
     border-radius: var(--radius);
     padding: 0.75rem 1.5rem;
     font-weight: 600;
-    transition: all 0.3s ease;
+    transition: opacity 0.15s ease, transform 0.15s ease;
     position: relative;
     overflow: hidden;
   }
 
-  .btn-modern::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transition: left 0.5s ease;
-  }
-
-  .btn-modern:hover::before {
-    left: 100%;
-  }
+  /* Removed ::before shimmer animation - decorative, causes paint overhead */
 
   .btn-modern:hover {
     transform: translateY(-1px);
@@ -405,7 +388,7 @@
     border-radius: var(--radius);
     color: hsl(var(--foreground));
     padding: 0.75rem 1rem;
-    transition: all 0.3s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .input-modern:focus {
@@ -691,8 +674,8 @@
   .aura-orb {
     height: 28rem;
     width: 28rem;
-    filter: blur(140px);
-    opacity: 0.6;
+    /* Removed filter: blur(140px) - extremely expensive paint operation */
+    opacity: 0.4;
     border-radius: 9999px;
     pointer-events: none;
   }
@@ -736,7 +719,7 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    transition: opacity 0.5s ease-in-out;
+    transition: opacity 0.2s ease;
     z-index: -1;
   }
 
@@ -745,7 +728,7 @@
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.15);
-    transition: background-color 0.5s ease-in-out;
+    transition: background-color 0.2s ease;
   }
 
   /* Theme-specific overlay adjustments - Made much brighter */

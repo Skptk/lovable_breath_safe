@@ -142,7 +142,7 @@ function HistoryRowComponent({
   return (
     <GlassCard
       variant="default"
-      className="cursor-pointer hover:scale-[1.02] group w-full max-w-full overflow-hidden transition-transform will-change-transform"
+      className="cursor-pointer group w-full max-w-full overflow-hidden transition-opacity duration-150"
       onClick={handleCardClick}
       style={{ contain: 'layout paint' }}
     >

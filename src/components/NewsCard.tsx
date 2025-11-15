@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { GlassCard, GlassCardContent, GlassCardHeader } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Clock, User, ArrowRight } from "lucide-react";
@@ -35,66 +34,45 @@ function NewsCard() {
 
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <GlassCard className="relative overflow-hidden h-full min-h-[500px] floating-card hover:shadow-2xl transition-all duration-300">
-          {/* Glowing border effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+      <div>
+        <GlassCard className="relative overflow-hidden h-full min-h-[500px] floating-card transition-opacity duration-150">
+          {/* Removed glowing border effect - decorative, causes paint overhead */}
           
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 rounded-lg"></div>
           
           <GlassCardHeader className="relative pb-4">
-            <motion.div 
+            <div 
               className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.4 }}
             >
               <div className="flex items-center gap-2">
                 <h3 className="heading-md font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">Latest Articles</h3>
-                <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30 backdrop-blur-sm">
+                <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
                   Health & Environment
                 </Badge>
               </div>
               <div className="text-sm text-muted-foreground/80">
                 Updated daily
               </div>
-            </motion.div>
+            </div>
           </GlassCardHeader>
           
           <GlassCardContent className="relative pt-0 space-y-4 px-4 lg:px-6">
             {latestArticles.map((article, index) => (
-              <motion.div
+              <div
                 key={article.id}
-                className={`group cursor-pointer rounded-2xl p-3 sm:p-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl border ${
+                className={`group cursor-pointer rounded-2xl p-3 sm:p-4 transition-opacity duration-150 border ${
                   index === 0 
-                    ? 'bg-gradient-to-br from-primary/20 to-primary/10 border-primary/30 backdrop-blur-md' 
-                    : 'bg-gradient-to-br from-muted/20 to-muted/10 border-border/30 backdrop-blur-sm'
+                    ? 'bg-gradient-to-br from-primary/20 to-primary/10 border-primary/30' 
+                    : 'bg-gradient-to-br from-muted/20 to-muted/10 border-border/30'
                 }`}
                 onClick={() => setSelectedArticle(article)}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  delay: 0.3 + index * 0.1, 
-                  duration: 0.5,
-                  ease: "easeOut"
-                }}
-                whileHover={{ 
-                  scale: 1.02,
-                  transition: { duration: 0.2 }
-                }}
               >
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   {/* Image */}
                   <div className="flex-shrink-0 self-center sm:self-start">
-                    <motion.div 
+                    <div 
                       className="w-16 h-16 rounded-ds-small overflow-hidden bg-muted/20"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
                     >
                       <img 
                         src={article.imageUrl} 
@@ -102,7 +80,7 @@ function NewsCard() {
                         loading="lazy"
                         className="w-full h-full object-cover"
                       />
-                    </motion.div>
+                    </div>
                   </div>
                   
                   {/* Content */}
@@ -142,19 +120,18 @@ function NewsCard() {
                   
                   {/* Arrow */}
                   <div className="flex-shrink-0 self-center">
-                    <motion.div
-                      className="text-muted-foreground group-hover:text-primary transition-colors"
-                      whileHover={{ x: 3 }}
+                    <div
+                      className="text-muted-foreground group-hover:text-primary transition-colors duration-150"
                     >
                       <ArrowRight className="h-4 w-4" />
-                    </motion.div>
+                    </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </GlassCardContent>
         </GlassCard>
-      </motion.div>
+      </div>
       
       {/* Article Modal */}
       {selectedArticle && (

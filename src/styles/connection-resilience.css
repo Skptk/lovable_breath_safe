@@ -8,9 +8,9 @@
   padding: 12px 16px;
   border-radius: 8px;
   z-index: 1000;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  /* Removed backdrop-filter: blur(8px) - expensive paint operation */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   border: 1px solid transparent;
 }
 
@@ -45,12 +45,12 @@
   top: 20px;
   right: 20px;
   z-index: 1000;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.15s ease;
 }
 
 .connection-status-indicator:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Connection Alerts Container */
@@ -60,24 +60,15 @@
   right: 20px;
   z-index: 1000;
   max-width: 400px;
-  transition: all 0.3s ease;
+  /* Removed transition - instant positioning for better performance */
 }
 
 .connection-alert-item {
   margin-bottom: 8px;
-  animation: slideInRight 0.3s ease-out;
+  /* Removed slideInRight animation - instant appearance for better performance */
 }
 
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
+/* Removed slideInRight keyframes - instant feedback is better than animation */
 
 /* Debug Panel */
 .connection-debug-panel {
@@ -87,12 +78,12 @@
   z-index: 1000;
   max-height: 80vh;
   overflow-y: auto;
-  transition: all 0.3s ease;
+  transition: transform 0.15s ease;
 }
 
 .connection-debug-panel:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Debug Toggle Button */
@@ -101,17 +92,17 @@
   bottom: 20px;
   right: 20px;
   z-index: 1000;
-  transition: all 0.3s ease;
+  transition: transform 0.15s ease;
 }
 
 .connection-debug-toggle:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Status Icons */
 .connection-status-icon {
-  transition: all 0.3s ease;
+  transition: color 0.15s ease;
 }
 
 .connection-status-icon.connected {
@@ -120,39 +111,23 @@
 
 .connection-status-icon.connecting {
   color: rgb(251, 146, 60);
-  animation: pulse 2s infinite;
+  /* Removed pulse animation - continuous rendering overhead */
 }
 
 .connection-status-icon.reconnecting {
   color: rgb(59, 130, 246);
-  animation: spin 1s linear infinite;
+  /* Removed spin animation - continuous rendering overhead */
 }
 
 .connection-status-icon.disconnected {
   color: rgb(239, 68, 68);
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* Removed pulse and spin keyframes - continuous animations cause performance issues */
 
 /* Network Quality Badges */
 .network-quality-badge {
-  transition: all 0.3s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .network-quality-badge.excellent {
