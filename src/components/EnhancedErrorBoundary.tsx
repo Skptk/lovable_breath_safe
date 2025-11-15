@@ -102,6 +102,10 @@ export function EnhancedErrorBoundary({
     logConnection.info('Recovering from WebSocket error');
 
     try {
+      // Dynamic import for defensive error recovery - allows recovery even if static import failed
+      // Note: Vite warning about dynamic/static import conflict is expected here since
+      // supabase client is also statically imported elsewhere. The dynamic import ensures
+      // we can still recover from errors even if the module initialization failed.
       const { supabase } = await import('@/integrations/supabase/client');
 
       if (supabase.realtime) {
@@ -120,6 +124,10 @@ export function EnhancedErrorBoundary({
     logConnection.info('Recovering from subscription error');
 
     try {
+      // Dynamic import for defensive error recovery - allows recovery even if static import failed
+      // Note: Vite warning about dynamic/static import conflict is expected here since
+      // supabase client is also statically imported elsewhere. The dynamic import ensures
+      // we can still recover from errors even if the module initialization failed.
       const { supabase } = await import('@/integrations/supabase/client');
 
       if (supabase.realtime) {

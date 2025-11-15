@@ -62,42 +62,58 @@ const PATTERNS = [
   },
 ];
 
+// Helper function to normalize path for pattern matching (cross-platform)
+function normalizePathForPattern(filePath) {
+  return filePath.replace(/\\/g, '/');
+}
+
+// Helper function to check if a path matches an ignore pattern
+function matchesIgnorePattern(filePath, patterns) {
+  const normalizedPath = normalizePathForPattern(filePath);
+  
+  return patterns.some(pattern => {
+    // Convert glob pattern to regex (simple glob matching)
+    // Handle ** (matches any number of directories)
+    let regexPattern = pattern
+      .replace(/\*\*/g, '__GLOBSTAR__')  // Temporarily replace **
+      .replace(/\./g, '\\.')             // Escape dots
+      .replace(/\*/g, '[^/]*')           // Replace * with non-slash chars
+      .replace(/\?/g, '[^/]')            // Replace ? with single char
+      .replace(/__GLOBSTAR__/g, '.*?');  // Replace ** with non-greedy .*
+    
+    // Anchor to start of path
+    if (!pattern.startsWith('**')) {
+      regexPattern = '^' + regexPattern;
+    }
+    
+    const regex = new RegExp(regexPattern);
+    return regex.test(normalizedPath);
+  });
+}
+
 // Get all TypeScript and JavaScript files in the src directory
 function getSourceFiles(dir, fileList = []) {
   try {
-    const files = fs.readdirSync(dir);
+    if (!fs.existsSync(dir)) {
+      console.error(`❌ Source directory does not exist: ${dir}`);
+      return fileList;
+    }
     
-    files.forEach(file => {
-      const filePath = path.join(dir, file);
+    const files = fs.readdirSync(dir, { withFileTypes: true });
+    
+    files.forEach(entry => {
+      const filePath = path.join(dir, entry.name);
       
       try {
-        const stat = fs.statSync(filePath);
-        
-        if (stat.isDirectory()) {
+        if (entry.isDirectory()) {
           // Skip ignored directories
-          if (IGNORE_PATTERNS.some(pattern => {
-            const regex = new RegExp(
-              pattern
-                .replace(/\*\*/g, '.*')
-                .replace(/\*/g, '[^/]*')
-                .replace(/\//g, '\\')
-            );
-            return regex.test(filePath);
-          })) {
+          if (matchesIgnorePattern(filePath, IGNORE_PATTERNS)) {
             return;
           }
           getSourceFiles(filePath, fileList);
-        } else if (file.match(/\.(js|jsx|ts|tsx)$/)) {
+        } else if (entry.isFile() && entry.name.match(/\.(js|jsx|ts|tsx)$/)) {
           // Skip ignored files
-          if (!IGNORE_PATTERNS.some(pattern => {
-            const regex = new RegExp(
-              pattern
-                .replace(/\*\*/g, '.*')
-                .replace(/\*/g, '[^/]*')
-                .replace(/\//g, '\\')
-            );
-            return regex.test(filePath);
-          })) {
+          if (!matchesIgnorePattern(filePath, IGNORE_PATTERNS)) {
             fileList.push(filePath);
           }
         }

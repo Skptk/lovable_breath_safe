@@ -154,7 +154,10 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
         onEmergency?.(usedMb);
         dispatchHeapEvent('emergency', { usedMb });
         
-        // Import memory budget manager for emergency cleanup
+        // Dynamic import for emergency cleanup - ensures cleanup works even in degraded state
+        // Note: Vite warning about dynamic/static import conflict is expected here since
+        // memoryBudgetManager is also statically imported in main.tsx. The dynamic import
+        // provides a defensive fallback for emergency scenarios.
         import('./memoryBudgetManager').then(({ memoryBudgetManager }) => {
           memoryBudgetManager.emergencyCleanup('HeapFailSafe emergency');
         });
@@ -175,7 +178,8 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
           diagnostics: readMemoryDiagnostics(),
         });
         
-        // Use memory budget manager for cleanup
+        // Dynamic import for critical cleanup - defensive fallback mechanism
+        // Note: Vite warning about dynamic/static import conflict is expected here.
         import('./memoryBudgetManager').then(({ memoryBudgetManager }) => {
           memoryBudgetManager.performCleanup('HeapFailSafe critical');
         });
@@ -195,7 +199,8 @@ export const initHeapFailSafe = (options: HeapFailSafeOptions = {}) => {
         diagnostics: readMemoryDiagnostics(),
       });
       
-      // Proactive cleanup at warning level
+      // Dynamic import for proactive cleanup - defensive fallback mechanism
+      // Note: Vite warning about dynamic/static import conflict is expected here.
       import('./memoryBudgetManager').then(({ memoryBudgetManager }) => {
         memoryBudgetManager.performCleanup('HeapFailSafe warning');
       });
