@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
+import { startTransition } from "react";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,13 @@ import Header from "@/components/Header";
 import WindDashboard from "./WindDashboard";
 import WeatherForecast from "./WeatherForecast";
 import LocationPermissionBanner from "./LocationPermissionBanner";
+import { WeatherViewToggle } from "./WeatherView/WeatherViewToggle";
+import { TimeRangeSelector } from "../HistoryView/TimeRangeSelector";
+import { HistoricalWeatherChart } from "./WeatherView/HistoricalWeatherChart";
+import { useHistoricalWeatherData } from "@/hooks/useHistoricalWeatherData";
+import { transformWeatherForChart, WeatherMetric } from "./WeatherView/utils/weatherChartDataTransform";
+import { TimeRange, getAdaptivePointThreshold } from "../HistoryView/utils/chartDataTransform";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Use centralized weather store instead of useWeatherData hook
 import { useWeatherStore } from "@/store/weatherStore";
@@ -37,8 +45,12 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
   const [airQualityData, setAirQualityData] = useState<AirQualityData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'charts' | 'overview'>('overview');
+  const [timeRange, setTimeRange] = useState<TimeRange>({ type: '7d' });
+  const [selectedMetric, setSelectedMetric] = useState<WeatherMetric>('temperature');
 
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Use new geolocation hook for proper location handling
   const {
@@ -78,6 +90,23 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
     fetchForecastData,
     setCoordinates
   } = useWeatherStore();
+
+  // Fetch historical weather data for charts
+  const { data: weatherHistoryResponse, isLoading: weatherHistoryLoading, error: weatherHistoryError } = useHistoricalWeatherData(
+    user?.id,
+    timeRange,
+    selectedMetric
+  );
+
+  // Transform weather data for chart
+  const chartData = useMemo(() => {
+    if (!weatherHistoryResponse?.raw || weatherHistoryResponse.raw.length === 0) {
+      return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
+    }
+    const threshold = getAdaptivePointThreshold();
+    const safeThreshold = Math.min(threshold, 800);
+    return transformWeatherForChart(weatherHistoryResponse.raw, timeRange, selectedMetric, safeThreshold);
+  }, [weatherHistoryResponse, timeRange, selectedMetric]);
 
   // Debug logging for weather data (reduced frequency)
   useEffect(() => {
@@ -351,29 +380,79 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
         onMobileMenuToggle={onMobileMenuToggle}
       />
 
-      {/* Location Permission Banner */}
-      {!isDemoMode && (
-        <LocationPermissionBanner
-          onLocationRequest={async () => {
-            try {
-              await requestLocation();
-            } catch (error) {
-              console.error('Location request failed:', error);
-            }
-          }}
-          onSkip={() => {
-            // Call useIPBasedLocation at component level, not in callback
-            handleIPBasedLocation();
-          }}
-          permissionStatus={permissionStatus}
-          locationSource={locationData?.source}
-          city={locationData?.city}
-          country={locationData?.country}
-        />
+      {/* View Toggle and Time Range Selector */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
+        <WeatherViewToggle viewMode={viewMode} onViewChange={setViewMode} />
+        {viewMode === 'charts' && (
+          <TimeRangeSelector 
+            selectedRange={timeRange} 
+            onRangeChange={(range) => {
+              startTransition(() => {
+                setTimeRange(range);
+              });
+            }} 
+          />
+        )}
+      </div>
+
+      {/* Charts View */}
+      {viewMode === 'charts' && (
+        <div className="space-y-4">
+          <HistoricalWeatherChart
+            data={chartData.data}
+            metric={selectedMetric}
+            isLoading={weatherHistoryLoading}
+            error={weatherHistoryError}
+            meta={chartData.meta}
+            timeRange={timeRange.type}
+          />
+          {weatherHistoryResponse && weatherHistoryResponse.availableMetrics.length === 0 && (
+            <GlassCard>
+              <GlassCardContent className="p-6 text-center">
+                <div className="space-y-4">
+                  <Thermometer className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">No Weather Data Available</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Start recording weather readings to see your historical weather charts.
+                    </p>
+                    <Button onClick={() => fetchWeatherData()} variant="default">
+                      Fetch Weather Data
+                    </Button>
+                  </div>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+          )}
+        </div>
       )}
 
-      {/* Demo Mode Banner */}
-      {isDemoMode && (
+      {/* Overview View */}
+      {viewMode === 'overview' && (
+        <>
+          {/* Location Permission Banner */}
+          {!isDemoMode && (
+            <LocationPermissionBanner
+              onLocationRequest={async () => {
+                try {
+                  await requestLocation();
+                } catch (error) {
+                  console.error('Location request failed:', error);
+                }
+              }}
+              onSkip={() => {
+                // Call useIPBasedLocation at component level, not in callback
+                handleIPBasedLocation();
+              }}
+              permissionStatus={permissionStatus}
+              locationSource={locationData?.source}
+              city={locationData?.city}
+              country={locationData?.country}
+            />
+          )}
+
+          {/* Demo Mode Banner */}
+          {isDemoMode && (
         <motion.div
           className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg"
           initial={{ opacity: 0, y: -20 }}
@@ -775,6 +854,8 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
           </GlassCardContent>
         </GlassCard>
       </div>
+        </>
+      )}
     </div>
   );
 }
