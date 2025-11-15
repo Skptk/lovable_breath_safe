@@ -140,9 +140,16 @@ export const useGlobalEnvironmentalData = (
   
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsTabVisible(!document.hidden);
+      // Optimized: Use startTransition to defer state update
+      if ('startTransition' in (window as any).React) {
+        (window as any).React.startTransition(() => {
+          setIsTabVisible(!document.hidden);
+        });
+      } else {
+        setIsTabVisible(!document.hidden);
+      }
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true });
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 

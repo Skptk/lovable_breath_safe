@@ -58,12 +58,31 @@ class MemoryBudgetManager {
   constructor() {
     if (typeof window !== 'undefined') {
       // Track tab visibility
+      // Optimized: Defer cleanup to avoid blocking main thread
+      let visibilityTimeout: number | null = null;
+      
       document.addEventListener('visibilitychange', () => {
         this.isTabVisible = !document.hidden;
+        
         if (document.hidden) {
-          this.emergencyCleanup('Tab hidden');
+          // Clear any pending timeout
+          if (visibilityTimeout !== null) {
+            clearTimeout(visibilityTimeout);
+          }
+          
+          // Defer heavy cleanup operations
+          if ('requestIdleCallback' in window) {
+            (window as any).requestIdleCallback(() => {
+              this.emergencyCleanup('Tab hidden');
+            }, { timeout: 1000 });
+          } else {
+            visibilityTimeout = window.setTimeout(() => {
+              this.emergencyCleanup('Tab hidden');
+              visibilityTimeout = null;
+            }, 100);
+          }
         }
-      });
+      }, { passive: true });
 
       // Periodic aggressive cleanup
       this.startPeriodicCleanup();
@@ -145,38 +164,47 @@ class MemoryBudgetManager {
 
   /**
    * Emergency cleanup - most aggressive
+   * Optimized: Batch operations to prevent forced reflows
    */
   emergencyCleanup(reason: string) {
     console.error(`🚨 [MemoryBudget] EMERGENCY CLEANUP: ${reason}`);
 
-    // Clear ALL React Query cache
-    if (this.queryClient) {
-      this.queryClient.clear();
-    }
+    // Batch DOM reads first to prevent forced reflows
+    const memoryBefore = this.getCurrentMemoryUsage();
 
-    // Clear Zustand stores
-    this.cleanupZustandStores(true);
-
-    // Clear session storage
-    if (typeof sessionStorage !== 'undefined') {
-      try {
-        sessionStorage.clear();
-      } catch (_e) {
-        // Ignore
+    // Batch all write operations
+    requestAnimationFrame(() => {
+      // Clear ALL React Query cache
+      if (this.queryClient) {
+        this.queryClient.clear();
       }
-    }
 
-    // Force GC
-    this.forceGC();
+      // Clear Zustand stores
+      this.cleanupZustandStores(true);
 
-    // If still over emergency threshold, reload
-    setTimeout(() => {
-      const usage = this.getCurrentMemoryUsage();
-      if (usage && usage >= DEFAULT_BUDGET.emergencyThresholdMB) {
-        console.error('🚨 [MemoryBudget] Emergency threshold still exceeded, reloading...');
-        window.location.reload();
+      // Clear session storage
+      if (typeof sessionStorage !== 'undefined') {
+        try {
+          sessionStorage.clear();
+        } catch (_e) {
+          // Ignore
+        }
       }
-    }, 1000);
+
+      // Force GC (deferred to avoid blocking)
+      setTimeout(() => {
+        this.forceGC();
+
+        // If still over emergency threshold, reload
+        setTimeout(() => {
+          const usage = this.getCurrentMemoryUsage();
+          if (usage && usage >= DEFAULT_BUDGET.emergencyThresholdMB) {
+            console.error('🚨 [MemoryBudget] Emergency threshold still exceeded, reloading...');
+            window.location.reload();
+          }
+        }, 1000);
+      }, 0);
+    });
   }
 
   /**

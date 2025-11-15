@@ -43,7 +43,16 @@ const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onSuccess: () => {
       // Delegate to memory budget manager for consistent cleanup
-      memoryBudgetManager.performCleanup('Query success')
+      // Optimized: Defer cleanup to avoid blocking query handlers
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => {
+          memoryBudgetManager.performCleanup('Query success');
+        }, { timeout: 2000 });
+      } else {
+        setTimeout(() => {
+          memoryBudgetManager.performCleanup('Query success');
+        }, 100);
+      }
     }
   })
 })
@@ -125,15 +134,34 @@ if (typeof window !== 'undefined') {
   }
 
   // CRITICAL: Stop all polling when tab is hidden to prevent memory growth
+  // Optimized: Defer heavy cleanup to avoid blocking the main thread
   if (typeof document !== 'undefined') {
+    let visibilityChangeTimeout: number | null = null;
+    
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        // Pause all polling immediately
-        memoryBudgetManager.pauseAllPolling()
-        // Emergency cleanup
-        memoryBudgetManager.emergencyCleanup('Tab hidden')
+        // Pause all polling immediately (lightweight operation)
+        memoryBudgetManager.pauseAllPolling();
+        
+        // Clear any pending timeout
+        if (visibilityChangeTimeout !== null) {
+          clearTimeout(visibilityChangeTimeout);
+        }
+        
+        // Defer heavy cleanup operations to avoid blocking main thread
+        // Use requestIdleCallback if available, otherwise setTimeout
+        if ('requestIdleCallback' in window) {
+          (window as any).requestIdleCallback(() => {
+            memoryBudgetManager.emergencyCleanup('Tab hidden');
+          }, { timeout: 1000 });
+        } else {
+          visibilityChangeTimeout = window.setTimeout(() => {
+            memoryBudgetManager.emergencyCleanup('Tab hidden');
+            visibilityChangeTimeout = null;
+          }, 100);
+        }
       }
-    })
+    }, { passive: true });
   }
 }
 

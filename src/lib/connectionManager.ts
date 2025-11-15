@@ -193,11 +193,19 @@ export class ConnectionManager extends EventEmitter {
     }, 30000); // Send ping every 30 seconds
     
     // Update last activity on messages
+    // Optimized: Throttle updates to avoid performance violations
+    let lastActivityUpdate = 0;
+    const ACTIVITY_UPDATE_THROTTLE = 100; // Only update every 100ms
+    
     const onMessage = () => {
-      connection.status.lastActivity = Date.now();
+      const now = Date.now();
+      if (now - lastActivityUpdate >= ACTIVITY_UPDATE_THROTTLE) {
+        connection.status.lastActivity = now;
+        lastActivityUpdate = now;
+      }
     };
     
-    ws.addEventListener('message', onMessage);
+    ws.addEventListener('message', onMessage, { passive: true });
     
     // Store the connection
     this.connections.set(connectionId, connection);

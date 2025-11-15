@@ -681,16 +681,20 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   }, [userId, isInitialized]);
 
   // Mobile performance optimization - pause expensive operations when app is backgrounded
+  // Optimized: Use passive listener to avoid blocking
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        queueRefresh();
+        // Defer refresh to avoid blocking visibility handler
+        requestAnimationFrame(() => {
+          queueRefresh();
+        });
       } else {
         cancelQueuedRefresh();
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true });
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       cancelQueuedRefresh();

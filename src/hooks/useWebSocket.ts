@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, startTransition } from 'react';
 import { connectionManager, ConnectionOptions } from '@/lib/connectionManager';
 import { debugLog, debugWarn, debugError } from '@/utils/debugFlags';
 
@@ -52,11 +52,29 @@ export function useWebSocket(
   }, []);
 
   // Handle message events
+  // Optimized: Defer heavy operations to avoid blocking main thread
   const handleMessage = useCallback((event: MessageEvent) => {
-    setLastMessage(event);
+    // Defer React state updates to avoid blocking message handler
+    startTransition(() => {
+      setLastMessage(event);
+    });
+    
+    // Call user callback immediately (they control what it does)
     onMessageRef.current?.(event);
-    debugLog('WebSocket', 'Message received', { url, data: event.data });
-  }, []);
+    
+    // Defer debug logging to avoid blocking
+    if (import.meta.env.DEV) {
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => {
+          debugLog('WebSocket', 'Message received', { url, data: event.data });
+        }, { timeout: 500 });
+      } else {
+        setTimeout(() => {
+          debugLog('WebSocket', 'Message received', { url, data: event.data });
+        }, 0);
+      }
+    }
+  }, [url]);
 
   // Handle connection open
   const handleOpen = useCallback((event: Event) => {
@@ -105,6 +123,7 @@ export function useWebSocket(
       const ws = await connectionManager.connect(url, connectionOptionsRef.current);
       
       // Set up event listeners
+      // Note: WebSocket events don't support passive option, but handlers are optimized
       ws.addEventListener('message', handleMessage);
       ws.addEventListener('open', handleOpen);
       ws.addEventListener('close', handleClose);
