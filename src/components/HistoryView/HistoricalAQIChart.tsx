@@ -103,57 +103,72 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
   useEffect(() => {
     if (!containerRef.current || typeof window === 'undefined') return;
 
-    // Set initial dimensions without measuring (use CSS)
-    const updateDimensions = () => {
-      if (!containerRef.current) return;
-      
-      // Use requestAnimationFrame to batch layout reads
-      requestAnimationFrame(() => {
-        if (!containerRef.current) return;
-        const rect = containerRef.current.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          const newDims = { width: rect.width, height: rect.height };
-          // Only update if changed significantly
-          if (
-            Math.abs(newDims.width - lastDimensionsRef.current.width) > 10 ||
-            Math.abs(newDims.height - lastDimensionsRef.current.height) > 10
-          ) {
-            lastDimensionsRef.current = newDims;
+    // Use ResizeObserver's contentRect directly - no getBoundingClientRect needed
+    const updateDimensions = (width: number, height: number) => {
+      if (width > 0 && height > 0) {
+        const newDims = { width, height };
+        // Only update if change is significant (reduces re-renders)
+        if (
+          Math.abs(newDims.width - lastDimensionsRef.current.width) > 10 ||
+          Math.abs(newDims.height - lastDimensionsRef.current.height) > 10
+        ) {
+          lastDimensionsRef.current = newDims;
+          // Use startTransition to defer state update
+          startTransition(() => {
             setDimensions(newDims);
-          }
+          });
         }
-      });
+      }
     };
 
     // Debounced resize handler
-    const handleResize = () => {
+    const handleResize = (width: number, height: number) => {
       if (resizeTimeoutRef.current) {
         clearTimeout(resizeTimeoutRef.current);
       }
-      resizeTimeoutRef.current = setTimeout(updateDimensions, 150);
+      resizeTimeoutRef.current = setTimeout(() => {
+        updateDimensions(width, height);
+        resizeTimeoutRef.current = null;
+      }, 200); // Increased debounce to 200ms
     };
 
-    // Initial measurement (deferred)
-    setTimeout(updateDimensions, 0);
+    // Initial dimensions from container (only once on mount)
+    if (containerRef.current) {
+      const initialWidth = containerRef.current.offsetWidth || 800;
+      const initialHeight = containerRef.current.offsetHeight || 400;
+      lastDimensionsRef.current = { width: initialWidth, height: initialHeight };
+      setDimensions({ width: initialWidth, height: initialHeight });
+    }
 
-    // Use ResizeObserver instead of window resize for better performance
     if ('ResizeObserver' in window) {
       resizeObserverRef.current = new ResizeObserver((entries) => {
-        // Use ref to avoid dependency issues
-        for (const entry of entries) {
-          const { width, height } = entry.contentRect;
-          if (
-            Math.abs(width - lastDimensionsRef.current.width) > 10 ||
-            Math.abs(height - lastDimensionsRef.current.height) > 10
-          ) {
-            handleResize();
+        // Batch all entries in a single RAF to avoid multiple updates
+        requestAnimationFrame(() => {
+          for (const entry of entries) {
+            const { width, height } = entry.contentRect;
+            if (
+              Math.abs(width - lastDimensionsRef.current.width) > 10 ||
+              Math.abs(height - lastDimensionsRef.current.height) > 10
+            ) {
+              handleResize(width, height);
+            }
           }
-        }
+        });
       });
       resizeObserverRef.current.observe(containerRef.current);
     } else {
-      // Fallback to window resize with throttling
-      window.addEventListener('resize', handleResize, { passive: true });
+      // Fallback to window resize
+      const fallbackHandler = () => {
+        if (containerRef.current) {
+          const width = containerRef.current.offsetWidth;
+          const height = containerRef.current.offsetHeight;
+          handleResize(width, height);
+        }
+      };
+      window.addEventListener('resize', fallbackHandler, { passive: true });
+      return () => {
+        window.removeEventListener('resize', fallbackHandler);
+      };
     }
 
     return () => {
@@ -163,7 +178,6 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
       if (resizeTimeoutRef.current) {
         clearTimeout(resizeTimeoutRef.current);
       }
-      window.removeEventListener('resize', handleResize);
     };
   }, []);
 

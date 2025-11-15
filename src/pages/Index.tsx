@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
-import BackgroundManager from "@/components/BackgroundManager";
 import { DeveloperTools } from "@/components/DeveloperTools";
+import "@/styles/app-background.css";
 import { cleanupAllChannels } from "@/lib/realtimeClient";
 import EnhancedErrorBoundary from "@/components/EnhancedErrorBoundary";
 import { logNavigation } from "@/lib/logger";
@@ -316,8 +316,8 @@ export default function Index(): JSX.Element | null {
   };
 
   return (
-    <BackgroundManager>
-      <div ref={shellRef} className="relative min-h-screen">
+    <div className="app-background" ref={shellRef}>
+      <div className="relative min-h-screen">
         <div className="relative z-10 flex min-h-screen bg-gradient-to-br from-background/60 via-background/30 to-background/80">
           <DeveloperTools 
             isVisible={showDeveloperTools}
@@ -356,6 +356,6 @@ export default function Index(): JSX.Element | null {
           </div>
         </div>
       </div>
-    </BackgroundManager>
+    </div>
   );
 }

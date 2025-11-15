@@ -1,0 +1,5 @@
+.app-background {
+  background: linear-gradient(180deg, #0f172a 0%, #001529 40%, #071331 100%);
+  background-attachment: fixed;
+}
+

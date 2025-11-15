@@ -3,9 +3,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Lock, ArrowRight, Home, Map, User, Trophy, ShoppingBag, Settings, Newspaper, History } from "lucide-react";
-import BackgroundManager from "@/components/BackgroundManager";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
+import "@/styles/app-background.css";
 
 // Lazy load only the components needed for demo mode
 const AirQualityDashboard = lazy(() => 
@@ -275,7 +275,7 @@ export default function Demo(): JSX.Element {
   );
 
   return (
-    <BackgroundManager>
+    <div className="app-background">
       <div className="relative min-h-screen">
         <div className="relative z-10 flex min-h-screen bg-gradient-to-br from-background/60 via-background/30 to-background/80">
           <DemoSidebar />
@@ -351,6 +351,6 @@ export default function Demo(): JSX.Element {
           </div>
         </div>
       </div>
-    </BackgroundManager>
+    </div>
   );
 }
