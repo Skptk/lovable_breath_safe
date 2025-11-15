@@ -768,7 +768,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   return (
     <>
       <div className="page-container">
-        <div className="page-content space-y-4 md:space-y-6 w-full max-w-full overflow-x-hidden px-4 md:px-6">
+        <div className="page-content space-y-4 sm:space-y-5 md:space-y-6 w-full max-w-full overflow-x-hidden px-3 sm:px-4 md:px-6">
           {/* Header */}
           <Header
             title="Air Quality History"
@@ -781,13 +781,14 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           />
 
           {/* View Toggle and Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 justify-between w-full max-w-full overflow-hidden">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 w-full max-w-full overflow-hidden">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 variant={viewMode === 'chart' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('chart')}
                 aria-label="Switch to chart view"
+                className="flex-1 sm:flex-initial"
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Chart
@@ -797,59 +798,67 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                 size="sm"
                 onClick={() => setViewMode('table')}
                 aria-label="Switch to table view"
+                className="flex-1 sm:flex-initial"
               >
                 <Table className="h-4 w-4 mr-2" />
                 Table
               </Button>
             </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-              {selectedEntries.size > 0 && viewMode === 'table' && (
-                <Button
-                  onClick={bulkDeleteSelected}
-                  variant="destructive"
-                  size="sm"
-                  disabled={bulkDeleting}
+            {viewMode === 'table' && (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                {selectedEntries.size > 0 && (
+                  <Button
+                    onClick={bulkDeleteSelected}
+                    variant="destructive"
+                    size="sm"
+                    disabled={bulkDeleting}
+                    className="gap-2 w-full sm:w-auto"
+                  >
+                    {bulkDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="hidden sm:inline">Delete Selected ({selectedEntries.size})</span>
+                        <span className="sm:hidden">Delete ({selectedEntries.size})</span>
+                      </>
+                    )}
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={selectAllEntries} 
                   className="gap-2 w-full sm:w-auto"
                 >
-                  {bulkDeleting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4" />
-                      Delete Selected ({selectedEntries.size})
-                    </>
-                  )}
-                </Button>
-              )}
-
-              {viewMode === 'table' && (
-                <Button variant="outline" size="sm" onClick={selectAllEntries} className="gap-2 w-full sm:w-auto">
                   {selectedEntries.size === history.length ? 'Deselect All' : 'Select All'}
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Chart View */}
           {viewMode === 'chart' && (
-            <div className="space-y-4">
+            <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
               <TimeRangeSelector selectedRange={timeRange} onRangeChange={setTimeRange} />
               
               {/* Air Quality Chart */}
-              <HistoricalAQIChart
-                data={chartData.data}
-                isLoading={chartLoading}
-                error={chartError}
-                onDataPointClick={handleChartPointClick}
-                meta={chartData.meta}
-              />
+              <div className="w-full max-w-full overflow-hidden">
+                <HistoricalAQIChart
+                  data={chartData.data}
+                  isLoading={chartLoading}
+                  error={chartError}
+                  onDataPointClick={handleChartPointClick}
+                  meta={chartData.meta}
+                />
+              </div>
 
               {/* Weather Metric Selector */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-medium text-muted-foreground">Weather Metric:</span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full max-w-full overflow-hidden">
+                <span className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">Weather Metric:</span>
                 <div className="flex gap-2 flex-wrap">
                   {(['temperature', 'humidity', 'windSpeed', 'windGust', 'airPressure'] as WeatherMetric[]).map((metric) => (
                     <Button
@@ -857,53 +866,79 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                       variant={selectedWeatherMetric === metric ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setSelectedWeatherMetric(metric)}
+                      className="text-xs sm:text-sm"
                     >
-                      {metric === 'temperature' ? 'Temperature' :
-                       metric === 'humidity' ? 'Humidity' :
-                       metric === 'windSpeed' ? 'Wind Speed' :
-                       metric === 'windGust' ? 'Wind Gust' :
-                       'Air Pressure'}
+                      {metric === 'temperature' ? (
+                        <>
+                          <span className="hidden sm:inline">Temperature</span>
+                          <span className="sm:hidden">Temp</span>
+                        </>
+                      ) : metric === 'humidity' ? (
+                        <>
+                          <span className="hidden sm:inline">Humidity</span>
+                          <span className="sm:hidden">Humid</span>
+                        </>
+                      ) : metric === 'windSpeed' ? (
+                        <>
+                          <span className="hidden sm:inline">Wind Speed</span>
+                          <span className="sm:hidden">Wind</span>
+                        </>
+                      ) : metric === 'windGust' ? (
+                        <>
+                          <span className="hidden sm:inline">Wind Gust</span>
+                          <span className="sm:hidden">Gust</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="hidden sm:inline">Air Pressure</span>
+                          <span className="sm:hidden">Pressure</span>
+                        </>
+                      )}
                     </Button>
                   ))}
                 </div>
               </div>
 
               {/* Historical Weather Chart */}
-              <HistoricalWeatherChart
-                data={weatherChartData.data}
-                metric={selectedWeatherMetric}
-                isLoading={weatherHistoryLoading}
-                error={weatherHistoryError}
-                meta={weatherChartData.meta}
-                timeRange={timeRange.type}
-              />
+              <div className="w-full max-w-full overflow-hidden">
+                <HistoricalWeatherChart
+                  data={weatherChartData.data}
+                  metric={selectedWeatherMetric}
+                  isLoading={weatherHistoryLoading}
+                  error={weatherHistoryError}
+                  meta={weatherChartData.meta}
+                  timeRange={timeRange.type}
+                />
+              </div>
             </div>
           )}
 
           {/* Fetch AQI Data Button - Only shown after clearing history */}
           {showFetchButton && (
             <GlassCard variant="elevated" className="border-2 border-primary/20 w-full max-w-full overflow-hidden">
-              <GlassCardContent className="p-4 md:p-6 text-center">
-                <div className="space-y-4">
-                  <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                    <MapPin className="w-8 h-8 text-primary" />
+              <GlassCardContent className="p-4 sm:p-6 text-center">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                    <MapPin className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-lg font-semibold">Start Collecting AQI Data</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="text-base sm:text-lg font-semibold">Start Collecting AQI Data</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground px-2">
                       Click the button below to fetch your first air quality reading and start building your history.
                     </p>
                   </div>
-                  <Button onClick={fetchAQIData} disabled={fetchingData} className="w-full max-w-xs" size="lg">
+                  <Button onClick={fetchAQIData} disabled={fetchingData} className="w-full sm:max-w-xs" size="lg">
                     {fetchingData ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Fetching AQI Data...
+                        <span className="hidden sm:inline">Fetching AQI Data...</span>
+                        <span className="sm:hidden">Fetching...</span>
                       </>
                     ) : (
                       <>
                         <MapPin className="h-4 w-4 mr-2" />
-                        Fetch AQI Data
+                        <span className="hidden sm:inline">Fetch AQI Data</span>
+                        <span className="sm:hidden">Fetch Data</span>
                       </>
                     )}
                   </Button>
@@ -913,7 +948,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-full overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 w-full max-w-full overflow-hidden">
             <GlassCard variant="subtle" className="w-full max-w-full overflow-hidden">
               <GlassCardHeader className="pb-2">
                 <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
@@ -962,14 +997,14 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
           {/* Table View */}
           {viewMode === 'table' && (
-            <div className="space-y-3 w-full max-w-full overflow-hidden">
+            <div className="space-y-3 sm:space-y-4 w-full max-w-full overflow-hidden">
               {/* History Section */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full max-w-full overflow-hidden">
-              <h2 className="text-lg font-semibold">
-                Recent Readings {history.length > 0 && `(${history.length})`}
+              <h2 className="text-base sm:text-lg font-semibold">
+                Recent Readings {history.length > 0 && <span className="text-sm text-muted-foreground">({history.length})</span>}
               </h2>
               {selectedEntries.size > 0 && (
-                <div className="text-sm text-muted-foreground">
+                <div className="text-xs sm:text-sm text-muted-foreground">
                   {selectedEntries.size} selected
                 </div>
               )}
@@ -977,18 +1012,18 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
             {history.length === 0 ? (
               <GlassCard variant="elevated" className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 w-full max-w-full overflow-hidden">
-                <GlassCardContent className="p-6 md:p-8 text-center">
+                <GlassCardContent className="p-4 sm:p-6 md:p-8 text-center">
                   <div className="space-y-2">
-                    <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <h3 className="text-lg font-semibold">No History Yet</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <MapPin className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground" />
+                    <h3 className="text-base sm:text-lg font-semibold">No History Yet</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       Start tracking air quality to see your history here.
                     </p>
                   </div>
                 </GlassCardContent>
               </GlassCard>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {history.map((entry) => (
                   <HistoryRow
                     key={entry.id}
