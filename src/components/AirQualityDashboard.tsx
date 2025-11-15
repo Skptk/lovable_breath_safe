@@ -7,7 +7,7 @@ import { useRefreshCountdown } from "@/hooks/useRefreshCountdown";
 import { useLocationContext } from "@/contexts";
 import { RefreshProgressBar } from "@/components/ui/RefreshProgressBar";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingDown, RefreshCw, MapPin, History } from "lucide-react";
+import { TrendingDown, RefreshCw, MapPin, History, Menu, X } from "lucide-react";
 import { getAQIColor, getAQILabel } from "@/config/maps";
 
 import DataSourceValidator from "./DataSourceValidator";
@@ -32,19 +32,19 @@ interface PollutantCardGridProps {
 
 const PollutantCardGrid = React.memo(function PollutantCardGrid({ cards, onSelect, disabled }: PollutantCardGridProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 sm:mt-10">
       {cards.map((pollutant) => (
         <button
           key={pollutant.label}
           type="button"
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-center transition-transform hover:-translate-y-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/60 disabled:opacity-60 disabled:pointer-events-none"
+          className="rounded-xl border border-white/10 bg-white/5 px-3 py-4 sm:px-4 sm:py-5 text-center transition-opacity hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/60 disabled:opacity-60 disabled:pointer-events-none"
           onClick={() => onSelect(pollutant)}
           disabled={disabled}
         >
-          <div className="text-2xl font-semibold text-white">
+          <div className="text-xl sm:text-2xl font-semibold text-white">
             {pollutant.value.toFixed(1)}
           </div>
-          <div className="text-sm text-slate-300 mt-1">{pollutant.label}</div>
+          <div className="text-xs sm:text-sm text-slate-300 mt-1">{pollutant.label}</div>
           <div className="text-xs text-slate-400">{pollutant.unit}</div>
         </button>
       ))}
@@ -86,6 +86,8 @@ interface DashboardHeaderProps {
   onRefresh: () => void;
   onNavigate?: (route: string) => void;
   isRefreshing: boolean;
+  showMobileMenu?: boolean;
+  onMobileMenuToggle?: () => void;
 }
 
 const DashboardHeader = React.memo(function DashboardHeader({
@@ -94,17 +96,37 @@ const DashboardHeader = React.memo(function DashboardHeader({
   onRefresh,
   onNavigate,
   isRefreshing,
+  showMobileMenu,
+  onMobileMenuToggle,
 }: DashboardHeaderProps) {
   return (
     <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-10">
-      <div className="space-y-3">
-        <p className="text-sm font-semibold uppercase tracking-[0.35em] text-teal-200/80">Welcome back</p>
-        <h1 className="text-3xl sm:text-4xl font-semibold text-white">
-          Hello, {userName}!
-        </h1>
-        <p className="text-lg text-slate-300">
-          {locationLabel ? `Air quality in ${locationLabel}` : "Your personalized air quality command center"}
-        </p>
+      <div className="flex items-start gap-4 flex-1 min-w-0">
+        {/* Mobile Menu Button */}
+        {onMobileMenuToggle && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMobileMenuToggle}
+            className="md:hidden h-10 w-10 rounded-full border border-white/20 hover:bg-white/10 text-white flex-shrink-0 mt-1"
+            aria-label="Toggle mobile menu"
+          >
+            {showMobileMenu ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </Button>
+        )}
+        <div className="space-y-3 flex-1 min-w-0">
+          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-teal-200/80">Welcome back</p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white break-words">
+            Hello, {userName}!
+          </h1>
+          <p className="text-base sm:text-lg text-slate-300 break-words">
+            {locationLabel ? `Air quality in ${locationLabel}` : "Your personalized air quality command center"}
+          </p>
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Button
@@ -114,7 +136,8 @@ const DashboardHeader = React.memo(function DashboardHeader({
           className="bg-white/5 hover:bg-white/10 text-white border-white/20"
         >
           <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-          {isRefreshing ? "Refreshing" : "Refresh Data"}
+          <span className="hidden sm:inline">{isRefreshing ? "Refreshing" : "Refresh Data"}</span>
+          <span className="sm:hidden">{isRefreshing ? "Refreshing" : "Refresh"}</span>
         </Button>
         <Button
           variant="default"
@@ -122,7 +145,8 @@ const DashboardHeader = React.memo(function DashboardHeader({
           className="bg-teal-400 hover:bg-teal-300 text-slate-900"
         >
           <History className="mr-2 h-4 w-4" />
-          View History
+          <span className="hidden sm:inline">View History</span>
+          <span className="sm:hidden">History</span>
         </Button>
       </div>
     </header>
@@ -155,22 +179,22 @@ const CurrentAirQualityCard = React.memo(function CurrentAirQualityCard({
   onNavigate,
 }: CurrentAirQualityCardProps) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5/5 p-8 text-center">
-      <h2 className="text-xl font-semibold text-white mb-2">Current Air Quality</h2>
-      <p className="text-slate-400">Last updated: {lastUpdated}</p>
-      <div className="mt-10 space-y-6">
-        <div className="text-7xl sm:text-8xl font-bold" style={{ color: aqiColor }}>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 lg:p-8 text-center">
+      <h2 className="text-lg sm:text-xl font-semibold text-white mb-2">Current Air Quality</h2>
+      <p className="text-xs sm:text-sm text-slate-400">Last updated: {lastUpdated}</p>
+      <div className="mt-6 sm:mt-10 space-y-4 sm:space-y-6">
+        <div className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold" style={{ color: aqiColor }}>
           {aqiValue}
         </div>
-        <div className="inline-flex items-center px-5 py-2 rounded-full" style={{ backgroundColor: `${aqiColor}20` }}>
-          <span className="text-lg font-medium" style={{ color: aqiColor }}>
+        <div className="inline-flex items-center px-4 sm:px-5 py-2 rounded-full" style={{ backgroundColor: `${aqiColor}20` }}>
+          <span className="text-base sm:text-lg font-medium" style={{ color: aqiColor }}>
             {aqiLabel}
           </span>
         </div>
       </div>
       <PollutantCardGrid cards={pollutantCards} onSelect={onSelect} disabled={isRefreshing} />
 
-      <div className="mt-10 flex flex-wrap justify-center gap-4">
+      <div className="mt-6 sm:mt-10 flex flex-wrap justify-center gap-3 sm:gap-4">
         <Button
           variant="outline"
           onClick={onRefresh}
@@ -429,9 +453,9 @@ function AirQualityDashboardContent({
   }, [hasUserConsent, refreshData, isDemoMode, toast]);
 
   const renderUnifiedShell = (content: React.ReactNode) => (
-    <div className="relative z-10 px-4 py-8 sm:px-6 lg:px-10">
-      <div className="mx-auto max-w-7xl">
-        <div className="bg-black/40 backdrop-blur-sm ring-1 ring-white/10 rounded-3xl shadow-xl p-6 sm:p-10">
+    <div className="relative z-10 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="mx-auto max-w-7xl w-full">
+        <div className="bg-black/40 ring-1 ring-white/10 rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8 xl:p-10">
           {content}
         </div>
       </div>
@@ -501,10 +525,12 @@ function AirQualityDashboardContent({
                   onRefresh={handleRefresh}
                   onNavigate={onNavigate}
                   isRefreshing={isRefreshing}
+                  showMobileMenu={showMobileMenu}
+                  onMobileMenuToggle={onMobileMenuToggle}
                 />
 
-                <section className="grid gap-8 lg:grid-cols-3">
-                  <div className="lg:col-span-2 space-y-8">
+                <section className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-3">
+                  <div className="lg:col-span-2 space-y-6 sm:space-y-8">
                     <CurrentAirQualityCard
                       lastUpdated={lastUpdated}
                       aqiValue={aqiValue}
@@ -536,10 +562,12 @@ function AirQualityDashboardContent({
                     )}
                   </div>
 
-                  <PointsSummary cards={pointsSummaryCards} />
+                  <div className="lg:col-span-1">
+                    <PointsSummary cards={pointsSummaryCards} />
+                  </div>
                 </section>
 
-                <section className="mt-12 pt-12 border-t border-white/10">
+                <section className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-white/10">
                   <WeatherSection coordinates={coordinates} />
                 </section>
       </>
