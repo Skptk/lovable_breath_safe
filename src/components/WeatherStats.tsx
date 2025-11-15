@@ -45,7 +45,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
   const [airQualityData, setAirQualityData] = useState<AirQualityData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'charts' | 'overview'>('overview');
+  const [viewMode, setViewMode] = useState<'charts' | 'overview'>('charts');
   const [timeRange, setTimeRange] = useState<TimeRange>({ type: '7d' });
   const [selectedMetric, setSelectedMetric] = useState<WeatherMetric>('temperature');
 
@@ -381,8 +381,10 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
       />
 
       {/* View Toggle and Time Range Selector */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
-        <WeatherViewToggle viewMode={viewMode} onViewChange={setViewMode} />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <WeatherViewToggle viewMode={viewMode} onViewChange={setViewMode} />
+        </div>
         {viewMode === 'charts' && (
           <TimeRangeSelector 
             selectedRange={timeRange} 
