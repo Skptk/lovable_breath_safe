@@ -8,6 +8,8 @@ export interface WeatherEntry {
   temperature: number | null;
   humidity: number | null;
   wind_speed: number | null;
+  wind_direction: number | null;
+  wind_gust: number | null;
   air_pressure: number | null;
   rain_probability: number | null;
 }
@@ -22,7 +24,7 @@ export interface WeatherChartDataPoint {
   originalCount?: number;
 }
 
-export type WeatherMetric = 'temperature' | 'humidity' | 'windSpeed' | 'precipitation' | 'airPressure';
+export type WeatherMetric = 'temperature' | 'humidity' | 'windSpeed' | 'windGust' | 'precipitation' | 'airPressure';
 
 /**
  * Get metric value from weather entry
@@ -35,6 +37,8 @@ function getMetricValue(entry: WeatherEntry, metric: WeatherMetric): number | nu
       return entry.humidity;
     case 'windSpeed':
       return entry.wind_speed;
+    case 'windGust':
+      return entry.wind_gust;
     case 'precipitation':
       return entry.rain_probability;
     case 'airPressure':

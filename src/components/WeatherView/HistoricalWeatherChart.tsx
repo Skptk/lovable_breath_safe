@@ -45,6 +45,8 @@ function getMetricColor(metric: WeatherMetric): string {
       return '#3B82F6'; // Blue for humidity
     case 'windSpeed':
       return '#10B981'; // Green for wind
+    case 'windGust':
+      return '#14B8A6'; // Teal for wind gust
     case 'precipitation':
       return '#8B5CF6'; // Purple for precipitation
     case 'airPressure':
@@ -62,6 +64,8 @@ function getMetricUnit(metric: WeatherMetric): string {
     case 'humidity':
       return '%';
     case 'windSpeed':
+      return 'km/h';
+    case 'windGust':
       return 'km/h';
     case 'precipitation':
       return '%';
@@ -81,6 +85,8 @@ function getMetricLabel(metric: WeatherMetric): string {
       return 'Humidity';
     case 'windSpeed':
       return 'Wind Speed';
+    case 'windGust':
+      return 'Wind Gust';
     case 'precipitation':
       return 'Precipitation';
     case 'airPressure':
@@ -175,80 +181,88 @@ export const HistoricalWeatherChart = memo(function HistoricalWeatherChart({
   useEffect(() => {
     if (!containerRef.current || typeof window === 'undefined') return;
 
-    // Use ResizeObserver's contentRect directly - no getBoundingClientRect needed
-    const updateDimensions = (width: number, height: number) => {
-      if (width > 0 && height > 0) {
-        const newDims = { width, height };
-        // Only update if change is significant (reduces re-renders)
-        if (
-          Math.abs(newDims.width - lastDimensionsRef.current.width) > 10 ||
-          Math.abs(newDims.height - lastDimensionsRef.current.height) > 10
-        ) {
-          lastDimensionsRef.current = newDims;
-          // Use startTransition to defer state update
-          startTransition(() => {
-            setDimensions(newDims);
-          });
-        }
-      }
-    };
-
-    // Debounced resize handler
-    const handleResize = (width: number, height: number) => {
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-      resizeTimeoutRef.current = setTimeout(() => {
-        updateDimensions(width, height);
-        resizeTimeoutRef.current = null;
-      }, 200); // Increased debounce to 200ms
-    };
-
-    // Initial dimensions from container (only once on mount)
-    // Defer to avoid forced reflow - use requestAnimationFrame
-    if (containerRef.current) {
-      requestAnimationFrame(() => {
-        if (containerRef.current) {
-          const initialWidth = containerRef.current.offsetWidth || 800;
-          const initialHeight = containerRef.current.offsetHeight || 400;
-          lastDimensionsRef.current = { width: initialWidth, height: initialHeight };
-          startTransition(() => {
-            setDimensions({ width: initialWidth, height: initialHeight });
-          });
-        }
-      });
-    }
-
-    if ('ResizeObserver' in window) {
+    // Use ResizeObserver for initial dimensions too - avoids forced reflow
+    if ('ResizeObserver' in window && containerRef.current) {
+      // Create observer that handles both initial and subsequent resizes
       resizeObserverRef.current = new ResizeObserver((entries) => {
-        // Batch all entries in a single RAF to avoid multiple updates
-        requestAnimationFrame(() => {
+        // Use a single RAF to batch all resize operations
+        if (resizeTimeoutRef.current) {
+          clearTimeout(resizeTimeoutRef.current);
+        }
+        
+        resizeTimeoutRef.current = setTimeout(() => {
           for (const entry of entries) {
             const { width, height } = entry.contentRect;
+            if (width > 0 && height > 0) {
+              // Only update if change is significant (reduces re-renders)
+              if (
+                Math.abs(width - lastDimensionsRef.current.width) > 10 ||
+                Math.abs(height - lastDimensionsRef.current.height) > 10
+              ) {
+                lastDimensionsRef.current = { width, height };
+                // Use startTransition to defer state update
+                startTransition(() => {
+                  setDimensions({ width, height });
+                });
+              }
+            }
+          }
+          resizeTimeoutRef.current = null;
+        }, 150); // Debounce to reduce updates
+      });
+      
+      resizeObserverRef.current.observe(containerRef.current);
+    } else if (containerRef.current) {
+      // Fallback: use IntersectionObserver to defer initial measurement
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0]?.isIntersecting && containerRef.current) {
+          // Only measure when visible, and use RAF to defer
+          requestAnimationFrame(() => {
+            if (containerRef.current) {
+              const width = containerRef.current.clientWidth || 800;
+              const height = containerRef.current.clientHeight || 400;
+              lastDimensionsRef.current = { width, height };
+              startTransition(() => {
+                setDimensions({ width, height });
+              });
+            }
+          });
+          observer.disconnect();
+        }
+      }, { threshold: 0.01 });
+      
+      observer.observe(containerRef.current);
+      
+      // Fallback resize handler
+      const fallbackHandler = () => {
+        if (resizeTimeoutRef.current) {
+          clearTimeout(resizeTimeoutRef.current);
+        }
+        resizeTimeoutRef.current = setTimeout(() => {
+          if (containerRef.current) {
+            const width = containerRef.current.clientWidth || 800;
+            const height = containerRef.current.clientHeight || 400;
             if (
               Math.abs(width - lastDimensionsRef.current.width) > 10 ||
               Math.abs(height - lastDimensionsRef.current.height) > 10
             ) {
-              handleResize(width, height);
+              lastDimensionsRef.current = { width, height };
+              startTransition(() => {
+                setDimensions({ width, height });
+              });
             }
           }
-        });
-      });
-      resizeObserverRef.current.observe(containerRef.current);
-    } else {
-      // Fallback to window resize - defer layout reads to avoid forced reflow
-      const fallbackHandler = () => {
-        requestAnimationFrame(() => {
-          if (containerRef.current) {
-            const width = containerRef.current.offsetWidth;
-            const height = containerRef.current.offsetHeight;
-            handleResize(width, height);
-          }
-        });
+          resizeTimeoutRef.current = null;
+        }, 150);
       };
+      
       window.addEventListener('resize', fallbackHandler, { passive: true });
       return () => {
+        observer.disconnect();
         window.removeEventListener('resize', fallbackHandler);
+        if (resizeTimeoutRef.current) {
+          clearTimeout(resizeTimeoutRef.current);
+        }
       };
     }
 
@@ -262,23 +276,32 @@ export const HistoricalWeatherChart = memo(function HistoricalWeatherChart({
     };
   }, []);
 
-  // Memoize chart data with telemetry
+  // Memoize chart data with telemetry - limit points aggressively to prevent performance issues
   const chartData = useMemo(() => {
-    const renderStart = performance.now();
     if (!data || data.length === 0) return [];
-    const maxPoints = 800;
-    const pointsToUse = data.length > maxPoints ? data.slice(-maxPoints) : data;
-    const transformed = pointsToUse.map((point) => ({
-      ...point,
-      timestamp: point.timestamp.getTime(),
-    }));
-    const renderTime = performance.now() - renderStart;
     
-    logTelemetry('chart_data_transformed', {
-      points_requested: data.length,
-      points_rendered: transformed.length,
-      chart_render_time_ms: Math.round(renderTime * 100) / 100,
-    });
+    // More aggressive point limiting to prevent forced reflows
+    const maxPoints = 500; // Reduced from 800
+    const pointsToUse = data.length > maxPoints ? data.slice(-maxPoints) : data;
+    
+    // Use a more efficient transformation
+    const transformed = new Array(pointsToUse.length);
+    for (let i = 0; i < pointsToUse.length; i++) {
+      const point = pointsToUse[i];
+      transformed[i] = {
+        timestamp: point.timestamp.getTime(),
+        value: point.value,
+        displayTime: point.displayTime,
+        location: point.location,
+      };
+    }
+    
+    if (import.meta.env.DEV && data.length > maxPoints) {
+      logTelemetry('chart_data_transformed', {
+        points_requested: data.length,
+        points_rendered: transformed.length,
+      });
+    }
     
     return transformed;
   }, [data]);
@@ -294,6 +317,8 @@ export const HistoricalWeatherChart = memo(function HistoricalWeatherChart({
           return [0, 100];
         case 'windSpeed':
           return [0, 50];
+        case 'windGust':
+          return [0, 60];
         case 'precipitation':
           return [0, 100];
         case 'airPressure':
@@ -315,6 +340,8 @@ export const HistoricalWeatherChart = memo(function HistoricalWeatherChart({
         return [0, 100];
       case 'windSpeed':
         return [0, Math.max(50, maxValue + padding)];
+      case 'windGust':
+        return [0, Math.max(60, maxValue + padding)];
       case 'precipitation':
         return [0, Math.max(100, maxValue + padding)];
       case 'airPressure':

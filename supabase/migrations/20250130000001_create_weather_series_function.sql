@@ -63,6 +63,15 @@ BEGIN
         AND wind_speed IS NOT NULL
     )
     UNION ALL
+    SELECT 'windGust'
+    WHERE EXISTS (
+      SELECT 1 FROM public.air_quality_readings
+      WHERE user_id = p_user_id
+        AND timestamp >= p_start_ts
+        AND timestamp <= p_end_ts
+        AND wind_gust IS NOT NULL
+    )
+    UNION ALL
     SELECT 'precipitation'
     WHERE EXISTS (
       SELECT 1 FROM public.air_quality_readings
@@ -116,6 +125,8 @@ BEGIN
         AVG(temperature) as temperature,
         AVG(humidity) as humidity,
         AVG(wind_speed) as wind_speed,
+        AVG(wind_direction) as wind_direction,
+        AVG(wind_gust) as wind_gust,
         AVG(air_pressure) as air_pressure,
         AVG(rain_probability) as rain_probability,
         MAX(id) as id,
@@ -137,12 +148,14 @@ BEGIN
         'temperature', temperature,
         'humidity', humidity,
         'wind_speed', wind_speed,
+        'wind_direction', wind_direction,
+        'wind_gust', wind_gust,
         'air_pressure', air_pressure,
         'rain_probability', rain_probability
       )
     ) INTO v_raw_data
     FROM (
-      SELECT id, max_timestamp, location_name, temperature, humidity, wind_speed, air_pressure, rain_probability
+      SELECT id, max_timestamp, location_name, temperature, humidity, wind_speed, wind_direction, wind_gust, air_pressure, rain_probability
       FROM time_buckets
       ORDER BY max_timestamp
     ) ordered_buckets;
@@ -156,6 +169,8 @@ BEGIN
         'temperature', temperature,
         'humidity', humidity,
         'wind_speed', wind_speed,
+        'wind_direction', wind_direction,
+        'wind_gust', wind_gust,
         'air_pressure', air_pressure,
         'rain_probability', rain_probability
       )
@@ -168,6 +183,8 @@ BEGIN
         temperature,
         humidity,
         wind_speed,
+        wind_direction,
+        wind_gust,
         air_pressure,
         rain_probability
       FROM public.air_quality_readings

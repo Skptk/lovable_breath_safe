@@ -851,7 +851,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-medium text-muted-foreground">Weather Metric:</span>
                 <div className="flex gap-2 flex-wrap">
-                  {(['temperature', 'humidity', 'windSpeed', 'airPressure'] as WeatherMetric[]).map((metric) => (
+                  {(['temperature', 'humidity', 'windSpeed', 'windGust', 'airPressure'] as WeatherMetric[]).map((metric) => (
                     <Button
                       key={metric}
                       variant={selectedWeatherMetric === metric ? 'default' : 'outline'}
@@ -861,6 +861,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                       {metric === 'temperature' ? 'Temperature' :
                        metric === 'humidity' ? 'Humidity' :
                        metric === 'windSpeed' ? 'Wind Speed' :
+                       metric === 'windGust' ? 'Wind Gust' :
                        'Air Pressure'}
                     </Button>
                   ))}

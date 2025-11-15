@@ -103,80 +103,88 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
   useEffect(() => {
     if (!containerRef.current || typeof window === 'undefined') return;
 
-    // Use ResizeObserver's contentRect directly - no getBoundingClientRect needed
-    const updateDimensions = (width: number, height: number) => {
-      if (width > 0 && height > 0) {
-        const newDims = { width, height };
-        // Only update if change is significant (reduces re-renders)
-        if (
-          Math.abs(newDims.width - lastDimensionsRef.current.width) > 10 ||
-          Math.abs(newDims.height - lastDimensionsRef.current.height) > 10
-        ) {
-          lastDimensionsRef.current = newDims;
-          // Use startTransition to defer state update
-          startTransition(() => {
-            setDimensions(newDims);
-          });
-        }
-      }
-    };
-
-    // Debounced resize handler
-    const handleResize = (width: number, height: number) => {
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-      resizeTimeoutRef.current = setTimeout(() => {
-        updateDimensions(width, height);
-        resizeTimeoutRef.current = null;
-      }, 200); // Increased debounce to 200ms
-    };
-
-    // Initial dimensions from container (only once on mount)
-    // Defer to avoid forced reflow - use requestAnimationFrame
-    if (containerRef.current) {
-      requestAnimationFrame(() => {
-        if (containerRef.current) {
-          const initialWidth = containerRef.current.offsetWidth || 800;
-          const initialHeight = containerRef.current.offsetHeight || 400;
-          lastDimensionsRef.current = { width: initialWidth, height: initialHeight };
-          startTransition(() => {
-            setDimensions({ width: initialWidth, height: initialHeight });
-          });
-        }
-      });
-    }
-
-    if ('ResizeObserver' in window) {
+    // Use ResizeObserver for initial dimensions too - avoids forced reflow
+    if ('ResizeObserver' in window && containerRef.current) {
+      // Create observer that handles both initial and subsequent resizes
       resizeObserverRef.current = new ResizeObserver((entries) => {
-        // Batch all entries in a single RAF to avoid multiple updates
-        requestAnimationFrame(() => {
+        // Use debounced setTimeout to batch resize operations
+        if (resizeTimeoutRef.current) {
+          clearTimeout(resizeTimeoutRef.current);
+        }
+        
+        resizeTimeoutRef.current = setTimeout(() => {
           for (const entry of entries) {
             const { width, height } = entry.contentRect;
+            if (width > 0 && height > 0) {
+              // Only update if change is significant (reduces re-renders)
+              if (
+                Math.abs(width - lastDimensionsRef.current.width) > 10 ||
+                Math.abs(height - lastDimensionsRef.current.height) > 10
+              ) {
+                lastDimensionsRef.current = { width, height };
+                // Use startTransition to defer state update
+                startTransition(() => {
+                  setDimensions({ width, height });
+                });
+              }
+            }
+          }
+          resizeTimeoutRef.current = null;
+        }, 150); // Debounce to reduce updates
+      });
+      
+      resizeObserverRef.current.observe(containerRef.current);
+    } else if (containerRef.current) {
+      // Fallback: use IntersectionObserver to defer initial measurement
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0]?.isIntersecting && containerRef.current) {
+          // Only measure when visible, and use RAF to defer
+          requestAnimationFrame(() => {
+            if (containerRef.current) {
+              const width = containerRef.current.clientWidth || 800;
+              const height = containerRef.current.clientHeight || 400;
+              lastDimensionsRef.current = { width, height };
+              startTransition(() => {
+                setDimensions({ width, height });
+              });
+            }
+          });
+          observer.disconnect();
+        }
+      }, { threshold: 0.01 });
+      
+      observer.observe(containerRef.current);
+      
+      // Fallback resize handler
+      const fallbackHandler = () => {
+        if (resizeTimeoutRef.current) {
+          clearTimeout(resizeTimeoutRef.current);
+        }
+        resizeTimeoutRef.current = setTimeout(() => {
+          if (containerRef.current) {
+            const width = containerRef.current.clientWidth || 800;
+            const height = containerRef.current.clientHeight || 400;
             if (
               Math.abs(width - lastDimensionsRef.current.width) > 10 ||
               Math.abs(height - lastDimensionsRef.current.height) > 10
             ) {
-              handleResize(width, height);
+              lastDimensionsRef.current = { width, height };
+              startTransition(() => {
+                setDimensions({ width, height });
+              });
             }
           }
-        });
-      });
-      resizeObserverRef.current.observe(containerRef.current);
-    } else {
-      // Fallback to window resize - defer layout reads to avoid forced reflow
-      const fallbackHandler = () => {
-        requestAnimationFrame(() => {
-          if (containerRef.current) {
-            const width = containerRef.current.offsetWidth;
-            const height = containerRef.current.offsetHeight;
-            handleResize(width, height);
-          }
-        });
+          resizeTimeoutRef.current = null;
+        }, 150);
       };
+      
       window.addEventListener('resize', fallbackHandler, { passive: true });
       return () => {
+        observer.disconnect();
         window.removeEventListener('resize', fallbackHandler);
+        if (resizeTimeoutRef.current) {
+          clearTimeout(resizeTimeoutRef.current);
+        }
       };
     }
 
@@ -190,16 +198,27 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     };
   }, []);
 
-  // Memoize chart data to prevent unnecessary re-renders
+  // Memoize chart data - limit points aggressively to prevent performance issues
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    // Limit to reasonable number of points to prevent performance issues
-    const maxPoints = 800; // Reduced from 1000
+    
+    // More aggressive point limiting to prevent forced reflows
+    const maxPoints = 500; // Reduced from 800
     const pointsToUse = data.length > maxPoints ? data.slice(-maxPoints) : data;
-    return pointsToUse.map((point) => ({
-      ...point,
-      timestamp: point.timestamp.getTime(), // Convert to number for Recharts
-    }));
+    
+    // Use a more efficient transformation
+    const transformed = new Array(pointsToUse.length);
+    for (let i = 0; i < pointsToUse.length; i++) {
+      const point = pointsToUse[i];
+      transformed[i] = {
+        timestamp: point.timestamp.getTime(),
+        value: point.value,
+        displayTime: point.displayTime,
+        location: point.location,
+      };
+    }
+    
+    return transformed;
   }, [data]);
 
   // Memoize Y-axis domain calculation
