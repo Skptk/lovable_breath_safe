@@ -4,7 +4,8 @@ import { TimeRange } from './utils/chartDataTransform';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { startTransition } from 'react';
 
 interface TimeRangeSelectorProps {
   selectedRange: TimeRange;
@@ -24,20 +25,24 @@ export function TimeRangeSelector({ selectedRange, onRangeChange }: TimeRangeSel
   const [customStart, setCustomStart] = useState<Date | undefined>(selectedRange.start);
   const [customEnd, setCustomEnd] = useState<Date | undefined>(selectedRange.end);
 
-  const handleQuickRange = (type: TimeRange['type']) => {
-    onRangeChange({ type });
-  };
+  const handleQuickRange = useCallback((type: TimeRange['type']) => {
+    startTransition(() => {
+      onRangeChange({ type });
+    });
+  }, [onRangeChange]);
 
-  const handleCustomRange = () => {
+  const handleCustomRange = useCallback(() => {
     if (customStart && customEnd) {
-      onRangeChange({
-        type: 'CUSTOM',
-        start: customStart,
-        end: customEnd,
+      startTransition(() => {
+        onRangeChange({
+          type: 'CUSTOM',
+          start: customStart,
+          end: customEnd,
+        });
       });
       setCustomDateOpen(false);
     }
-  };
+  }, [customStart, customEnd, onRangeChange]);
 
   return (
     <div className="flex flex-wrap items-center gap-2">

@@ -1,4 +1,5 @@
-import { useMemo, memo } from 'react';
+import { useMemo, memo, useCallback } from 'react';
+import { startTransition } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { Loader2, AlertTriangle } from 'lucide-react';
@@ -19,8 +20,8 @@ interface HistoricalAQIChartProps {
   };
 }
 
-// Custom tooltip component
-const ChartTooltip = ({ active, payload, label }: any) => {
+// Memoized tooltip component to prevent re-renders
+const ChartTooltip = memo(({ active, payload, label }: any) => {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -30,15 +31,23 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   const aqiColor = getAQIColor(aqi);
   const aqiLabel = getAQILabel(aqi);
 
+  // Memoize formatted label
+  const formattedLabel = useMemo(() => {
+    if (typeof label === 'string') return label;
+    try {
+      return format(new Date(label), 'MMM d, yyyy HH:mm');
+    } catch {
+      return String(label);
+    }
+  }, [label]);
+
   return (
     <div
       className="rounded-lg border bg-background/95 backdrop-blur-sm p-3 shadow-lg"
       style={{ borderColor: aqiColor }}
     >
       <div className="space-y-1">
-        <div className="text-xs text-muted-foreground">
-          {typeof label === 'string' ? label : format(new Date(label), 'MMM d, yyyy HH:mm')}
-        </div>
+        <div className="text-xs text-muted-foreground">{formattedLabel}</div>
         <div className="flex items-center gap-2">
           <div
             className="h-3 w-3 rounded-full"
@@ -62,7 +71,9 @@ const ChartTooltip = ({ active, payload, label }: any) => {
       </div>
     </div>
   );
-};
+});
+
+ChartTooltip.displayName = 'ChartTooltip';
 
 // Format X-axis labels
 const formatXAxisLabel = (tickItem: any) => {
@@ -84,11 +95,36 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
 }: HistoricalAQIChartProps) {
   // Memoize chart data to prevent unnecessary re-renders
   const chartData = useMemo(() => {
-    return data.map((point) => ({
+    if (!data || data.length === 0) return [];
+    // Limit to reasonable number of points to prevent performance issues
+    const maxPoints = 1000;
+    const pointsToUse = data.length > maxPoints ? data.slice(-maxPoints) : data;
+    return pointsToUse.map((point) => ({
       ...point,
       timestamp: point.timestamp.getTime(), // Convert to number for Recharts
     }));
   }, [data]);
+
+  // Memoize Y-axis domain calculation
+  const yAxisDomain = useMemo(() => {
+    if (chartData.length === 0) return [0, 100];
+    const aqiValues = chartData.map((d) => d.aqi);
+    const minAQI = Math.max(0, Math.min(...aqiValues) - 10);
+    const maxAQI = Math.min(500, Math.max(...aqiValues) + 10);
+    return [minAQI, maxAQI];
+  }, [chartData]);
+
+  // Debounced click handler to prevent blocking
+  const handleChartClick = useCallback((chartData: any) => {
+    if (!onDataPointClick) return;
+    
+    startTransition(() => {
+      if (chartData && chartData.activePayload && chartData.activePayload[0]) {
+        const point = chartData.activePayload[0].payload as ChartDataPoint;
+        onDataPointClick(point.fullEntry);
+      }
+    });
+  }, [onDataPointClick]);
 
   if (isLoading) {
     return (
@@ -137,11 +173,6 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     );
   }
 
-  // Calculate Y-axis domain with padding
-  const aqiValues = chartData.map((d) => d.aqi);
-  const minAQI = Math.max(0, Math.min(...aqiValues) - 10);
-  const maxAQI = Math.min(500, Math.max(...aqiValues) + 10);
-
   return (
     <GlassCard>
       <GlassCardHeader>
@@ -160,12 +191,8 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
             <LineChart
               data={chartData}
               margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-              onClick={(data) => {
-                if (data && data.activePayload && data.activePayload[0] && onDataPointClick) {
-                  const point = data.activePayload[0].payload as ChartDataPoint;
-                  onDataPointClick(point.fullEntry);
-                }
-              }}
+              onClick={handleChartClick}
+              syncId="aqi-history-chart"
             >
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
               <XAxis
@@ -173,23 +200,29 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
                 tickFormatter={formatXAxisLabel}
                 stroke="hsl(var(--muted-foreground))"
                 style={{ fontSize: '12px' }}
+                interval="preserveStartEnd"
               />
               <YAxis
-                domain={[minAQI, maxAQI]}
+                domain={yAxisDomain}
                 stroke="hsl(var(--muted-foreground))"
                 style={{ fontSize: '12px' }}
                 label={{ value: 'AQI', angle: -90, position: 'insideLeft' }}
               />
-              <Tooltip content={<ChartTooltip />} />
+              <Tooltip 
+                content={<ChartTooltip />}
+                animationDuration={0}
+                isAnimationActive={false}
+              />
               <Line
                 type="monotone"
                 dataKey="aqi"
                 stroke="#3B82F6"
                 strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 6, fill: '#3B82F6' }}
-                isAnimationActive={true}
-                animationDuration={300}
+                activeDot={{ r: 4, fill: '#3B82F6' }}
+                isAnimationActive={false}
+                animationDuration={0}
+                connectNulls={false}
               />
             </LineChart>
           </ResponsiveContainer>

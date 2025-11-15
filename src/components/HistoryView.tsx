@@ -668,13 +668,15 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
   const stats = useMemo(() => calculateStats(), [calculateStats]);
 
-  // Transform chart data
+  // Transform chart data with startTransition to prevent blocking
   const chartData = useMemo(() => {
     if (!chartHistoryData || chartHistoryData.length === 0) {
       return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
     }
     const threshold = getAdaptivePointThreshold();
-    return transformHistoryForChart(chartHistoryData, timeRange, threshold);
+    // Use a more aggressive threshold to prevent memory issues
+    const safeThreshold = Math.min(threshold, 800);
+    return transformHistoryForChart(chartHistoryData, timeRange, safeThreshold);
   }, [chartHistoryData, timeRange]);
 
   const handleChartPointClick = useCallback((entry: HistoryEntry) => {

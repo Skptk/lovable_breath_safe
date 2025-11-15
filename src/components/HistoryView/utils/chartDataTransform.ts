@@ -18,16 +18,48 @@ export type TimeRange = {
   end?: Date;
 };
 
+// Cache viewport width to avoid forced reflows
+let cachedViewportWidth: number | null = null;
+let lastViewportCheck = 0;
+const VIEWPORT_CACHE_MS = 1000; // Cache for 1 second
+
 /**
  * Get adaptive point threshold based on viewport size
+ * Uses cached value to avoid forced reflows
  */
 export function getAdaptivePointThreshold(): number {
   if (typeof window === 'undefined') return 1000;
   
-  const width = window.innerWidth;
+  const now = Date.now();
+  // Only check viewport if cache is stale
+  if (cachedViewportWidth === null || now - lastViewportCheck > VIEWPORT_CACHE_MS) {
+    // Use requestAnimationFrame to batch layout reads
+    if (typeof requestAnimationFrame !== 'undefined') {
+      // For immediate calls, use cached value if available
+      if (cachedViewportWidth !== null) {
+        return cachedViewportWidth < 768 ? 400 : cachedViewportWidth < 1024 ? 600 : 1000;
+      }
+    }
+    cachedViewportWidth = window.innerWidth;
+    lastViewportCheck = now;
+  }
+  
+  const width = cachedViewportWidth;
   if (width < 768) return 400; // Mobile
   if (width < 1024) return 600; // Tablet
   return 1000; // Desktop
+}
+
+// Update cache on resize (throttled)
+if (typeof window !== 'undefined') {
+  let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+  window.addEventListener('resize', () => {
+    if (resizeTimeout) clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      cachedViewportWidth = window.innerWidth;
+      lastViewportCheck = Date.now();
+    }, 250); // Throttle to 250ms
+  }, { passive: true });
 }
 
 /**
@@ -175,15 +207,21 @@ export function transformHistoryForChart(
   const threshold = desiredPointLimit ?? getAdaptivePointThreshold();
   const binSizeHours = getBinSizeHours(timeRange, sortedEntries.length, threshold);
 
-  // Transform to chart data points
-  const chartPoints: ChartDataPoint[] = sortedEntries.map((entry) => ({
-    timestamp: new Date(entry.timestamp),
-    displayTime: formatTimestamp(new Date(entry.timestamp), timeRange),
-    aqi: entry.aqi,
-    value: entry.aqi, // MVP: Always use AQI
-    location: entry.location_name,
-    fullEntry: entry,
-  }));
+  // Transform to chart data points (limit upfront to prevent memory issues)
+  const maxEntriesToProcess = Math.min(sortedEntries.length, threshold * 2); // Process 2x threshold max
+  const entriesToProcess = sortedEntries.slice(-maxEntriesToProcess); // Take most recent
+  
+  const chartPoints: ChartDataPoint[] = entriesToProcess.map((entry) => {
+    const entryDate = new Date(entry.timestamp);
+    return {
+      timestamp: entryDate,
+      displayTime: formatTimestamp(entryDate, timeRange),
+      aqi: entry.aqi,
+      value: entry.aqi, // MVP: Always use AQI
+      location: entry.location_name,
+      fullEntry: entry,
+    };
+  });
 
   // Apply binning if needed
   if (binSizeHours > 0 && chartPoints.length > threshold) {
