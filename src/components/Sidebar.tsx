@@ -30,7 +30,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
         stiffness: 200,
         duration: 0.4
       }}
-      style={{ willChange: 'transform', contain: 'layout paint' }}
+      style={{ contain: 'layout paint' }}
     >
       {/* App Logo */}
       <motion.div 
@@ -66,12 +66,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
                 <Button
                   variant={isActive ? "default" : "ghost"}
                   size="icon"
-                  onClick={() => {
-                    // Batch view change to prevent layout thrashing
-                    requestAnimationFrame(() => {
-                      onViewChange(item.id);
-                    });
-                  }}
+                  onClick={() => onViewChange(item.id)}
                   className={`h-12 w-12 rounded-xl transition-all duration-200 ${
                     isActive 
                       ? 'bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-md border-accent' 

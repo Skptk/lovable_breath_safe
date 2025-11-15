@@ -47,7 +47,6 @@ export const GlassCard: React.FC<GlassCardProps> = ({
       className
     )}
       style={{ 
-        willChange: 'transform',
         contain: 'layout paint',
         ...props.style 
       }}

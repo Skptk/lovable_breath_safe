@@ -429,9 +429,9 @@ function AirQualityDashboardContent({
   }, [hasUserConsent, refreshData, isDemoMode, toast]);
 
   const renderUnifiedShell = (content: React.ReactNode) => (
-    <div className="relative z-10 px-4 py-8 sm:px-6 lg:px-10" style={{ contain: 'layout' }}>
-      <div className="mx-auto max-w-7xl" style={{ contain: 'layout' }}>
-        <div className="bg-black/40 backdrop-blur-sm ring-1 ring-white/10 rounded-3xl shadow-xl p-6 sm:p-10" style={{ contain: 'layout paint', willChange: 'contents' }}>
+    <div className="relative z-10 px-4 py-8 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-7xl">
+        <div className="bg-black/40 backdrop-blur-sm ring-1 ring-white/10 rounded-3xl shadow-xl p-6 sm:p-10">
           {content}
         </div>
       </div>

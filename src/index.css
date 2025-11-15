@@ -210,7 +210,6 @@
   .card-hover:hover {
     box-shadow: 0 15px 35px -15px rgba(8, 47, 73, 0.4);
     transform: translateY(-4px);
-    will-change: transform;
   }
 
   .navbar-height {
@@ -251,7 +250,6 @@
     transition: var(--transition-smooth);
     position: relative;
     overflow: hidden;
-    will-change: transform;
     contain: layout paint;
   }
 
@@ -268,7 +266,6 @@
   .glass-card:hover {
     transform: translateY(-6px);
     box-shadow: 0 20px 50px -20px rgba(45, 212, 191, 0.25);
-    will-change: transform;
   }
 
   .glass-surface {
@@ -338,7 +335,6 @@
     z-index: 1;
     overflow: hidden;
     transition: var(--transition-smooth);
-    will-change: transform;
     contain: layout paint;
   }
 
@@ -355,7 +351,6 @@
   .floating-card:hover {
     transform: translateY(-6px) scale(1.01);
     box-shadow: 0 20px 50px -15px rgba(8, 47, 73, 0.45);
-    will-change: transform;
   }
 
   /* Light mode floating cards */

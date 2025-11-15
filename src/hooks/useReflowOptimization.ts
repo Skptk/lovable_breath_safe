@@ -136,6 +136,14 @@ export function useReflowOptimization<T = DOMRect>(
       return lastResultRef.current;
     }
 
+    // Reset counter at the start of measurement (once per frame is sufficient)
+    // Use a frame timestamp to detect new frames
+    const frameTimestamp = Math.floor(now / 16.67); // ~60fps frame boundary
+    const lastFrameTimestamp = Math.floor((lastMeasureTsRef.current || 0) / 16.67);
+    if (frameTimestamp !== lastFrameTimestamp) {
+      measuresInFrameRef.current = 0;
+    }
+
     const currentFrameMeasures = measuresInFrameRef.current;
     if (currentFrameMeasures >= maxSyncMeasuresPerFrame) {
       layoutThrashCountRef.current += 1;
@@ -234,23 +242,12 @@ export function useReflowOptimization<T = DOMRect>(
   const getLastResult = useCallback(() => lastResultRef.current, []);
   const isMeasurementPending = useCallback(() => pendingPromiseRef.current !== null, []);
 
+  // Reset counter at the start of each measurement instead of continuous loop
+  // This prevents unnecessary RAF calls when no measurements are happening
   useEffect(() => {
-    const resetCounter = () => {
-      measuresInFrameRef.current = 0;
-    };
-
-    let frameId: number | null = null;
-    const loop = () => {
-      resetCounter();
-      frameId = raf?.(loop) ?? null;
-    };
-
-    frameId = raf?.(loop) ?? null;
-
+    // Only reset counter when actually needed (during measurements)
+    // Don't create a continuous RAF loop - it's wasteful
     return () => {
-      if (frameId !== null && caf) {
-        caf(frameId);
-      }
       cleanupScheduled();
       resolvePending(null);
     };

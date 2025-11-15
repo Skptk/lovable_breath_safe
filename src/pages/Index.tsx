@@ -172,16 +172,13 @@ export default function Index(): JSX.Element | null {
   }, []);
 
   const handleViewChange = (view: string) => {
-    // Batch all DOM updates in a single requestAnimationFrame to prevent layout thrashing
-    requestAnimationFrame(() => {
-      startTransition(() => {
-        setCurrentView(view);
-      });
-      // Update URL without page reload - batched with state update
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('view', view);
-      window.history.pushState({}, '', newUrl.toString());
+    startTransition(() => {
+      setCurrentView(view);
     });
+    // Update URL without page reload
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('view', view);
+    window.history.pushState({}, '', newUrl.toString());
   };
 
   // Debug logging
@@ -319,9 +316,9 @@ export default function Index(): JSX.Element | null {
   };
 
   return (
-    <div className="app-background" ref={shellRef} style={{ contain: 'layout paint' }}>
-      <div className="relative min-h-screen" style={{ contain: 'layout' }}>
-        <div className="relative z-10 flex min-h-screen bg-gradient-to-br from-background/60 via-background/30 to-background/80" style={{ contain: 'layout' }}>
+    <div className="app-background" ref={shellRef}>
+      <div className="relative min-h-screen">
+        <div className="relative z-10 flex min-h-screen bg-gradient-to-br from-background/60 via-background/30 to-background/80">
           <DeveloperTools 
             isVisible={showDeveloperTools}
             onToggle={() => setShowDeveloperTools(false)}
@@ -338,7 +335,7 @@ export default function Index(): JSX.Element | null {
                 onClose={() => setShowMobileMenu(false)}
               />
 
-              <main className="px-4 py-6 sm:px-6 lg:px-10" style={{ contain: 'layout paint', willChange: 'contents' }}>
+              <main className="px-4 py-6 sm:px-6 lg:px-10">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentView}
