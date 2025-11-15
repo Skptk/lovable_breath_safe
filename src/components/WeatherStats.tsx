@@ -14,11 +14,11 @@ import WindDashboard from "./WindDashboard";
 import WeatherForecast from "./WeatherForecast";
 import LocationPermissionBanner from "./LocationPermissionBanner";
 import { WeatherViewToggle } from "./WeatherView/WeatherViewToggle";
-import { TimeRangeSelector } from "../HistoryView/TimeRangeSelector";
+import { TimeRangeSelector } from "./HistoryView/TimeRangeSelector";
 import { HistoricalWeatherChart } from "./WeatherView/HistoricalWeatherChart";
 import { useHistoricalWeatherData } from "@/hooks/useHistoricalWeatherData";
 import { transformWeatherForChart, WeatherMetric } from "./WeatherView/utils/weatherChartDataTransform";
-import { TimeRange, getAdaptivePointThreshold } from "../HistoryView/utils/chartDataTransform";
+import { TimeRange, getAdaptivePointThreshold } from "./HistoryView/utils/chartDataTransform";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Use centralized weather store instead of useWeatherData hook
