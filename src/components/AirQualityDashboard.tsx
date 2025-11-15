@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useAirQuality } from "@/hooks/useAirQuality";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserPoints } from "@/hooks/useUserPoints";
@@ -225,6 +226,7 @@ interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
   showMobileMenu?: boolean;
   onMobileMenuToggle?: () => void;
+  isDemoMode?: boolean;
 }
 
 /**
@@ -248,9 +250,33 @@ function usePermissionTimeout(hasRequestedPermission: boolean, ms: number = 3000
 }
 
 /**
+ * Demo data for demo mode
+ */
+const DEMO_AIR_QUALITY_DATA = {
+  aqi: 45,
+  pm25: 12.5,
+  pm10: 22.3,
+  no2: 18.7,
+  so2: 5.2,
+  location: "San Francisco, CA",
+  timestamp: new Date().toISOString(),
+  dataSource: "Demo Data",
+  coordinates: {
+    lat: 37.7749,
+    lon: -122.4194,
+  },
+};
+
+const DEMO_USER_POINTS = {
+  totalPoints: 1250,
+  todayReadings: 8,
+  weeklyReadings: 42,
+};
+
+/**
  * The content wrapper component - extracted for testability
  */
-type AirQualityDashboardContentProps = AirQualityDashboardProps & { user: any; locationContext: any };
+type AirQualityDashboardContentProps = AirQualityDashboardProps & { user: any; locationContext: any; isDemoMode?: boolean };
 
 function AirQualityDashboardContent({
   user,
@@ -258,15 +284,27 @@ function AirQualityDashboardContent({
   onNavigate,
   showMobileMenu,
   onMobileMenuToggle,
+  isDemoMode = false,
 }: AirQualityDashboardContentProps) {
-  // Hooks
-  const { data, isRefreshing, isLoading, error, refreshData } = useAirQuality();
-  const { userPoints, isLoading: pointsLoading } = useUserPoints();
+  // Hooks - skip in demo mode
+  const airQualityQuery = useAirQuality();
+  const userPointsQuery = useUserPoints();
   const { timeUntilRefresh } = useRefreshCountdown();
   const { toast } = useToast();
+  
+  // Use demo data in demo mode, otherwise use real hooks
+  const data = isDemoMode ? DEMO_AIR_QUALITY_DATA : airQualityQuery.data;
+  const isRefreshing = isDemoMode ? false : airQualityQuery.isRefreshing;
+  const isLoading = isDemoMode ? false : airQualityQuery.isLoading;
+  const error = isDemoMode ? null : airQualityQuery.error;
+  const refreshData = isDemoMode ? () => {} : airQualityQuery.refreshData;
+  
+  const userPoints = isDemoMode ? DEMO_USER_POINTS : userPointsQuery.userPoints;
+  const pointsLoading = isDemoMode ? false : userPointsQuery.isLoading;
+  
   const {
-    hasUserConsent = false,
-    hasRequestedPermission = false,
+    hasUserConsent = isDemoMode ? true : false,
+    hasRequestedPermission = isDemoMode ? true : false,
     isRequestingPermission = false,
     requestLocationPermission,
   } = locationContext || {};
@@ -281,8 +319,9 @@ function AirQualityDashboardContent({
   }>(null);
 
   const userName = React.useMemo(() => {
+    if (isDemoMode) return "Demo User";
     return user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
-  }, [user]);
+  }, [user, isDemoMode]);
 
   // Use permission timeout hook (replaces forceDisplay pattern)
   const permissionTimeoutReached = usePermissionTimeout(hasRequestedPermission, 3000);
@@ -374,12 +413,20 @@ function AirQualityDashboardContent({
 
   // Manual refresh handler - respects consent
   const handleRefresh = React.useCallback(() => {
+    if (isDemoMode) {
+      toast({
+        title: "Demo Mode",
+        description: "Refresh is disabled in demo mode. Create an account to access real-time data!",
+        variant: "default",
+      });
+      return;
+    }
     if (hasUserConsent) {
       refreshData();
     } else {
       console.log("Refresh skipped - user consent not granted");
     }
-  }, [hasUserConsent, refreshData]);
+  }, [hasUserConsent, refreshData, isDemoMode, toast]);
 
   const renderUnifiedShell = (content: React.ReactNode) => (
     <div className="relative z-10 px-4 py-8 sm:px-6 lg:px-10">
@@ -393,8 +440,9 @@ function AirQualityDashboardContent({
 
   // Permission check UI - brief loading while waiting for permission or timeout
   const renderDashboardContent = () => {
-    const showLoadingState = isLoading && !data;
-    const showErrorState = !isLoading && !data && error;
+    // Skip loading/error states in demo mode
+    const showLoadingState = !isDemoMode && isLoading && !data;
+    const showErrorState = !isDemoMode && !isLoading && !data && error;
 
     const lastUpdated = data?.timestamp ? new Date(data.timestamp).toLocaleString() : "—";
     const aqiValue = data?.aqi ?? "—";
@@ -500,28 +548,63 @@ function AirQualityDashboardContent({
 
   return (
     <>
-      {!hasRequestedPermission && !permissionTimeoutReached
-        ? renderUnifiedShell(
-            <div className="py-16">
-              <LoadingState
-                title={`Hello, ${userName}!`}
-                subtitle="Checking location permissions..."
-              />
-            </div>
-          )
-        : !hasUserConsent
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="relative z-10 px-4 pt-4 sm:px-6 lg:px-10">
+          <div className="mx-auto max-w-7xl">
+            <motion.div
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg mb-4"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">🎯</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Demo Mode</h3>
+                    <p className="text-sm text-blue-100">You're viewing sample data. Create an account to unlock real-time air quality monitoring!</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => window.location.href = "/onboarding"}
+                  className="bg-white text-blue-600 hover:bg-blue-50"
+                >
+                  Get Started
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      )}
+      
+      {isDemoMode
+        ? renderDashboardContent()
+        : !hasRequestedPermission && !permissionTimeoutReached
           ? renderUnifiedShell(
-              <div className="py-10">
-                <PermissionRequest
-                  onRequest={handleRequestLocationPermission}
-                  requesting={isRequestingPermission}
-                  userName={userName}
-                  showMobileMenu={showMobileMenu}
-                  onMobileMenuToggle={onMobileMenuToggle}
+              <div className="py-16">
+                <LoadingState
+                  title={`Hello, ${userName}!`}
+                  subtitle="Checking location permissions..."
                 />
               </div>
             )
-          : renderDashboardContent()}
+          : !hasUserConsent
+            ? renderUnifiedShell(
+                <div className="py-10">
+                  <PermissionRequest
+                    onRequest={handleRequestLocationPermission}
+                    requesting={isRequestingPermission}
+                    userName={userName}
+                    showMobileMenu={showMobileMenu}
+                    onMobileMenuToggle={onMobileMenuToggle}
+                  />
+                </div>
+              )
+            : renderDashboardContent()}
       <PollutantModal pollutant={selectedPollutant} onClose={() => setSelectedPollutant(null)} />
     </>
   );
@@ -534,17 +617,20 @@ export function AirQualityDashboard({
   onNavigate,
   showMobileMenu,
   onMobileMenuToggle,
+  isDemoMode = false,
 }: AirQualityDashboardProps) {
-  const { user } = useAuth();
+  // Skip auth and location contexts in demo mode
+  const authQuery = useAuth();
   const locationContext = useLocationContext();
 
   return (
     <AirQualityDashboardContent
-      user={user}
-      locationContext={locationContext}
+      user={isDemoMode ? null : authQuery.user}
+      locationContext={isDemoMode ? null : locationContext}
       onNavigate={onNavigate}
       showMobileMenu={showMobileMenu}
       onMobileMenuToggle={onMobileMenuToggle}
+      isDemoMode={isDemoMode}
     />
   );
 }
