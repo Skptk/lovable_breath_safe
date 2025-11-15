@@ -13,12 +13,6 @@ import Header from "@/components/Header";
 import WindDashboard from "./WindDashboard";
 import WeatherForecast from "./WeatherForecast";
 import LocationPermissionBanner from "./LocationPermissionBanner";
-import { WeatherViewToggle } from "./WeatherView/WeatherViewToggle";
-import { TimeRangeSelector } from "./HistoryView/TimeRangeSelector";
-import { HistoricalWeatherChart } from "./WeatherView/HistoricalWeatherChart";
-import { useHistoricalWeatherData } from "@/hooks/useHistoricalWeatherData";
-import { transformWeatherForChart, WeatherMetric } from "./WeatherView/utils/weatherChartDataTransform";
-import { TimeRange, getAdaptivePointThreshold } from "./HistoryView/utils/chartDataTransform";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Use centralized weather store instead of useWeatherData hook
@@ -45,9 +39,6 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
   const [airQualityData, setAirQualityData] = useState<AirQualityData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'charts' | 'overview'>('charts');
-  const [timeRange, setTimeRange] = useState<TimeRange>({ type: '7d' });
-  const [selectedMetric, setSelectedMetric] = useState<WeatherMetric>('temperature');
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -91,41 +82,6 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
     setCoordinates
   } = useWeatherStore();
 
-  // Fetch historical weather data for charts
-  const { data: weatherHistoryResponse, isLoading: weatherHistoryLoading, error: weatherHistoryError } = useHistoricalWeatherData(
-    user?.id,
-    timeRange,
-    selectedMetric
-  );
-
-  // Transform weather data for chart
-  const chartData = useMemo(() => {
-    if (!weatherHistoryResponse?.raw || weatherHistoryResponse.raw.length === 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[WeatherStats] No raw data from RPC:', {
-          hasResponse: !!weatherHistoryResponse,
-          rawLength: weatherHistoryResponse?.raw?.length || 0,
-          totalCount: weatherHistoryResponse?.totalCount || 0,
-          availableMetrics: weatherHistoryResponse?.availableMetrics || [],
-          timeRange: timeRange.type,
-        });
-      }
-      return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
-    }
-    const threshold = getAdaptivePointThreshold();
-    const safeThreshold = Math.min(threshold, 800);
-    const transformed = transformWeatherForChart(weatherHistoryResponse.raw, timeRange, selectedMetric, safeThreshold);
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[WeatherStats] Transformed chart data:', {
-        rawCount: weatherHistoryResponse.raw.length,
-        transformedCount: transformed.data.length,
-        meta: transformed.meta,
-        timeRange: timeRange.type,
-        metric: selectedMetric,
-      });
-    }
-    return transformed;
-  }, [weatherHistoryResponse, timeRange, selectedMetric]);
 
   // Debug logging for weather data (reduced frequency)
   useEffect(() => {
@@ -399,59 +355,9 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
         onMobileMenuToggle={onMobileMenuToggle}
       />
 
-      {/* View Toggle and Time Range Selector */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <WeatherViewToggle viewMode={viewMode} onViewChange={setViewMode} />
-        </div>
-        {viewMode === 'charts' && (
-          <TimeRangeSelector 
-            selectedRange={timeRange} 
-            onRangeChange={(range) => {
-              startTransition(() => {
-                setTimeRange(range);
-              });
-            }} 
-          />
-        )}
-      </div>
-
-      {/* Charts View */}
-      {viewMode === 'charts' && (
-        <div className="space-y-4">
-          <HistoricalWeatherChart
-            data={chartData.data}
-            metric={selectedMetric}
-            isLoading={weatherHistoryLoading}
-            error={weatherHistoryError}
-            meta={chartData.meta}
-            timeRange={timeRange.type}
-          />
-          {weatherHistoryResponse && weatherHistoryResponse.availableMetrics.length === 0 && (
-            <GlassCard>
-              <GlassCardContent className="p-6 text-center">
-                <div className="space-y-4">
-                  <Thermometer className="h-12 w-12 mx-auto text-muted-foreground" />
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">No Weather Data Available</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Start recording weather readings to see your historical weather charts.
-                    </p>
-                    <Button onClick={() => fetchWeatherData()} variant="default">
-                      Fetch Weather Data
-                    </Button>
-                  </div>
-                </div>
-              </GlassCardContent>
-            </GlassCard>
-          )}
-        </div>
-      )}
-
-      {/* Overview View */}
-      {viewMode === 'overview' && (
-        <>
-          {/* Location Permission Banner */}
+      {/* Weather Overview */}
+      <div>
+        {/* Location Permission Banner */}
           {!isDemoMode && (
             <LocationPermissionBanner
               onLocationRequest={async () => {
@@ -472,37 +378,37 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             />
           )}
 
-          {/* Demo Mode Banner */}
-          {isDemoMode && (
-        <motion.div
-          className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">🎯</span>
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <motion.div
+            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">🎯</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold">Demo Mode</h3>
+                  <p className="text-sm text-blue-100">You're viewing a limited preview. Create an account to unlock all features!</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold">Demo Mode</h3>
-                <p className="text-sm text-blue-100">You're viewing a limited preview. Create an account to unlock all features!</p>
-              </div>
+              <Button
+                size="sm"
+                onClick={() => window.location.href = "/onboarding"}
+                className="bg-white text-blue-600 hover:bg-blue-50"
+              >
+                Get Started
+              </Button>
             </div>
-            <Button
-              size="sm"
-              onClick={() => window.location.href = "/onboarding"}
-              className="bg-white text-blue-600 hover:bg-blue-50"
-            >
-              Get Started
-            </Button>
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )}
 
-      {/* Weather Stats Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Weather Stats Overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Air Quality Card */}
         <GlassCard className="floating-card">
           <GlassCardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -874,9 +780,8 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             </div>
           </GlassCardContent>
         </GlassCard>
+        </div>
       </div>
-        </>
-      )}
     </div>
   );
 }

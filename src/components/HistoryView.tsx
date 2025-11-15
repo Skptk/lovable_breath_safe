@@ -23,6 +23,9 @@ import { HistoricalAQIChart } from './HistoryView/HistoricalAQIChart';
 import { TimeRangeSelector } from './HistoryView/TimeRangeSelector';
 import { useHistoricalAQIData } from '@/hooks/useHistoricalAQIData';
 import { transformHistoryForChart, TimeRange, getAdaptivePointThreshold } from './HistoryView/utils/chartDataTransform';
+import { HistoricalWeatherChart } from './WeatherView/HistoricalWeatherChart';
+import { useHistoricalWeatherData } from '@/hooks/useHistoricalWeatherData';
+import { transformWeatherForChart, WeatherMetric } from './WeatherView/utils/weatherChartDataTransform';
 
 const PAGE_SIZE = 20;
 
@@ -173,11 +176,19 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
   const [timeRange, setTimeRange] = useState<TimeRange>({ type: '30d' });
+  const [selectedWeatherMetric, setSelectedWeatherMetric] = useState<WeatherMetric>('temperature');
   const { user } = useAuth();
   const { toast } = useToast();
 
   // Fetch chart data using React Query
   const { data: chartHistoryData, isLoading: chartLoading, error: chartError } = useHistoricalAQIData(user?.id, timeRange);
+  
+  // Fetch historical weather data for charts
+  const { data: weatherHistoryResponse, isLoading: weatherHistoryLoading, error: weatherHistoryError } = useHistoricalWeatherData(
+    user?.id,
+    timeRange,
+    selectedWeatherMetric
+  );
 
   const fetchHistory = useCallback(
     async (pageIndex: number = 0): Promise<HistoryEntry[]> => {
@@ -679,6 +690,16 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
     return transformHistoryForChart(chartHistoryData, timeRange, safeThreshold);
   }, [chartHistoryData, timeRange]);
 
+  // Transform weather data for chart
+  const weatherChartData = useMemo(() => {
+    if (!weatherHistoryResponse?.raw || weatherHistoryResponse.raw.length === 0) {
+      return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
+    }
+    const threshold = getAdaptivePointThreshold();
+    const safeThreshold = Math.min(threshold, 800);
+    return transformWeatherForChart(weatherHistoryResponse.raw, timeRange, selectedWeatherMetric, safeThreshold);
+  }, [weatherHistoryResponse, timeRange, selectedWeatherMetric]);
+
   const handleChartPointClick = useCallback((entry: HistoryEntry) => {
     setSelectedEntry(entry);
     setIsModalOpen(true);
@@ -801,12 +822,44 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           {viewMode === 'chart' && (
             <div className="space-y-4">
               <TimeRangeSelector selectedRange={timeRange} onRangeChange={setTimeRange} />
+              
+              {/* Air Quality Chart */}
               <HistoricalAQIChart
                 data={chartData.data}
                 isLoading={chartLoading}
                 error={chartError}
                 onDataPointClick={handleChartPointClick}
                 meta={chartData.meta}
+              />
+
+              {/* Weather Metric Selector */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium text-muted-foreground">Weather Metric:</span>
+                <div className="flex gap-2 flex-wrap">
+                  {(['temperature', 'humidity', 'windSpeed', 'airPressure'] as WeatherMetric[]).map((metric) => (
+                    <Button
+                      key={metric}
+                      variant={selectedWeatherMetric === metric ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedWeatherMetric(metric)}
+                    >
+                      {metric === 'temperature' ? 'Temperature' :
+                       metric === 'humidity' ? 'Humidity' :
+                       metric === 'windSpeed' ? 'Wind Speed' :
+                       'Air Pressure'}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Historical Weather Chart */}
+              <HistoricalWeatherChart
+                data={weatherChartData.data}
+                metric={selectedWeatherMetric}
+                isLoading={weatherHistoryLoading}
+                error={weatherHistoryError}
+                meta={weatherChartData.meta}
+                timeRange={timeRange.type}
               />
             </div>
           )}
