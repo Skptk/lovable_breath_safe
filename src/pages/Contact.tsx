@@ -9,7 +9,7 @@ export default function Contact(): JSX.Element {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30">
       {/* Header */}
-      <div className="bg-card border-b border-border backdrop-blur-xl">
+      <div className="bg-card border-b border-border backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
             <Link to="/">

@@ -143,7 +143,13 @@ function HistoryRowComponent({
     <GlassCard
       variant="default"
       className="cursor-pointer hover:scale-[1.02] group w-full max-w-full overflow-hidden transition-transform will-change-transform"
-      onClick={handleCardClick}
+      onClick={(e) => {
+        // Batch click handler to prevent layout thrashing
+        requestAnimationFrame(() => {
+          handleCardClick(e);
+        });
+      }}
+      style={{ contain: 'layout paint' }}
     >
       <GlassCardContent className="p-3 md:p-4 w-full max-w-full overflow-hidden">
         <div className="space-y-3 w-full max-w-full overflow-hidden">

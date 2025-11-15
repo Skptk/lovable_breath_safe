@@ -10,7 +10,7 @@ export default function Footer() {
   if (!user) {
     return (
       <motion.footer 
-        className="bg-card border-t border-border mt-auto backdrop-blur-xl"
+        className="bg-card border-t border-border mt-auto backdrop-blur-sm"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}

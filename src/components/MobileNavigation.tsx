@@ -22,12 +22,15 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
   const toggleMobileMenu = onClose ? onClose : () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   const handleViewChange = (view: string) => {
-    onViewChange(view);
-    if (onClose) {
-      onClose(); // Use external close function if provided
-    } else {
-      setIsMobileMenuOpen(false); // Otherwise use internal state
-    }
+    // Batch all DOM updates to prevent layout thrashing
+    requestAnimationFrame(() => {
+      onViewChange(view);
+      if (onClose) {
+        onClose(); // Use external close function if provided
+      } else {
+        setIsMobileMenuOpen(false); // Otherwise use internal state
+      }
+    });
   };
 
   // Handle Escape key to close mobile menu
@@ -103,6 +106,7 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={toggleMobileMenu}
+            style={{ willChange: 'opacity' }}
           />
         )}
       </AnimatePresence>
@@ -116,6 +120,7 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
             animate={{ x: 0 }}
             exit={{ x: -320 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            style={{ willChange: 'transform', contain: 'layout paint' }}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-border">

@@ -201,7 +201,7 @@ export default function Demo(): JSX.Element {
   // Demo Sidebar Component
   const DemoSidebar = () => (
     <motion.aside 
-      className="fixed left-0 top-0 h-full w-16 bg-card border-r border-border z-50 hidden md:flex flex-col items-center py-6 space-y-4 backdrop-blur-xl"
+      className="fixed left-0 top-0 h-full w-16 bg-card border-r border-border z-50 hidden md:flex flex-col items-center py-6 space-y-4 backdrop-blur-sm"
       initial={{ x: -64 }}
       animate={{ x: 0 }}
       transition={{ 
@@ -284,7 +284,7 @@ export default function Demo(): JSX.Element {
             <div className="relative">
               {/* Demo Header Bar */}
               <motion.nav 
-                className="bg-card border-b border-border backdrop-blur-xl sticky top-0 z-40"
+                className="bg-card border-b border-border backdrop-blur-sm sticky top-0 z-40"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}

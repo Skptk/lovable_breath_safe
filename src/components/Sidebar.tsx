@@ -21,7 +21,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
 
   return (
     <motion.aside 
-      className="fixed left-0 top-0 h-full w-16 bg-card border-r border-border z-50 hidden md:flex flex-col items-center py-6 space-y-4 backdrop-blur-xl"
+      className="fixed left-0 top-0 h-full w-16 bg-card border-r border-border z-50 hidden md:flex flex-col items-center py-6 space-y-4 backdrop-blur-sm"
       initial={{ x: -64 }}
       animate={{ x: 0 }}
       transition={{ 
@@ -30,6 +30,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
         stiffness: 200,
         duration: 0.4
       }}
+      style={{ willChange: 'transform', contain: 'layout paint' }}
     >
       {/* App Logo */}
       <motion.div 
@@ -60,14 +61,20 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps): JS
               <motion.div
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
+                style={{ willChange: 'transform' }}
               >
                 <Button
                   variant={isActive ? "default" : "ghost"}
                   size="icon"
-                  onClick={() => onViewChange(item.id)}
+                  onClick={() => {
+                    // Batch view change to prevent layout thrashing
+                    requestAnimationFrame(() => {
+                      onViewChange(item.id);
+                    });
+                  }}
                   className={`h-12 w-12 rounded-xl transition-all duration-200 ${
                     isActive 
-                      ? 'bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-lg border-accent' 
+                      ? 'bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-md border-accent' 
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent hover:border-accent border-transparent'
                   } border`}
                   title={item.label}

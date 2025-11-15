@@ -40,7 +40,7 @@ export function RefreshProgressBar({
 
   return (
     <div className={cn(
-      "w-full bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-4 space-y-3 shadow-lg",
+      "w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 space-y-3 shadow-lg",
       isUsingCachedData && "border-amber-200/50 bg-amber-50/10",
       className
     )}>

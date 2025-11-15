@@ -266,7 +266,12 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
                 <motion.div
                   key={article.id}
                   className="group cursor-pointer"
-                  onClick={() => setSelectedArticle(article)}
+                  onClick={() => {
+                    // Batch state update to prevent layout thrashing
+                    requestAnimationFrame(() => {
+                      setSelectedArticle(article);
+                    });
+                  }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ 
@@ -278,6 +283,7 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
                     scale: 1.02,
                     transition: { duration: 0.2 }
                   }}
+                  style={{ willChange: 'transform, opacity', contain: 'layout paint' }}
                 >
                   <GlassCard variant="elevated" className="relative overflow-hidden h-full bg-gradient-to-br from-card/80 via-card/60 to-card/40 backdrop-blur-sm border border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300 group-hover:border-primary/30">
                     {/* Glowing border effect */}

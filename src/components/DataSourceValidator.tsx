@@ -175,7 +175,7 @@ function DataSourceValidator({
   }, [validationResults.isLegitimateSource, validationResults.isSuspiciousAQI]);
 
   return (
-    <div className="p-6 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg mb-4">
+    <div className="p-6 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg mb-4" style={{ contain: 'layout paint' }}>
       <div className="flex items-center space-x-2 mb-4">
         <CheckCircle className="w-5 h-5 text-green-400" />
         <h3 className="text-lg font-semibold text-white">Data Source Validation</h3>

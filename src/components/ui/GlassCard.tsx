@@ -17,8 +17,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 }) => {
   const blurClasses = {
     sm: 'backdrop-blur-sm',
-    md: 'backdrop-blur-md', 
-    lg: 'backdrop-blur-lg'
+    md: 'backdrop-blur-sm', // Reduced from md for performance
+    lg: 'backdrop-blur-sm' // Reduced from lg for performance
   };
 
   const opacityClasses = {
@@ -38,7 +38,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
       {...props}
       className={cn(
       'rounded-xl border transition-all duration-300 ease-out',
-      'backdrop-blur-md -webkit-backdrop-blur-md',
+      'backdrop-blur-sm -webkit-backdrop-blur-sm',
       blurClasses[blur],
       opacityClasses[opacity],
       variantClasses[variant],
@@ -46,6 +46,11 @@ export const GlassCard: React.FC<GlassCardProps> = ({
       'dark:hover:shadow-black/40',
       className
     )}
+      style={{ 
+        willChange: 'transform',
+        contain: 'layout paint',
+        ...props.style 
+      }}
     >
       {children}
     </div>
