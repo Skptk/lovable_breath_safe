@@ -37,22 +37,45 @@ export function useHistoricalWeatherData(
         ? (window.innerWidth < 768 ? 400 : window.innerWidth < 1024 ? 600 : 1000)
         : 1000;
 
+      const startTs = timeRange.type === 'ALL' ? new Date(0).toISOString() : start.toISOString();
+      const endTs = end.toISOString();
+
+      if (import.meta.env.DEV) {
+        console.log('[useHistoricalWeatherData] Calling RPC:', {
+          userId,
+          timeRange: timeRange.type,
+          startTs,
+          endTs,
+          threshold,
+        });
+      }
+
       // Call Supabase RPC function with telemetry
       const apiStart = performance.now();
       const { data, error } = await supabase.rpc('get_weather_series', {
         p_user_id: userId,
-        p_start_ts: timeRange.type === 'ALL' ? new Date(0).toISOString() : start.toISOString(),
-        p_end_ts: end.toISOString(),
+        p_start_ts: startTs,
+        p_end_ts: endTs,
         p_desired_points: threshold,
       });
       const apiLatency = performance.now() - apiStart;
 
       if (error) {
+        console.error('[useHistoricalWeatherData] RPC error:', error);
         throw error;
       }
 
       // Parse response
       const response = data as WeatherSeriesResponse;
+      
+      if (import.meta.env.DEV) {
+        console.log('[useHistoricalWeatherData] RPC response:', {
+          rawLength: response?.raw?.length || 0,
+          totalCount: response?.totalCount || 0,
+          availableMetrics: response?.availableMetrics || [],
+          firstEntry: response?.raw?.[0],
+        });
+      }
       
       logTelemetry('api_response', {
         points_requested: threshold,

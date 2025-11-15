@@ -87,7 +87,7 @@ BEGIN
     RETURN jsonb_build_object(
       'raw', '[]'::jsonb,
       'totalCount', 0,
-      'availableMetrics', '[]'::jsonb
+      'availableMetrics', '[]'::jsonb::jsonb
     );
   END IF;
 
@@ -183,7 +183,7 @@ BEGIN
   v_result := jsonb_build_object(
     'raw', COALESCE(v_raw_data, '[]'::jsonb),
     'totalCount', v_total_count,
-    'availableMetrics', COALESCE(v_available_metrics::jsonb, '[]'::jsonb)
+    'availableMetrics', COALESCE(to_jsonb(v_available_metrics), '[]'::jsonb)
   );
 
   RETURN v_result;

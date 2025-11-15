@@ -115,6 +115,16 @@ export function transformWeatherForChart(
   metric: WeatherMetric,
   desiredPointLimit?: number
 ): { data: WeatherChartDataPoint[]; meta: { originalCount: number; binnedCount: number; binSizeHours: number } } {
+  if (import.meta.env.DEV) {
+    console.log('[transformWeatherForChart] Input:', {
+      entriesCount: entries.length,
+      timeRange: timeRange.type,
+      metric,
+      firstEntry: entries[0],
+      lastEntry: entries[entries.length - 1],
+    });
+  }
+
   if (entries.length === 0) {
     return {
       data: [],
@@ -122,14 +132,22 @@ export function transformWeatherForChart(
     };
   }
 
-  // Filter by time range if not ALL
+  // Note: RPC function already filters by time range, but we do a client-side check
+  // to handle edge cases and ensure data consistency
   const { start, end } = calculateTimeRange(timeRange.type, timeRange.start, timeRange.end);
   let filteredEntries = entries;
 
-  if (timeRange.type !== 'ALL') {
+  // Only filter if we have entries and it's not ALL (RPC already filtered, but double-check)
+  if (timeRange.type !== 'ALL' && entries.length > 0) {
     filteredEntries = entries.filter((entry) => {
-      const entryDate = new Date(entry.timestamp);
-      return entryDate >= start && entryDate <= end;
+      try {
+        const entryDate = new Date(entry.timestamp);
+        // Allow a small buffer for timezone/rounding issues
+        return entryDate >= new Date(start.getTime() - 1000) && entryDate <= new Date(end.getTime() + 1000);
+      } catch (e) {
+        console.warn('[transformWeatherForChart] Invalid timestamp:', entry.timestamp, e);
+        return false;
+      }
     });
   }
 
@@ -143,8 +161,20 @@ export function transformWeatherForChart(
   // Filter entries with valid metric values
   const validEntries = filteredEntries.filter((entry) => {
     const value = getMetricValue(entry, metric);
-    return value !== null && typeof value === 'number' && Number.isFinite(value);
+    const isValid = value !== null && typeof value === 'number' && Number.isFinite(value);
+    if (import.meta.env.DEV && !isValid && filteredEntries.length < 10) {
+      console.log('[transformWeatherForChart] Invalid entry:', { entry, metric, value });
+    }
+    return isValid;
   });
+
+  if (import.meta.env.DEV) {
+    console.log('[transformWeatherForChart] After filtering:', {
+      filteredCount: filteredEntries.length,
+      validCount: validEntries.length,
+      metric,
+    });
+  }
 
   if (validEntries.length === 0) {
     return {

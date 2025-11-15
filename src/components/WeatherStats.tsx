@@ -101,11 +101,30 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
   // Transform weather data for chart
   const chartData = useMemo(() => {
     if (!weatherHistoryResponse?.raw || weatherHistoryResponse.raw.length === 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WeatherStats] No raw data from RPC:', {
+          hasResponse: !!weatherHistoryResponse,
+          rawLength: weatherHistoryResponse?.raw?.length || 0,
+          totalCount: weatherHistoryResponse?.totalCount || 0,
+          availableMetrics: weatherHistoryResponse?.availableMetrics || [],
+          timeRange: timeRange.type,
+        });
+      }
       return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
     }
     const threshold = getAdaptivePointThreshold();
     const safeThreshold = Math.min(threshold, 800);
-    return transformWeatherForChart(weatherHistoryResponse.raw, timeRange, selectedMetric, safeThreshold);
+    const transformed = transformWeatherForChart(weatherHistoryResponse.raw, timeRange, selectedMetric, safeThreshold);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[WeatherStats] Transformed chart data:', {
+        rawCount: weatherHistoryResponse.raw.length,
+        transformedCount: transformed.data.length,
+        meta: transformed.meta,
+        timeRange: timeRange.type,
+        metric: selectedMetric,
+      });
+    }
+    return transformed;
   }, [weatherHistoryResponse, timeRange, selectedMetric]);
 
   // Debug logging for weather data (reduced frequency)
