@@ -7,6 +7,7 @@ import { useGeolocation } from './useGeolocation';
 import { useToast } from './use-toast';
 import useGlobalEnvironmentalData from './useGlobalEnvironmentalData';
 import type { GlobalEnvironmentalData } from '@/types';
+import { useWeatherStore } from '@/store/weatherStore';
 import {
   setRefreshLockTimestamp,
   getTimeUntilNextRefresh,
@@ -264,6 +265,7 @@ export const useAirQuality = () => {
   const { user } = useAuth();
   const { locationData } = useGeolocation();
   const { toast } = useToast();
+  const weatherData = useWeatherStore((state) => state.weatherData);
 
   const {
     data: scheduledData,
@@ -409,6 +411,20 @@ export const useAirQuality = () => {
         so2: toNullableNumber(latestReading.so2),
         co: toNullableNumber(latestReading.co),
         o3: toNullableNumber(latestReading.o3),
+        // Include weather data from store if available
+        temperature: weatherData?.temperature ?? null,
+        humidity: weatherData?.humidity ?? null,
+        wind_speed: weatherData?.windSpeed ?? null,
+        wind_direction: weatherData?.windDirection ?? null,
+        wind_gust: weatherData?.windGust ?? null,
+        air_pressure: weatherData?.airPressure ?? null,
+        rain_probability: weatherData?.rainProbability ?? null,
+        uv_index: weatherData?.uvIndex ?? null,
+        visibility: weatherData?.visibility ?? null,
+        weather_condition: weatherData?.weatherCondition ?? null,
+        feels_like_temperature: weatherData?.feelsLikeTemperature ?? null,
+        sunrise_time: weatherData?.sunriseTime ?? null,
+        sunset_time: weatherData?.sunsetTime ?? null,
         points_awarded: source === 'live' ? 10 : 0,
         created_at: new Date().toISOString(),
       };
@@ -457,7 +473,7 @@ export const useAirQuality = () => {
         setTimeout(runInsert, 0);
       }
     },
-    [scheduledReading?.timestamp, user]
+    [scheduledReading?.timestamp, user, weatherData]
   );
 
   // AQICN-only API fetch with enhanced station discovery

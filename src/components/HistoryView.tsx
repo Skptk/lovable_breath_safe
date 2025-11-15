@@ -26,6 +26,7 @@ import { transformHistoryForChart, TimeRange, getAdaptivePointThreshold } from '
 import { HistoricalWeatherChart } from './WeatherView/HistoricalWeatherChart';
 import { useHistoricalWeatherData } from '@/hooks/useHistoricalWeatherData';
 import { transformWeatherForChart, WeatherMetric } from './WeatherView/utils/weatherChartDataTransform';
+import { useWeatherStore } from '@/store/weatherStore';
 
 const PAGE_SIZE = 20;
 
@@ -179,6 +180,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   const [selectedWeatherMetric, setSelectedWeatherMetric] = useState<WeatherMetric>('temperature');
   const { user } = useAuth();
   const { toast } = useToast();
+  const weatherData = useWeatherStore((state) => state.weatherData);
 
   // Fetch chart data using React Query
   const { data: chartHistoryData, isLoading: chartLoading, error: chartError } = useHistoricalAQIData(user?.id, timeRange);
@@ -369,6 +371,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       const locationLabel = response.location ?? response.city ?? 'Unknown Location';
       const recordedAt = response.timestamp ?? new Date().toISOString();
 
+      // Get weather data from store if available, otherwise use API response data
       const reading = {
         user_id: user.id,
         timestamp: recordedAt,
@@ -382,8 +385,20 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         so2: response.pollutants?.so2 ?? null,
         co: response.pollutants?.co ?? null,
         o3: response.pollutants?.o3 ?? null,
-        temperature: response.environmental?.temperature ?? null,
-        humidity: response.environmental?.humidity ?? null,
+        // Use weather data from store if available, otherwise fall back to API response
+        temperature: weatherData?.temperature ?? response.environmental?.temperature ?? null,
+        humidity: weatherData?.humidity ?? response.environmental?.humidity ?? null,
+        wind_speed: weatherData?.windSpeed ?? null,
+        wind_direction: weatherData?.windDirection ?? null,
+        wind_gust: weatherData?.windGust ?? null,
+        air_pressure: weatherData?.airPressure ?? null,
+        rain_probability: weatherData?.rainProbability ?? null,
+        uv_index: weatherData?.uvIndex ?? null,
+        visibility: weatherData?.visibility ?? null,
+        weather_condition: weatherData?.weatherCondition ?? null,
+        feels_like_temperature: weatherData?.feelsLikeTemperature ?? null,
+        sunrise_time: weatherData?.sunriseTime ?? null,
+        sunset_time: weatherData?.sunsetTime ?? null,
         data_source: response.dataSource ?? 'AQICN (Scheduled)',
         created_at: new Date().toISOString(),
       };
