@@ -97,6 +97,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rafIdRef = useRef<number | null>(null);
   const lastDimensionsRef = useRef({ width: 800, height: 400 });
 
   // Use ResizeObserver with debouncing to avoid forced reflows
@@ -107,30 +108,40 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     if ('ResizeObserver' in window && containerRef.current) {
       // Create observer that handles both initial and subsequent resizes
       resizeObserverRef.current = new ResizeObserver((entries) => {
-        // Use debounced setTimeout to batch resize operations
-        if (resizeTimeoutRef.current) {
-          clearTimeout(resizeTimeoutRef.current);
+        // Cancel any pending RAF
+        if (rafIdRef.current !== null) {
+          cancelAnimationFrame(rafIdRef.current);
         }
         
-        resizeTimeoutRef.current = setTimeout(() => {
-          for (const entry of entries) {
-            const { width, height } = entry.contentRect;
-            if (width > 0 && height > 0) {
-              // Only update if change is significant (reduces re-renders)
-              if (
-                Math.abs(width - lastDimensionsRef.current.width) > 10 ||
-                Math.abs(height - lastDimensionsRef.current.height) > 10
-              ) {
-                lastDimensionsRef.current = { width, height };
-                // Use startTransition to defer state update
-                startTransition(() => {
-                  setDimensions({ width, height });
-                });
+        // Batch resize operations in a single RAF
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null;
+          
+          // Use debounced setTimeout to further reduce updates
+          if (resizeTimeoutRef.current) {
+            clearTimeout(resizeTimeoutRef.current);
+          }
+          
+          resizeTimeoutRef.current = setTimeout(() => {
+            for (const entry of entries) {
+              const { width, height } = entry.contentRect;
+              if (width > 0 && height > 0) {
+                // Only update if change is significant (reduces re-renders)
+                if (
+                  Math.abs(width - lastDimensionsRef.current.width) > 10 ||
+                  Math.abs(height - lastDimensionsRef.current.height) > 10
+                ) {
+                  lastDimensionsRef.current = { width, height };
+                  // Use startTransition to defer state update
+                  startTransition(() => {
+                    setDimensions({ width, height });
+                  });
+                }
               }
             }
-          }
-          resizeTimeoutRef.current = null;
-        }, 150); // Debounce to reduce updates
+            resizeTimeoutRef.current = null;
+          }, 200); // Increased debounce to reduce forced reflows
+        });
       });
       
       resizeObserverRef.current.observe(containerRef.current);
@@ -189,6 +200,9 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     }
 
     return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
       if (resizeObserverRef.current) {
         resizeObserverRef.current.disconnect();
       }
@@ -206,15 +220,17 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     const maxPoints = 500; // Reduced from 800
     const pointsToUse = data.length > maxPoints ? data.slice(-maxPoints) : data;
     
-    // Use a more efficient transformation
+    // Use a more efficient transformation - but keep all required fields
     const transformed = new Array(pointsToUse.length);
     for (let i = 0; i < pointsToUse.length; i++) {
       const point = pointsToUse[i];
       transformed[i] = {
         timestamp: point.timestamp.getTime(),
+        aqi: point.aqi, // Required for chart rendering
         value: point.value,
         displayTime: point.displayTime,
         location: point.location,
+        fullEntry: point.fullEntry, // Required for click handler
       };
     }
     
