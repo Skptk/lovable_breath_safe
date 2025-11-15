@@ -120,7 +120,7 @@ BEGIN
         AVG(rain_probability) as rain_probability,
         MAX(id) as id,
         MAX(location_name) as location_name,
-        MAX(timestamp) as timestamp
+        MAX(timestamp) as max_timestamp
       FROM public.air_quality_readings
       WHERE user_id = p_user_id
         AND timestamp >= p_start_ts
@@ -132,7 +132,7 @@ BEGIN
     SELECT jsonb_agg(
       jsonb_build_object(
         'id', id,
-        'timestamp', timestamp,
+        'timestamp', max_timestamp,
         'location_name', location_name,
         'temperature', temperature,
         'humidity', humidity,
@@ -141,7 +141,11 @@ BEGIN
         'rain_probability', rain_probability
       )
     ) INTO v_raw_data
-    FROM time_buckets;
+    FROM (
+      SELECT id, max_timestamp, location_name, temperature, humidity, wind_speed, air_pressure, rain_probability
+      FROM time_buckets
+      ORDER BY max_timestamp
+    ) ordered_buckets;
   ELSE
     -- No binning: return all data
     SELECT jsonb_agg(
@@ -155,14 +159,24 @@ BEGIN
         'air_pressure', air_pressure,
         'rain_probability', rain_probability
       )
-      ORDER BY timestamp
     ) INTO v_raw_data
-    FROM public.air_quality_readings
-    WHERE user_id = p_user_id
-      AND timestamp >= p_start_ts
-      AND timestamp <= p_end_ts
-      AND temperature IS NOT NULL
-    ORDER BY timestamp;
+    FROM (
+      SELECT 
+        id,
+        timestamp,
+        location_name,
+        temperature,
+        humidity,
+        wind_speed,
+        air_pressure,
+        rain_probability
+      FROM public.air_quality_readings
+      WHERE user_id = p_user_id
+        AND timestamp >= p_start_ts
+        AND timestamp <= p_end_ts
+        AND temperature IS NOT NULL
+      ORDER BY timestamp
+    ) readings;
   END IF;
 
   -- Build result
