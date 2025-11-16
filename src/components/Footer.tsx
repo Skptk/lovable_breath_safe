@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Heart, Shield, FileText, Mail, ArrowRight } from "lucide-react";
+import { Heart, ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 
@@ -15,26 +15,26 @@ export default function Footer() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-          <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
             {/* Left Side - Branding */}
-            <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-base">B</span>
+            <div className="flex flex-col items-start">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+                  <span className="text-white font-bold text-lg">B</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-foreground">Breath Safe</h3>
+                  <h3 className="text-xl font-bold text-foreground">Breath Safe</h3>
                   <p className="text-sm text-muted-foreground">Monitor air quality, earn rewards</p>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground">Built by Alex with love</p>
+              <p className="text-sm text-muted-foreground mt-1">Built by Alex with love</p>
             </div>
 
             {/* Right Side - Email Subscription */}
-            <div className="flex flex-col items-center lg:items-end text-center lg:text-right">
+            <div className="flex flex-col items-start lg:items-end w-full lg:w-auto">
               <h4 className="text-base font-semibold text-foreground mb-2">Join our email list</h4>
-              <p className="text-sm text-muted-foreground mb-3 max-w-sm">
+              <p className="text-sm text-muted-foreground mb-3 max-w-sm text-left lg:text-right">
                 Stay updated with the latest air quality insights, health tips, and exclusive rewards.
               </p>
               <div className="flex w-full max-w-xs gap-2">
@@ -51,7 +51,7 @@ export default function Footer() {
           </div>
           
           {/* Copyright - Centered at bottom */}
-          <div className="mt-6 text-center">
+          <div className="mt-8 pt-6 border-t border-border text-center">
             <p className="text-xs text-muted-foreground">© 2025 Breath Safe. All rights reserved.</p>
           </div>
         </div>
@@ -59,7 +59,7 @@ export default function Footer() {
     );
   }
 
-  // For authenticated users, show minimal footer with only legal links
+  // For authenticated users, show footer with branding, social media, and legal links
   return (
     <motion.footer 
       className="bg-card border-t border-border mt-auto backdrop-blur-xl"
@@ -67,31 +67,32 @@ export default function Footer() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
           {/* Left Side - Branding */}
-          <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-base">B</span>
+          <div className="flex flex-col items-start">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-lg">B</span>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-foreground">Breath Safe</h3>
+                <h3 className="text-xl font-bold text-foreground">Breath Safe</h3>
                 <p className="text-sm text-muted-foreground">Monitor air quality, earn rewards</p>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">Built by Alex with love</p>
+            <p className="text-sm text-muted-foreground mt-1">Built by Alex with love</p>
           </div>
 
           {/* Right Side - Social Media and Legal Links */}
-          <div className="flex flex-col items-center lg:items-end text-center lg:text-right gap-3">
+          <div className="flex flex-col items-start lg:items-end gap-4">
             {/* Social Media Icons - Above Legal Links */}
             <div className="flex gap-3">
               <a 
                 href="https://twitter.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-7 h-7 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold hover:scale-110 transition-transform"
+                className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold hover:scale-110 hover:bg-blue-600 transition-all shadow-md"
+                aria-label="Follow us on Twitter/X"
               >
                 X
               </a>
@@ -99,7 +100,8 @@ export default function Footer() {
                 href="https://tiktok.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-7 h-7 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold hover:scale-110 transition-transform"
+                className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-xs font-bold hover:scale-110 transition-all shadow-md"
+                aria-label="Follow us on TikTok"
               >
                 TT
               </a>
@@ -107,21 +109,31 @@ export default function Footer() {
                 href="https://youtube.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-7 h-7 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center text-white text-xs font-bold hover:scale-110 transition-transform"
+                className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold hover:scale-110 hover:bg-red-600 transition-all shadow-md"
+                aria-label="Follow us on YouTube"
               >
                 YT
               </a>
             </div>
 
             {/* Legal Links - Below Social Media */}
-            <div className="flex flex-wrap justify-center lg:justify-end gap-4 text-sm">
-              <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+            <div className="flex flex-wrap justify-start lg:justify-end gap-4 text-sm">
+              <Link 
+                to="/privacy" 
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Privacy policy
               </Link>
-              <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link 
+                to="/terms" 
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Refund policy
               </Link>
-              <Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link 
+                to="/contact" 
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Contact information
               </Link>
             </div>
@@ -129,7 +141,7 @@ export default function Footer() {
         </div>
         
         {/* Copyright - Centered at bottom */}
-        <div className="mt-6 text-center">
+        <div className="mt-8 pt-6 border-t border-border text-center">
           <p className="text-xs text-muted-foreground">© 2025 Breath Safe. All rights reserved.</p>
         </div>
       </div>
