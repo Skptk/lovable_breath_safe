@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { GlobalEnvironmentalData } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UseGlobalEnvironmentalDataOptions {
   latitude?: number;
@@ -61,6 +62,7 @@ const calculateHaversineDistance = (
 export const useGlobalEnvironmentalData = (
   options: UseGlobalEnvironmentalDataOptions = {},
 ): UseGlobalEnvironmentalDataReturn => {
+  const { user } = useAuth();
   const {
     latitude,
     longitude,
@@ -80,6 +82,13 @@ export const useGlobalEnvironmentalData = (
   const shouldFetch = shouldFilterByLocation || (typeof cityName === 'string' && cityName.trim().length > 0);
 
   const fetchGlobalData = useCallback(async (): Promise<GlobalEnvironmentalData[]> => {
+    // Require authentication
+    if (!user) {
+      console.log(' [GlobalData] Skipping fetch: user not authenticated');
+      setLastUpdated(null);
+      return [];
+    }
+
     if (!shouldFetch) {
       console.log(' [GlobalData] Skipping fetch: no location or city context provided');
       setLastUpdated(null);
@@ -118,7 +127,16 @@ export const useGlobalEnvironmentalData = (
       .limit(30); // Reduced from 60 to 30 for lower memory usage
 
     if (error) {
-      console.error(' [GlobalData] Error fetching scoped table data:', error);
+      console.error('❌ [GlobalData] Error fetching scoped table data:', {
+        error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        bounds: shouldFilterByLocation ? createBoundingBox(latitude!, longitude!, effectiveDistance) : null,
+        latitude,
+        longitude,
+      });
       throw error;
     }
 
@@ -133,7 +151,7 @@ export const useGlobalEnvironmentalData = (
     console.log(' [GlobalData] No environmental data returned for scoped query.');
     setLastUpdated(null);
     return [];
-  }, [shouldFetch, latitude, longitude, maxDistanceKm, cityName]);
+  }, [user, shouldFetch, latitude, longitude, maxDistanceKm, cityName]);
 
   // CRITICAL: Stop polling when tab is hidden
   const [isTabVisible, setIsTabVisible] = useState(true);
@@ -156,7 +174,7 @@ export const useGlobalEnvironmentalData = (
   const query = useQuery<GlobalEnvironmentalData[], Error>({
     queryKey: ['global-environmental-data', latitude ?? null, longitude ?? null, cityName ?? null],
     queryFn: fetchGlobalData,
-    enabled: shouldFetch && isTabVisible, // CRITICAL: Only fetch when tab is visible
+    enabled: !!user && shouldFetch && isTabVisible, // CRITICAL: Only fetch when authenticated, tab is visible, and location provided
     refetchInterval: (autoRefresh && isTabVisible) ? Math.max(refreshInterval, MIN_REFRESH_INTERVAL) : false, // CRITICAL: Stop polling when hidden
     staleTime: 3 * 60 * 1000, // Reduced from 5 to 3 minutes
     gcTime: 30 * 1000, // CRITICAL: Reduced to 30 seconds for faster GC
