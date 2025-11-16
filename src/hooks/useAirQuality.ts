@@ -433,6 +433,14 @@ export const useAirQuality = () => {
         location: latestReading.location,
         timestamp: latestReading.timestamp,
         source,
+        pollutants: {
+          pm25: latestReading.pm25,
+          pm10: latestReading.pm10,
+          no2: latestReading.no2,
+          so2: latestReading.so2,
+          co: latestReading.co,
+          o3: latestReading.o3,
+        },
       });
 
       const runInsert = () => {
@@ -523,6 +531,16 @@ export const useAirQuality = () => {
 
         const locationLabel = data.location ?? data.city ?? 'Unknown Location';
 
+        // Log what pollutants are available from fetchAQI
+        console.log('📊 [useAirQuality] Pollutants from fetchAQI:', {
+          pm25: data.pollutants?.pm25,
+          pm10: data.pollutants?.pm10,
+          no2: data.pollutants?.no2,
+          so2: data.pollutants?.so2,
+          co: data.pollutants?.co,
+          o3: data.pollutants?.o3,
+        });
+
         const transformedData: AirQualityData = {
           aqi: data.aqi || 0,
           pm25: data.pollutants?.pm25 ?? 0,
@@ -556,7 +574,14 @@ export const useAirQuality = () => {
           country: transformedData.country,
           aqi: transformedData.aqi,
           dominantPollutant: transformedData.dominantPollutant,
-          pm25: transformedData.pm25,
+          pollutants: {
+            pm25: transformedData.pm25,
+            pm10: transformedData.pm10,
+            no2: transformedData.no2,
+            so2: transformedData.so2,
+            co: transformedData.co,
+            o3: transformedData.o3,
+          },
           dataSource: transformedData.dataSource,
           stationUid: data.stationUid,
           globalSupport: 'worldwide'
