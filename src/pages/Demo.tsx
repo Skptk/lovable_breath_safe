@@ -337,7 +337,7 @@ export default function Demo(): JSX.Element {
                 </div>
               </main>
 
-              <footer className="px-4 pb-6 sm:px-6 lg:px-10">
+              <footer className="pb-6">
                 <Footer />
               </footer>
             </div>

@@ -342,7 +342,7 @@ export default function Index(): JSX.Element | null {
                 </div>
               </main>
 
-              <footer className="px-2 pb-6 sm:px-4 md:px-6 lg:px-8">
+              <footer className="pb-6">
                 <Footer />
               </footer>
             </div>
