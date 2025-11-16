@@ -87,16 +87,27 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
   const mapGlobalDataToAirQuality = useCallback((data?: GlobalEnvironmentalData | null): AirQualityData | null => {
     if (!data) return null;
 
+    // Helper to convert pollutant values: null/undefined/0 -> null, positive numbers -> number
+    const toNullablePollutant = (value: number | null | undefined): number | null => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+      return null; // Convert 0 or invalid numbers to null
+    };
+
     return {
       aqi: data.aqi ?? 0,
-      pm25: data.pm25 ?? undefined,
-      pm10: data.pm10 ?? undefined,
-      no2: data.no2 ?? undefined,
-      so2: data.so2 ?? undefined,
-      co: data.co ?? undefined,
-      o3: data.o3 ?? undefined,
+      pm25: toNullablePollutant(data.pm25),
+      pm10: toNullablePollutant(data.pm10),
+      no2: toNullablePollutant(data.no2),
+      so2: toNullablePollutant(data.so2),
+      co: toNullablePollutant(data.co),
+      o3: toNullablePollutant(data.o3),
       location: data.city_name,
+      userLocation: data.city_name,
+      coordinates: { lat: data.latitude, lon: data.longitude },
+      userCoordinates: { lat: data.latitude, lon: data.longitude },
       timestamp: data.collection_timestamp,
+      dataSource: data.data_source || 'OpenWeatherMap',
     };
   }, []);
 
@@ -148,16 +159,28 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
       }
 
       const locationLabel = response.location ?? response.city ?? response.stationName ?? 'Your Location';
+      
+      // Helper to convert pollutant values: null/undefined/0 -> null, positive numbers -> number
+      const toNullablePollutant = (value: number | null | undefined): number | null => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+        return null; // Convert 0 or invalid numbers to null
+      };
+      
       const fallbackPayload: AirQualityData = {
         aqi: response.aqi ?? 0,
-        pm25: response.pollutants?.pm25 ?? undefined,
-        pm10: response.pollutants?.pm10 ?? undefined,
-        no2: response.pollutants?.no2 ?? undefined,
-        so2: response.pollutants?.so2 ?? undefined,
-        co: response.pollutants?.co ?? undefined,
-        o3: response.pollutants?.o3 ?? undefined,
+        pm25: toNullablePollutant(response.pollutants?.pm25),
+        pm10: toNullablePollutant(response.pollutants?.pm10),
+        no2: toNullablePollutant(response.pollutants?.no2),
+        so2: toNullablePollutant(response.pollutants?.so2),
+        co: toNullablePollutant(response.pollutants?.co),
+        o3: toNullablePollutant(response.pollutants?.o3),
         location: locationLabel,
-        timestamp: response.timestamp ?? new Date().toISOString()
+        userLocation: locationLabel,
+        coordinates: { lat: response.stationLat ?? lat, lon: response.stationLon ?? lon },
+        userCoordinates: { lat, lon },
+        timestamp: response.timestamp ?? new Date().toISOString(),
+        dataSource: response.dataSource ?? 'OpenWeatherMap',
       };
 
       setFallbackAirQualityData(fallbackPayload);

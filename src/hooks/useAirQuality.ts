@@ -105,12 +105,12 @@ const createScheduledAirQualityReading = (
 
   return {
     aqi: typeof record.aqi === 'number' ? record.aqi : 0,
-    pm25: record.pm25 ?? 0,
-    pm10: record.pm10 ?? 0,
-    no2: record.no2 ?? 0,
-    so2: record.so2 ?? 0,
-    co: record.co ?? 0,
-    o3: record.o3 ?? 0,
+    pm25: toNullablePollutant(record.pm25),
+    pm10: toNullablePollutant(record.pm10),
+    no2: toNullablePollutant(record.no2),
+    so2: toNullablePollutant(record.so2),
+    co: toNullablePollutant(record.co),
+    o3: toNullablePollutant(record.o3),
     location: locationName,
     userLocation: locationName,
     coordinates: stationCoordinates,
@@ -162,12 +162,12 @@ const toNullablePollutant = (value: number | undefined | null): number | null =>
 // Enhanced interface for AQICN-only air quality data
 export interface AirQualityData {
   aqi: number;
-  pm25: number;
-  pm10: number;
-  no2: number;
-  so2: number;
-  co: number;
-  o3: number;
+  pm25: number | null;
+  pm10: number | null;
+  no2: number | null;
+  so2: number | null;
+  co: number | null;
+  o3: number | null;
   location: string;
   userLocation: string;
   coordinates: { lat: number; lon: number };
@@ -552,12 +552,12 @@ export const useAirQuality = () => {
 
         const transformedData: AirQualityData = {
           aqi: data.aqi || 0,
-          pm25: data.pollutants?.pm25 ?? 0,
-          pm10: data.pollutants?.pm10 ?? 0,
-          no2: data.pollutants?.no2 ?? 0,
-          so2: data.pollutants?.so2 ?? 0,
-          co: data.pollutants?.co ?? 0,
-          o3: data.pollutants?.o3 ?? 0,
+          pm25: toNullablePollutant(data.pollutants?.pm25),
+          pm10: toNullablePollutant(data.pollutants?.pm10),
+          no2: toNullablePollutant(data.pollutants?.no2),
+          so2: toNullablePollutant(data.pollutants?.so2),
+          co: toNullablePollutant(data.pollutants?.co),
+          o3: toNullablePollutant(data.pollutants?.o3),
           location: locationLabel,
           userLocation: locationLabel,
           coordinates: { lat: data.stationLat ?? safeCoordinates.lat, lon: data.stationLon ?? safeCoordinates.lng },
