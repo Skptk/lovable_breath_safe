@@ -335,14 +335,14 @@ export default function Index(): JSX.Element | null {
                 onClose={() => setShowMobileMenu(false)}
               />
 
-              <main className="px-4 py-6 sm:px-6 lg:px-10">
+              <main className="px-2 py-6 sm:px-4 md:px-6 lg:px-8">
                 {/* Removed AnimatePresence - instant page transitions for better performance */}
                 <div>
                   {renderView()}
                 </div>
               </main>
 
-              <footer className="px-4 pb-6 sm:px-6 lg:px-10">
+              <footer className="px-2 pb-6 sm:px-4 md:px-6 lg:px-8">
                 <Footer />
               </footer>
             </div>

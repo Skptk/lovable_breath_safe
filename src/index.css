@@ -765,9 +765,15 @@
 
   .page-container .page-content {
     flex: 1;
-    padding: 1rem;
+    padding: 0.5rem;
     position: relative;
     z-index: 1;
+  }
+
+  @media (min-width: 640px) {
+    .page-container .page-content {
+      padding: 1rem;
+    }
   }
 
   @media (min-width: 768px) {

@@ -10,7 +10,7 @@ export default function Contact(): JSX.Element {
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-secondary/30">
       {/* Header */}
       <div className="bg-card border-b border-border backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
             <Link to="/">
               <Button variant="ghost" size="sm">
@@ -27,7 +27,7 @@ export default function Contact(): JSX.Element {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-4xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Contact Information */}
           <div className="space-y-6">

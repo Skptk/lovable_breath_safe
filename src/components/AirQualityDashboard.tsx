@@ -453,7 +453,7 @@ function AirQualityDashboardContent({
   }, [hasUserConsent, refreshData, isDemoMode, toast]);
 
   const renderUnifiedShell = (content: React.ReactNode) => (
-    <div className="relative z-10 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="relative z-10 px-2 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8 lg:py-8">
       <div className="mx-auto max-w-7xl w-full">
         <div className="bg-black/40 ring-1 ring-white/10 rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8 xl:p-10">
           {content}
@@ -578,7 +578,7 @@ function AirQualityDashboardContent({
     <>
       {/* Demo Mode Banner */}
       {isDemoMode && (
-        <div className="relative z-10 px-4 pt-4 sm:px-6 lg:px-10">
+        <div className="relative z-10 px-2 pt-4 sm:px-4 md:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
             <motion.div
               className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg mb-4"

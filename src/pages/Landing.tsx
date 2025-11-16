@@ -148,7 +148,7 @@ export default function Landing(): JSX.Element {
       {/* Hero Section */}
       <section className="relative isolate overflow-hidden">
         <div className="hero-glow" aria-hidden="true" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 lg:pb-28">
+        <div className="relative max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 pt-24 pb-24 lg:pb-28">
           <div className="grid lg:grid-cols-12 gap-12 lg:gap-20 items-center">
             <div className="lg:col-span-7 space-y-8">
               <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary/20 to-accent/20 text-primary/90 px-4 py-2 text-xs font-semibold ring-1 ring-primary/30">

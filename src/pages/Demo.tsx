@@ -289,7 +289,7 @@ export default function Demo(): JSX.Element {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
               >
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8">
                   <div className="flex items-center justify-between h-16">
                     {/* Logo and Title */}
                     <div className="flex items-center gap-3">
@@ -330,7 +330,7 @@ export default function Demo(): JSX.Element {
                 onClose={() => setShowMobileMenu(false)}
               />
 
-              <main className="px-4 py-6 sm:px-6 lg:px-10">
+              <main className="px-2 py-6 sm:px-4 md:px-6 lg:px-8">
                 {/* Removed AnimatePresence - instant page transitions for better performance */}
                 <div>
                   {renderView()}

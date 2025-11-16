@@ -597,7 +597,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
         </div>
 
         {/* Floating Header */}
-        <div className="absolute top-4 left-4 right-4 z-10">
+        <div className="absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-10">
           <GlassCard className="floating-card">
             <GlassCardContent className="p-3">
               <div className="flex items-center justify-between">
@@ -629,7 +629,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
             
             {/* Current Location Summary */}
             {userLocation && (
-              <div className="px-4 pb-3 border-b border-border">
+              <div className="px-2 sm:px-4 pb-3 border-b border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Navigation className="h-4 w-4 text-primary" />
@@ -655,7 +655,7 @@ export default function MapView({ showMobileMenu, onMobileMenuToggle }: MapViewP
             )}
 
             {/* Stations List */}
-            <div className="px-4 py-3 max-h-64 overflow-y-auto">
+            <div className="px-2 sm:px-4 py-3 max-h-64 overflow-y-auto">
               <h3 className="text-sm font-semibold text-foreground mb-3">
                 Nearby Monitoring Stations
               </h3>

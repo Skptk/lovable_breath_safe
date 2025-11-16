@@ -15,7 +15,7 @@ export default function Footer() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-6 sm:py-8">
           <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
             {/* Left Side - Branding */}
             <div className="flex flex-col items-start">

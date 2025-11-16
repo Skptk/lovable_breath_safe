@@ -105,7 +105,7 @@ export default function Products() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Sidebar would be here but Products is a separate route */}
-      <div className="flex-1 p-6 max-w-7xl mx-auto space-y-card-gap">
+      <div className="flex-1 p-2 sm:p-4 md:p-6 max-w-7xl mx-auto space-y-card-gap">
         {/* Header */}
         <div>
           <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">

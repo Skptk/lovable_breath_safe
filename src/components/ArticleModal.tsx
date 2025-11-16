@@ -114,7 +114,7 @@ export default function ArticleModal({ article, onClose }: ArticleModalProps) {
             </div>
             
             {/* Article meta */}
-            <div className="px-6 py-4 border-b border-border/20">
+            <div className="px-2 sm:px-4 md:px-6 py-4 border-b border-border/20">
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />

@@ -164,7 +164,7 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-full max-w-full overflow-x-hidden px-4 md:px-6">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-full max-w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
         <DialogHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full max-w-full overflow-hidden">
             <div className="min-w-0 flex-1 overflow-hidden">

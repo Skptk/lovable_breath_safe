@@ -776,7 +776,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   return (
     <>
       <div className="page-container">
-        <div className="page-content space-y-4 sm:space-y-5 md:space-y-6 w-full max-w-full overflow-x-hidden px-3 sm:px-4 md:px-6">
+        <div className="page-content space-y-4 sm:space-y-5 md:space-y-6 w-full max-w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
           {/* Header */}
           <Header
             title="Air Quality History"
