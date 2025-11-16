@@ -148,6 +148,21 @@
     --accent: 192 95% 68%;
     --accent-foreground: 222 47% 12%;
   }
+
+  /* Mobile-specific dark mode improvements */
+  @media (max-width: 768px) {
+    .dark {
+      /* Slightly lighter backgrounds for better mobile readability */
+      --background: 222 47% 13%;
+      --card: 222 47% 17%;
+      --popover: 222 47% 16%;
+      --muted: 222 36% 22%;
+      --border: 222 36% 26%;
+      /* Better contrast for mobile screens */
+      --foreground: 210 40% 99%;
+      --card-foreground: 210 40% 99%;
+    }
+  }
 }
 
 @layer base {
@@ -319,6 +334,24 @@
   .dark .glass-overlay {
     background: rgba(38, 42, 50, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  /* Mobile-specific dark mode glass improvements */
+  @media (max-width: 768px) {
+    .dark .glass-card {
+      background: rgba(45, 50, 60, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .dark .glass-surface {
+      background: rgba(45, 50, 60, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .dark .glass-overlay {
+      background: rgba(45, 50, 60, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
   }
 
   /* Floating cards that float above background with glass effects - ALWAYS VISIBLE */
@@ -745,6 +778,11 @@
     .weather-background {
       background-position: center center;
     }
+
+    /* Dark mode overlay improvements for mobile */
+    .dark .weather-background::after {
+      background: rgba(0, 0, 0, 0.2);
+    }
   }
 
   /* High-resolution displays */
@@ -801,6 +839,25 @@
 
   .dark .text-foreground {
     color: #ffffff !important;
+  }
+
+  /* Mobile-specific dark mode text improvements */
+  @media (max-width: 768px) {
+    .dark {
+      color: #f8f9fa;
+    }
+
+    .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+      color: #f8f9fa;
+    }
+
+    .dark .text-muted-foreground {
+      color: #c4c4c4 !important;
+    }
+
+    .dark .text-foreground {
+      color: #f8f9fa !important;
+    }
   }
 
   .light {

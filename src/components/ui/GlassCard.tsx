@@ -23,8 +23,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 
   const opacityClasses = {
     light: 'bg-white/5 dark:bg-white/5 border-white/10 dark:border-white/10',
-    medium: 'bg-white/10 dark:bg-white/5 border-white/20 dark:border-white/10',
-    heavy: 'bg-white/20 dark:bg-white/10 border-white/30 dark:border-white/15'
+    medium: 'bg-white/10 dark:bg-white/5 border-white/20 dark:border-white/10 md:dark:bg-white/5',
+    heavy: 'bg-white/20 dark:bg-white/10 border-white/30 dark:border-white/15 md:dark:bg-white/10'
   };
 
   const variantClasses = {

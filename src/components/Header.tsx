@@ -33,7 +33,7 @@ function Header({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
   const { user } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, isDark } = useTheme();
 
   // Check location permission status
   useEffect(() => {
@@ -195,7 +195,17 @@ function Header({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              onClick={() => {
+                // Handle theme toggle properly for all cases (light, dark, system)
+                if (theme === 'light') {
+                  setTheme('dark');
+                } else if (theme === 'dark') {
+                  setTheme('light');
+                } else {
+                  // If system, toggle to opposite of current effective theme
+                  setTheme(isDark ? 'light' : 'dark');
+                }
+              }}
               className="h-9 w-9 rounded-full border-border hover:bg-accent hover:border-accent transition-all duration-200"
               aria-label="Switch to light/dark mode"
             >

@@ -10,10 +10,11 @@ export default function Footer() {
   if (!user) {
     return (
       <motion.footer 
-        className="bg-card border-t border-border mt-auto backdrop-blur-sm"
+        className="bg-card border-t border-border mt-auto backdrop-blur-sm pb-safe"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >
         <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-6 sm:py-8">
           <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
@@ -62,10 +63,11 @@ export default function Footer() {
   // For authenticated users, show footer with branding, social media, and legal links
   return (
     <motion.footer 
-      className="bg-card border-t border-border mt-auto backdrop-blur-xl"
+      className="bg-card border-t border-border mt-auto backdrop-blur-xl pb-safe"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
+      style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
     >
       <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-6 sm:py-8">
         <div className="flex flex-col lg:flex-row justify-between items-start gap-8">

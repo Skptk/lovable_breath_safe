@@ -125,7 +125,11 @@ export default {
 				'page': 'var(--page-padding)',
 				'section': 'var(--section-padding)',
 				'grid-gap': 'var(--grid-gutter)',
-				'card-gap': 'var(--card-spacing)'
+				'card-gap': 'var(--card-spacing)',
+				'safe-top': 'env(safe-area-inset-top)',
+				'safe-bottom': 'env(safe-area-inset-bottom)',
+				'safe-left': 'env(safe-area-inset-left)',
+				'safe-right': 'env(safe-area-inset-right)'
 			},
 			fontSize: {
 				'heading-lg': '24px',
