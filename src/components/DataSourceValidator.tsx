@@ -43,9 +43,10 @@ function DataSourceValidator({
 }: DataSourceValidatorProps) {
   // Memoize validation results to prevent unnecessary recalculations
   const validationResults = useMemo(() => {
-    // Validate data source legitimacy - recognize AQICN as legitimate
+    // Validate data source legitimacy - recognize OpenWeatherMap as legitimate
     const isLegitimateSource = dataSource && 
-      (dataSource === 'AQICN' ||
+      (dataSource === 'OpenWeatherMap' ||
+       dataSource === 'OpenWeatherMap (Scheduled)' ||
        dataSource === 'OpenWeatherMap API' || 
        dataSource === 'Integrated Weather System' || 
        dataSource === 'Manual Fetch' ||
@@ -111,9 +112,9 @@ function DataSourceValidator({
       const payload = JSON.parse(serializedSnapshot);
       console.log('🔍 [DataSourceValidator] Validating data:', payload);
 
-      if (payload.dataSource === 'AQICN' && payload.stationName && payload.distance && payload.stationUid) {
+      if (payload.dataSource?.includes('OpenWeatherMap') && payload.stationName) {
         console.log(
-          `✅ [DataSourceValidator] dataSource: 'AQICN' - Station: ${payload.stationName}, AQI: ${payload.aqi}, Distance: ${payload.distance}, uid: ${payload.stationUid}`
+          `✅ [DataSourceValidator] dataSource: '${payload.dataSource}' - Station: ${payload.stationName}, AQI: ${payload.aqi}, Location: ${payload.location}`
         );
       } else {
         console.log('🔍 [DataSourceValidator] Validation result:', {
@@ -184,7 +185,7 @@ function DataSourceValidator({
         <div>
           <span className="text-gray-300">Data Source:</span>
           <div className="mt-1 px-3 py-1 bg-green-500/20 border border-green-400/30 rounded-full text-sm text-green-300 inline-block">
-            {dataSource || 'AQICN'}
+            {dataSource || 'OpenWeatherMap'}
           </div>
         </div>
         <div>
@@ -236,8 +237,8 @@ function DataSourceValidator({
         </div>
       )}
       
-      {/* Station Information for AQICN */}
-      {dataSource === 'AQICN' && stationName && (
+      {/* Station Information for OpenWeatherMap */}
+      {dataSource?.includes('OpenWeatherMap') && stationName && (
         <div className="p-3 bg-gray-900/30 border border-gray-500/30 rounded-lg mb-4">
           <div className="text-sm">
             <div className="flex items-center justify-between mb-2">
@@ -266,7 +267,7 @@ function DataSourceValidator({
           <span className="text-sm font-medium text-green-300">High Quality Data</span>
         </div>
         <p className="text-sm text-green-200/80 mt-1">
-          This air quality reading comes from verified AQICN monitoring station sources and has been validated for accuracy.
+          This air quality reading comes from verified OpenWeatherMap data sources and has been validated for accuracy.
         </p>
       </div>
     </div>

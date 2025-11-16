@@ -234,6 +234,13 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
     };
   }, []);
 
+  // Helper function to convert pollutant values to null if 0 or undefined
+  const toNullablePollutant = (value: number | undefined | null): number | null => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+    return null; // Convert 0 or invalid numbers to null
+  };
+
   // Save comprehensive reading to database
   const saveComprehensiveReading = useCallback(async (
     aqiData: any,
@@ -247,6 +254,19 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
       return null;
     }
 
+    // Extract pollutants - handle both pm2_5 and pm25 naming
+    const pm25Value = aqiData.pollutants?.pm2_5 ?? aqiData.pollutants?.pm25 ?? aqiData.pm25;
+    
+    console.log('📊 [useWeatherData] Saving comprehensive reading with pollutants:', {
+      pm25: pm25Value,
+      pm10: aqiData.pollutants?.pm10,
+      no2: aqiData.pollutants?.no2,
+      so2: aqiData.pollutants?.so2,
+      co: aqiData.pollutants?.co,
+      o3: aqiData.pollutants?.o3,
+      source: 'Integrated Weather System'
+    });
+
     try {
       const reading = {
         user_id: user.id,
@@ -254,26 +274,27 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
         longitude: lon,
         location_name: aqiData.location || 'Unknown Location',
         aqi: aqiData.aqi,
-        pm25: aqiData.pollutants?.pm2_5,
-        pm10: aqiData.pollutants?.pm10,
-        no2: aqiData.pollutants?.no2,
-        so2: aqiData.pollutants?.so2,
-        co: aqiData.pollutants?.co,
-        o3: aqiData.pollutants?.o3,
-        temperature: weatherData.temperature,
-        humidity: weatherData.humidity,
-        wind_speed: weatherData.windSpeed,
-        wind_direction: weatherData.windDirection,
-        wind_gust: weatherData.windGust,
-        air_pressure: weatherData.airPressure,
-        rain_probability: weatherData.rainProbability,
-        uv_index: weatherData.uvIndex,
-        visibility: weatherData.visibility,
+        // Convert 0/undefined to null for pollutants (0 means "not available")
+        pm25: toNullablePollutant(pm25Value),
+        pm10: toNullablePollutant(aqiData.pollutants?.pm10),
+        no2: toNullablePollutant(aqiData.pollutants?.no2),
+        so2: toNullablePollutant(aqiData.pollutants?.so2),
+        co: toNullablePollutant(aqiData.pollutants?.co),
+        o3: toNullablePollutant(aqiData.pollutants?.o3),
+        temperature: weatherData.temperature ?? null,
+        humidity: weatherData.humidity ?? null,
+        wind_speed: weatherData.windSpeed ?? null,
+        wind_direction: weatherData.windDirection ?? null,
+        wind_gust: weatherData.windGust ?? null,
+        air_pressure: weatherData.airPressure ?? null,
+        rain_probability: weatherData.rainProbability ?? null,
+        uv_index: weatherData.uvIndex ?? null,
+        visibility: weatherData.visibility ?? null,
         forecast_summary: forecastData,
-        weather_condition: weatherData.weatherCondition,
-        feels_like_temperature: weatherData.feelsLikeTemperature,
-        sunrise_time: weatherData.sunriseTime,
-        sunset_time: weatherData.sunsetTime,
+        weather_condition: weatherData.weatherCondition ?? null,
+        feels_like_temperature: weatherData.feelsLikeTemperature ?? null,
+        sunrise_time: weatherData.sunriseTime ?? null,
+        sunset_time: weatherData.sunsetTime ?? null,
         data_source: 'Integrated Weather System'
       };
 

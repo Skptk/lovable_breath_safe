@@ -116,7 +116,7 @@ const createScheduledAirQualityReading = (
     coordinates: stationCoordinates,
     userCoordinates: userCoords,
     timestamp: record.collection_timestamp,
-    dataSource: 'AQICN (Scheduled)',
+    dataSource: 'OpenWeatherMap (Scheduled)',
     stationName: record.city_name,
     stationUid: record.id,
     distance: distanceKm !== null ? distanceKm.toFixed(2) : undefined,
@@ -150,6 +150,14 @@ const isDuplicateReading = (
 
 const toNullableNumber = (value: number | undefined) =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
+
+// Helper function to convert pollutant values to null if 0 or undefined
+// Pollutants should never be 0 (0 means "not available"), so convert to null
+const toNullablePollutant = (value: number | undefined | null): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+  return null; // Convert 0 or invalid numbers to null
+};
 
 // Enhanced interface for AQICN-only air quality data
 export interface AirQualityData {
@@ -405,12 +413,13 @@ export const useAirQuality = () => {
         latitude,
         longitude,
         aqi: toNullableNumber(latestReading.aqi),
-        pm25: toNullableNumber(latestReading.pm25),
-        pm10: toNullableNumber(latestReading.pm10),
-        no2: toNullableNumber(latestReading.no2),
-        so2: toNullableNumber(latestReading.so2),
-        co: toNullableNumber(latestReading.co),
-        o3: toNullableNumber(latestReading.o3),
+        // Use toNullablePollutant for pollutants (converts 0 to null)
+        pm25: toNullablePollutant(latestReading.pm25),
+        pm10: toNullablePollutant(latestReading.pm10),
+        no2: toNullablePollutant(latestReading.no2),
+        so2: toNullablePollutant(latestReading.so2),
+        co: toNullablePollutant(latestReading.co),
+        o3: toNullablePollutant(latestReading.o3),
         // Include weather data from store if available
         temperature: weatherData?.temperature ?? null,
         humidity: weatherData?.humidity ?? null,
@@ -484,7 +493,7 @@ export const useAirQuality = () => {
     [scheduledReading?.timestamp, user, weatherData]
   );
 
-  // AQICN-only API fetch with enhanced station discovery
+  // OpenWeatherMap API fetch from scheduled data
   const backoffAttemptRef = useRef(0);
 
   const aqicnQuery = useQuery({
@@ -495,7 +504,7 @@ export const useAirQuality = () => {
       }
 
       try {
-        console.log('🔄 [useAirQuality] Fetching AQICN data with global station discovery and intelligent fallback');
+        console.log('🔄 [useAirQuality] Fetching OpenWeatherMap data from scheduled collection');
 
         const { data, error } = await supabase.functions.invoke('fetchAQI', {
           body: {
@@ -523,7 +532,7 @@ export const useAirQuality = () => {
             coordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
             userCoordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
             timestamp: new Date().toISOString(),
-            dataSource: 'AQICN (Unavailable)',
+            dataSource: 'OpenWeatherMap (Unavailable)',
             error: true,
             message: data.message || '⚠️ Live air quality data unavailable, please check back later.'
           };
@@ -554,7 +563,7 @@ export const useAirQuality = () => {
           coordinates: { lat: data.stationLat ?? safeCoordinates.lat, lon: data.stationLon ?? safeCoordinates.lng },
           userCoordinates: { lat: safeCoordinates.lat, lon: safeCoordinates.lng },
           timestamp: data.timestamp || new Date().toISOString(),
-          dataSource: data.dataSource ?? 'AQICN (Scheduled)',
+          dataSource: data.dataSource ?? 'OpenWeatherMap (Scheduled)',
           stationName: data.stationName ?? locationLabel,
           stationUid: data.stationUid,
           distance: data.computedDistanceKm !== undefined ? `${data.computedDistanceKm}` : undefined,
@@ -567,7 +576,7 @@ export const useAirQuality = () => {
           } : undefined
         };
 
-        console.log('✅ [useAirQuality] Global AQICN station discovery successful:', {
+        console.log('✅ [useAirQuality] OpenWeatherMap data fetch successful:', {
           city: transformedData.location,
           station: transformedData.stationName,
           distance: transformedData.distance ? `${transformedData.distance}km` : 'calculating...',
@@ -584,9 +593,8 @@ export const useAirQuality = () => {
           },
           dataSource: transformedData.dataSource,
           stationUid: data.stationUid,
-          globalSupport: 'worldwide'
         });
-        console.log(`✅ [DataSourceValidator] Global AQICN Integration - Station: ${transformedData.stationName}, Location: ${transformedData.location}, AQI: ${transformedData.aqi}, Distance: ${transformedData.distance}km, Country: ${transformedData.country}, UID: ${data.stationUid}`);
+        console.log(`✅ [DataSourceValidator] OpenWeatherMap Integration - Station: ${transformedData.stationName}, Location: ${transformedData.location}, AQI: ${transformedData.aqi}, Distance: ${transformedData.distance}km, Country: ${transformedData.country}, UID: ${data.stationUid}`);
         return transformedData;
       } catch (error) {
         console.error('❌ [useAirQuality] fetchAQI API fetch failed:', error);
@@ -604,7 +612,7 @@ export const useAirQuality = () => {
           coordinates: { lat: safeCoordinates?.lat || 0, lon: safeCoordinates?.lng || 0 },
           userCoordinates: { lat: safeCoordinates?.lat || 0, lon: safeCoordinates?.lng || 0 },
           timestamp: new Date().toISOString(),
-          dataSource: 'AQICN (Error)',
+          dataSource: 'OpenWeatherMap (Error)',
           error: true,
           message: '⚠️ Live air quality data unavailable, please check back later.'
         };
@@ -654,7 +662,7 @@ export const useAirQuality = () => {
       return;
     }
 
-    console.log('♻️ [useAirQuality] Using scheduled AQICN data for dashboard rendering', {
+    console.log('♻️ [useAirQuality] Using scheduled OpenWeatherMap data for dashboard rendering', {
       location: scheduledReading.location,
       aqi: scheduledReading.aqi,
       timestamp: scheduledReading.timestamp,

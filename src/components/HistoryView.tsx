@@ -371,6 +371,13 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       const locationLabel = response.location ?? response.city ?? 'Unknown Location';
       const recordedAt = response.timestamp ?? new Date().toISOString();
 
+      // Helper function to convert pollutant values to null if 0 or undefined
+      const toNullablePollutant = (value: number | undefined | null): number | null => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+        return null; // Convert 0 or invalid numbers to null
+      };
+
       // Get weather data from store if available, otherwise use API response data
       const reading = {
         user_id: user.id,
@@ -379,12 +386,13 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         latitude: stationLat,
         longitude: stationLon,
         aqi: response.aqi ?? 0,
-        pm25: response.pollutants?.pm25 ?? null,
-        pm10: response.pollutants?.pm10 ?? null,
-        no2: response.pollutants?.no2 ?? null,
-        so2: response.pollutants?.so2 ?? null,
-        co: response.pollutants?.co ?? null,
-        o3: response.pollutants?.o3 ?? null,
+        // Convert 0/undefined to null for pollutants (0 means "not available")
+        pm25: toNullablePollutant(response.pollutants?.pm25),
+        pm10: toNullablePollutant(response.pollutants?.pm10),
+        no2: toNullablePollutant(response.pollutants?.no2),
+        so2: toNullablePollutant(response.pollutants?.so2),
+        co: toNullablePollutant(response.pollutants?.co),
+        o3: toNullablePollutant(response.pollutants?.o3),
         // Use weather data from store if available, otherwise fall back to API response
         temperature: weatherData?.temperature ?? response.environmental?.temperature ?? null,
         humidity: weatherData?.humidity ?? response.environmental?.humidity ?? null,

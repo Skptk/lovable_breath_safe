@@ -1,5 +1,5 @@
 // fetchAQI edge function
-// Reads pre-collected AQICN data from global_environmental_data and returns
+// Reads pre-collected OpenWeatherMap data from global_environmental_data and returns
 // the nearest useful record for the requesting coordinates.
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -257,11 +257,11 @@ function buildResponsePayload(
     pollutants,
     environmental,
     timestamp: candidate.record.collection_timestamp,
-    dataSource: 'AQICN (Scheduled)',
+    dataSource: 'OpenWeatherMap (Scheduled)',
     scheduledMeta: {
       id: candidate.record.id,
       collectionTimestamp: candidate.record.collection_timestamp,
-      dataSource: candidate.record.data_source ?? 'AQICN',
+      dataSource: candidate.record.data_source ?? 'OpenWeatherMap',
     },
     location: locationLabel,
     country: candidate.record.country,
@@ -273,7 +273,7 @@ function buildResponsePayload(
       chosen: 'scheduled-collection',
       selectionStrategy: strategy,
       userCountry,
-      selectionReason: 'Nearest scheduled AQICN record',
+      selectionReason: 'Nearest scheduled OpenWeatherMap record',
       candidates: candidateMeta,
       dataAgeMinutes: Math.floor(
         (Date.now() - new Date(candidate.record.collection_timestamp).getTime()) / 60000,
@@ -353,7 +353,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`Looking up scheduled AQI data nearest to ${lat}, ${lon}`);
+    console.log(`Looking up scheduled OpenWeatherMap AQI data nearest to ${lat}, ${lon}`);
 
     const { data: records, error } = await supabase
       .from('global_environmental_data')
@@ -440,7 +440,7 @@ serve(async (req: Request) => {
     );
 
     console.log(
-      `Scheduled AQI data success - City: ${responsePayload.city}, AQI: ${responsePayload.aqi}, Distance: ${responsePayload.computedDistanceKm}km (strategy: ${strategy})`,
+      `Scheduled OpenWeatherMap data success - City: ${responsePayload.city}, AQI: ${responsePayload.aqi}, Distance: ${responsePayload.computedDistanceKm}km (strategy: ${strategy})`,
     );
 
     return new Response(JSON.stringify(responsePayload), {

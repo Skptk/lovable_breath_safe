@@ -26,48 +26,27 @@ const MAJOR_CITIES = [
   { name: 'Kisii', lat: -0.6833, lon: 34.7667, country: 'Kenya' }
 ];
 
-interface AQICNResponse {
-  status: string;
-  data: {
-    aqi: number;
-    idx: number;
-    attributions: Array<{
-      url: string;
-      name: string;
-      logo?: string;
-    }>;
-    city: {
-      geo: [number, number]; // [lat, lon]
-      name: string;
-      url: string;
-    };
-    dominentpol: string;
-    iaqi: {
-      co?: { v: number };
-      h?: { v: number }; // humidity
-      no2?: { v: number };
-      o3?: { v: number };
-      p?: { v: number }; // pressure
-      pm10?: { v: number };
-      pm25?: { v: number };
-      so2?: { v: number };
-      t?: { v: number }; // temperature
-      w?: { v: number }; // wind speed
-      wd?: { v: number }; // wind direction
-    };
-    time: {
-      s: string; // ISO timestamp
-      tz: string;
-      v: number; // unix timestamp
-    };
-    forecast?: {
-      daily: {
-        o3: Array<{ avg: number; day: string; max: number; min: number }>;
-        pm10: Array<{ avg: number; day: string; max: number; min: number }>;
-        pm25: Array<{ avg: number; day: string; max: number; min: number }>;
-      };
-    };
+interface OpenWeatherMapAirPollution {
+  coord: {
+    lat: number;
+    lon: number;
   };
+  list: Array<{
+    dt: number;
+    main: {
+      aqi: number; // 1-5 scale
+    };
+    components: {
+      co: number;
+      no: number;
+      no2: number;
+      o3: number;
+      so2: number;
+      pm2_5: number;
+      pm10: number;
+      nh3: number;
+    };
+  }>;
 }
 
 interface OpenWeatherMapWeather {
@@ -130,18 +109,25 @@ interface GlobalEnvironmentalData {
   is_active: boolean;
 }
 
-// Helper function to validate and process AQICN AQI values
-function processAQICNAQI(aqicnAQI: number): number {
-  // AQICN already provides standard AQI values (0-500 scale)
-  // Just validate and ensure reasonable bounds
-  if (aqicnAQI < 0) return 0;
-  if (aqicnAQI > 500) return 500;
-  return Math.round(aqicnAQI);
+// Convert OpenWeatherMap AQI (1-5) to standard AQI (0-500)
+function convertOWMAQIToStandard(owmAQI: number): number {
+  const aqiMap: Record<number, number> = {
+    1: 50,   // Good
+    2: 100,  // Fair
+    3: 150,  // Moderate
+    4: 200,  // Poor
+    5: 300,  // Very Poor
+  };
+  return aqiMap[owmAQI] || 0;
 }
 
-// Helper function to safely extract AQICN pollutant values
-function extractPollutantValue(pollutant: { v: number } | undefined): number | null {
-  return pollutant?.v ? Math.round(pollutant.v * 10) / 10 : null; // Round to 1 decimal
+// Helper function to safely extract pollutant values
+function extractPollutantValue(value: number | undefined | null): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return Math.round(value * 10) / 10; // Round to 1 decimal
+  }
+  return null;
 }
 
 // Helper function to convert timestamp to time string
@@ -150,126 +136,77 @@ function timestampToTimeString(timestamp: number): string {
   return date.toTimeString().split(' ')[0];
 }
 
-// Collect environmental data for a specific city
+// Collect environmental data for a specific city using OpenWeatherMap
 async function collectCityData(
   city: { name: string; lat: number; lon: number; country: string },
-  aqicnApiKey: string,
-  openWeatherMapApiKey: string | null,
+  openWeatherMapApiKey: string,
   supabase: any
 ): Promise<GlobalEnvironmentalData | null> {
   try {
-    console.log(`🌍 Collecting AQICN data for ${city.name}, ${city.country}...`);
+    console.log(`🌍 Collecting OpenWeatherMap data for ${city.name}, ${city.country}...`);
 
-    // Get air quality data from AQICN
-    const aqicnResponse = await fetch(
-      `https://api.waqi.info/feed/geo:${city.lat};${city.lon}/?token=${aqicnApiKey}`
+    // Fetch air pollution data
+    const airPollutionResponse = await fetch(
+      `https://api.openweathermap.org/data/2.5/air_pollution?lat=${city.lat}&lon=${city.lon}&appid=${openWeatherMapApiKey}`
     );
 
-    if (!aqicnResponse.ok) {
-      console.error(`❌ AQICN API failed for ${city.name}:`, aqicnResponse.status);
+    if (!airPollutionResponse.ok) {
+      console.error(`❌ OpenWeatherMap Air Pollution API failed for ${city.name}:`, airPollutionResponse.status);
       return null;
     }
 
-    const aqicnData: AQICNResponse = await aqicnResponse.json();
-
-    if (aqicnData.status !== 'ok') {
-      console.error(`❌ AQICN API error for ${city.name}:`, aqicnData.status);
+    const airPollutionData: OpenWeatherMapAirPollution = await airPollutionResponse.json();
+    const airQuality = airPollutionData.list?.[0];
+    
+    if (!airQuality) {
+      console.error(`❌ No air pollution data for ${city.name}`);
       return null;
     }
 
-    // Log what pollutants are available in the API response
-    const iaqi = aqicnData.data.iaqi || {};
-    console.log(`📊 [${city.name}] AQICN API response - Available pollutants:`, Object.keys(iaqi).join(', '));
-    
-    // Extract pollutants from AQICN
-    const aqicnPollutants = {
-      pm25: extractPollutantValue(iaqi.pm25),
-      pm10: extractPollutantValue(iaqi.pm10),
-      no2: extractPollutantValue(iaqi.no2),
-      so2: extractPollutantValue(iaqi.so2),
-      co: extractPollutantValue(iaqi.co),
-      o3: extractPollutantValue(iaqi.o3),
-    };
-    
-    console.log(`📊 [${city.name}] AQICN extracted pollutants:`, aqicnPollutants);
+    // Fetch weather data for additional environmental metrics
+    const weatherResponse = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&appid=${openWeatherMapApiKey}&units=metric`
+    );
 
-    // Check which pollutants are missing
-    const missingPollutants = Object.entries(aqicnPollutants)
-      .filter(([_, value]) => value === null)
-      .map(([key, _]) => key);
-    
-    let openWeatherMapPollutants: Partial<typeof aqicnPollutants> = {};
-    
-    // If we have missing pollutants and OpenWeatherMap API key, fetch fallback data
-    if (missingPollutants.length > 0 && openWeatherMapApiKey) {
-      console.log(`⚠️ [${city.name}] Missing pollutants from AQICN: ${missingPollutants.join(', ')}`);
-      console.log(`🔄 [${city.name}] Attempting to fetch missing pollutants from OpenWeatherMap...`);
-      
-      try {
-        const openWeatherMapResponse = await fetch(
-          `https://api.openweathermap.org/data/2.5/air_pollution?lat=${city.lat}&lon=${city.lon}&appid=${openWeatherMapApiKey}`
-        );
-        
-        if (openWeatherMapResponse.ok) {
-          const openWeatherMapData = await openWeatherMapResponse.json();
-          const components = openWeatherMapData.list?.[0]?.components;
-          
-          if (components) {
-            // Map OpenWeatherMap pollutants to our format
-            // OpenWeatherMap uses pm2_5, we use pm25
-            if (missingPollutants.includes('pm25') && components.pm2_5 !== undefined) {
-              openWeatherMapPollutants.pm25 = Math.round(components.pm2_5 * 10) / 10;
-              console.log(`✅ [${city.name}] Filled PM2.5 from OpenWeatherMap: ${openWeatherMapPollutants.pm25}`);
-            }
-            if (missingPollutants.includes('pm10') && components.pm10 !== undefined) {
-              openWeatherMapPollutants.pm10 = Math.round(components.pm10 * 10) / 10;
-              console.log(`✅ [${city.name}] Filled PM10 from OpenWeatherMap: ${openWeatherMapPollutants.pm10}`);
-            }
-            if (missingPollutants.includes('no2') && components.no2 !== undefined) {
-              openWeatherMapPollutants.no2 = Math.round(components.no2 * 10) / 10;
-              console.log(`✅ [${city.name}] Filled NO2 from OpenWeatherMap: ${openWeatherMapPollutants.no2}`);
-            }
-            if (missingPollutants.includes('so2') && components.so2 !== undefined) {
-              openWeatherMapPollutants.so2 = Math.round(components.so2 * 10) / 10;
-              console.log(`✅ [${city.name}] Filled SO2 from OpenWeatherMap: ${openWeatherMapPollutants.so2}`);
-            }
-            if (missingPollutants.includes('co') && components.co !== undefined) {
-              // OpenWeatherMap CO is in µg/m³, convert from mg/m³ if needed
-              openWeatherMapPollutants.co = Math.round(components.co * 10) / 10;
-              console.log(`✅ [${city.name}] Filled CO from OpenWeatherMap: ${openWeatherMapPollutants.co}`);
-            }
-            if (missingPollutants.includes('o3') && components.o3 !== undefined) {
-              openWeatherMapPollutants.o3 = Math.round(components.o3 * 10) / 10;
-              console.log(`✅ [${city.name}] Filled O3 from OpenWeatherMap: ${openWeatherMapPollutants.o3}`);
-            }
-          }
-        } else {
-          console.warn(`⚠️ [${city.name}] OpenWeatherMap API failed: ${openWeatherMapResponse.status}`);
-        }
-      } catch (error) {
-        console.warn(`⚠️ [${city.name}] Error fetching OpenWeatherMap fallback:`, error);
-      }
+    let weatherData: OpenWeatherMapWeather | null = null;
+    if (weatherResponse.ok) {
+      weatherData = await weatherResponse.json();
+    } else {
+      console.warn(`⚠️ OpenWeatherMap Weather API failed for ${city.name}:`, weatherResponse.status);
     }
 
-    // Merge AQICN and OpenWeatherMap pollutants (AQICN takes priority)
-    const finalPollutants = {
-      pm25: aqicnPollutants.pm25 ?? openWeatherMapPollutants.pm25 ?? null,
-      pm10: aqicnPollutants.pm10 ?? openWeatherMapPollutants.pm10 ?? null,
-      no2: aqicnPollutants.no2 ?? openWeatherMapPollutants.no2 ?? null,
-      so2: aqicnPollutants.so2 ?? openWeatherMapPollutants.so2 ?? null,
-      co: aqicnPollutants.co ?? openWeatherMapPollutants.co ?? null,
-      o3: aqicnPollutants.o3 ?? openWeatherMapPollutants.o3 ?? null,
+    // Extract pollutants
+    const components = airQuality.components;
+    const pollutants = {
+      pm25: extractPollutantValue(components.pm2_5),
+      pm10: extractPollutantValue(components.pm10),
+      no2: extractPollutantValue(components.no2),
+      so2: extractPollutantValue(components.so2),
+      co: extractPollutantValue(components.co),
+      o3: extractPollutantValue(components.o3),
     };
-    
-    console.log(`📊 [${city.name}] Final merged pollutants:`, finalPollutants);
 
-    // Process air quality data from AQICN
-    const aqi = processAQICNAQI(aqicnData.data.aqi);
+    console.log(`📊 [${city.name}] OpenWeatherMap pollutants:`, pollutants);
 
-    // Determine data source
-    const dataSource = Object.keys(openWeatherMapPollutants).length > 0 
-      ? 'AQICN + OpenWeatherMap (Fallback)'
-      : 'AQICN';
+    // Convert AQI from 1-5 scale to 0-500 scale
+    const standardAQI = convertOWMAQIToStandard(airQuality.main.aqi);
+
+    // Extract weather data if available
+    const weatherCondition = weatherData?.weather?.[0]?.main || null;
+    const temperature = weatherData?.main?.temp || null;
+    const humidity = weatherData?.main?.humidity || null;
+    const airPressure = weatherData?.main?.pressure || null;
+    const windSpeed = weatherData?.wind?.speed || null;
+    const windDirection = weatherData?.wind?.deg || null;
+    const windGust = weatherData?.wind?.gust || null;
+    const visibility = weatherData?.visibility ? weatherData.visibility / 1000 : null; // Convert to km
+    const feelsLikeTemperature = weatherData?.main?.feels_like || null;
+    const sunriseTime = weatherData?.sys?.sunrise 
+      ? new Date(weatherData.sys.sunrise * 1000).toTimeString().split(' ')[0]
+      : null;
+    const sunsetTime = weatherData?.sys?.sunset
+      ? new Date(weatherData.sys.sunset * 1000).toTimeString().split(' ')[0]
+      : null;
 
     // Create environmental data object
     const environmentalData: GlobalEnvironmentalData = {
@@ -278,32 +215,32 @@ async function collectCityData(
       country: city.country,
       latitude: city.lat,
       longitude: city.lon,
-      aqi: aqi,
-      // Use merged pollutant data
-      pm25: finalPollutants.pm25,
-      pm10: finalPollutants.pm10,
-      no2: finalPollutants.no2,
-      so2: finalPollutants.so2,
-      co: finalPollutants.co,
-      o3: finalPollutants.o3,
-      // Use AQICN environmental data (if available)
-      temperature: extractPollutantValue(iaqi.t),
-      humidity: extractPollutantValue(iaqi.h),
-      wind_speed: extractPollutantValue(iaqi.w),
-      wind_direction: extractPollutantValue(iaqi.wd),
-      wind_gust: null,
-      air_pressure: extractPollutantValue(iaqi.p),
-      visibility: null, // AQICN doesn't provide visibility
-      weather_condition: null, // AQICN doesn't provide weather conditions
-      feels_like_temperature: null,
-      sunrise_time: null,
-      sunset_time: null,
-      data_source: dataSource,
+      aqi: standardAQI,
+      // Use OpenWeatherMap pollutant data
+      pm25: pollutants.pm25,
+      pm10: pollutants.pm10,
+      no2: pollutants.no2,
+      so2: pollutants.so2,
+      co: pollutants.co,
+      o3: pollutants.o3,
+      // Use OpenWeatherMap weather data
+      temperature: temperature ? Math.round(temperature * 10) / 10 : null,
+      humidity: humidity ? Math.round(humidity * 10) / 10 : null,
+      wind_speed: windSpeed ? Math.round(windSpeed * 10) / 10 : null,
+      wind_direction: windDirection ? Math.round(windDirection) : null,
+      wind_gust: windGust ? Math.round(windGust * 10) / 10 : null,
+      air_pressure: airPressure ? Math.round(airPressure) : null,
+      visibility: visibility ? Math.round(visibility * 10) / 10 : null,
+      weather_condition: weatherCondition,
+      feels_like_temperature: feelsLikeTemperature ? Math.round(feelsLikeTemperature * 10) / 10 : null,
+      sunrise_time: sunriseTime,
+      sunset_time: sunsetTime,
+      data_source: 'OpenWeatherMap',
       collection_timestamp: new Date().toISOString(),
       is_active: true
     };
 
-    console.log(`✅ Data collected for ${city.name}: AQI ${aqi}, Data Source: ${dataSource}`);
+    console.log(`✅ Data collected for ${city.name}: AQI ${standardAQI} (OWM: ${airQuality.main.aqi}), Data Source: OpenWeatherMap`);
 
     return environmentalData;
   } catch (error) {
@@ -348,20 +285,18 @@ async function storeEnvironmentalData(
 
 // Main data collection function
 async function collectAllEnvironmentalData(
-  aqicnApiKey: string,
-  openWeatherMapApiKey: string | null,
+  openWeatherMapApiKey: string,
   supabase: any
 ): Promise<{ collectedData: GlobalEnvironmentalData[]; errors: string[] }> {
   const now = new Date();
   const utcTime = now.toISOString();
   const localTime = now.toString();
   
-  console.log('🚀 Starting scheduled environmental data collection...');
+  console.log('🚀 Starting scheduled OpenWeatherMap data collection...');
   console.log(`📅 Collection time (UTC): ${utcTime}`);
   console.log(`📅 Collection time (Local): ${localTime}`);
   console.log(`🌍 Collecting data for ${MAJOR_CITIES.length} cities...`);
-  console.log(`🔑 AQICN API: ${aqicnApiKey ? 'Configured' : 'Not configured'}`);
-  console.log(`🔑 OpenWeatherMap API: ${openWeatherMapApiKey ? 'Configured (fallback enabled)' : 'Not configured'}`);
+  console.log(`🔑 OpenWeatherMap API: ${openWeatherMapApiKey ? 'Configured' : 'Not configured'}`);
 
   const collectedData: GlobalEnvironmentalData[] = [];
   const errors: string[] = [];
@@ -369,7 +304,7 @@ async function collectAllEnvironmentalData(
   // Collect data for each city
   for (const city of MAJOR_CITIES) {
     try {
-      const cityData = await collectCityData(city, aqicnApiKey, openWeatherMapApiKey, supabase);
+      const cityData = await collectCityData(city, openWeatherMapApiKey, supabase);
       if (cityData) {
         collectedData.push(cityData);
       } else {
@@ -438,11 +373,10 @@ serve(async (req) => {
         });
       }
 
-      const aqicnApiKey = Deno.env.get('AQICN_API_KEY');
       const openWeatherMapApiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
       
-      if (!aqicnApiKey) {
-        return new Response(JSON.stringify({ error: 'AQICN API key not configured' }), {
+      if (!openWeatherMapApiKey) {
+        return new Response(JSON.stringify({ error: 'OpenWeatherMap API key not configured' }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -459,7 +393,7 @@ serve(async (req) => {
       }
 
       const supabase = createClient(supabaseUrl, supabaseKey);
-      const cityEnvironmentalData = await collectCityData(cityData, aqicnApiKey, openWeatherMapApiKey, supabase);
+      const cityEnvironmentalData = await collectCityData(cityData, openWeatherMapApiKey, supabase);
 
       if (cityEnvironmentalData) {
         await storeEnvironmentalData([cityEnvironmentalData], supabase);
@@ -482,16 +416,15 @@ serve(async (req) => {
 
     // Regular scheduled collection (either via cron or manual trigger)
     const executionType = scheduled ? 'Scheduled (Cron)' : 'Manual (Direct)';
-    console.log(`🔄 Starting ${executionType} environmental data collection...`);
+    console.log(`🔄 Starting ${executionType} OpenWeatherMap data collection...`);
     
-    const aqicnApiKey = Deno.env.get('AQICN_API_KEY');
     const openWeatherMapApiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
     
-    if (!aqicnApiKey) {
-      console.error('❌ AQICN API key not configured');
+    if (!openWeatherMapApiKey) {
+      console.error('❌ OpenWeatherMap API key not configured');
       return new Response(JSON.stringify({ 
-        error: 'AQICN API key not configured',
-        message: 'Scheduled data collection requires AQICN API key configuration'
+        error: 'OpenWeatherMap API key not configured',
+        message: 'Scheduled data collection requires OpenWeatherMap API key configuration'
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -515,11 +448,11 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Start data collection
-    const { collectedData, errors } = await collectAllEnvironmentalData(aqicnApiKey, openWeatherMapApiKey, supabase);
+    const { collectedData, errors } = await collectAllEnvironmentalData(openWeatherMapApiKey, supabase);
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `${executionType} environmental data collection completed`,
+      message: `${executionType} OpenWeatherMap data collection completed`,
       timestamp: new Date().toISOString(),
       cities_processed: collectedData.length,
       execution_type: executionType,
