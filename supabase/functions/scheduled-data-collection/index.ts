@@ -154,10 +154,11 @@ function timestampToTimeString(timestamp: number): string {
 async function collectCityData(
   city: { name: string; lat: number; lon: number; country: string },
   aqicnApiKey: string,
+  openWeatherMapApiKey: string | null,
   supabase: any
 ): Promise<GlobalEnvironmentalData | null> {
   try {
-    console.log(`🌍 Collecting AQICN-only data for ${city.name}, ${city.country}...`);
+    console.log(`🌍 Collecting AQICN data for ${city.name}, ${city.country}...`);
 
     // Get air quality data from AQICN
     const aqicnResponse = await fetch(
@@ -176,10 +177,101 @@ async function collectCityData(
       return null;
     }
 
+    // Log what pollutants are available in the API response
+    const iaqi = aqicnData.data.iaqi || {};
+    console.log(`📊 [${city.name}] AQICN API response - Available pollutants:`, Object.keys(iaqi).join(', '));
+    
+    // Extract pollutants from AQICN
+    const aqicnPollutants = {
+      pm25: extractPollutantValue(iaqi.pm25),
+      pm10: extractPollutantValue(iaqi.pm10),
+      no2: extractPollutantValue(iaqi.no2),
+      so2: extractPollutantValue(iaqi.so2),
+      co: extractPollutantValue(iaqi.co),
+      o3: extractPollutantValue(iaqi.o3),
+    };
+    
+    console.log(`📊 [${city.name}] AQICN extracted pollutants:`, aqicnPollutants);
+
+    // Check which pollutants are missing
+    const missingPollutants = Object.entries(aqicnPollutants)
+      .filter(([_, value]) => value === null)
+      .map(([key, _]) => key);
+    
+    let openWeatherMapPollutants: Partial<typeof aqicnPollutants> = {};
+    
+    // If we have missing pollutants and OpenWeatherMap API key, fetch fallback data
+    if (missingPollutants.length > 0 && openWeatherMapApiKey) {
+      console.log(`⚠️ [${city.name}] Missing pollutants from AQICN: ${missingPollutants.join(', ')}`);
+      console.log(`🔄 [${city.name}] Attempting to fetch missing pollutants from OpenWeatherMap...`);
+      
+      try {
+        const openWeatherMapResponse = await fetch(
+          `https://api.openweathermap.org/data/2.5/air_pollution?lat=${city.lat}&lon=${city.lon}&appid=${openWeatherMapApiKey}`
+        );
+        
+        if (openWeatherMapResponse.ok) {
+          const openWeatherMapData = await openWeatherMapResponse.json();
+          const components = openWeatherMapData.list?.[0]?.components;
+          
+          if (components) {
+            // Map OpenWeatherMap pollutants to our format
+            // OpenWeatherMap uses pm2_5, we use pm25
+            if (missingPollutants.includes('pm25') && components.pm2_5 !== undefined) {
+              openWeatherMapPollutants.pm25 = Math.round(components.pm2_5 * 10) / 10;
+              console.log(`✅ [${city.name}] Filled PM2.5 from OpenWeatherMap: ${openWeatherMapPollutants.pm25}`);
+            }
+            if (missingPollutants.includes('pm10') && components.pm10 !== undefined) {
+              openWeatherMapPollutants.pm10 = Math.round(components.pm10 * 10) / 10;
+              console.log(`✅ [${city.name}] Filled PM10 from OpenWeatherMap: ${openWeatherMapPollutants.pm10}`);
+            }
+            if (missingPollutants.includes('no2') && components.no2 !== undefined) {
+              openWeatherMapPollutants.no2 = Math.round(components.no2 * 10) / 10;
+              console.log(`✅ [${city.name}] Filled NO2 from OpenWeatherMap: ${openWeatherMapPollutants.no2}`);
+            }
+            if (missingPollutants.includes('so2') && components.so2 !== undefined) {
+              openWeatherMapPollutants.so2 = Math.round(components.so2 * 10) / 10;
+              console.log(`✅ [${city.name}] Filled SO2 from OpenWeatherMap: ${openWeatherMapPollutants.so2}`);
+            }
+            if (missingPollutants.includes('co') && components.co !== undefined) {
+              // OpenWeatherMap CO is in µg/m³, convert from mg/m³ if needed
+              openWeatherMapPollutants.co = Math.round(components.co * 10) / 10;
+              console.log(`✅ [${city.name}] Filled CO from OpenWeatherMap: ${openWeatherMapPollutants.co}`);
+            }
+            if (missingPollutants.includes('o3') && components.o3 !== undefined) {
+              openWeatherMapPollutants.o3 = Math.round(components.o3 * 10) / 10;
+              console.log(`✅ [${city.name}] Filled O3 from OpenWeatherMap: ${openWeatherMapPollutants.o3}`);
+            }
+          }
+        } else {
+          console.warn(`⚠️ [${city.name}] OpenWeatherMap API failed: ${openWeatherMapResponse.status}`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ [${city.name}] Error fetching OpenWeatherMap fallback:`, error);
+      }
+    }
+
+    // Merge AQICN and OpenWeatherMap pollutants (AQICN takes priority)
+    const finalPollutants = {
+      pm25: aqicnPollutants.pm25 ?? openWeatherMapPollutants.pm25 ?? null,
+      pm10: aqicnPollutants.pm10 ?? openWeatherMapPollutants.pm10 ?? null,
+      no2: aqicnPollutants.no2 ?? openWeatherMapPollutants.no2 ?? null,
+      so2: aqicnPollutants.so2 ?? openWeatherMapPollutants.so2 ?? null,
+      co: aqicnPollutants.co ?? openWeatherMapPollutants.co ?? null,
+      o3: aqicnPollutants.o3 ?? openWeatherMapPollutants.o3 ?? null,
+    };
+    
+    console.log(`📊 [${city.name}] Final merged pollutants:`, finalPollutants);
+
     // Process air quality data from AQICN
     const aqi = processAQICNAQI(aqicnData.data.aqi);
 
-    // Create environmental data object using AQICN ONLY
+    // Determine data source
+    const dataSource = Object.keys(openWeatherMapPollutants).length > 0 
+      ? 'AQICN + OpenWeatherMap (Fallback)'
+      : 'AQICN';
+
+    // Create environmental data object
     const environmentalData: GlobalEnvironmentalData = {
       id: `${city.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
       city_name: city.name,
@@ -187,35 +279,35 @@ async function collectCityData(
       latitude: city.lat,
       longitude: city.lon,
       aqi: aqi,
-      // Use AQICN pollutant data
-      pm25: extractPollutantValue(aqicnData.data.iaqi.pm25),
-      pm10: extractPollutantValue(aqicnData.data.iaqi.pm10),
-      no2: extractPollutantValue(aqicnData.data.iaqi.no2),
-      so2: extractPollutantValue(aqicnData.data.iaqi.so2),
-      co: extractPollutantValue(aqicnData.data.iaqi.co),
-      o3: extractPollutantValue(aqicnData.data.iaqi.o3),
+      // Use merged pollutant data
+      pm25: finalPollutants.pm25,
+      pm10: finalPollutants.pm10,
+      no2: finalPollutants.no2,
+      so2: finalPollutants.so2,
+      co: finalPollutants.co,
+      o3: finalPollutants.o3,
       // Use AQICN environmental data (if available)
-      temperature: extractPollutantValue(aqicnData.data.iaqi.t),
-      humidity: extractPollutantValue(aqicnData.data.iaqi.h),
-      wind_speed: extractPollutantValue(aqicnData.data.iaqi.w),
-      wind_direction: extractPollutantValue(aqicnData.data.iaqi.wd),
+      temperature: extractPollutantValue(iaqi.t),
+      humidity: extractPollutantValue(iaqi.h),
+      wind_speed: extractPollutantValue(iaqi.w),
+      wind_direction: extractPollutantValue(iaqi.wd),
       wind_gust: null,
-      air_pressure: extractPollutantValue(aqicnData.data.iaqi.p),
+      air_pressure: extractPollutantValue(iaqi.p),
       visibility: null, // AQICN doesn't provide visibility
       weather_condition: null, // AQICN doesn't provide weather conditions
       feels_like_temperature: null,
       sunrise_time: null,
       sunset_time: null,
-      data_source: 'AQICN',
+      data_source: dataSource,
       collection_timestamp: new Date().toISOString(),
       is_active: true
     };
 
-    console.log(`✅ AQICN-only data collected for ${city.name}: AQI ${aqi}, Temp ${environmentalData.temperature}°C`);
+    console.log(`✅ Data collected for ${city.name}: AQI ${aqi}, Data Source: ${dataSource}`);
 
     return environmentalData;
   } catch (error) {
-    console.error(`❌ Error collecting AQICN data for ${city.name}:`, error);
+    console.error(`❌ Error collecting data for ${city.name}:`, error);
     return null;
   }
 }
@@ -257,16 +349,19 @@ async function storeEnvironmentalData(
 // Main data collection function
 async function collectAllEnvironmentalData(
   aqicnApiKey: string,
+  openWeatherMapApiKey: string | null,
   supabase: any
 ): Promise<{ collectedData: GlobalEnvironmentalData[]; errors: string[] }> {
   const now = new Date();
   const utcTime = now.toISOString();
   const localTime = now.toString();
   
-  console.log('🚀 Starting scheduled AQICN-only environmental data collection...');
+  console.log('🚀 Starting scheduled environmental data collection...');
   console.log(`📅 Collection time (UTC): ${utcTime}`);
   console.log(`📅 Collection time (Local): ${localTime}`);
-  console.log(`🌍 Collecting AQICN data for ${MAJOR_CITIES.length} cities...`);
+  console.log(`🌍 Collecting data for ${MAJOR_CITIES.length} cities...`);
+  console.log(`🔑 AQICN API: ${aqicnApiKey ? 'Configured' : 'Not configured'}`);
+  console.log(`🔑 OpenWeatherMap API: ${openWeatherMapApiKey ? 'Configured (fallback enabled)' : 'Not configured'}`);
 
   const collectedData: GlobalEnvironmentalData[] = [];
   const errors: string[] = [];
@@ -274,7 +369,7 @@ async function collectAllEnvironmentalData(
   // Collect data for each city
   for (const city of MAJOR_CITIES) {
     try {
-      const cityData = await collectCityData(city, aqicnApiKey, supabase);
+      const cityData = await collectCityData(city, aqicnApiKey, openWeatherMapApiKey, supabase);
       if (cityData) {
         collectedData.push(cityData);
       } else {
@@ -344,6 +439,7 @@ serve(async (req) => {
       }
 
       const aqicnApiKey = Deno.env.get('AQICN_API_KEY');
+      const openWeatherMapApiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
       
       if (!aqicnApiKey) {
         return new Response(JSON.stringify({ error: 'AQICN API key not configured' }), {
@@ -363,7 +459,7 @@ serve(async (req) => {
       }
 
       const supabase = createClient(supabaseUrl, supabaseKey);
-      const cityEnvironmentalData = await collectCityData(cityData, aqicnApiKey, supabase);
+      const cityEnvironmentalData = await collectCityData(cityData, aqicnApiKey, openWeatherMapApiKey, supabase);
 
       if (cityEnvironmentalData) {
         await storeEnvironmentalData([cityEnvironmentalData], supabase);
@@ -389,6 +485,7 @@ serve(async (req) => {
     console.log(`🔄 Starting ${executionType} environmental data collection...`);
     
     const aqicnApiKey = Deno.env.get('AQICN_API_KEY');
+    const openWeatherMapApiKey = Deno.env.get('OPENWEATHERMAP_API_KEY');
     
     if (!aqicnApiKey) {
       console.error('❌ AQICN API key not configured');
@@ -418,7 +515,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Start data collection
-    const { collectedData, errors } = await collectAllEnvironmentalData(aqicnApiKey, supabase);
+    const { collectedData, errors } = await collectAllEnvironmentalData(aqicnApiKey, openWeatherMapApiKey, supabase);
 
     return new Response(JSON.stringify({ 
       success: true, 
