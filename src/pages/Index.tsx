@@ -10,6 +10,8 @@ import { cleanupAllChannels } from "@/lib/realtimeClient";
 import EnhancedErrorBoundary from "@/components/EnhancedErrorBoundary";
 import { logNavigation } from "@/lib/logger";
 import { useEventTimingObserver } from "@/hooks/usePerformance";
+import { HistoryViewSkeleton } from "@/components/HistoryViewSkeleton";
+import { MapViewSkeleton } from "@/components/MapViewSkeleton";
 
 // Lazy load heavy components
 const loadAirQualityDashboard = () =>
@@ -152,6 +154,23 @@ export default function Index(): JSX.Element | null {
     }
   }, []); // Empty dependency array - only run on mount
 
+  // Preload likely-to-be-visited routes when dashboard mounts
+  useEffect(() => {
+    if (currentView === "dashboard") {
+      // Preload history and map routes (most common navigation paths)
+      preloadRoute(() => import("@/components/HistoryView"));
+      preloadRoute(() => import("@/components/WeatherStats"));
+    } else if (currentView === "history") {
+      // Preload map and settings when on history
+      preloadRoute(() => import("@/components/WeatherStats"));
+      preloadRoute(() => import("@/components/SettingsView"));
+    } else if (currentView === "map") {
+      // Preload history and settings when on map
+      preloadRoute(() => import("@/components/HistoryView"));
+      preloadRoute(() => import("@/components/SettingsView"));
+    }
+  }, [currentView]);
+
   // Sync URL with component state when view changes
   useEffect(() => {
     const currentViewParam = searchParams.get("view") || "dashboard";
@@ -216,7 +235,7 @@ export default function Index(): JSX.Element | null {
       case "history":
         return (
           <EnhancedErrorBoundary fallback={makeFallback("History Error", "Historical data is temporarily unavailable. Please refresh." )}>
-            <Suspense fallback={<PageSkeleton />}>
+            <Suspense fallback={<HistoryViewSkeleton />}>
               <HistoryView 
                 showMobileMenu={showMobileMenu}
                 onMobileMenuToggle={toggleMobileMenu}
@@ -227,7 +246,7 @@ export default function Index(): JSX.Element | null {
       case "map":
         return (
           <EnhancedErrorBoundary fallback={makeFallback("Weather Stats Error", "We couldn't load weather statistics. Try refreshing the page." )}>
-            <Suspense fallback={<PageSkeleton />}>
+            <Suspense fallback={<MapViewSkeleton />}>
               <WeatherStats 
                 showMobileMenu={showMobileMenu}
                 onMobileMenuToggle={toggleMobileMenu}
