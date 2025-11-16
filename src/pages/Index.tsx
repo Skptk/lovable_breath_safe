@@ -12,6 +12,7 @@ import { logNavigation } from "@/lib/logger";
 import { useEventTimingObserver } from "@/hooks/usePerformance";
 import { HistoryViewSkeleton } from "@/components/HistoryViewSkeleton";
 import { MapViewSkeleton } from "@/components/MapViewSkeleton";
+import { preloadRoute } from "@/utils/routePreloading";
 
 // Lazy load heavy components
 const loadAirQualityDashboard = () =>
