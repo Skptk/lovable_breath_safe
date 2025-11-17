@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -201,10 +202,23 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   const { toast } = useToast();
   const weatherData = useWeatherStore((state) => state.weatherData);
 
+  const queryClient = useQueryClient();
+
   const handleTimeRangeChange = useCallback((newRange: TimeRange) => {
     setIsTransitioningTimeRange(true);
     setTimeRange(newRange);
-  }, []);
+    
+    // CRITICAL: Invalidate old historical queries to free memory immediately
+    // This prevents accumulation of multiple time range queries in cache
+    queryClient.invalidateQueries({
+      queryKey: ['historical-aqi'],
+      exact: false,
+    });
+    queryClient.invalidateQueries({
+      queryKey: ['historical-weather'],
+      exact: false,
+    });
+  }, [queryClient]);
 
   // Fetch chart data using React Query
   const {

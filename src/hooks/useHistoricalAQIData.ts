@@ -81,8 +81,8 @@ export function useHistoricalAQIData(userId: string | undefined, timeRange: Time
       return rawData.reverse().map(transformHistoryRow);
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 30 * 1000, // CRITICAL: 30 seconds - match default for aggressive cleanup
     retry: 2,
     retryDelay: 1000,
   });

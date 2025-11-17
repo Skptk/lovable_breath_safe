@@ -36,7 +36,7 @@ const SUBSYSTEM_BUDGETS: Record<string, SubsystemBudget> = {
   'react-query': {
     name: 'React Query',
     maxQueries: 10, // Maximum number of cached queries
-    maxDataSize: 30, // Maximum items in array results
+    maxDataSize: 1000, // Maximum items in array results (increased for historical data)
   },
   'zustand-cache': {
     name: 'Zustand Cache',
@@ -94,13 +94,16 @@ class MemoryBudgetManager {
   }
 
   private startPeriodicCleanup() {
-    // Cleanup every 30 seconds
+    // CRITICAL: Cleanup every 15 seconds for aggressive memory management
     if (typeof window !== 'undefined') {
       this.cleanupInterval = window.setInterval(() => {
         if (this.isTabVisible) {
           this.performCleanup('Periodic');
+        } else {
+          // More aggressive cleanup when tab is hidden
+          this.emergencyCleanup('Tab hidden - periodic cleanup');
         }
-      }, 30000) as unknown as ReturnType<typeof setInterval>;
+      }, 15000) as unknown as ReturnType<typeof setInterval>;
     }
   }
 
@@ -224,14 +227,23 @@ class MemoryBudgetManager {
     const maxDataSize = budget.maxDataSize ?? 30;
     const maxQueries = budget.maxQueries ?? 10;
 
-    // Trim large arrays first
+    // Trim large arrays first - especially historical data
     allQueries.forEach((query: Query) => {
       const { data } = query.state;
       if (Array.isArray(data) && data.length > maxDataSize) {
+        // For historical queries, be more aggressive
+        const queryKey = query.queryKey[0] as string;
+        const isHistorical = queryKey === 'historical-aqi' || queryKey === 'historical-weather';
+        const trimSize = isHistorical ? Math.min(maxDataSize, 500) : maxDataSize;
+        
         query.setState({
-          data: data.slice(0, maxDataSize),
+          data: data.slice(0, trimSize),
           dataUpdatedAt: Date.now(),
         });
+        
+        if (process.env['NODE_ENV'] !== 'production' && isHistorical) {
+          console.log(`🧹 [MemoryBudget] Trimmed ${queryKey} from ${data.length} to ${trimSize} items`);
+        }
       }
     });
 
