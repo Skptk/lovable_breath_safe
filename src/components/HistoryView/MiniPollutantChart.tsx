@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { ChartDataPoint } from './utils/chartDataTransform';
-import { PollutantKey, POLLUTANT_CONFIGS } from './HistoryView/HistoricalAQIChart';
+import { PollutantKey, POLLUTANT_CONFIGS } from './HistoricalAQIChart';
 import { getPollutantInfo } from '@/lib/airQualityUtils';
 import { Loader2 } from 'lucide-react';
 
