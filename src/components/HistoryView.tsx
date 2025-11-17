@@ -913,8 +913,9 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-semibold">Air Quality Trends</h3>
                 </div>
-                <div className="grid gap-4 xl:grid-cols-3">
-                  <div className="xl:col-span-2">
+                <div className="grid gap-4 lg:grid-cols-3">
+                  {/* Main AQI Chart - Takes 2 columns on large screens */}
+                  <div className="lg:col-span-2">
                     {shouldShowChartLoadingState ? (
                       <LoadingChart label={chartLoadingLabel} />
                     ) : (
@@ -935,13 +936,16 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                       </ChartErrorBoundary>
                     )}
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Mini Pollutant Charts - Single column on large screens, 2 columns on smaller */}
+                  <div className="grid gap-4 grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                     {POLLUTANT_CONFIGS.map((pollutant) => (
                       <MiniPollutantChart
                         key={pollutant.key}
                         pollutantKey={pollutant.key}
                         data={chartData.data}
                         isLoading={shouldShowChartLoadingState}
+                        error={chartError}
+                        timeRange={timeRange}
                       />
                     ))}
                   </div>
@@ -956,14 +960,16 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                     Refresh Metrics
                   </Button>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   {WEATHER_METRICS.map((metric) => (
                     <WeatherMetricBentoCard
                       key={metric}
                       metric={metric}
                       data={weatherChartDataByMetric[metric]?.data ?? []}
-                      isLoading={weatherHistoryLoading}
+                      isLoading={weatherHistoryLoading || isTransitioningTimeRange}
                       error={weatherHistoryError}
+                      meta={weatherChartDataByMetric[metric]?.meta}
+                      timeRange={timeRange.type}
                     />
                   ))}
                 </div>

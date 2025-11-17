@@ -9,6 +9,12 @@ interface WeatherMetricBentoCardProps {
   data?: WeatherChartDataPoint[];
   isLoading?: boolean;
   error?: Error | null;
+  meta?: {
+    originalCount: number;
+    binnedCount: number;
+    binSizeHours: number;
+  };
+  timeRange?: string;
 }
 
 const METRIC_CONFIG: Record<
@@ -28,6 +34,8 @@ export function WeatherMetricBentoCard({
   data = [],
   isLoading,
   error,
+  meta,
+  timeRange,
 }: WeatherMetricBentoCardProps) {
   const config = METRIC_CONFIG[metric];
 
@@ -42,7 +50,7 @@ export function WeatherMetricBentoCard({
   }, [data, hasData]);
 
   return (
-    <GlassCard>
+    <GlassCard className="h-full">
       <GlassCardHeader className="pb-2">
         <GlassCardTitle className="text-sm font-semibold flex items-center gap-2">
           <span
@@ -53,7 +61,7 @@ export function WeatherMetricBentoCard({
         </GlassCardTitle>
         <p className="text-xs text-muted-foreground">{config.unit}</p>
       </GlassCardHeader>
-      <GlassCardContent className="h-48">
+      <GlassCardContent className="h-40">
         {isLoading ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />

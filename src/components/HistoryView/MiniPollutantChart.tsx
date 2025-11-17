@@ -1,15 +1,17 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
-import { ChartDataPoint } from './utils/chartDataTransform';
+import { ChartDataPoint, TimeRange } from './utils/chartDataTransform';
 import { PollutantKey, POLLUTANT_CONFIGS } from './HistoricalAQIChart';
 import { getPollutantInfo } from '@/lib/airQualityUtils';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 interface MiniPollutantChartProps {
   data: ChartDataPoint[];
   pollutantKey: PollutantKey;
   isLoading?: boolean;
+  error?: Error | null;
+  timeRange?: TimeRange;
 }
 
 const formatTick = (value: number) => {
@@ -19,7 +21,7 @@ const formatTick = (value: number) => {
   return value.toFixed(0);
 };
 
-export function MiniPollutantChart({ data, pollutantKey, isLoading }: MiniPollutantChartProps) {
+export function MiniPollutantChart({ data, pollutantKey, isLoading, error, timeRange }: MiniPollutantChartProps) {
   const config = POLLUTANT_CONFIGS.find((item) => item.key === pollutantKey);
   const info = getPollutantInfo(config?.code ?? pollutantKey.toUpperCase(), 0);
 
@@ -48,8 +50,21 @@ export function MiniPollutantChart({ data, pollutantKey, isLoading }: MiniPollut
 
   const hasData = series.length > 0;
 
+  if (error) {
+    return (
+      <GlassCard>
+        <GlassCardContent className="h-40 flex items-center justify-center">
+          <div className="text-center">
+            <AlertTriangle className="h-5 w-5 mx-auto text-destructive mb-1" />
+            <p className="text-xs text-muted-foreground">Error loading data</p>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    );
+  }
+
   return (
-    <GlassCard>
+    <GlassCard className="h-full">
       <GlassCardHeader className="pb-2">
         <GlassCardTitle className="text-sm font-semibold flex items-center gap-2">
           <span
