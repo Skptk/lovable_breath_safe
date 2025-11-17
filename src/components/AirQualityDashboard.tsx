@@ -3,9 +3,7 @@ import { motion } from "framer-motion";
 import { useAirQuality } from "@/hooks/useAirQuality";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserPoints } from "@/hooks/useUserPoints";
-import { useRefreshCountdown } from "@/hooks/useRefreshCountdown";
 import { useLocationContext } from "@/contexts";
-import { RefreshProgressBar } from "@/components/ui/RefreshProgressBar";
 import { useToast } from "@/hooks/use-toast";
 import { TrendingDown, RefreshCw, MapPin, History, Menu, X } from "lucide-react";
 import { getAQIColor, getAQILabel } from "@/config/maps";
@@ -219,32 +217,7 @@ const CurrentAirQualityCard = React.memo(function CurrentAirQualityCard({
 
 CurrentAirQualityCard.displayName = "CurrentAirQualityCard";
 
-interface RefreshProgressCardProps {
-  timeUntilRefresh: number;
-  isRefreshing: boolean;
-  onManualRefresh: () => void;
-  isUsingCachedData?: boolean;
-}
 
-const RefreshProgressCard = React.memo(function RefreshProgressCard({
-  timeUntilRefresh,
-  isRefreshing,
-  onManualRefresh,
-  isUsingCachedData,
-}: RefreshProgressCardProps) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-      <RefreshProgressBar
-        timeUntilRefresh={timeUntilRefresh}
-        isRefreshing={isRefreshing}
-        onManualRefresh={onManualRefresh}
-        isUsingCachedData={isUsingCachedData}
-      />
-    </div>
-  );
-});
-
-RefreshProgressCard.displayName = "RefreshProgressCard";
 
 interface AirQualityDashboardProps {
   onNavigate?: (route: string) => void;
@@ -313,7 +286,6 @@ function AirQualityDashboardContent({
   // Hooks - skip in demo mode
   const airQualityQuery = useAirQuality();
   const userPointsQuery = useUserPoints();
-  const { timeUntilRefresh } = useRefreshCountdown();
   const { toast } = useToast();
   
   // Use demo data in demo mode, otherwise use real hooks
@@ -543,11 +515,6 @@ function AirQualityDashboardContent({
                       onNavigate={onNavigate}
                     />
 
-                    <RefreshProgressCard
-                      timeUntilRefresh={timeUntilRefresh}
-                      isRefreshing={isRefreshing}
-                      onManualRefresh={handleRefresh}
-                    />
 
                     {data && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-6">

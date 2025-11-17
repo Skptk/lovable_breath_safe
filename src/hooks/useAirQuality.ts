@@ -8,12 +8,6 @@ import { useToast } from './use-toast';
 import useGlobalEnvironmentalData from './useGlobalEnvironmentalData';
 import type { GlobalEnvironmentalData } from '@/types';
 import { useWeatherStore } from '@/store/weatherStore';
-import {
-  setRefreshLockTimestamp,
-  getTimeUntilNextRefresh,
-  isRefreshLocked,
-  REFRESH_LOCK_DURATION_MS
-} from '@/utils/refreshLock';
 
 // Cache configuration - optimized for memory efficiency
 const CACHE_CONFIG = {
@@ -308,9 +302,7 @@ export const useAirQuality = () => {
   const prunedCountRef = useRef(0);
   const lastHistoryInsertRef = useRef<string | null>(null);
   const lastRecordedAtRef = useRef<number | null>(null);
-  const initialLockActive = typeof window !== 'undefined' ? isRefreshLocked() : false;
-
-  const [queryEnabled, setQueryEnabled] = useState<boolean>(() => !initialLockActive);
+  const [queryEnabled, setQueryEnabled] = useState<boolean>(true);
 
   const userCoordinates: Coordinates | null = useMemo(() => {
     if (!safeCoordinates?.lat || !safeCoordinates?.lng) {
@@ -372,15 +364,6 @@ export const useAirQuality = () => {
         return;
       }
 
-      const lockRemaining = getTimeUntilNextRefresh();
-      const lockActive = lockRemaining > 0;
-
-      if (lockActive && source === 'live') {
-        if (import.meta.env.DEV) {
-          console.log(`🔒 [useAirQuality] Skipping ${source} history insert; lock active for ${Math.ceil(lockRemaining / 1000)}s`);
-        }
-        return;
-      }
 
       const insertKey = `${source}:${reading.timestamp}`;
       if (lastHistoryInsertRef.current === insertKey) {
@@ -474,9 +457,6 @@ export const useAirQuality = () => {
 
             console.log(`✅ [useAirQuality] Successfully recorded ${source} AQI reading in history`);
             lastRecordedAtRef.current = Date.now();
-            if (source === 'live') {
-              setRefreshLockTimestamp();
-            }
           } catch (insertError: unknown) {
             console.error(`❌ [useAirQuality] ${source} history insert threw`, insertError);
             lastHistoryInsertRef.current = null;
@@ -733,10 +713,7 @@ export const useAirQuality = () => {
       return;
     }
 
-    const lockActive = typeof window !== 'undefined' ? isRefreshLocked() : false;
-    if (!lockActive) {
-      setQueryEnabled(true);
-    }
+    setQueryEnabled(true);
   }, [scheduledIsFresh]);
 
   // Persist successful responses into the readings buffers so UI consumers receive data
@@ -825,7 +802,7 @@ export const useAirQuality = () => {
   }, [aqicnQuery.data, pruneHistory, enqueueHistoryInsert]);
 
   // Memoized function to fetch air quality data with caching
-  const refreshOnce = useRef(initialLockActive);
+  const refreshOnce = useRef(false);
   const refreshInFlightRef = useRef(false);
 
   const manualRefresh = useCallback(
@@ -842,26 +819,10 @@ export const useAirQuality = () => {
       }
 
       refreshInFlightRef.current = true;
-      if (!options.force && isRefreshLocked()) {
-        const remainingMs = getTimeUntilNextRefresh();
-        if (!options.silent) {
-          const remainingSeconds = Math.ceil(remainingMs / 1000);
-          const minutes = Math.floor(remainingSeconds / 60);
-          const seconds = remainingSeconds % 60;
-          toast({
-            title: "Refresh locked",
-            description: `Next update available in ${minutes}:${seconds.toString().padStart(2, '0')}.`,
-            variant: "default",
-          });
-        }
-        refreshInFlightRef.current = false;
-        return { locked: true, remainingMs } as const;
-      }
 
       try {
         if (!options.force && scheduledIsFresh) {
           await refetchScheduledData();
-          setRefreshLockTimestamp();
           setQueryEnabled(false);
           if (!options.silent) {
             toast({
@@ -876,7 +837,6 @@ export const useAirQuality = () => {
         console.log('🔄 [useAirQuality] Initiating air quality refresh');
         await aqicnQuery.refetch({ throwOnError: true });
         backoffAttemptRef.current = 0;
-        setRefreshLockTimestamp();
         setQueryEnabled(true);
         if (!options.silent) {
           toast({
@@ -890,9 +850,6 @@ export const useAirQuality = () => {
         console.error('❌ [useAirQuality] Refresh failed:', error);
         const attempt = backoffAttemptRef.current;
         backoffAttemptRef.current = Math.min(attempt + 1, 5);
-        const delay = Math.min(30_000, 3000 * Math.pow(2, attempt));
-        const adjustedTimestamp = Date.now() - Math.max(0, REFRESH_LOCK_DURATION_MS - delay);
-        setRefreshLockTimestamp(adjustedTimestamp);
         if (!options.silent) {
           toast({
             title: "Refresh failed",
@@ -913,16 +870,7 @@ export const useAirQuality = () => {
   useEffect(() => {
     if (!locationData?.latitude || !locationData?.longitude) return;
 
-    const lockActive = typeof window !== 'undefined' ? isRefreshLocked() : false;
-
-    setQueryEnabled(!lockActive);
-
-    if (lockActive) {
-      refreshOnce.current = true;
-      return () => {
-        // no timer registered when locked
-      };
-    }
+    setQueryEnabled(true);
 
     const timer = setTimeout(() => {
       if (refreshInFlightRef.current) {
@@ -930,11 +878,9 @@ export const useAirQuality = () => {
       }
 
       const hasRefreshedOnce = refreshOnce.current;
-      const lockRemaining = getTimeUntilNextRefresh();
-      const shouldForceInitial = !hasRefreshedOnce && lockRemaining === 0;
 
       manualRefresh({
-        force: shouldForceInitial,
+        force: !hasRefreshedOnce,
         silent: hasRefreshedOnce,
       });
 

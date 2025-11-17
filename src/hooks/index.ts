@@ -17,7 +17,6 @@ export { useSimplifiedConnectionHealth } from './useSimplifiedConnectionHealth';
 export { useRealtimeStatus } from './useRealtimeStatus';
 
 // Utility hooks
-export { useRefreshCountdown } from './useRefreshCountdown';
 export { useGlobalSearch } from './useGlobalSearch';
 export { useProfileValidation } from './useProfileValidation';
 export { usePerformanceMonitor, useDebounce, useThrottle } from './usePerformance';

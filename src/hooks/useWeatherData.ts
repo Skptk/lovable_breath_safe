@@ -4,48 +4,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-// Refresh lock mechanism to prevent duplicate pulls on manual refresh
-const REFRESH_LOCK_KEY = 'breath_safe_weather_refresh_lock';
-const REFRESH_LOCK_DURATION = 14 * 60 * 1000; // 14 minutes (slightly less than 15 to ensure smooth operation)
-
-// Helper function to check if refresh is locked
-const isRefreshLocked = (): boolean => {
-  try {
-    const lockData = localStorage.getItem(REFRESH_LOCK_KEY);
-    if (!lockData) return false;
-    
-    const { timestamp } = JSON.parse(lockData);
-    const now = Date.now();
-    const timeSinceLastRefresh = now - timestamp;
-    
-    // If less than 14 minutes have passed, refresh is locked
-    return timeSinceLastRefresh < REFRESH_LOCK_DURATION;
-  } catch {
-    return false;
-  }
-};
-
-// Helper function to set refresh lock
-const setRefreshLock = (): void => {
-  try {
-    const lockData = {
-      timestamp: Date.now(),
-      userAgent: navigator.userAgent
-    };
-    localStorage.setItem(REFRESH_LOCK_KEY, JSON.stringify(lockData));
-  } catch (error) {
-    console.warn('Failed to set weather refresh lock:', error);
-  }
-};
-
-// Helper function to clear refresh lock (for manual refresh)
-const clearRefreshLock = (): void => {
-  try {
-    localStorage.removeItem(REFRESH_LOCK_KEY);
-  } catch (error) {
-    console.warn('Failed to clear weather refresh lock:', error);
-  }
-};
 
 export interface WeatherData {
   temperature: number;
@@ -322,19 +280,6 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
 
   // Main function to fetch all weather data
   const fetchAllWeatherData = useCallback(async (lat: number, lon: number) => {
-    // Check refresh lock to prevent duplicate pulls on manual refresh
-    if (isRefreshLocked()) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('useWeatherData: Refresh locked - preventing duplicate weather data pull on manual refresh');
-      }
-      // Handle rate limiting gracefully without throwing errors
-      console.log('ℹ️ Weather data rate limited, using cached data');
-      return {
-        weather: currentWeather,
-        forecast: forecast
-      };
-    }
-
     setLoading(true);
     setError(null);
 
@@ -356,12 +301,6 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
 
       setCurrentWeather(comprehensiveWeather);
       setForecast(forecastData);
-
-      // Set refresh lock to prevent duplicate pulls on manual refresh
-      setRefreshLock();
-      if (process.env.NODE_ENV === 'development') {
-        console.log('useWeatherData: Refresh lock set - preventing duplicate pulls for 14 minutes');
-      }
 
       return {
         weather: comprehensiveWeather,
@@ -400,15 +339,9 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
     }
   }, [fetchCurrentWeather, fetchForecast, fetchWindData, toast, currentWeather, forecast]);
 
-  // Manual refresh function that clears the refresh lock
+  // Manual refresh function
   const manualRefresh = useCallback(async () => {
     try {
-      // Clear refresh lock for manual refresh
-      clearRefreshLock();
-      if (process.env.NODE_ENV === 'development') {
-        console.log('useWeatherData: Manual refresh - cleared refresh lock');
-      }
-      
       if (memoizedCoordinates?.latitude && memoizedCoordinates?.longitude) {
         await fetchAllWeatherData(memoizedCoordinates.latitude, memoizedCoordinates.longitude);
         if (process.env.NODE_ENV === 'development') {
