@@ -1,11 +1,13 @@
 import { useMemo, memo, useCallback, useRef, useEffect, useState } from 'react';
 import { startTransition } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { Loader2, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ChartDataPoint } from './utils/chartDataTransform';
 import { HistoryEntry } from '../HistoryView';
 import { getAQIColor, getAQILabel } from '@/config/maps';
+import { getPollutantInfo } from '@/lib/airQualityUtils';
 import { format } from 'date-fns';
 
 interface HistoricalAQIChartProps {
@@ -20,6 +22,23 @@ interface HistoricalAQIChartProps {
   };
 }
 
+// Pollutant configuration
+type PollutantKey = 'pm25' | 'pm10' | 'no2' | 'so2' | 'co' | 'o3';
+interface PollutantConfig {
+  key: PollutantKey;
+  code: string;
+  color: string;
+}
+
+const POLLUTANT_CONFIGS: PollutantConfig[] = [
+  { key: 'pm25', code: 'PM25', color: '#3B82F6' }, // Blue
+  { key: 'pm10', code: 'PM10', color: '#8B5CF6' }, // Purple
+  { key: 'no2', code: 'NO2', color: '#EF4444' }, // Red
+  { key: 'so2', code: 'SO2', color: '#F59E0B' }, // Amber
+  { key: 'co', code: 'CO', color: '#10B981' }, // Green
+  { key: 'o3', code: 'O3', color: '#06B6D4' }, // Cyan
+];
+
 // Memoized tooltip component to prevent re-renders
 const ChartTooltip = memo(({ active, payload, label }: any) => {
   if (!active || !payload || payload.length === 0) {
@@ -30,6 +49,17 @@ const ChartTooltip = memo(({ active, payload, label }: any) => {
   const aqi = data.aqi;
   const aqiColor = getAQIColor(aqi);
   const aqiLabel = getAQILabel(aqi);
+
+  // Extract selected pollutants from payload (each line in payload represents a selected pollutant)
+  const selectedPollutants: PollutantKey[] = payload
+    .map((p: any) => {
+      const dataKey = p.dataKey as string;
+      if (dataKey && ['pm25', 'pm10', 'no2', 'so2', 'co', 'o3'].includes(dataKey)) {
+        return dataKey as PollutantKey;
+      }
+      return null;
+    })
+    .filter((p: PollutantKey | null): p is PollutantKey => p !== null);
 
   // Memoize formatted label
   const formattedLabel = useMemo(() => {
@@ -46,7 +76,7 @@ const ChartTooltip = memo(({ active, payload, label }: any) => {
       className="rounded-lg border bg-background/95 backdrop-blur-sm p-3 shadow-lg"
       style={{ borderColor: aqiColor }}
     >
-      <div className="space-y-1">
+      <div className="space-y-2">
         <div className="text-xs text-muted-foreground">{formattedLabel}</div>
         <div className="flex items-center gap-2">
           <div
@@ -60,6 +90,27 @@ const ChartTooltip = memo(({ active, payload, label }: any) => {
             <div className="text-xs text-muted-foreground">{aqiLabel}</div>
           </div>
         </div>
+        {selectedPollutants.length > 0 && (
+          <div className="space-y-1 pt-2 border-t border-border">
+            {selectedPollutants.map((pollKey: PollutantKey) => {
+              const config = POLLUTANT_CONFIGS.find(p => p.key === pollKey);
+              if (!config) return null;
+              const value = data[pollKey];
+              if (value === null || value === undefined) return null;
+              const info = getPollutantInfo(config.code, value);
+              return (
+                <div key={pollKey} className="flex items-center gap-2 text-xs">
+                  <div
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: config.color }}
+                  />
+                  <span className="text-muted-foreground">{info.label}:</span>
+                  <span className="font-medium">{value.toFixed(1)} {info.unit}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {data.location && (
           <div className="text-xs text-muted-foreground">📍 {data.location}</div>
         )}
@@ -95,6 +146,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
 }: HistoricalAQIChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
+  const [selectedPollutants, setSelectedPollutants] = useState<Set<PollutantKey>>(new Set(['pm25']));
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -212,6 +264,40 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     };
   }, []);
 
+  // Determine which pollutants are available in the data
+  const availablePollutants = useMemo(() => {
+    if (!data || data.length === 0) return new Set<PollutantKey>();
+    const available = new Set<PollutantKey>();
+    for (const point of data) {
+      if (point.pm25 !== null && point.pm25 !== undefined) available.add('pm25');
+      if (point.pm10 !== null && point.pm10 !== undefined) available.add('pm10');
+      if (point.no2 !== null && point.no2 !== undefined) available.add('no2');
+      if (point.so2 !== null && point.so2 !== undefined) available.add('so2');
+      if (point.co !== null && point.co !== undefined) available.add('co');
+      if (point.o3 !== null && point.o3 !== undefined) available.add('o3');
+    }
+    return available;
+  }, [data]);
+
+  // Update selected pollutants to only include available ones
+  useEffect(() => {
+    if (availablePollutants.size > 0) {
+      setSelectedPollutants(prev => {
+        const filtered = new Set<PollutantKey>();
+        prev.forEach(key => {
+          if (availablePollutants.has(key)) {
+            filtered.add(key);
+          }
+        });
+        // If no pollutants selected, default to first available
+        if (filtered.size === 0 && availablePollutants.size > 0) {
+          filtered.add(Array.from(availablePollutants)[0]);
+        }
+        return filtered;
+      });
+    }
+  }, [availablePollutants]);
+
   // Memoize chart data - limit points aggressively to prevent performance issues
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
@@ -220,7 +306,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     const maxPoints = 500; // Reduced from 800
     const pointsToUse = data.length > maxPoints ? data.slice(-maxPoints) : data;
     
-    // Use a more efficient transformation - but keep all required fields
+    // Use a more efficient transformation - but keep all required fields including pollutants
     const transformed = new Array(pointsToUse.length);
     for (let i = 0; i < pointsToUse.length; i++) {
       const point = pointsToUse[i];
@@ -231,20 +317,65 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
         displayTime: point.displayTime,
         location: point.location,
         fullEntry: point.fullEntry, // Required for click handler
+        pm25: point.pm25,
+        pm10: point.pm10,
+        no2: point.no2,
+        so2: point.so2,
+        co: point.co,
+        o3: point.o3,
       };
     }
     
     return transformed;
   }, [data]);
 
-  // Memoize Y-axis domain calculation
+  // Memoize Y-axis domain calculation - use pollutant values if showing pollutants
   const yAxisDomain = useMemo(() => {
     if (chartData.length === 0) return [0, 100];
+    
+    // If showing pollutants, calculate domain based on selected pollutants
+    if (selectedPollutants.size > 0) {
+      const allValues: number[] = [];
+      selectedPollutants.forEach(pollKey => {
+        chartData.forEach(d => {
+          const value = d[pollKey];
+          if (value !== null && value !== undefined) {
+            allValues.push(value);
+          }
+        });
+      });
+      
+      if (allValues.length > 0) {
+        const min = Math.max(0, Math.min(...allValues) * 0.9);
+        const max = Math.max(...allValues) * 1.1;
+        return [min, max];
+      }
+    }
+    
+    // Fallback to AQI domain
     const aqiValues = chartData.map((d) => d.aqi);
     const minAQI = Math.max(0, Math.min(...aqiValues) - 10);
     const maxAQI = Math.min(500, Math.max(...aqiValues) + 10);
     return [minAQI, maxAQI];
-  }, [chartData]);
+  }, [chartData, selectedPollutants]);
+
+  // Toggle pollutant selection
+  const togglePollutant = useCallback((pollKey: PollutantKey) => {
+    setSelectedPollutants(prev => {
+      const next = new Set(prev);
+      if (next.has(pollKey)) {
+        next.delete(pollKey);
+        // Ensure at least one pollutant is selected
+        if (next.size === 0 && availablePollutants.size > 0) {
+          const firstAvailable = Array.from(availablePollutants)[0];
+          next.add(firstAvailable);
+        }
+      } else {
+        next.add(pollKey);
+      }
+      return next;
+    });
+  }, [availablePollutants]);
 
   // Debounced click handler to prevent blocking
   const handleChartClick = useCallback((chartData: any) => {
@@ -305,14 +436,62 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     );
   }
 
+  // Get Y-axis label based on selected pollutants
+  const yAxisLabel = useMemo(() => {
+    if (selectedPollutants.size === 0) return 'AQI';
+    if (selectedPollutants.size === 1) {
+      const pollKey = Array.from(selectedPollutants)[0];
+      const config = POLLUTANT_CONFIGS.find(p => p.key === pollKey);
+      if (config) {
+        const info = getPollutantInfo(config.code, 0);
+        return info.unit;
+      }
+    }
+    return 'Value';
+  }, [selectedPollutants]);
+
   return (
     <GlassCard>
       <GlassCardHeader>
-        <div className="flex items-center justify-between">
-          <GlassCardTitle>Air Quality History</GlassCardTitle>
-          {meta && meta.binSizeHours > 0 && (
-            <div className="text-xs text-muted-foreground">
-              Showing {meta.binnedCount} of {meta.originalCount} readings
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <GlassCardTitle>Air Quality History</GlassCardTitle>
+            {meta && meta.binSizeHours > 0 && (
+              <div className="text-xs text-muted-foreground">
+                Showing {meta.binnedCount} of {meta.originalCount} readings
+              </div>
+            )}
+          </div>
+          {/* Pollutant Selector */}
+          {availablePollutants.size > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs font-medium text-muted-foreground self-center">Pollutants:</span>
+              {POLLUTANT_CONFIGS.map(config => {
+                const isAvailable = availablePollutants.has(config.key);
+                const isSelected = selectedPollutants.has(config.key);
+                if (!isAvailable) return null;
+                const info = getPollutantInfo(config.code, 0);
+                return (
+                  <Button
+                    key={config.key}
+                    variant={isSelected ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => togglePollutant(config.key)}
+                    className="h-7 text-xs px-2"
+                    style={isSelected ? { 
+                      backgroundColor: config.color,
+                      borderColor: config.color,
+                      color: 'white'
+                    } : {}}
+                  >
+                    <div
+                      className="h-2 w-2 rounded-full mr-1.5"
+                      style={{ backgroundColor: config.color }}
+                    />
+                    {info.label}
+                  </Button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -345,24 +524,33 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
               domain={yAxisDomain}
               stroke="hsl(var(--muted-foreground))"
               style={{ fontSize: '12px' }}
-              label={{ value: 'AQI', angle: -90, position: 'insideLeft' }}
+              label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }}
             />
             <Tooltip 
               content={<ChartTooltip />}
               animationDuration={0}
               isAnimationActive={false}
             />
-            <Line
-              type="monotone"
-              dataKey="aqi"
-              stroke="#3B82F6"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4, fill: '#3B82F6' }}
-              isAnimationActive={false}
-              animationDuration={0}
-              connectNulls={false}
-            />
+            {/* Render lines for selected pollutants */}
+            {Array.from(selectedPollutants).map(pollKey => {
+              const config = POLLUTANT_CONFIGS.find(p => p.key === pollKey);
+              if (!config) return null;
+              return (
+                <Line
+                  key={pollKey}
+                  type="monotone"
+                  dataKey={pollKey}
+                  stroke={config.color}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4, fill: config.color }}
+                  isAnimationActive={false}
+                  animationDuration={0}
+                  connectNulls={false}
+                  name={getPollutantInfo(config.code, 0).label}
+                />
+              );
+            })}
           </LineChart>
         </div>
       </GlassCardContent>

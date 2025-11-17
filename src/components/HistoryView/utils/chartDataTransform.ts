@@ -8,6 +8,13 @@ export interface ChartDataPoint {
   value: number;
   location: string;
   fullEntry: HistoryEntry;
+  // Pollutant values
+  pm25: number | null;
+  pm10: number | null;
+  no2: number | null;
+  so2: number | null;
+  co: number | null;
+  o3: number | null;
   // Metadata for aggregation
   originalCount?: number; // Number of points aggregated into this bin
 }
@@ -220,6 +227,12 @@ export function transformHistoryForChart(
       value: entry.aqi, // MVP: Always use AQI
       location: entry.location_name,
       fullEntry: entry,
+      pm25: entry.pm25,
+      pm10: entry.pm10,
+      no2: entry.no2,
+      so2: entry.so2,
+      co: entry.co,
+      o3: entry.o3,
     };
   });
 
@@ -236,10 +249,20 @@ export function transformHistoryForChart(
       bins.get(binKey)!.push(point);
     });
 
-    // Aggregate bins: average AQI, use first entry for metadata
+    // Aggregate bins: average AQI and pollutants, use first entry for metadata
     const binnedData: ChartDataPoint[] = Array.from(bins.entries())
       .map(([binKey, binPoints]) => {
         const avgAQI = binPoints.reduce((sum, p) => sum + p.aqi, 0) / binPoints.length;
+        
+        // Average pollutant values (only for non-null values)
+        const avgPollutant = (key: 'pm25' | 'pm10' | 'no2' | 'so2' | 'co' | 'o3') => {
+          const validValues = binPoints
+            .map(p => p[key])
+            .filter((v): v is number => v !== null && v !== undefined);
+          if (validValues.length === 0) return null;
+          return validValues.reduce((sum, v) => sum + v, 0) / validValues.length;
+        };
+        
         const firstPoint = binPoints[0];
         const binTimestamp = new Date(binKey);
 
@@ -250,6 +273,12 @@ export function transformHistoryForChart(
           value: Math.round(avgAQI),
           location: firstPoint.location,
           fullEntry: firstPoint.fullEntry, // Use first entry for detail modal
+          pm25: avgPollutant('pm25'),
+          pm10: avgPollutant('pm10'),
+          no2: avgPollutant('no2'),
+          so2: avgPollutant('so2'),
+          co: avgPollutant('co'),
+          o3: avgPollutant('o3'),
           originalCount: binPoints.length,
         };
       })

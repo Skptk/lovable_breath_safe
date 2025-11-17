@@ -29,7 +29,7 @@ const DevToolsComponent: ComponentType = import.meta.env.DEV
 
 
 const heroMetrics = [
-  { label: "Apps Generated", value: "10k+", hint: "Built with Breath Safe" },
+  { label: "AI Assistant", value: "Hewa+", hint: "Built by Breath Safe" },
   { label: "Realtime Uptime", value: "99.9%", hint: "Fully monitored" },
   { label: "Avg. Response", value: "120ms", hint: "Lightning fast" }
 ];
