@@ -23,14 +23,14 @@ interface HistoricalAQIChartProps {
 }
 
 // Pollutant configuration
-type PollutantKey = 'pm25' | 'pm10' | 'no2' | 'so2' | 'co' | 'o3';
+export type PollutantKey = 'pm25' | 'pm10' | 'no2' | 'so2' | 'co' | 'o3';
 interface PollutantConfig {
   key: PollutantKey;
   code: string;
   color: string;
 }
 
-const POLLUTANT_CONFIGS: PollutantConfig[] = [
+export const POLLUTANT_CONFIGS: PollutantConfig[] = [
   { key: 'pm25', code: 'PM25', color: '#3B82F6' }, // Blue
   { key: 'pm10', code: 'PM10', color: '#8B5CF6' }, // Purple
   { key: 'no2', code: 'NO2', color: '#EF4444' }, // Red
