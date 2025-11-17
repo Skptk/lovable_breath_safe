@@ -19,17 +19,19 @@ import {
 } from '@/components/ui/alert-dialog';
 import HistoryDetailModal from './HistoryDetailModal';
 import { HistoryRow } from './HistoryRow';
-import { HistoricalAQIChart } from './HistoryView/HistoricalAQIChart';
+import { HistoricalAQIChart, POLLUTANT_CONFIGS } from './HistoryView/HistoricalAQIChart';
 import { TimeRangeSelector } from './HistoryView/TimeRangeSelector';
 import { ChartErrorBoundary } from './HistoryView/ErrorBoundary';
 import { useHistoricalAQIData } from '@/hooks/useHistoricalAQIData';
 import { transformHistoryForChart, TimeRange, getAdaptivePointThreshold } from './HistoryView/utils/chartDataTransform';
-import { HistoricalWeatherChart } from './WeatherView/HistoricalWeatherChart';
 import { useHistoricalWeatherData } from '@/hooks/useHistoricalWeatherData';
 import { transformWeatherForChart, WeatherMetric } from './WeatherView/utils/weatherChartDataTransform';
 import { useWeatherStore } from '@/store/weatherStore';
+import { MiniPollutantChart } from './MiniPollutantChart';
+import { WeatherMetricBentoCard } from './WeatherMetricBentoCard';
 
 const PAGE_SIZE = 20;
+const WEATHER_METRICS: WeatherMetric[] = ['temperature', 'humidity', 'windSpeed', 'windGust', 'airPressure'];
 
 const createEmptyChartState = (): ReturnType<typeof transformHistoryForChart> => ({
   data: [],
@@ -194,7 +196,6 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
   const [timeRange, setTimeRange] = useState<TimeRange>({ type: '30d' });
-  const [selectedWeatherMetric, setSelectedWeatherMetric] = useState<WeatherMetric>('temperature');
   const [isTransitioningTimeRange, setIsTransitioningTimeRange] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -219,7 +220,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
     isLoading: weatherHistoryLoading,
     error: weatherHistoryError,
     refetch: refetchWeatherHistory,
-  } = useHistoricalWeatherData(user?.id, timeRange, selectedWeatherMetric);
+  } = useHistoricalWeatherData(user?.id, timeRange);
 
   const fetchHistory = useCallback(
     async (pageIndex: number = 0): Promise<HistoryEntry[]> => {
@@ -755,14 +756,17 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   }, [chartHistoryData, timeRange]);
 
   // Transform weather data for chart
-  const weatherChartData = useMemo(() => {
+  const weatherChartDataByMetric = useMemo(() => {
     if (!weatherHistoryResponse?.raw || weatherHistoryResponse.raw.length === 0) {
-      return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
+      return {} as Record<WeatherMetric, ReturnType<typeof transformWeatherForChart>>;
     }
     const threshold = getAdaptivePointThreshold();
     const safeThreshold = Math.min(threshold, 800);
-    return transformWeatherForChart(weatherHistoryResponse.raw, timeRange, selectedWeatherMetric, safeThreshold);
-  }, [weatherHistoryResponse, timeRange, selectedWeatherMetric]);
+    return WEATHER_METRICS.reduce((acc, metric) => {
+      acc[metric] = transformWeatherForChart(weatherHistoryResponse.raw, timeRange, metric, safeThreshold);
+      return acc;
+    }, {} as Record<WeatherMetric, ReturnType<typeof transformWeatherForChart>>);
+  }, [weatherHistoryResponse, timeRange]);
 
   useEffect(() => {
     if (!chartLoading && (chartHistoryData || chartError)) {
@@ -904,90 +908,65 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
             <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
               <TimeRangeSelector selectedRange={timeRange} onRangeChange={handleTimeRangeChange} />
               
-              {/* Air Quality Chart */}
-              <div className="w-full max-w-full overflow-hidden">
-                {shouldShowChartLoadingState ? (
-                  <LoadingChart label={chartLoadingLabel} />
-                ) : (
-                  <ChartErrorBoundary
-                    fallbackTitle="Air quality chart error"
-                    fallbackMessage="We couldn't render the air quality trend."
-                    onRetry={() => {
-                      setIsTransitioningTimeRange(true);
-                      void refetchChartHistory();
-                    }}
-                  >
-                    <HistoricalAQIChart
-                      data={chartData.data}
-                      error={chartError}
-                      onDataPointClick={handleChartPointClick}
-                      meta={chartData.meta}
-                    />
-                  </ChartErrorBoundary>
-                )}
-              </div>
-
-              {/* Weather Metric Selector */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full max-w-full overflow-hidden">
-                <span className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">Weather Metric:</span>
-                <div className="flex gap-2 flex-wrap">
-                  {(['temperature', 'humidity', 'windSpeed', 'windGust', 'airPressure'] as WeatherMetric[]).map((metric) => (
-                    <Button
-                      key={metric}
-                      variant={selectedWeatherMetric === metric ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSelectedWeatherMetric(metric)}
-                      className="text-xs sm:text-sm"
-                    >
-                      {metric === 'temperature' ? (
-                        <>
-                          <span className="hidden sm:inline">Temperature</span>
-                          <span className="sm:hidden">Temp</span>
-                        </>
-                      ) : metric === 'humidity' ? (
-                        <>
-                          <span className="hidden sm:inline">Humidity</span>
-                          <span className="sm:hidden">Humid</span>
-                        </>
-                      ) : metric === 'windSpeed' ? (
-                        <>
-                          <span className="hidden sm:inline">Wind Speed</span>
-                          <span className="sm:hidden">Wind</span>
-                        </>
-                      ) : metric === 'windGust' ? (
-                        <>
-                          <span className="hidden sm:inline">Wind Gust</span>
-                          <span className="sm:hidden">Gust</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="hidden sm:inline">Air Pressure</span>
-                          <span className="sm:hidden">Pressure</span>
-                        </>
-                      )}
-                    </Button>
-                  ))}
+              {/* AQI + Pollutant Bento Grid */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-semibold">Air Quality Trends</h3>
+                </div>
+                <div className="grid gap-4 xl:grid-cols-3">
+                  <div className="xl:col-span-2">
+                    {shouldShowChartLoadingState ? (
+                      <LoadingChart label={chartLoadingLabel} />
+                    ) : (
+                      <ChartErrorBoundary
+                        fallbackTitle="Air quality chart error"
+                        fallbackMessage="We couldn't render the air quality trend."
+                        onRetry={() => {
+                          setIsTransitioningTimeRange(true);
+                          void refetchChartHistory();
+                        }}
+                      >
+                        <HistoricalAQIChart
+                          data={chartData.data}
+                          error={chartError}
+                          onDataPointClick={handleChartPointClick}
+                          meta={chartData.meta}
+                        />
+                      </ChartErrorBoundary>
+                    )}
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {POLLUTANT_CONFIGS.map((pollutant) => (
+                      <MiniPollutantChart
+                        key={pollutant.key}
+                        pollutantKey={pollutant.key}
+                        data={chartData.data}
+                        isLoading={shouldShowChartLoadingState}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Historical Weather Chart */}
-              <div className="w-full max-w-full overflow-hidden">
-                <ChartErrorBoundary
-                  fallbackTitle="Weather chart error"
-                  fallbackMessage="We couldn't render the historical weather trend."
-                  onRetry={() => {
-                    void refetchWeatherHistory();
-                  }}
-                >
-                  <HistoricalWeatherChart
-                    data={weatherChartData.data}
-                    metric={selectedWeatherMetric}
-                    isLoading={weatherHistoryLoading}
-                    error={weatherHistoryError}
-                    meta={weatherChartData.meta}
-                    timeRange={timeRange.type}
-                  />
-                </ChartErrorBoundary>
+              {/* Weather Metrics Bento Grid */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-semibold">Weather Metrics</h3>
+                  <Button variant="outline" size="sm" onClick={() => void refetchWeatherHistory()}>
+                    Refresh Metrics
+                  </Button>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {WEATHER_METRICS.map((metric) => (
+                    <WeatherMetricBentoCard
+                      key={metric}
+                      metric={metric}
+                      data={weatherChartDataByMetric[metric]?.data ?? []}
+                      isLoading={weatherHistoryLoading}
+                      error={weatherHistoryError}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           )}

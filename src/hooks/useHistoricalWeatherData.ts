@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { WeatherEntry, WeatherMetric } from '@/components/WeatherView/utils/weatherChartDataTransform';
+import { WeatherEntry } from '@/components/WeatherView/utils/weatherChartDataTransform';
 import { TimeRange, calculateTimeRange } from '@/components/HistoryView/utils/chartDataTransform';
 
 // Telemetry helper
@@ -20,10 +20,9 @@ interface WeatherSeriesResponse {
 export function useHistoricalWeatherData(
   userId: string | undefined,
   timeRange: TimeRange,
-  metric: WeatherMetric = 'temperature'
 ) {
   return useQuery({
-    queryKey: ['historical-weather', userId, timeRange.type, timeRange.start?.toISOString(), timeRange.end?.toISOString(), metric],
+    queryKey: ['historical-weather', userId, timeRange.type, timeRange.start?.toISOString(), timeRange.end?.toISOString()],
     queryFn: async (): Promise<WeatherSeriesResponse> => {
       if (!userId) {
         return { raw: [], totalCount: 0, availableMetrics: [] };
