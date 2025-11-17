@@ -45,6 +45,8 @@ const transformHistoryRow = (entry: RawHistoryRow): HistoryEntry => {
   };
 };
 
+const MAX_CHART_RECORDS = 3000;
+
 export function useHistoricalAQIData(userId: string | undefined, timeRange: TimeRange) {
   return useQuery({
     queryKey: ['historical-aqi', userId, timeRange.type, timeRange.start?.toISOString(), timeRange.end?.toISOString()],
@@ -60,7 +62,8 @@ export function useHistoricalAQIData(userId: string | undefined, timeRange: Time
         .from('air_quality_readings')
         .select('*')
         .eq('user_id', userId)
-        .order('timestamp', { ascending: true }); // Chronological for chart
+        .order('timestamp', { ascending: false }) // Pull newest first so we can cap results
+        .limit(MAX_CHART_RECORDS);
 
       // Apply time range filter (skip for ALL)
       if (timeRange.type !== 'ALL') {
@@ -74,7 +77,8 @@ export function useHistoricalAQIData(userId: string | undefined, timeRange: Time
       }
 
       const rawData = (data ?? []) as RawHistoryRow[];
-      return rawData.map(transformHistoryRow);
+      // We fetched newest first to apply the limit; reverse to chronological order
+      return rawData.reverse().map(transformHistoryRow);
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
