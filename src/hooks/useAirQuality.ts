@@ -389,6 +389,18 @@ export const useAirQuality = () => {
 
       const latitude = latestReading.userCoordinates?.lat ?? latestReading.coordinates?.lat ?? null;
       const longitude = latestReading.userCoordinates?.lon ?? latestReading.coordinates?.lon ?? null;
+      
+      // Log weather data availability for debugging
+      if (import.meta.env.DEV) {
+        console.log(`🌤️ [useAirQuality] Weather data check for ${source} insert:`, {
+          hasWeatherData: !!weatherData,
+          temperature: weatherData?.temperature ?? 'null',
+          humidity: weatherData?.humidity ?? 'null',
+          windSpeed: weatherData?.windSpeed ?? 'null',
+          coordinates: { latitude, longitude },
+        });
+      }
+
       const record = {
         user_id: user.id,
         timestamp: latestReading.timestamp ?? reading.timestamp ?? new Date().toISOString(),
@@ -425,6 +437,7 @@ export const useAirQuality = () => {
         location: latestReading.location,
         timestamp: latestReading.timestamp,
         source,
+        hasWeatherData: !!weatherData,
         pollutants: {
           pm25: latestReading.pm25,
           pm10: latestReading.pm10,
