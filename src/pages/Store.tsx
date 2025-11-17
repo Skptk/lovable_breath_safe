@@ -267,43 +267,43 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
-      <div className="page-content space-y-card-gap">
+      <div className="page-content space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-8 w-full max-w-full overflow-x-hidden px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 pb-4 sm:pb-6 lg:pb-8">
       {/* Header */}
-      <div className="text-center space-y-4">
-        <h1 className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
+      <div className="text-center space-y-2 sm:space-y-3 lg:space-y-4 w-full max-w-full overflow-hidden">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold bg-gradient-primary bg-clip-text text-transparent">
           Air Quality Store
         </h1>
-        <p className="body-md text-muted-foreground">
+        <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-muted-foreground px-2">
           Discover premium products to improve your indoor air quality
         </p>
       </div>
 
       {/* Search and Filters */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4 lg:space-y-5 w-full max-w-full overflow-hidden">
         {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <div className="relative w-full max-w-full">
+          <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
           <Input
             placeholder="Search for air purifiers, filters, monitors..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 sm:pl-12 lg:pl-14 h-9 sm:h-10 lg:h-11 xl:h-12 text-sm sm:text-base lg:text-lg"
           />
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger>
+            <SelectTrigger className="h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
               {categories.map((category) => {
                 const Icon = category.icon;
                 return (
-                  <SelectItem key={category.value} value={category.value}>
+                  <SelectItem key={category.value} value={category.value} className="text-sm sm:text-base">
                     <div className="flex items-center gap-2">
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                       {category.label}
                     </div>
                   </SelectItem>
@@ -313,12 +313,12 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
           </Select>
 
           <Select value={selectedStore} onValueChange={setSelectedStore}>
-            <SelectTrigger>
+            <SelectTrigger className="h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg">
               <SelectValue placeholder="Store" />
             </SelectTrigger>
             <SelectContent>
               {stores.map((store) => (
-                <SelectItem key={store.value} value={store.value}>
+                <SelectItem key={store.value} value={store.value} className="text-sm sm:text-base">
                   {store.label}
                 </SelectItem>
               ))}
@@ -326,96 +326,96 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
           </Select>
 
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger>
+            <SelectTrigger className="h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="featured">Featured</SelectItem>
-              <SelectItem value="price-low">Price: Low to High</SelectItem>
-              <SelectItem value="price-high">Price: High to Low</SelectItem>
-              <SelectItem value="rating">Highest Rated</SelectItem>
-              <SelectItem value="reviews">Most Reviews</SelectItem>
+              <SelectItem value="featured" className="text-sm sm:text-base">Featured</SelectItem>
+              <SelectItem value="price-low" className="text-sm sm:text-base">Price: Low to High</SelectItem>
+              <SelectItem value="price-high" className="text-sm sm:text-base">Price: High to Low</SelectItem>
+              <SelectItem value="rating" className="text-sm sm:text-base">Highest Rated</SelectItem>
+              <SelectItem value="reviews" className="text-sm sm:text-base">Most Reviews</SelectItem>
             </SelectContent>
           </Select>
 
-          <Button variant="outline" className="w-full">
-            <Filter className="h-4 w-4 mr-2" />
+          <Button variant="outline" className="w-full h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg">
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
             More Filters
           </Button>
         </div>
       </div>
 
       {/* Results Count */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 w-full max-w-full overflow-hidden">
+        <p className="text-xs sm:text-sm lg:text-base text-muted-foreground">
           {sortedProducts.length} product{sortedProducts.length !== 1 ? 's' : ''} found
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs sm:text-sm lg:text-base text-muted-foreground">
           Showing {Math.min(sortedProducts.length, 20)} of {sortedProducts.length}
         </p>
       </div>
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-8 w-full max-w-full overflow-hidden">
         {sortedProducts.map((product) => (
-          <GlassCard key={product.id} className="floating-card group hover:shadow-lg transition-all duration-300 cursor-pointer">
-            <GlassCardHeader className="pb-2">
-              <div className="relative">
+          <GlassCard key={product.id} className="floating-card group hover:shadow-lg transition-all duration-300 cursor-pointer w-full max-w-full overflow-hidden">
+            <GlassCardHeader className="pb-2 sm:pb-3 px-3 sm:px-4 lg:px-6 pt-4 sm:pt-5 lg:pt-6">
+              <div className="relative w-full">
                 <img
                   src={product.image}
                   alt={product.name}
                   loading="lazy"
-                  className="w-full h-48 object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-40 sm:h-48 lg:h-56 xl:h-64 object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
                 />
                 {product.bestSeller && (
-                  <Badge className="absolute top-2 left-2 bg-orange-500 text-white">
+                  <Badge className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-orange-500 text-white text-[10px] sm:text-xs lg:text-sm px-1.5 sm:px-2 py-0.5 sm:py-1">
                     Best Seller
                   </Badge>
                 )}
                 {product.fastShipping && (
-                  <Badge className="absolute top-2 right-2 bg-green-500 text-white">
+                  <Badge className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-green-500 text-white text-[10px] sm:text-xs lg:text-sm px-1.5 sm:px-2 py-0.5 sm:py-1">
                     Fast Shipping
                   </Badge>
                 )}
                 {!product.inStock && (
-                  <Badge variant="destructive" className="absolute top-2 left-2">
+                  <Badge variant="destructive" className="absolute top-2 left-2 sm:top-3 sm:left-3 text-[10px] sm:text-xs lg:text-sm px-1.5 sm:px-2 py-0.5 sm:py-1">
                     Out of Stock
                   </Badge>
                 )}
               </div>
-                          </GlassCardHeader>
+            </GlassCardHeader>
             
-            <GlassCardContent className="space-y-3">
+            <GlassCardContent className="space-y-2 sm:space-y-3 lg:space-y-4 px-3 sm:px-4 lg:px-6 pb-4 sm:pb-5 lg:pb-6">
               {/* Category and Store */}
-              <div className="flex items-center justify-between">
-                <Badge variant="outline" className="text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <Badge variant="outline" className="text-[10px] sm:text-xs lg:text-sm">
                   <div className="flex items-center gap-1">
-                    {React.createElement(getCategoryIcon(product.category), { className: "h-3 w-3" })}
-                    {categories.find(c => c.value === product.category)?.label}
+                    {React.createElement(getCategoryIcon(product.category), { className: "h-3 w-3 sm:h-4 sm:w-4" })}
+                    <span className="truncate">{categories.find(c => c.value === product.category)?.label}</span>
                   </div>
                 </Badge>
-                <Badge variant="outline" className={`text-xs ${getStoreBadgeColor(product.store)}`}>
+                <Badge variant="outline" className={`text-[10px] sm:text-xs lg:text-sm ${getStoreBadgeColor(product.store)}`}>
                   {product.store.charAt(0).toUpperCase() + product.store.slice(1)}
                 </Badge>
               </div>
 
               {/* Product Name */}
-              <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
+              <h3 className="font-semibold text-base sm:text-lg lg:text-xl xl:text-2xl line-clamp-2 group-hover:text-primary transition-colors">
                 {product.name}
               </h3>
 
               {/* Description */}
-              <p className="text-sm text-muted-foreground line-clamp-3">
+              <p className="text-xs sm:text-sm lg:text-base text-muted-foreground line-clamp-3">
                 {product.description}
               </p>
 
               {/* Rating */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <div className="flex items-center">
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`h-4 w-4 ${
+                      className={`h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 ${
                         i < Math.floor(product.rating)
                           ? 'text-yellow-400 fill-current'
                           : 'text-gray-300'
@@ -423,18 +423,18 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
                     />
                   ))}
                 </div>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs sm:text-sm lg:text-base text-muted-foreground">
                   ({product.reviewCount.toLocaleString()})
                 </span>
               </div>
 
               {/* Price */}
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-primary">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-primary">
                   {product.price}
                 </span>
                 {product.originalPrice && (
-                  <span className="text-sm text-muted-foreground line-through">
+                  <span className="text-xs sm:text-sm lg:text-base text-muted-foreground line-through">
                     {product.originalPrice}
                   </span>
                 )}
@@ -443,11 +443,11 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
               {/* Action Button */}
               <Button 
                 onClick={() => handleProductClick(product)}
-                className="w-full group-hover:bg-primary group-hover:text-white transition-colors"
+                className="w-full group-hover:bg-primary group-hover:text-white transition-colors h-9 sm:h-10 lg:h-11 xl:h-12 text-xs sm:text-sm lg:text-base font-semibold"
                 variant="outline"
               >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View on {product.store.charAt(0).toUpperCase() + product.store.slice(1)}
+                <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-5 lg:w-5 mr-1.5 sm:mr-2" />
+                <span className="truncate">View on {product.store.charAt(0).toUpperCase() + product.store.slice(1)}</span>
               </Button>
             </GlassCardContent>
           </GlassCard>
@@ -456,16 +456,16 @@ export default function Store({ showMobileMenu, onMobileMenuToggle }: StoreProps
 
       {/* No Results */}
       {sortedProducts.length === 0 && (
-        <div className="text-center py-8">
-          <div className="text-4xl mb-4">🛍️</div>
-          <p className="text-muted-foreground">No products available at the moment.</p>
-          <p className="text-muted-foreground">Check back later for new rewards and products!</p>
+        <div className="text-center py-8 sm:py-12 lg:py-16 w-full max-w-full overflow-hidden">
+          <div className="text-4xl sm:text-5xl lg:text-6xl mb-3 sm:mb-4 lg:mb-6">🛍️</div>
+          <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-muted-foreground mb-2">No products available at the moment.</p>
+          <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-muted-foreground">Check back later for new rewards and products!</p>
         </div>
       )}
 
       {/* Footer Note */}
-      <div className="text-center py-8 border-t border-border">
-        <p className="text-sm text-muted-foreground">
+      <div className="text-center py-6 sm:py-8 lg:py-10 xl:py-12 border-t border-border w-full max-w-full overflow-hidden">
+        <p className="text-[10px] sm:text-xs lg:text-sm xl:text-base text-muted-foreground px-2 sm:px-4 lg:px-6">
           💡 <strong>Affiliate Disclosure:</strong> This page contains affiliate links. 
           We may earn a commission when you make a purchase through these links at no additional cost to you.
         </p>

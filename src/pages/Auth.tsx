@@ -382,25 +382,25 @@ export default function Auth(): JSX.Element {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 flex items-center justify-center page-padding">
-        <GlassCard className="w-full max-w-md floating-card">
+    <div className="min-h-screen bg-background flex flex-col w-full max-w-full overflow-x-hidden">
+      <div className="flex-1 flex items-center justify-center page-padding px-2 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+        <GlassCard className="w-full max-w-md lg:max-w-lg xl:max-w-xl floating-card">
           {/* Header */}
-          <GlassCardHeader className="text-center">
-            <GlassCardTitle className="heading-lg bg-gradient-primary bg-clip-text text-transparent">
+          <GlassCardHeader className="text-center px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 lg:pt-10">
+            <GlassCardTitle className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               {isSignUp ? 'Create Account' : 'Welcome Back'}
             </GlassCardTitle>
-            <p className="body-md text-muted-foreground">
+            <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-muted-foreground mt-2 sm:mt-3 lg:mt-4">
               {isSignUp ? 'Join Air Quality Tracker' : 'Sign in to your account'}
             </p>
           </GlassCardHeader>
 
-          <GlassCardContent>
+          <GlassCardContent className="px-4 sm:px-6 lg:px-8 pb-6 sm:pb-8 lg:pb-10">
             {/* Main Auth Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 lg:space-y-5">
               {isSignUp && (
-                <div className="space-y-2">
-                  <label htmlFor="fullName" className="text-sm font-medium">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label htmlFor="fullName" className="text-xs sm:text-sm lg:text-base font-medium">
                     Full Name
                   </label>
                   <Input
@@ -409,13 +409,13 @@ export default function Auth(): JSX.Element {
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                     required={isSignUp}
-                    className="bg-background border-border"
+                    className="bg-background border-border h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg"
                   />
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
+              <div className="space-y-1.5 sm:space-y-2">
+                <label htmlFor="email" className="text-xs sm:text-sm lg:text-base font-medium">
                   Email
                 </label>
                 <Input
@@ -424,12 +424,12 @@ export default function Auth(): JSX.Element {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
-                  className="bg-background border-border"
+                  className="bg-background border-border h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium">
+              <div className="space-y-1.5 sm:space-y-2">
+                <label htmlFor="password" className="text-xs sm:text-sm lg:text-base font-medium">
                   Password
                 </label>
                 <div className="relative">
@@ -439,17 +439,17 @@ export default function Auth(): JSX.Element {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
-                    className="bg-background border-border pr-10"
+                    className="bg-background border-border pr-10 sm:pr-12 h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    className="absolute right-0 top-0 h-full px-2 sm:px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
                   </Button>
                 </div>
               </div>
@@ -461,7 +461,7 @@ export default function Auth(): JSX.Element {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-muted-foreground hover:text-foreground p-0 h-auto"
+                    className="text-xs sm:text-sm lg:text-base text-muted-foreground hover:text-foreground p-0 h-auto"
                   >
                     Forgot your password?
                   </Button>
@@ -470,20 +470,20 @@ export default function Auth(): JSX.Element {
 
               <Button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary/90"
+                className="w-full bg-primary hover:bg-primary/90 h-9 sm:h-10 lg:h-11 xl:h-12 text-sm sm:text-base lg:text-lg font-semibold"
                 disabled={isLoading}
               >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />}
                 {isSignUp ? 'Create Account' : 'Sign In'}
               </Button>
             </form>
 
             {/* Toggle Sign Up / Sign In */}
-            <div className="mt-4 text-center">
+            <div className="mt-3 sm:mt-4 lg:mt-5 text-center">
               <Button
                 variant="ghost"
                 onClick={() => setIsSignUp(!isSignUp)}
-                className="text-sm text-muted-foreground hover:text-foreground"
+                className="text-xs sm:text-sm lg:text-base text-muted-foreground hover:text-foreground h-auto py-1 sm:py-2"
               >
                 {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
               </Button>
@@ -491,17 +491,17 @@ export default function Auth(): JSX.Element {
 
             {/* Password Reset Form */}
             {showForgotPassword && (
-              <div className="mt-6 pt-6 border-t border-border">
-                <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4" />
+              <div className="mt-4 sm:mt-6 lg:mt-8 pt-4 sm:pt-6 lg:pt-8 border-t border-border">
+                <div className="text-center space-y-3 sm:space-y-4 lg:space-y-5">
+                  <div className="flex items-center justify-center gap-2 text-xs sm:text-sm lg:text-base text-muted-foreground">
+                    <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
                     <span>Reset your password</span>
                   </div>
 
                   {!passwordResetSent ? (
-                    <form onSubmit={handlePasswordReset} className="space-y-4">
-                      <div className="space-y-2">
-                        <label htmlFor="resetEmail" className="text-sm font-medium text-left block">
+                    <form onSubmit={handlePasswordReset} className="space-y-3 sm:space-y-4">
+                      <div className="space-y-1.5 sm:space-y-2">
+                        <label htmlFor="resetEmail" className="text-xs sm:text-sm lg:text-base font-medium text-left block">
                           Email Address
                         </label>
                         <Input
@@ -510,26 +510,26 @@ export default function Auth(): JSX.Element {
                           value={passwordResetEmail}
                           onChange={(e) => setPasswordResetEmail(e.target.value)}
                           required
-                          className="bg-background border-border"
+                          className="bg-background border-border h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg"
                           placeholder="Enter your email address"
                         />
                       </div>
-                      <Button type="submit" variant="outline" className="w-full" disabled={isLoading}>
+                      <Button type="submit" variant="outline" className="w-full h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg" disabled={isLoading}>
                         {isLoading ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                         ) : (
-                          <Mail className="mr-2 h-4 w-4" />
+                          <Mail className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                         )}
                         Send Reset Link
                       </Button>
                     </form>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       <div className="flex items-center justify-center gap-2 text-green-600">
-                        <CheckCircle className="h-5 w-5" />
-                        <span className="font-medium">Reset email sent!</span>
+                        <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6" />
+                        <span className="font-medium text-sm sm:text-base lg:text-lg">Reset email sent!</span>
                       </div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm lg:text-base text-muted-foreground px-2">
                         Check your email for a link to reset your password. The link will expire in 24 hours.
                       </p>
                     </div>
@@ -540,9 +540,9 @@ export default function Auth(): JSX.Element {
                     variant="ghost"
                     size="sm"
                     onClick={resetPasswordResetState}
-                    className="text-sm text-muted-foreground hover:text-foreground"
+                    className="text-xs sm:text-sm lg:text-base text-muted-foreground hover:text-foreground h-auto py-1 sm:py-2"
                   >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    <ArrowLeft className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                     Back to sign in
                   </Button>
                 </div>
@@ -551,16 +551,16 @@ export default function Auth(): JSX.Element {
 
             {/* Update Password Form */}
             {showPasswordResetForm && (
-              <div className="mt-6 pt-6 border-t border-border">
-                <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                    <CheckCircle className="h-4 w-4" />
+              <div className="mt-4 sm:mt-6 lg:mt-8 pt-4 sm:pt-6 lg:pt-8 border-t border-border">
+                <div className="text-center space-y-3 sm:space-y-4 lg:space-y-5">
+                  <div className="flex items-center justify-center gap-2 text-xs sm:text-sm lg:text-base text-muted-foreground">
+                    <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                     <span>Set your new password</span>
                   </div>
 
-                  <form onSubmit={handlePasswordResetSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <label htmlFor="newPassword" className="text-sm font-medium text-left block">
+                  <form onSubmit={handlePasswordResetSubmit} className="space-y-3 sm:space-y-4">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <label htmlFor="newPassword" className="text-xs sm:text-sm lg:text-base font-medium text-left block">
                         New Password
                       </label>
                       <div className="relative">
@@ -570,24 +570,24 @@ export default function Auth(): JSX.Element {
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
                           required
-                          className="bg-background border-border pr-10"
+                          className="bg-background border-border pr-10 sm:pr-12 h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg"
                           placeholder="Enter your new password"
                         />
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          className="absolute right-0 top-0 h-full px-2 sm:px-3 py-2 hover:bg-transparent"
                           onClick={() => setShowNewPassword(!showNewPassword)}
                           aria-label={showNewPassword ? 'Hide password' : 'Show password'}
                         >
-                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {showNewPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
                         </Button>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label htmlFor="confirmPassword" className="text-sm font-medium text-left block">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <label htmlFor="confirmPassword" className="text-xs sm:text-sm lg:text-base font-medium text-left block">
                         Confirm New Password
                       </label>
                       <div className="relative">
@@ -597,31 +597,31 @@ export default function Auth(): JSX.Element {
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           required
-                          className="bg-background border-border pr-10"
+                          className="bg-background border-border pr-10 sm:pr-12 h-9 sm:h-10 lg:h-11 text-sm sm:text-base lg:text-lg"
                           placeholder="Confirm your new password"
                         />
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          className="absolute right-0 top-0 h-full px-2 sm:px-3 py-2 hover:bg-transparent"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                           aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                         >
-                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
                         </Button>
                       </div>
                     </div>
 
                     <Button
                       type="submit"
-                      className="w-full bg-primary hover:bg-primary/90"
+                      className="w-full bg-primary hover:bg-primary/90 h-9 sm:h-10 lg:h-11 xl:h-12 text-sm sm:text-base lg:text-lg font-semibold"
                       disabled={isLoading}
                     >
                       {isLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                       ) : (
-                        <CheckCircle className="mr-2 h-4 w-4" />
+                        <CheckCircle className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                       )}
                       Update Password
                     </Button>
@@ -632,9 +632,9 @@ export default function Auth(): JSX.Element {
                     variant="ghost"
                     size="sm"
                     onClick={resetPasswordResetState}
-                    className="text-sm text-muted-foreground hover:text-foreground"
+                    className="text-xs sm:text-sm lg:text-base text-muted-foreground hover:text-foreground h-auto py-1 sm:py-2"
                   >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    <ArrowLeft className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                     Back to sign in
                   </Button>
                 </div>
@@ -643,10 +643,10 @@ export default function Auth(): JSX.Element {
 
             {/* Developer Mode */}
             {isDevelopment && (
-              <div className="mt-6 pt-6 border-t border-border">
-                <div className="text-center space-y-3">
-                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <Code className="h-3 w-3" />
+              <div className="mt-4 sm:mt-6 lg:mt-8 pt-4 sm:pt-6 lg:pt-8 border-t border-border">
+                <div className="text-center space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-center gap-2 text-[10px] sm:text-xs lg:text-sm text-muted-foreground">
+                    <Code className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>Development Mode</span>
                   </div>
 
@@ -655,35 +655,35 @@ export default function Auth(): JSX.Element {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowDevLogin(!showDevLogin)}
-                    className="text-xs text-muted-foreground hover:text-foreground"
+                    className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground hover:text-foreground h-auto py-1 sm:py-2"
                   >
                     {showDevLogin ? 'Hide' : 'Show'} Developer Login
                   </Button>
 
                   {showDevLogin && (
-                    <div className="bg-muted/50 rounded-lg p-3 space-y-3">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <AlertTriangle className="h-3 w-3" />
+                    <div className="bg-muted/50 rounded-lg p-3 sm:p-4 lg:p-5 space-y-2 sm:space-y-3">
+                      <div className="flex items-center gap-2 text-[10px] sm:text-xs lg:text-sm text-muted-foreground">
+                        <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
                         <span>For development only</span>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-left block">Email</label>
+                      <div className="space-y-2 sm:space-y-3">
+                        <div className="space-y-1 sm:space-y-1.5">
+                          <label className="text-[10px] sm:text-xs lg:text-sm font-medium text-left block">Email</label>
                           <Input
                             type="email"
                             value={devFormData.email}
                             onChange={(e) => setDevFormData({ ...devFormData, email: e.target.value })}
-                            className="h-8 text-xs bg-background border-border"
+                            className="h-8 sm:h-9 lg:h-10 text-xs sm:text-sm lg:text-base bg-background border-border"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-left block">Password</label>
+                        <div className="space-y-1 sm:space-y-1.5">
+                          <label className="text-[10px] sm:text-xs lg:text-sm font-medium text-left block">Password</label>
                           <Input
                             type="password"
                             value={devFormData.password}
                             onChange={(e) => setDevFormData({ ...devFormData, password: e.target.value })}
-                            className="h-8 text-xs bg-background border-border"
+                            className="h-8 sm:h-9 lg:h-10 text-xs sm:text-sm lg:text-base bg-background border-border"
                           />
                         </div>
                       </div>
@@ -694,12 +694,12 @@ export default function Auth(): JSX.Element {
                         size="sm"
                         onClick={handleDevLogin}
                         disabled={isLoading}
-                        className="w-full text-xs"
+                        className="w-full text-xs sm:text-sm lg:text-base h-8 sm:h-9 lg:h-10"
                       >
                         {isLoading ? (
-                          <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-2" />
                         ) : (
-                          <Code className="h-3 w-3 mr-2" />
+                          <Code className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                         )}
                         Developer Authentication
                       </Button>
