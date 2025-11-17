@@ -275,17 +275,23 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
 
   // Determine which pollutants are available in the data
   const availablePollutants = useMemo(() => {
-    if (!data || data.length === 0) return new Set<PollutantKey>();
-    const available = new Set<PollutantKey>();
-    for (const point of data) {
-      if (point.pm25 !== null && point.pm25 !== undefined) available.add('pm25');
-      if (point.pm10 !== null && point.pm10 !== undefined) available.add('pm10');
-      if (point.no2 !== null && point.no2 !== undefined) available.add('no2');
-      if (point.so2 !== null && point.so2 !== undefined) available.add('so2');
-      if (point.co !== null && point.co !== undefined) available.add('co');
-      if (point.o3 !== null && point.o3 !== undefined) available.add('o3');
+    try {
+      if (!data || !Array.isArray(data) || data.length === 0) return new Set<PollutantKey>();
+      const available = new Set<PollutantKey>();
+      for (const point of data) {
+        if (!point) continue;
+        if (point.pm25 !== null && point.pm25 !== undefined) available.add('pm25');
+        if (point.pm10 !== null && point.pm10 !== undefined) available.add('pm10');
+        if (point.no2 !== null && point.no2 !== undefined) available.add('no2');
+        if (point.so2 !== null && point.so2 !== undefined) available.add('so2');
+        if (point.co !== null && point.co !== undefined) available.add('co');
+        if (point.o3 !== null && point.o3 !== undefined) available.add('o3');
+      }
+      return available;
+    } catch (error) {
+      console.error('Error determining available pollutants:', error);
+      return new Set<PollutantKey>();
     }
-    return available;
   }, [data]);
 
   // Update selected pollutants to only include available ones
@@ -309,44 +315,63 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
 
   // Memoize chart data - limit points aggressively to prevent performance issues
   const chartData = useMemo(() => {
-    if (!data || data.length === 0) return [];
-    
     try {
+      if (!data || !Array.isArray(data) || data.length === 0) return [];
+      
       // More aggressive point limiting to prevent forced reflows
       const maxPoints = 500; // Reduced from 800
       const pointsToUse = data.length > maxPoints ? data.slice(-maxPoints) : data;
       
       // Use a more efficient transformation - but keep all required fields including pollutants
-      const transformed = new Array(pointsToUse.length);
+      const transformed: any[] = [];
       for (let i = 0; i < pointsToUse.length; i++) {
         const point = pointsToUse[i];
-        // Safely handle timestamp - could be Date, string, or number
-        let timestampValue: number;
-        if (point.timestamp instanceof Date) {
-          timestampValue = point.timestamp.getTime();
-        } else if (typeof point.timestamp === 'string') {
-          timestampValue = new Date(point.timestamp).getTime();
-        } else if (typeof point.timestamp === 'number') {
-          timestampValue = point.timestamp;
-        } else {
-          // Fallback to current time if invalid
-          timestampValue = Date.now();
+        if (!point) {
+          // Skip invalid points
+          continue;
         }
         
-        transformed[i] = {
-          timestamp: timestampValue,
-          aqi: point.aqi ?? 0, // Required for chart rendering, default to 0 if missing
-          value: point.value ?? point.aqi ?? 0,
-          displayTime: point.displayTime ?? '',
-          location: point.location ?? '',
-          fullEntry: point.fullEntry, // Required for click handler
-          pm25: point.pm25 ?? null,
-          pm10: point.pm10 ?? null,
-          no2: point.no2 ?? null,
-          so2: point.so2 ?? null,
-          co: point.co ?? null,
-          o3: point.o3 ?? null,
-        };
+        try {
+          // Safely handle timestamp - could be Date, string, or number
+          let timestampValue: number;
+          try {
+            if (point.timestamp instanceof Date) {
+              timestampValue = point.timestamp.getTime();
+            } else if (typeof point.timestamp === 'string') {
+              timestampValue = new Date(point.timestamp).getTime();
+              if (isNaN(timestampValue)) timestampValue = Date.now();
+            } else if (typeof point.timestamp === 'number') {
+              timestampValue = point.timestamp;
+            } else {
+              // Fallback to current time if invalid
+              timestampValue = Date.now();
+            }
+          } catch {
+            timestampValue = Date.now();
+          }
+          
+          const aqiValue = typeof point.aqi === 'number' && !isNaN(point.aqi) ? point.aqi : 0;
+          const transformedPoint = {
+            timestamp: timestampValue,
+            aqi: aqiValue,
+            value: typeof point.value === 'number' && !isNaN(point.value) ? point.value : aqiValue,
+            displayTime: typeof point.displayTime === 'string' ? point.displayTime : '',
+            location: typeof point.location === 'string' ? point.location : '',
+            fullEntry: point.fullEntry || null, // Required for click handler
+            pm25: typeof point.pm25 === 'number' && !isNaN(point.pm25) ? point.pm25 : null,
+            pm10: typeof point.pm10 === 'number' && !isNaN(point.pm10) ? point.pm10 : null,
+            no2: typeof point.no2 === 'number' && !isNaN(point.no2) ? point.no2 : null,
+            so2: typeof point.so2 === 'number' && !isNaN(point.so2) ? point.so2 : null,
+            co: typeof point.co === 'number' && !isNaN(point.co) ? point.co : null,
+            o3: typeof point.o3 === 'number' && !isNaN(point.o3) ? point.o3 : null,
+          };
+          
+          transformed.push(transformedPoint);
+        } catch (pointError) {
+          console.warn('Error transforming chart point:', pointError, point);
+          // Skip this point but continue processing others
+          continue;
+        }
       }
       
       return transformed;
@@ -417,12 +442,18 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
   const handleChartClick = useCallback((chartData: any) => {
     if (!onDataPointClick) return;
     
-    startTransition(() => {
-      if (chartData && chartData.activePayload && chartData.activePayload[0]) {
-        const point = chartData.activePayload[0].payload as ChartDataPoint;
-        onDataPointClick(point.fullEntry);
-      }
-    });
+    try {
+      startTransition(() => {
+        if (chartData && chartData.activePayload && chartData.activePayload[0]) {
+          const point = chartData.activePayload[0].payload as ChartDataPoint;
+          if (point && point.fullEntry) {
+            onDataPointClick(point.fullEntry);
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error handling chart click:', error);
+    }
   }, [onDataPointClick]);
 
   if (isLoading) {
@@ -474,17 +505,43 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
 
   // Get Y-axis label based on selected pollutants
   const yAxisLabel = useMemo(() => {
-    if (selectedPollutants.size === 0) return 'AQI';
-    if (selectedPollutants.size === 1) {
-      const pollKey = Array.from(selectedPollutants)[0];
-      const config = POLLUTANT_CONFIGS.find(p => p.key === pollKey);
-      if (config) {
-        const info = getPollutantInfo(config.code, 0);
-        return info.unit;
+    try {
+      if (selectedPollutants.size === 0) return 'AQI';
+      if (selectedPollutants.size === 1) {
+        const pollKey = Array.from(selectedPollutants)[0];
+        const config = POLLUTANT_CONFIGS.find(p => p.key === pollKey);
+        if (config) {
+          const info = getPollutantInfo(config.code, 0);
+          return info.unit;
+        }
       }
+      return 'Value';
+    } catch (error) {
+      console.error('Error calculating Y-axis label:', error);
+      return 'Value';
     }
-    return 'Value';
   }, [selectedPollutants]);
+
+  // Safety check - ensure chartData is valid before rendering
+  if (!Array.isArray(chartData)) {
+    console.error('Invalid chartData:', chartData);
+    return (
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>Air Quality History</GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent className="flex items-center justify-center h-[400px]">
+          <div className="text-center space-y-2">
+            <AlertTriangle className="h-8 w-8 mx-auto text-destructive" />
+            <p className="font-semibold">Invalid chart data</p>
+            <p className="text-sm text-muted-foreground">
+              The chart data is in an invalid format. Please refresh the page.
+            </p>
+          </div>
+        </GlassCardContent>
+      </GlassCard>
+    );
+  }
 
   return (
     <GlassCard>

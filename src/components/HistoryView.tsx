@@ -704,13 +704,18 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
   // Transform chart data with startTransition to prevent blocking
   const chartData = useMemo(() => {
-    if (!chartHistoryData || chartHistoryData.length === 0) {
+    try {
+      if (!chartHistoryData || chartHistoryData.length === 0) {
+        return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
+      }
+      const threshold = getAdaptivePointThreshold();
+      // Use a more aggressive threshold to prevent memory issues
+      const safeThreshold = Math.min(threshold, 800);
+      return transformHistoryForChart(chartHistoryData, timeRange, safeThreshold);
+    } catch (error) {
+      console.error('Error transforming chart data:', error);
       return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
     }
-    const threshold = getAdaptivePointThreshold();
-    // Use a more aggressive threshold to prevent memory issues
-    const safeThreshold = Math.min(threshold, 800);
-    return transformHistoryForChart(chartHistoryData, timeRange, safeThreshold);
   }, [chartHistoryData, timeRange]);
 
   // Transform weather data for chart
@@ -855,13 +860,26 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
               
               {/* Air Quality Chart */}
               <div className="w-full max-w-full overflow-hidden">
-                <HistoricalAQIChart
-                  data={chartData.data}
-                  isLoading={chartLoading}
-                  error={chartError}
-                  onDataPointClick={handleChartPointClick}
-                  meta={chartData.meta}
-                />
+                {chartData && chartData.data && Array.isArray(chartData.data) ? (
+                  <HistoricalAQIChart
+                    data={chartData.data}
+                    isLoading={chartLoading}
+                    error={chartError}
+                    onDataPointClick={handleChartPointClick}
+                    meta={chartData.meta}
+                  />
+                ) : (
+                  <GlassCard>
+                    <GlassCardContent className="flex items-center justify-center h-[400px]">
+                      <div className="text-center space-y-2">
+                        <p className="font-semibold">No chart data available</p>
+                        <p className="text-sm text-muted-foreground">
+                          Chart data is being prepared. Please wait...
+                        </p>
+                      </div>
+                    </GlassCardContent>
+                  </GlassCard>
+                )}
               </div>
 
               {/* Weather Metric Selector */}
