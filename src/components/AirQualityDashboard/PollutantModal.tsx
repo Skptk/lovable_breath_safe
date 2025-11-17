@@ -71,37 +71,37 @@ export const PollutantModal: React.FC<PollutantModalProps> = React.memo(({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 400 }}
-            className="relative max-w-md w-full mx-4 focus:outline-none"
+            className="relative max-w-md w-full mx-2 sm:mx-4 focus:outline-none max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
             tabIndex={-1}
           >
             <GlassCard 
               variant="elevated" 
-              className="relative p-6 shadow-xl"
+              className="relative p-4 sm:p-5 md:p-6 shadow-xl"
             >
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-1 rounded-full hover:bg-muted/50 transition-colors"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-1 rounded-full hover:bg-muted/50 transition-colors"
                 aria-label="Close modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               
-              <div className="text-center space-y-5">
+              <div className="text-center space-y-3 sm:space-y-4 md:space-y-5">
                 {/* Pollutant Value */}
                 <div 
-                  className={`text-5xl font-bold ${pollutant.color} transition-colors`}
+                  className={`text-3xl sm:text-4xl md:text-5xl font-bold ${pollutant.color} transition-colors`}
                   aria-label={`${pollutant.value.toFixed(1)} ${pollutant.unit}`}
                 >
                   {pollutant.value.toFixed(1)}
-                  <span className="text-2xl ml-1">{pollutant.unit}</span>
+                  <span className="text-lg sm:text-xl md:text-2xl ml-1">{pollutant.unit}</span>
                 </div>
                 
                 {/* Pollutant Name */}
                 <h2 
                   id="pollutant-modal-title"
-                  className="text-2xl font-bold text-foreground"
+                  className="text-xl sm:text-2xl font-bold text-foreground"
                 >
                   {pollutant.name}
                 </h2>
@@ -109,17 +109,17 @@ export const PollutantModal: React.FC<PollutantModalProps> = React.memo(({
                 {/* Pollutant Description */}
                 <p 
                   id="pollutant-modal-description"
-                  className="text-muted-foreground leading-relaxed"
+                  className="text-xs sm:text-sm text-muted-foreground leading-relaxed px-2"
                 >
                   {pollutant.description}
                 </p>
                 
                 {/* Health Impact */}
-                <div className="pt-4 border-t border-muted/30">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                <div className="pt-3 sm:pt-4 border-t border-muted/30">
+                  <h3 className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 sm:mb-2">
                     Health Impact
                   </h3>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground px-2">
                     {getHealthImpact(pollutant.name, pollutant.value)}
                   </p>
                 </div>
@@ -128,7 +128,7 @@ export const PollutantModal: React.FC<PollutantModalProps> = React.memo(({
                 <Button 
                   onClick={onClose} 
                   variant="outline" 
-                  className="w-full mt-6"
+                  className="w-full mt-4 sm:mt-6 text-xs sm:text-sm h-8 sm:h-9 md:h-10"
                   size="lg"
                 >
                   Close

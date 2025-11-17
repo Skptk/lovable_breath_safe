@@ -30,20 +30,20 @@ interface PollutantCardGridProps {
 
 const PollutantCardGrid = React.memo(function PollutantCardGrid({ cards, onSelect, disabled }: PollutantCardGridProps) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 sm:mt-10">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6 mt-4 sm:mt-6 md:mt-10 lg:mt-12 w-full max-w-full overflow-hidden">
       {cards.map((pollutant) => (
         <button
           key={pollutant.label}
           type="button"
-          className="rounded-xl border border-white/10 bg-white/5 px-3 py-4 sm:px-4 sm:py-5 text-center transition-opacity hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/60 disabled:opacity-60 disabled:pointer-events-none"
+          className="rounded-xl border border-white/10 bg-white/5 px-2 py-3 sm:px-3 sm:py-4 md:px-4 md:py-5 lg:px-6 lg:py-6 xl:px-8 xl:py-8 text-center transition-opacity hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/60 disabled:opacity-60 disabled:pointer-events-none w-full"
           onClick={() => onSelect(pollutant)}
           disabled={disabled}
         >
-          <div className="text-xl sm:text-2xl font-semibold text-white">
+          <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-semibold text-white">
             {pollutant.value.toFixed(1)}
           </div>
-          <div className="text-xs sm:text-sm text-slate-300 mt-1">{pollutant.label}</div>
-          <div className="text-xs text-slate-400">{pollutant.unit}</div>
+          <div className="text-[10px] sm:text-xs md:text-sm lg:text-base text-slate-300 mt-0.5 sm:mt-1 lg:mt-1.5">{pollutant.label}</div>
+          <div className="text-[10px] sm:text-xs lg:text-sm text-slate-400">{pollutant.unit}</div>
         </button>
       ))}
     </div>
@@ -64,12 +64,12 @@ interface PointsSummaryProps {
 
 const PointsSummary = React.memo(function PointsSummary({ cards }: PointsSummaryProps) {
   return (
-    <aside className="space-y-6">
+    <aside className="space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8 w-full max-w-full overflow-hidden">
       {cards.map((card) => (
-        <div key={card.label} className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-          <div className="text-3xl font-semibold text-white mb-2">{card.value}</div>
-          <div className="text-slate-300 text-sm">{card.label}</div>
-          <div className="text-slate-500 text-xs mt-2">{card.description}</div>
+        <div key={card.label} className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10 text-center w-full max-w-full overflow-hidden">
+          <div className="text-2xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold text-white mb-1 sm:mb-2 lg:mb-3">{card.value}</div>
+          <div className="text-slate-300 text-xs sm:text-sm lg:text-base xl:text-lg">{card.label}</div>
+          <div className="text-slate-500 text-[10px] sm:text-xs lg:text-sm mt-1 sm:mt-2 lg:mt-3">{card.description}</div>
         </div>
       ))}
     </aside>
@@ -98,51 +98,51 @@ const DashboardHeader = React.memo(function DashboardHeader({
   onMobileMenuToggle,
 }: DashboardHeaderProps) {
   return (
-    <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-10">
-      <div className="flex items-start gap-4 flex-1 min-w-0">
+    <header className="flex flex-col gap-4 sm:gap-6 lg:gap-8 md:flex-row md:items-center md:justify-between mb-6 sm:mb-8 md:mb-10 lg:mb-12 w-full max-w-full overflow-hidden">
+      <div className="flex items-start gap-3 sm:gap-4 lg:gap-6 flex-1 min-w-0">
         {/* Mobile Menu Button */}
         {onMobileMenuToggle && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onMobileMenuToggle}
-            className="md:hidden h-10 w-10 rounded-full border border-white/20 hover:bg-white/10 text-white flex-shrink-0 mt-1"
+            className="md:hidden h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-white/20 hover:bg-white/10 text-white flex-shrink-0 mt-1"
             aria-label="Toggle mobile menu"
           >
             {showMobileMenu ? (
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4 sm:h-5 sm:w-5" />
             ) : (
-              <Menu className="h-5 w-5" />
+              <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
             )}
           </Button>
         )}
-        <div className="space-y-3 flex-1 min-w-0">
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-teal-200/80">Welcome back</p>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white break-words">
+        <div className="space-y-2 sm:space-y-3 lg:space-y-4 flex-1 min-w-0">
+          <p className="text-xs sm:text-sm lg:text-base font-semibold uppercase tracking-[0.35em] text-teal-200/80">Welcome back</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold text-white break-words">
             Hello, {userName}!
           </h1>
-          <p className="text-base sm:text-lg text-slate-300 break-words">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-slate-300 break-words">
             {locationLabel ? `Air quality in ${locationLabel}` : "Your personalized air quality command center"}
           </p>
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 lg:gap-4 w-full sm:w-auto">
         <Button
           variant="outline"
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="bg-white/5 hover:bg-white/10 text-white border-white/20"
+          className="bg-white/5 hover:bg-white/10 text-white border-white/20 text-xs sm:text-sm lg:text-base h-8 sm:h-9 lg:h-10 xl:h-11 w-full sm:w-auto"
         >
-          <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+          <RefreshCw className={`mr-1.5 sm:mr-2 lg:mr-2.5 h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 ${isRefreshing ? "animate-spin" : ""}`} />
           <span className="hidden sm:inline">{isRefreshing ? "Refreshing" : "Refresh Data"}</span>
           <span className="sm:hidden">{isRefreshing ? "Refreshing" : "Refresh"}</span>
         </Button>
         <Button
           variant="default"
           onClick={() => onNavigate?.("history")}
-          className="bg-teal-400 hover:bg-teal-300 text-slate-900"
+          className="bg-teal-400 hover:bg-teal-300 text-slate-900 text-xs sm:text-sm lg:text-base h-8 sm:h-9 lg:h-10 xl:h-11 w-full sm:w-auto"
         >
-          <History className="mr-2 h-4 w-4" />
+          <History className="mr-1.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
           <span className="hidden sm:inline">View History</span>
           <span className="sm:hidden">History</span>
         </Button>
@@ -177,38 +177,39 @@ const CurrentAirQualityCard = React.memo(function CurrentAirQualityCard({
   onNavigate,
 }: CurrentAirQualityCardProps) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6 lg:p-8 text-center">
-      <h2 className="text-lg sm:text-xl font-semibold text-white mb-2">Current Air Quality</h2>
-      <p className="text-xs sm:text-sm text-slate-400">Last updated: {lastUpdated}</p>
-      <div className="mt-6 sm:mt-10 space-y-4 sm:space-y-6">
-        <div className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold" style={{ color: aqiColor }}>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10 text-center w-full max-w-full overflow-hidden">
+      <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-semibold text-white mb-1 sm:mb-2 lg:mb-3">Current Air Quality</h2>
+      <p className="text-[10px] sm:text-xs md:text-sm lg:text-base text-slate-400">Last updated: {lastUpdated}</p>
+      <div className="mt-4 sm:mt-6 md:mt-10 lg:mt-12 xl:mt-16 space-y-3 sm:space-y-4 md:space-y-6 lg:space-y-8">
+        <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl font-bold" style={{ color: aqiColor }}>
           {aqiValue}
         </div>
-        <div className="inline-flex items-center px-4 sm:px-5 py-2 rounded-full" style={{ backgroundColor: `${aqiColor}20` }}>
-          <span className="text-base sm:text-lg font-medium" style={{ color: aqiColor }}>
+        <div className="inline-flex items-center px-3 sm:px-4 md:px-5 lg:px-6 xl:px-8 py-1.5 sm:py-2 lg:py-3 rounded-full" style={{ backgroundColor: `${aqiColor}20` }}>
+          <span className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-medium" style={{ color: aqiColor }}>
             {aqiLabel}
           </span>
         </div>
       </div>
       <PollutantCardGrid cards={pollutantCards} onSelect={onSelect} disabled={isRefreshing} />
 
-      <div className="mt-6 sm:mt-10 flex flex-wrap justify-center gap-3 sm:gap-4">
+      <div className="mt-4 sm:mt-6 md:mt-10 lg:mt-12 flex flex-col sm:flex-row justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-5 w-full">
         <Button
           variant="outline"
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="bg-slate-900/60 hover:bg-slate-900/40 text-white border-white/20"
+          className="bg-slate-900/60 hover:bg-slate-900/40 text-white border-white/20 text-xs sm:text-sm lg:text-base h-8 sm:h-9 lg:h-10 xl:h-11 w-full sm:w-auto"
         >
-          <RefreshCw className={`mr-2 h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
+          <RefreshCw className={`mr-1.5 sm:mr-2 lg:mr-2.5 h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 lg:h-6 lg:w-6 ${isRefreshing ? "animate-spin" : ""}`} />
           {isRefreshing ? "Refreshing..." : "Refresh Now"}
         </Button>
         <Button
           variant="outline"
           onClick={() => onNavigate?.("history")}
-          className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+          className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs sm:text-sm lg:text-base h-8 sm:h-9 lg:h-10 xl:h-11 w-full sm:w-auto"
         >
-          <History className="mr-2 h-5 w-5" />
-          View History
+          <History className="mr-1.5 sm:mr-2 lg:mr-2.5 h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" />
+          <span className="hidden sm:inline">View History</span>
+          <span className="sm:hidden">History</span>
         </Button>
       </div>
     </div>
@@ -425,9 +426,9 @@ function AirQualityDashboardContent({
   }, [hasUserConsent, refreshData, isDemoMode, toast]);
 
   const renderUnifiedShell = (content: React.ReactNode) => (
-    <div className="relative z-10 px-2 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8 lg:py-8">
-      <div className="mx-auto max-w-7xl w-full">
-        <div className="bg-black/40 ring-1 ring-white/10 rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8 xl:p-10">
+    <div className="relative z-10 px-2 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8 lg:py-8 w-full max-w-full overflow-x-hidden">
+      <div className="mx-auto max-w-7xl w-full max-w-full overflow-hidden">
+        <div className="bg-black/40 ring-1 ring-white/10 rounded-2xl sm:rounded-3xl shadow-xl p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 2xl:p-12 w-full max-w-full overflow-hidden">
           {content}
         </div>
       </div>
@@ -445,7 +446,7 @@ function AirQualityDashboardContent({
 
     if (showLoadingState) {
       return renderUnifiedShell(
-        <div className="py-16">
+        <div className="py-8 sm:py-12 md:py-16 px-2 sm:px-4">
           <LoadingState
             title={`Hello, ${userName}!`}
             subtitle="Fetching the latest air quality insights..."
@@ -456,32 +457,32 @@ function AirQualityDashboardContent({
 
     if (showErrorState) {
       return renderUnifiedShell(
-        <div className="py-16 text-center space-y-8">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-500/15">
-            <TrendingDown className="h-10 w-10 text-red-400" />
+        <div className="py-8 sm:py-12 md:py-16 lg:py-20 xl:py-24 text-center space-y-6 sm:space-y-8 lg:space-y-10 px-2 sm:px-4 lg:px-6">
+          <div className="mx-auto flex h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 xl:h-32 xl:w-32 items-center justify-center rounded-full bg-red-500/15">
+            <TrendingDown className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 xl:h-16 xl:w-16 text-red-400" />
           </div>
-          <div className="space-y-3">
-            <h3 className="text-2xl font-semibold text-white">Something went wrong</h3>
-            <p className="text-slate-300 max-w-xl mx-auto">
+          <div className="space-y-2 sm:space-y-3 lg:space-y-4">
+            <h3 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-semibold text-white">Something went wrong</h3>
+            <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-slate-300 max-w-xl lg:max-w-2xl xl:max-w-3xl mx-auto px-2 lg:px-4">
               {error?.message || "We couldn't retrieve the latest air quality data. Please try again shortly."}
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button onClick={handleRefresh} disabled={isRefreshing} className="min-w-[180px]">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 lg:gap-5 w-full sm:w-auto max-w-md sm:max-w-none mx-auto">
+            <Button onClick={handleRefresh} disabled={isRefreshing} className="w-full sm:min-w-[180px] lg:min-w-[200px] text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-11">
               {isRefreshing ? (
                 <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  <RefreshCw className="mr-1.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                   Retrying...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
+                  <RefreshCw className="mr-1.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   Try again
                 </>
               )}
             </Button>
-            <Button variant="outline" onClick={handleRequestLocationPermission} className="min-w-[180px]">
-              <MapPin className="mr-2 h-4 w-4" />
+            <Button variant="outline" onClick={handleRequestLocationPermission} className="w-full sm:min-w-[180px] lg:min-w-[200px] text-xs sm:text-sm lg:text-base h-9 sm:h-10 lg:h-11">
+              <MapPin className="mr-1.5 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               Re-check location
             </Button>
           </div>
@@ -501,8 +502,8 @@ function AirQualityDashboardContent({
                   onMobileMenuToggle={onMobileMenuToggle}
                 />
 
-                <section className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-3">
-                  <div className="lg:col-span-2 space-y-6 sm:space-y-8">
+                <section className="grid gap-4 sm:gap-6 md:gap-8 lg:gap-10 xl:gap-12 grid-cols-1 lg:grid-cols-3 w-full max-w-full overflow-hidden">
+                  <div className="lg:col-span-2 space-y-4 sm:space-y-6 md:space-y-8 lg:space-y-10 w-full max-w-full overflow-hidden">
                     <CurrentAirQualityCard
                       lastUpdated={lastUpdated}
                       aqiValue={aqiValue}
@@ -517,7 +518,7 @@ function AirQualityDashboardContent({
 
 
                     {data && (
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10 w-full max-w-full overflow-hidden">
                         <DataSourceValidator
                           dataSource={data.dataSource}
                           aqi={data.aqi}
@@ -529,12 +530,12 @@ function AirQualityDashboardContent({
                     )}
                   </div>
 
-                  <div className="lg:col-span-1">
+                  <div className="lg:col-span-1 w-full max-w-full overflow-hidden">
                     <PointsSummary cards={pointsSummaryCards} />
                   </div>
                 </section>
 
-                <section className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-white/10">
+                <section className="mt-6 sm:mt-8 md:mt-12 pt-6 sm:pt-8 md:pt-12 border-t border-white/10 w-full max-w-full overflow-hidden">
                   <WeatherSection coordinates={coordinates} />
                 </section>
       </>
@@ -545,28 +546,28 @@ function AirQualityDashboardContent({
     <>
       {/* Demo Mode Banner */}
       {isDemoMode && (
-        <div className="relative z-10 px-2 pt-4 sm:px-4 md:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl">
+        <div className="relative z-10 px-2 pt-4 sm:px-4 md:px-6 lg:px-8 w-full max-w-full overflow-x-hidden">
+          <div className="mx-auto max-w-7xl w-full max-w-full overflow-hidden">
             <motion.div
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-lg shadow-lg mb-4"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 sm:p-4 lg:p-5 xl:p-6 rounded-lg shadow-lg mb-3 sm:mb-4 lg:mb-6"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
             >
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">🎯</span>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 lg:gap-5">
+                <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 flex-1 min-w-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 xl:w-12 xl:h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-bold text-xs sm:text-sm lg:text-base">🎯</span>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">Demo Mode</h3>
-                    <p className="text-sm text-blue-100">You're viewing sample data. Create an account to unlock real-time air quality monitoring!</p>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-sm sm:text-base lg:text-lg xl:text-xl">Demo Mode</h3>
+                    <p className="text-xs sm:text-sm lg:text-base xl:text-lg text-blue-100">You're viewing sample data. Create an account to unlock real-time air quality monitoring!</p>
                   </div>
                 </div>
                 <Button
                   size="sm"
                   onClick={() => window.location.href = "/onboarding"}
-                  className="bg-white text-blue-600 hover:bg-blue-50"
+                  className="bg-white text-blue-600 hover:bg-blue-50 text-xs sm:text-sm lg:text-base h-8 sm:h-9 lg:h-10 xl:h-11 w-full sm:w-auto"
                 >
                   Get Started
                 </Button>
@@ -580,7 +581,7 @@ function AirQualityDashboardContent({
         ? renderDashboardContent()
         : !hasRequestedPermission && !permissionTimeoutReached
           ? renderUnifiedShell(
-              <div className="py-16">
+              <div className="py-8 sm:py-12 md:py-16 px-2 sm:px-4">
                 <LoadingState
                   title={`Hello, ${userName}!`}
                   subtitle="Checking location permissions..."
@@ -589,7 +590,7 @@ function AirQualityDashboardContent({
             )
           : !hasUserConsent
             ? renderUnifiedShell(
-                <div className="py-10">
+                <div className="py-6 sm:py-8 md:py-10 px-2 sm:px-4">
                   <PermissionRequest
                     onRequest={handleRequestLocationPermission}
                     requesting={isRequestingPermission}

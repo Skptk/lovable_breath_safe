@@ -653,22 +653,22 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
   return (
     <GlassCard>
       <GlassCardHeader>
-        <div className="flex flex-col gap-2 sm:gap-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-            <GlassCardTitle className="text-base sm:text-lg">Air Quality History</GlassCardTitle>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+        <div className="flex flex-col gap-2 sm:gap-3 lg:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-4">
+            <GlassCardTitle className="text-base sm:text-lg lg:text-xl xl:text-2xl">Air Quality History</GlassCardTitle>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 lg:gap-4">
               {meta && meta.binSizeHours > 0 && (
-                <div className="text-xs text-muted-foreground whitespace-nowrap">
+                <div className="text-xs sm:text-sm lg:text-base text-muted-foreground whitespace-nowrap">
                   Showing {meta.binnedCount} of {meta.originalCount} readings
                 </div>
               )}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground hidden sm:inline">Scale:</span>
+              <div className="flex items-center gap-2 lg:gap-3">
+                <span className="text-xs sm:text-sm lg:text-base font-medium text-muted-foreground hidden sm:inline">Scale:</span>
                 <Button
                   variant={normalizeSeries ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setNormalizeSeries((prev) => !prev)}
-                  className="h-7 text-xs px-2 sm:px-3"
+                  className="h-7 sm:h-8 lg:h-9 text-xs sm:text-sm lg:text-base px-2 sm:px-3 lg:px-4"
                   aria-pressed={normalizeSeries}
                 >
                   {normalizeSeries ? 'Normalized' : 'Actual'}
@@ -678,8 +678,8 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
           </div>
           {/* Pollutant Selector */}
           {availablePollutants.size > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <span className="text-xs font-medium text-muted-foreground self-center hidden sm:inline">Pollutants:</span>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 lg:gap-3">
+              <span className="text-xs sm:text-sm lg:text-base font-medium text-muted-foreground self-center hidden sm:inline">Pollutants:</span>
               {POLLUTANT_CONFIGS.map(config => {
                 const isAvailable = availablePollutants.has(config.key);
                 const isSelected = selectedPollutants.has(config.key);
@@ -691,7 +691,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
                     variant={isSelected ? "default" : "outline"}
                     size="sm"
                     onClick={() => togglePollutant(config.key)}
-                    className="h-7 text-[10px] sm:text-xs px-1.5 sm:px-2"
+                    className="h-7 sm:h-8 lg:h-9 text-[10px] sm:text-xs lg:text-sm px-1.5 sm:px-2 lg:px-3"
                     style={isSelected ? { 
                       backgroundColor: config.color,
                       borderColor: config.color,
@@ -699,7 +699,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
                     } : {}}
                   >
                     <div
-                      className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full mr-1 sm:mr-1.5"
+                      className="h-1.5 w-1.5 sm:h-2 sm:w-2 lg:h-2.5 lg:w-2.5 rounded-full mr-1 sm:mr-1.5 lg:mr-2"
                       style={{ backgroundColor: config.color }}
                     />
                     <span className="hidden min-[375px]:inline">{info.label}</span>
@@ -711,10 +711,10 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
           )}
         </div>
       </GlassCardHeader>
-      <GlassCardContent className="p-2 sm:p-6">
+      <GlassCardContent className="p-2 sm:p-4 md:p-6 lg:p-8">
         <div 
           ref={containerRef}
-          className="w-full h-[250px] sm:h-[300px] md:h-[400px]" 
+          className="w-full h-[250px] sm:h-[300px] md:h-[400px] lg:h-[500px] xl:h-[600px]" 
           role="img" 
           aria-label="Air Quality Index history chart"
         >
@@ -736,18 +736,18 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
               dataKey="timestamp"
               tickFormatter={formatXAxisLabel}
               stroke="hsl(var(--muted-foreground))"
-              style={{ fontSize: dimensions.width < 640 ? '10px' : '12px' }}
+              style={{ fontSize: dimensions.width < 640 ? '10px' : dimensions.width < 1024 ? '12px' : '14px' }}
               interval="preserveStartEnd"
               angle={dimensions.width < 640 ? -45 : 0}
               textAnchor={dimensions.width < 640 ? 'end' : 'middle'}
-              height={dimensions.width < 640 ? 40 : 30}
+              height={dimensions.width < 640 ? 40 : dimensions.width < 1024 ? 30 : 35}
             />
             <YAxis
               domain={yAxisDomain}
               stroke="hsl(var(--muted-foreground))"
-              style={{ fontSize: dimensions.width < 640 ? '10px' : '12px' }}
-              width={dimensions.width < 640 ? 30 : 40}
-              label={dimensions.width >= 640 ? { value: yAxisLabel, angle: -90, position: 'insideLeft' } : undefined}
+              style={{ fontSize: dimensions.width < 640 ? '10px' : dimensions.width < 1024 ? '12px' : '14px' }}
+              width={dimensions.width < 640 ? 30 : dimensions.width < 1024 ? 40 : 50}
+              label={dimensions.width >= 640 ? { value: yAxisLabel, angle: -90, position: 'insideLeft', style: { fontSize: dimensions.width >= 1024 ? '14px' : '12px' } } : undefined}
             />
             <Tooltip 
               content={<ChartTooltip normalizeSeries={normalizeSeries} />}

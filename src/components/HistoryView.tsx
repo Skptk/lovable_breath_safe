@@ -845,7 +845,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   return (
     <>
       <div className="page-container">
-        <div className="page-content space-y-4 sm:space-y-5 md:space-y-6 w-full max-w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pb-4 sm:pb-6">
+        <div className="page-content space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-8 w-full max-w-full overflow-x-hidden px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 pb-4 sm:pb-6 lg:pb-8">
           {/* Header */}
           <Header
             title="Air Quality History"
@@ -919,15 +919,15 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
           {/* Chart View */}
           {viewMode === 'chart' && (
-            <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
+            <div className="space-y-4 sm:space-y-6 lg:space-y-8 w-full max-w-full overflow-hidden">
               <TimeRangeSelector selectedRange={timeRange} onRangeChange={handleTimeRangeChange} />
               
               {/* AQI + Pollutant Bento Grid */}
-              <div className="space-y-3">
+              <div className="space-y-3 lg:space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm sm:text-base font-semibold">Air Quality Trends</h3>
+                  <h3 className="text-sm sm:text-base lg:text-lg xl:text-xl font-semibold">Air Quality Trends</h3>
                 </div>
-                <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
+                <div className="grid gap-3 sm:gap-4 lg:gap-6 xl:gap-8 lg:grid-cols-3">
                   {/* Main AQI Chart - Takes 2 columns on large screens */}
                   <div className="lg:col-span-2 w-full overflow-hidden">
                     {shouldShowChartLoadingState ? (
@@ -951,7 +951,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                     )}
                   </div>
                   {/* Mini Pollutant Charts - Single column on large screens, 2 columns on smaller */}
-                  <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  <div className="grid gap-3 sm:gap-4 lg:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                     {POLLUTANT_CONFIGS.map((pollutant) => (
                       <MiniPollutantChart
                         key={pollutant.key}
@@ -967,20 +967,20 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
               </div>
 
               {/* Weather Metrics Bento Grid */}
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <h3 className="text-sm sm:text-base font-semibold">Weather Metrics</h3>
+              <div className="space-y-3 lg:space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 lg:gap-4">
+                  <h3 className="text-sm sm:text-base lg:text-lg xl:text-xl font-semibold">Weather Metrics</h3>
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => void refetchWeatherHistory()}
-                    className="text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3"
+                    className="text-xs sm:text-sm lg:text-base h-7 sm:h-8 lg:h-9 px-2 sm:px-3 lg:px-4"
                   >
                     <span className="hidden sm:inline">Refresh Metrics</span>
                     <span className="sm:hidden">Refresh</span>
                   </Button>
                 </div>
-                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-3 sm:gap-4 lg:gap-5 xl:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                   {WEATHER_METRICS.map((metric) => (
                     <WeatherMetricBentoCard
                       key={metric}
@@ -1032,47 +1032,47 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 w-full max-w-full overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 xl:gap-8 w-full max-w-full overflow-hidden">
             <GlassCard variant="subtle" className="w-full max-w-full overflow-hidden">
-              <GlassCardHeader className="pb-2">
-                <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
+              <GlassCardHeader className="pb-2 lg:pb-3">
+                <GlassCardTitle className="text-sm sm:text-base lg:text-lg font-medium flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
                   7-Day Average
                 </GlassCardTitle>
               </GlassCardHeader>
               <GlassCardContent className="pt-0">
-                <div className={`text-2xl font-bold ${getAQIColor(stats.avgAQI)}`}>{stats.avgAQI}</div>
-                <p className="text-xs text-muted-foreground">
+                <div className={`text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold ${getAQIColor(stats.avgAQI)}`}>{stats.avgAQI}</div>
+                <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-1 lg:mt-2">
                   {stats.avgAQI <= 50 ? 'Good air quality' : 'Moderate to poor air quality'}
                 </p>
               </GlassCardContent>
             </GlassCard>
 
             <GlassCard variant="subtle" className="w-full max-w-full overflow-hidden">
-              <GlassCardHeader className="pb-2">
-                <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
+              <GlassCardHeader className="pb-2 lg:pb-3">
+                <GlassCardTitle className="text-sm sm:text-base lg:text-lg font-medium flex items-center gap-2">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
                   Total Records
                 </GlassCardTitle>
               </GlassCardHeader>
               <GlassCardContent className="pt-0">
-                <div className="text-2xl font-bold text-primary">{stats.totalReadings}</div>
-                <p className="text-xs text-muted-foreground">
+                <div className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-primary">{stats.totalReadings}</div>
+                <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-1 lg:mt-2">
                   {stats.totalReadings === 1 ? 'record' : 'records'} total
                 </p>
               </GlassCardContent>
             </GlassCard>
 
             <GlassCard variant="subtle" className="w-full max-w-full overflow-hidden">
-              <GlassCardHeader className="pb-2">
-                <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
+              <GlassCardHeader className="pb-2 lg:pb-3">
+                <GlassCardTitle className="text-sm sm:text-base lg:text-lg font-medium flex items-center gap-2">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                   Recent Records
                 </GlassCardTitle>
               </GlassCardHeader>
               <GlassCardContent className="pt-0">
-                <div className="text-2xl font-bold text-primary">{stats.recentReadings}</div>
-                <p className="text-xs text-muted-foreground">
+                <div className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-primary">{stats.recentReadings}</div>
+                <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-1 lg:mt-2">
                   {stats.recentReadings === 1 ? 'record' : 'records'} in the last 7 days
                 </p>
               </GlassCardContent>

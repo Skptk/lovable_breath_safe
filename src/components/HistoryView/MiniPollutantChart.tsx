@@ -111,17 +111,17 @@ export function MiniPollutantChart({ data, pollutantKey, isLoading, error, timeR
 
   return (
     <GlassCard className="h-full">
-      <GlassCardHeader className="pb-2 px-3 sm:px-6">
-        <GlassCardTitle className="text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2">
+      <GlassCardHeader className="pb-2 px-3 sm:px-4 md:px-6 lg:px-8">
+        <GlassCardTitle className="text-xs sm:text-sm lg:text-base font-semibold flex items-center gap-1.5 sm:gap-2 lg:gap-2.5">
           <span
-            className="inline-block h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full flex-shrink-0"
+            className="inline-block h-1.5 w-1.5 sm:h-2 sm:w-2 lg:h-2.5 lg:w-2.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: config?.color ?? '#22d3ee' }}
           />
           <span className="truncate">{info.label}</span>
         </GlassCardTitle>
-        <p className="text-[10px] sm:text-xs text-muted-foreground">{info.unit}</p>
+        <p className="text-[10px] sm:text-xs lg:text-sm text-muted-foreground">{info.unit}</p>
       </GlassCardHeader>
-      <GlassCardContent className="h-32 sm:h-40 px-3 sm:px-6">
+      <GlassCardContent className="h-32 sm:h-40 lg:h-48 xl:h-56 px-3 sm:px-4 md:px-6 lg:px-8">
         {isLoading ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
