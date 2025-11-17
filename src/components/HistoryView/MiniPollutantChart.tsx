@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { ChartDataPoint, TimeRange } from './utils/chartDataTransform';
 import { PollutantKey, POLLUTANT_CONFIGS } from './HistoricalAQIChart';
 import { getPollutantInfo } from '@/lib/airQualityUtils';
 import { Loader2, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface MiniPollutantChartProps {
   data: ChartDataPoint[];
@@ -20,6 +21,51 @@ const formatTick = (value: number) => {
   }
   return value.toFixed(0);
 };
+
+// Custom tooltip component for mini pollutant charts
+const MiniPollutantTooltip = memo(({ active, payload, label, pollutantKey }: any) => {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const data = payload[0].payload;
+  const value = data?.value;
+  const config = POLLUTANT_CONFIGS.find(p => p.key === pollutantKey);
+  
+  if (value === null || value === undefined || !config) {
+    return null;
+  }
+
+  const info = getPollutantInfo(config.code, value);
+
+  let formattedLabel = '';
+  try {
+    if (label instanceof Date) {
+      formattedLabel = format(label, 'MMM d, yyyy HH:mm');
+    } else if (typeof label === 'string') {
+      formattedLabel = format(new Date(label), 'MMM d, yyyy HH:mm');
+    } else {
+      formattedLabel = String(label);
+    }
+  } catch {
+    formattedLabel = String(label);
+  }
+
+  return (
+    <div className="rounded-lg border bg-background/95 backdrop-blur-sm p-2 shadow-lg">
+      <div className="space-y-1">
+        <div className="text-xs text-muted-foreground">{formattedLabel}</div>
+        <div className="flex items-center gap-1 text-xs">
+          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: config.color }} />
+          <span className="text-muted-foreground">{info.label}:</span>
+          <span className="font-medium">{value.toFixed(1)} {info.unit}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+MiniPollutantTooltip.displayName = 'MiniPollutantTooltip';
 
 export function MiniPollutantChart({ data, pollutantKey, isLoading, error, timeRange }: MiniPollutantChartProps) {
   const config = POLLUTANT_CONFIGS.find((item) => item.key === pollutantKey);
@@ -98,8 +144,10 @@ export function MiniPollutantChart({ data, pollutantKey, isLoading, error, timeR
                 fontSize={10}
               />
               <Tooltip
-                formatter={(value: number) => [`${value.toFixed(1)} ${info.unit}`, info.label]}
-                labelFormatter={(label) => new Date(label).toLocaleString()}
+                content={<MiniPollutantTooltip pollutantKey={pollutantKey} />}
+                wrapperStyle={{ outline: 'none' }}
+                cursor={{ stroke: config?.color ?? '#22d3ee', strokeWidth: 1 }}
+                isAnimationActive={false}
               />
               <Line
                 type="monotone"

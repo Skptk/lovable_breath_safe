@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, Tooltip, YAxis } from 'recharts';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { WeatherChartDataPoint, WeatherMetric } from '../WeatherView/utils/weatherChartDataTransform';
 import { Loader2, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface WeatherMetricBentoCardProps {
   metric: WeatherMetric;
@@ -28,6 +29,51 @@ const METRIC_CONFIG: Record<
   precipitation: { label: 'Precipitation', unit: '%', color: '#8B5CF6' },
   airPressure: { label: 'Air Pressure', unit: 'hPa', color: '#F59E0B' },
 };
+
+// Custom tooltip component for weather metric charts
+const WeatherMetricTooltip = memo(({ active, payload, label, metric }: any) => {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const data = payload[0].payload;
+  const value = data?.value;
+  const config = METRIC_CONFIG[metric];
+  
+  if (value === null || value === undefined || !config) {
+    return null;
+  }
+
+  let formattedLabel = '';
+  try {
+    if (label instanceof Date) {
+      formattedLabel = format(label, 'MMM d, yyyy HH:mm');
+    } else if (typeof label === 'string') {
+      formattedLabel = format(new Date(label), 'MMM d, yyyy HH:mm');
+    } else {
+      formattedLabel = String(label);
+    }
+  } catch {
+    formattedLabel = String(label);
+  }
+
+  return (
+    <div className="rounded-lg border bg-background/95 backdrop-blur-sm p-2 shadow-lg" style={{ borderColor: config.color }}>
+      <div className="space-y-1">
+        <div className="text-xs text-muted-foreground">{formattedLabel}</div>
+        <div className="flex items-center gap-1 text-xs">
+          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: config.color }} />
+          <span className="text-muted-foreground">{config.label}:</span>
+          <span className="font-medium">
+            {value.toFixed(metric === 'temperature' ? 1 : 0)}{config.unit}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+WeatherMetricTooltip.displayName = 'WeatherMetricTooltip';
 
 export function WeatherMetricBentoCard({
   metric,
@@ -77,8 +123,10 @@ export function WeatherMetricBentoCard({
               <XAxis dataKey="timestamp" tick={false} axisLine={false} tickLine={false} />
               <YAxis width={30} axisLine={false} tickLine={false} tickFormatter={(value) => `${value}`} />
               <Tooltip
-                formatter={(value: number) => [`${value.toFixed(1)} ${config.unit}`, config.label]}
-                labelFormatter={(label) => new Date(label).toLocaleString()}
+                content={<WeatherMetricTooltip metric={metric} />}
+                wrapperStyle={{ outline: 'none' }}
+                cursor={{ stroke: config.color, strokeWidth: 1 }}
+                isAnimationActive={false}
               />
               <Line
                 type="monotone"
