@@ -27,8 +27,8 @@ import { transformHistoryForChart, TimeRange, getAdaptivePointThreshold } from '
 import { useHistoricalWeatherData } from '@/hooks/useHistoricalWeatherData';
 import { transformWeatherForChart, WeatherMetric } from './WeatherView/utils/weatherChartDataTransform';
 import { useWeatherStore } from '@/store/weatherStore';
-import { MiniPollutantChart } from './MiniPollutantChart';
-import { WeatherMetricBentoCard } from './WeatherMetricBentoCard';
+import { MiniPollutantChart } from './HistoryView/MiniPollutantChart';
+import { WeatherMetricBentoCard } from './HistoryView/WeatherMetricBentoCard';
 
 const PAGE_SIZE = 20;
 const WEATHER_METRICS: WeatherMetric[] = ['temperature', 'humidity', 'windSpeed', 'windGust', 'airPressure'];
