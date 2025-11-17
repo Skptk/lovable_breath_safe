@@ -39,14 +39,26 @@ const POLLUTANT_CONFIGS: PollutantConfig[] = [
   { key: 'o3', code: 'O3', color: '#06B6D4' }, // Cyan
 ];
 
+type ChartTooltipProps = {
+  active?: boolean;
+  payload?: any[];
+  label?: any;
+  normalizeSeries?: boolean;
+};
+
+type NormalizedPointExtras = {
+  __rawValues?: Partial<Record<PollutantKey, number | null>>;
+  __isNormalized?: boolean;
+};
+
 // Memoized tooltip component to prevent re-renders
-const ChartTooltip = memo(({ active, payload, label }: any) => {
+const ChartTooltip = memo(({ active, payload, label, normalizeSeries }: ChartTooltipProps) => {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
 
   try {
-    const data = payload[0].payload as ChartDataPoint;
+    const data = payload[0].payload as ChartDataPoint & NormalizedPointExtras;
     if (!data || typeof data.aqi !== 'number') {
       return null;
     }
@@ -95,13 +107,18 @@ const ChartTooltip = memo(({ active, payload, label }: any) => {
               <div className="text-xs text-muted-foreground">{aqiLabel}</div>
             </div>
           </div>
+          {normalizeSeries && (
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Normalized view (0-100%)
+            </div>
+          )}
           {selectedPollutants.length > 0 && (
             <div className="space-y-1 pt-2 border-t border-border">
               {selectedPollutants.map((pollKey: PollutantKey) => {
                 const config = POLLUTANT_CONFIGS.find(p => p.key === pollKey);
                 if (!config) return null;
-                const value = (data as any)[pollKey];
-                if (value === null || value === undefined) return null;
+                const value = data.__rawValues?.[pollKey] ?? (data as any)[pollKey];
+                if (value === null || value === undefined || typeof value !== 'number' || Number.isNaN(value)) return null;
                 const info = getPollutantInfo(config.code, value);
                 return (
                   <div key={pollKey} className="flex items-center gap-2 text-xs">
@@ -156,6 +173,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
   const [selectedPollutants, setSelectedPollutants] = useState<Set<PollutantKey>>(new Set(['pm25']));
+  const [normalizeSeries, setNormalizeSeries] = useState(false);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -381,16 +399,76 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     }
   }, [data]);
 
+  const pollutantStats = useMemo(() => {
+    if (!normalizeSeries || chartData.length === 0) {
+      return null;
+    }
+
+    return POLLUTANT_CONFIGS.reduce<Record<PollutantKey, { min: number; max: number } | null>>((acc, config) => {
+      const values = chartData
+        .map((point) => point[config.key])
+        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+
+      if (values.length === 0) {
+        acc[config.key] = null;
+      } else {
+        acc[config.key] = {
+          min: Math.min(...values),
+          max: Math.max(...values),
+        };
+      }
+
+      return acc;
+    }, {} as Record<PollutantKey, { min: number; max: number } | null>);
+  }, [chartData, normalizeSeries]);
+
+  const renderedChartData = useMemo(() => {
+    if (!normalizeSeries || !pollutantStats) {
+      return chartData;
+    }
+
+    return chartData.map((point) => {
+      const normalizedPoint: ChartDataPoint & NormalizedPointExtras = {
+        ...point,
+        __rawValues: {},
+        __isNormalized: true,
+      };
+
+      POLLUTANT_CONFIGS.forEach(({ key }) => {
+        const rawValue = point[key];
+        normalizedPoint.__rawValues![key] = rawValue ?? null;
+        const stats = pollutantStats[key];
+
+        if (stats && typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+          const range = stats.max - stats.min;
+          if (range <= 0) {
+            normalizedPoint[key] = 50;
+          } else {
+            normalizedPoint[key] = ((rawValue - stats.min) / range) * 100;
+          }
+        } else {
+          normalizedPoint[key] = null;
+        }
+      });
+
+      return normalizedPoint;
+    });
+  }, [chartData, normalizeSeries, pollutantStats]);
+
   // Memoize Y-axis domain calculation - use pollutant values if showing pollutants
   const yAxisDomain = useMemo(() => {
-    if (!Array.isArray(chartData) || chartData.length === 0) return [0, 100];
+    if (normalizeSeries) {
+      return [0, 100];
+    }
+
+    if (!Array.isArray(renderedChartData) || renderedChartData.length === 0) return [0, 100];
     
     try {
       // If showing pollutants, calculate domain based on selected pollutants
       if (selectedPollutants.size > 0) {
         const allValues: number[] = [];
         selectedPollutants.forEach(pollKey => {
-          chartData.forEach(d => {
+          renderedChartData.forEach(d => {
             // Safely access pollutant value with type assertion
             const currentValue = (d as Record<string, unknown>)[pollKey];
             if (
@@ -415,7 +493,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
       }
       
       // Fallback to AQI domain
-      const aqiValues = chartData
+      const aqiValues = renderedChartData
         .map((d) => d.aqi)
         .filter((value): value is number => typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value));
       if (aqiValues.length > 0) {
@@ -430,7 +508,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     }
     
     return [0, 100]; // Default fallback
-  }, [chartData, selectedPollutants]);
+  }, [renderedChartData, selectedPollutants, normalizeSeries]);
 
   // Toggle pollutant selection
   const togglePollutant = useCallback((pollKey: PollutantKey) => {
@@ -517,6 +595,9 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
 
   // Get Y-axis label based on selected pollutants
   const yAxisLabel = useMemo(() => {
+    if (normalizeSeries) {
+      return 'Normalized (0-100)';
+    }
     try {
       if (selectedPollutants.size === 0) return 'AQI';
       if (selectedPollutants.size === 1) {
@@ -532,7 +613,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
       console.error('Error calculating Y-axis label:', error);
       return 'Value';
     }
-  }, [selectedPollutants]);
+  }, [selectedPollutants, normalizeSeries]);
 
   // Safety check - ensure chartData is valid before rendering
   if (!Array.isArray(chartData)) {
@@ -559,13 +640,25 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     <GlassCard>
       <GlassCardHeader>
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <GlassCardTitle>Air Quality History</GlassCardTitle>
             {meta && meta.binSizeHours > 0 && (
               <div className="text-xs text-muted-foreground">
                 Showing {meta.binnedCount} of {meta.originalCount} readings
               </div>
             )}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Scale:</span>
+              <Button
+                variant={normalizeSeries ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setNormalizeSeries((prev) => !prev)}
+                className="h-7 text-xs px-3"
+                aria-pressed={normalizeSeries}
+              >
+                {normalizeSeries ? 'Normalized' : 'Actual'}
+              </Button>
+            </div>
           </div>
           {/* Pollutant Selector */}
           {availablePollutants.size > 0 && (
@@ -612,7 +705,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
           <LineChart
             width={dimensions.width}
             height={dimensions.height}
-            data={chartData}
+            data={renderedChartData}
             margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
             onClick={handleChartClick}
             syncId="aqi-history-chart"
@@ -632,7 +725,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
               label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }}
             />
             <Tooltip 
-              content={<ChartTooltip />}
+              content={<ChartTooltip normalizeSeries={normalizeSeries} />}
               animationDuration={0}
               isAnimationActive={false}
             />
