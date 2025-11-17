@@ -41,10 +41,10 @@ const createEmptyChartState = (): ReturnType<typeof transformHistoryForChart> =>
 
 const LoadingChart = ({ label = 'Loading chart data...' }: { label?: string }): JSX.Element => (
   <GlassCard>
-    <GlassCardContent className="flex items-center justify-center h-[400px]">
+    <GlassCardContent className="flex items-center justify-center h-[250px] sm:h-[300px] md:h-[400px]">
       <div className="text-center space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-        <p className="text-sm text-muted-foreground">{label}</p>
+        <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-primary" />
+        <p className="text-xs sm:text-sm text-muted-foreground px-2">{label}</p>
       </div>
     </GlassCardContent>
   </GlassCard>
@@ -845,7 +845,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   return (
     <>
       <div className="page-container">
-        <div className="page-content space-y-4 sm:space-y-5 md:space-y-6 w-full max-w-full overflow-x-hidden px-2 sm:px-4 md:px-6">
+        <div className="page-content space-y-4 sm:space-y-5 md:space-y-6 w-full max-w-full overflow-x-hidden px-2 sm:px-4 md:px-6 pb-4 sm:pb-6">
           {/* Header */}
           <Header
             title="Air Quality History"
@@ -925,11 +925,11 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
               {/* AQI + Pollutant Bento Grid */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold">Air Quality Trends</h3>
+                  <h3 className="text-sm sm:text-base font-semibold">Air Quality Trends</h3>
                 </div>
-                <div className="grid gap-4 lg:grid-cols-3">
+                <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
                   {/* Main AQI Chart - Takes 2 columns on large screens */}
-                  <div className="lg:col-span-2">
+                  <div className="lg:col-span-2 w-full overflow-hidden">
                     {shouldShowChartLoadingState ? (
                       <LoadingChart label={chartLoadingLabel} />
                     ) : (
@@ -951,7 +951,7 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
                     )}
                   </div>
                   {/* Mini Pollutant Charts - Single column on large screens, 2 columns on smaller */}
-                  <div className="grid gap-4 grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                     {POLLUTANT_CONFIGS.map((pollutant) => (
                       <MiniPollutantChart
                         key={pollutant.key}
@@ -968,13 +968,19 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
               {/* Weather Metrics Bento Grid */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold">Weather Metrics</h3>
-                  <Button variant="outline" size="sm" onClick={() => void refetchWeatherHistory()}>
-                    Refresh Metrics
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <h3 className="text-sm sm:text-base font-semibold">Weather Metrics</h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => void refetchWeatherHistory()}
+                    className="text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3"
+                  >
+                    <span className="hidden sm:inline">Refresh Metrics</span>
+                    <span className="sm:hidden">Refresh</span>
                   </Button>
                 </div>
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   {WEATHER_METRICS.map((metric) => (
                     <WeatherMetricBentoCard
                       key={metric}

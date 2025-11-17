@@ -45,7 +45,7 @@ export function TimeRangeSelector({ selectedRange, onRangeChange }: TimeRangeSel
   }, [customStart, customEnd, onRangeChange]);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
       {QUICK_RANGES.map((range) => (
         <Button
           key={range.type}
@@ -53,6 +53,7 @@ export function TimeRangeSelector({ selectedRange, onRangeChange }: TimeRangeSel
           size="sm"
           onClick={() => handleQuickRange(range.type)}
           aria-label={`Select ${range.label} time range`}
+          className="text-xs sm:text-sm px-2 sm:px-3 h-7 sm:h-8"
         >
           {range.label}
         </Button>
@@ -64,9 +65,11 @@ export function TimeRangeSelector({ selectedRange, onRangeChange }: TimeRangeSel
             variant={selectedRange.type === 'CUSTOM' ? 'default' : 'outline'}
             size="sm"
             aria-label="Select custom date range"
+            className="text-xs sm:text-sm px-2 sm:px-3 h-7 sm:h-8"
           >
-            <Calendar className="h-4 w-4 mr-2" />
-            Custom
+            <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Custom</span>
+            <span className="sm:hidden">Date</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">

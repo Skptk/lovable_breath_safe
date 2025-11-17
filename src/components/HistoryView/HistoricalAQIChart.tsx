@@ -171,13 +171,22 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
   meta,
 }: HistoricalAQIChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 400 });
+  // Initialize with mobile-friendly defaults
+  const getInitialDimensions = () => {
+    if (typeof window === 'undefined') return { width: 800, height: 400 };
+    const isMobile = window.innerWidth < 640;
+    return { 
+      width: window.innerWidth - 40, 
+      height: isMobile ? 250 : window.innerWidth < 768 ? 300 : 400 
+    };
+  };
+  const [dimensions, setDimensions] = useState(getInitialDimensions);
   const [selectedPollutants, setSelectedPollutants] = useState<Set<PollutantKey>>(new Set(['pm25']));
   const [normalizeSeries, setNormalizeSeries] = useState(false);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rafIdRef = useRef<number | null>(null);
-  const lastDimensionsRef = useRef({ width: 800, height: 400 });
+  const lastDimensionsRef = useRef(getInitialDimensions());
 
   // Use ResizeObserver with debouncing to avoid forced reflows
   useEffect(() => {
@@ -206,9 +215,11 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
               const { width, height } = entry.contentRect;
               if (width > 0 && height > 0) {
                 // Only update if change is significant (reduces re-renders)
+                // Use smaller threshold on mobile for better responsiveness
+                const threshold = width < 640 ? 5 : 10;
                 if (
-                  Math.abs(width - lastDimensionsRef.current.width) > 10 ||
-                  Math.abs(height - lastDimensionsRef.current.height) > 10
+                  Math.abs(width - lastDimensionsRef.current.width) > threshold ||
+                  Math.abs(height - lastDimensionsRef.current.height) > threshold
                 ) {
                   lastDimensionsRef.current = { width, height };
                   // Use startTransition to defer state update
@@ -231,8 +242,9 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
           // Only measure when visible, and use RAF to defer
           requestAnimationFrame(() => {
             if (containerRef.current) {
-              const width = containerRef.current.clientWidth || 800;
-              const height = containerRef.current.clientHeight || 400;
+              const width = containerRef.current.clientWidth || (typeof window !== 'undefined' ? window.innerWidth - 40 : 800);
+              const isMobile = width < 640;
+              const height = containerRef.current.clientHeight || (isMobile ? 250 : width < 768 ? 300 : 400);
               lastDimensionsRef.current = { width, height };
               startTransition(() => {
                 setDimensions({ width, height });
@@ -252,11 +264,13 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
         }
         resizeTimeoutRef.current = setTimeout(() => {
           if (containerRef.current) {
-            const width = containerRef.current.clientWidth || 800;
-            const height = containerRef.current.clientHeight || 400;
+            const width = containerRef.current.clientWidth || (typeof window !== 'undefined' ? window.innerWidth - 40 : 800);
+            const isMobile = width < 640;
+            const height = containerRef.current.clientHeight || (isMobile ? 250 : width < 768 ? 300 : 400);
+            const threshold = width < 640 ? 5 : 10;
             if (
-              Math.abs(width - lastDimensionsRef.current.width) > 10 ||
-              Math.abs(height - lastDimensionsRef.current.height) > 10
+              Math.abs(width - lastDimensionsRef.current.width) > threshold ||
+              Math.abs(height - lastDimensionsRef.current.height) > threshold
             ) {
               lastDimensionsRef.current = { width, height };
               startTransition(() => {
@@ -549,10 +563,10 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
   if (isLoading) {
     return (
       <GlassCard>
-        <GlassCardContent className="flex items-center justify-center h-[400px]">
-          <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-sm text-muted-foreground">Loading chart data...</p>
+        <GlassCardContent className="flex items-center justify-center h-[250px] sm:h-[300px] md:h-[400px]">
+          <div className="text-center space-y-4 px-2">
+            <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-primary" />
+            <p className="text-xs sm:text-sm text-muted-foreground">Loading chart data...</p>
           </div>
         </GlassCardContent>
       </GlassCard>
@@ -562,12 +576,12 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
   if (error) {
     return (
       <GlassCard>
-        <GlassCardContent className="flex items-center justify-center h-[400px]">
-          <div className="text-center space-y-4">
-            <AlertTriangle className="h-8 w-8 mx-auto text-destructive" />
+        <GlassCardContent className="flex items-center justify-center h-[250px] sm:h-[300px] md:h-[400px]">
+          <div className="text-center space-y-4 px-2">
+            <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-destructive" />
             <div>
-              <p className="font-semibold">Failed to load chart</p>
-              <p className="text-sm text-muted-foreground">{error.message}</p>
+              <p className="text-sm sm:text-base font-semibold">Failed to load chart</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{error.message}</p>
             </div>
           </div>
         </GlassCardContent>
@@ -579,12 +593,12 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
     return (
       <GlassCard>
         <GlassCardHeader>
-          <GlassCardTitle>Air Quality History</GlassCardTitle>
+          <GlassCardTitle className="text-base sm:text-lg">Air Quality History</GlassCardTitle>
         </GlassCardHeader>
-        <GlassCardContent className="flex items-center justify-center h-[400px]">
-          <div className="text-center space-y-2">
-            <p className="font-semibold">No data available</p>
-            <p className="text-sm text-muted-foreground">
+        <GlassCardContent className="flex items-center justify-center h-[250px] sm:h-[300px] md:h-[400px]">
+          <div className="text-center space-y-2 px-2">
+            <p className="text-sm sm:text-base font-semibold">No data available</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Start recording air quality readings to see your history chart.
             </p>
           </div>
@@ -639,31 +653,33 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
   return (
     <GlassCard>
       <GlassCardHeader>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <GlassCardTitle>Air Quality History</GlassCardTitle>
-            {meta && meta.binSizeHours > 0 && (
-              <div className="text-xs text-muted-foreground">
-                Showing {meta.binnedCount} of {meta.originalCount} readings
+        <div className="flex flex-col gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+            <GlassCardTitle className="text-base sm:text-lg">Air Quality History</GlassCardTitle>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+              {meta && meta.binSizeHours > 0 && (
+                <div className="text-xs text-muted-foreground whitespace-nowrap">
+                  Showing {meta.binnedCount} of {meta.originalCount} readings
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground hidden sm:inline">Scale:</span>
+                <Button
+                  variant={normalizeSeries ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setNormalizeSeries((prev) => !prev)}
+                  className="h-7 text-xs px-2 sm:px-3"
+                  aria-pressed={normalizeSeries}
+                >
+                  {normalizeSeries ? 'Normalized' : 'Actual'}
+                </Button>
               </div>
-            )}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">Scale:</span>
-              <Button
-                variant={normalizeSeries ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setNormalizeSeries((prev) => !prev)}
-                className="h-7 text-xs px-3"
-                aria-pressed={normalizeSeries}
-              >
-                {normalizeSeries ? 'Normalized' : 'Actual'}
-              </Button>
             </div>
           </div>
           {/* Pollutant Selector */}
           {availablePollutants.size > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <span className="text-xs font-medium text-muted-foreground self-center">Pollutants:</span>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="text-xs font-medium text-muted-foreground self-center hidden sm:inline">Pollutants:</span>
               {POLLUTANT_CONFIGS.map(config => {
                 const isAvailable = availablePollutants.has(config.key);
                 const isSelected = selectedPollutants.has(config.key);
@@ -675,7 +691,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
                     variant={isSelected ? "default" : "outline"}
                     size="sm"
                     onClick={() => togglePollutant(config.key)}
-                    className="h-7 text-xs px-2"
+                    className="h-7 text-[10px] sm:text-xs px-1.5 sm:px-2"
                     style={isSelected ? { 
                       backgroundColor: config.color,
                       borderColor: config.color,
@@ -683,10 +699,11 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
                     } : {}}
                   >
                     <div
-                      className="h-2 w-2 rounded-full mr-1.5"
+                      className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full mr-1 sm:mr-1.5"
                       style={{ backgroundColor: config.color }}
                     />
-                    {info.label}
+                    <span className="hidden min-[375px]:inline">{info.label}</span>
+                    <span className="min-[375px]:hidden">{config.code}</span>
                   </Button>
                 );
               })}
@@ -694,19 +711,23 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
           )}
         </div>
       </GlassCardHeader>
-      <GlassCardContent>
+      <GlassCardContent className="p-2 sm:p-6">
         <div 
           ref={containerRef}
-          className="h-[400px] w-full" 
+          className="w-full h-[250px] sm:h-[300px] md:h-[400px]" 
           role="img" 
           aria-label="Air Quality Index history chart"
-          style={{ minHeight: '400px' }}
         >
           <LineChart
             width={dimensions.width}
             height={dimensions.height}
             data={renderedChartData}
-            margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+            margin={{ 
+              top: 5, 
+              right: dimensions.width < 640 ? 5 : 20, 
+              left: dimensions.width < 640 ? 0 : 10, 
+              bottom: dimensions.width < 640 ? 20 : 5 
+            }}
             onClick={handleChartClick}
             syncId="aqi-history-chart"
           >
@@ -715,14 +736,18 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
               dataKey="timestamp"
               tickFormatter={formatXAxisLabel}
               stroke="hsl(var(--muted-foreground))"
-              style={{ fontSize: '12px' }}
+              style={{ fontSize: dimensions.width < 640 ? '10px' : '12px' }}
               interval="preserveStartEnd"
+              angle={dimensions.width < 640 ? -45 : 0}
+              textAnchor={dimensions.width < 640 ? 'end' : 'middle'}
+              height={dimensions.width < 640 ? 40 : 30}
             />
             <YAxis
               domain={yAxisDomain}
               stroke="hsl(var(--muted-foreground))"
-              style={{ fontSize: '12px' }}
-              label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }}
+              style={{ fontSize: dimensions.width < 640 ? '10px' : '12px' }}
+              width={dimensions.width < 640 ? 30 : 40}
+              label={dimensions.width >= 640 ? { value: yAxisLabel, angle: -90, position: 'insideLeft' } : undefined}
             />
             <Tooltip 
               content={<ChartTooltip normalizeSeries={normalizeSeries} />}

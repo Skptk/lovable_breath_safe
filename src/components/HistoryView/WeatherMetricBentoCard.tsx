@@ -97,17 +97,17 @@ export function WeatherMetricBentoCard({
 
   return (
     <GlassCard className="h-full">
-      <GlassCardHeader className="pb-2">
-        <GlassCardTitle className="text-sm font-semibold flex items-center gap-2">
+      <GlassCardHeader className="pb-2 px-3 sm:px-6">
+        <GlassCardTitle className="text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2">
           <span
-            className="inline-block h-2 w-2 rounded-full"
+            className="inline-block h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full flex-shrink-0"
             style={{ backgroundColor: config.color }}
           />
-          {config.label}
+          <span className="truncate">{config.label}</span>
         </GlassCardTitle>
-        <p className="text-xs text-muted-foreground">{config.unit}</p>
+        <p className="text-[10px] sm:text-xs text-muted-foreground">{config.unit}</p>
       </GlassCardHeader>
-      <GlassCardContent className="h-40">
+      <GlassCardContent className="h-32 sm:h-40 px-3 sm:px-6">
         {isLoading ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
