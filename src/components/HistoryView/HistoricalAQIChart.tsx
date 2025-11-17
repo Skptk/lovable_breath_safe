@@ -383,7 +383,7 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
 
   // Memoize Y-axis domain calculation - use pollutant values if showing pollutants
   const yAxisDomain = useMemo(() => {
-    if (chartData.length === 0) return [0, 100];
+    if (!Array.isArray(chartData) || chartData.length === 0) return [0, 100];
     
     try {
       // If showing pollutants, calculate domain based on selected pollutants
@@ -392,9 +392,13 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
         selectedPollutants.forEach(pollKey => {
           chartData.forEach(d => {
             // Safely access pollutant value with type assertion
-            const value = (d as any)[pollKey];
-            if (value !== null && value !== undefined && typeof value === 'number' && !isNaN(value)) {
-              allValues.push(value);
+            const currentValue = (d as Record<string, unknown>)[pollKey];
+            if (
+              typeof currentValue === 'number' &&
+              !Number.isNaN(currentValue) &&
+              Number.isFinite(currentValue)
+            ) {
+              allValues.push(currentValue);
             }
           });
         });
@@ -402,16 +406,24 @@ export const HistoricalAQIChart = memo(function HistoricalAQIChart({
         if (allValues.length > 0) {
           const min = Math.max(0, Math.min(...allValues) * 0.9);
           const max = Math.max(...allValues) * 1.1;
-          return [min, max];
+          if (Number.isFinite(min) && Number.isFinite(max)) {
+            return [min, max];
+          }
+        } else {
+          return [0, 100];
         }
       }
       
       // Fallback to AQI domain
-      const aqiValues = chartData.map((d) => d.aqi).filter(v => typeof v === 'number' && !isNaN(v));
+      const aqiValues = chartData
+        .map((d) => d.aqi)
+        .filter((value): value is number => typeof value === 'number' && !Number.isNaN(value) && Number.isFinite(value));
       if (aqiValues.length > 0) {
         const minAQI = Math.max(0, Math.min(...aqiValues) - 10);
         const maxAQI = Math.min(500, Math.max(...aqiValues) + 10);
-        return [minAQI, maxAQI];
+        if (Number.isFinite(minAQI) && Number.isFinite(maxAQI)) {
+          return [minAQI, maxAQI];
+        }
       }
     } catch (error) {
       console.error('Error calculating Y-axis domain:', error);

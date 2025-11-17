@@ -21,6 +21,7 @@ import HistoryDetailModal from './HistoryDetailModal';
 import { HistoryRow } from './HistoryRow';
 import { HistoricalAQIChart } from './HistoryView/HistoricalAQIChart';
 import { TimeRangeSelector } from './HistoryView/TimeRangeSelector';
+import { ChartErrorBoundary } from './HistoryView/ErrorBoundary';
 import { useHistoricalAQIData } from '@/hooks/useHistoricalAQIData';
 import { transformHistoryForChart, TimeRange, getAdaptivePointThreshold } from './HistoryView/utils/chartDataTransform';
 import { HistoricalWeatherChart } from './WeatherView/HistoricalWeatherChart';
@@ -29,6 +30,22 @@ import { transformWeatherForChart, WeatherMetric } from './WeatherView/utils/wea
 import { useWeatherStore } from '@/store/weatherStore';
 
 const PAGE_SIZE = 20;
+
+const createEmptyChartState = (): ReturnType<typeof transformHistoryForChart> => ({
+  data: [],
+  meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 },
+});
+
+const LoadingChart = ({ label = 'Loading chart data...' }: { label?: string }): JSX.Element => (
+  <GlassCard>
+    <GlassCardContent className="flex items-center justify-center h-[400px]">
+      <div className="text-center space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+    </GlassCardContent>
+  </GlassCard>
+);
 
 export interface HistoryEntry {
   id: string;
@@ -178,19 +195,31 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
   const [timeRange, setTimeRange] = useState<TimeRange>({ type: '30d' });
   const [selectedWeatherMetric, setSelectedWeatherMetric] = useState<WeatherMetric>('temperature');
+  const [isTransitioningTimeRange, setIsTransitioningTimeRange] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const weatherData = useWeatherStore((state) => state.weatherData);
 
+  const handleTimeRangeChange = useCallback((newRange: TimeRange) => {
+    setIsTransitioningTimeRange(true);
+    setTimeRange(newRange);
+  }, []);
+
   // Fetch chart data using React Query
-  const { data: chartHistoryData, isLoading: chartLoading, error: chartError } = useHistoricalAQIData(user?.id, timeRange);
+  const {
+    data: chartHistoryData,
+    isLoading: chartLoading,
+    error: chartError,
+    refetch: refetchChartHistory,
+  } = useHistoricalAQIData(user?.id, timeRange);
   
   // Fetch historical weather data for charts
-  const { data: weatherHistoryResponse, isLoading: weatherHistoryLoading, error: weatherHistoryError } = useHistoricalWeatherData(
-    user?.id,
-    timeRange,
-    selectedWeatherMetric
-  );
+  const {
+    data: weatherHistoryResponse,
+    isLoading: weatherHistoryLoading,
+    error: weatherHistoryError,
+    refetch: refetchWeatherHistory,
+  } = useHistoricalWeatherData(user?.id, timeRange, selectedWeatherMetric);
 
   const fetchHistory = useCallback(
     async (pageIndex: number = 0): Promise<HistoryEntry[]> => {
@@ -704,17 +733,24 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
   // Transform chart data with startTransition to prevent blocking
   const chartData = useMemo(() => {
+    const hasValidSource = Array.isArray(chartHistoryData) && chartHistoryData.length > 0;
+
+    if (!hasValidSource) {
+      return createEmptyChartState();
+    }
+
     try {
-      if (!chartHistoryData || chartHistoryData.length === 0) {
-        return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
-      }
       const threshold = getAdaptivePointThreshold();
       // Use a more aggressive threshold to prevent memory issues
       const safeThreshold = Math.min(threshold, 800);
       return transformHistoryForChart(chartHistoryData, timeRange, safeThreshold);
     } catch (error) {
-      console.error('Error transforming chart data:', error);
-      return { data: [], meta: { originalCount: 0, binnedCount: 0, binSizeHours: 0 } };
+      console.error('[HistoryView] Error transforming chart data', {
+        error,
+        entryCount: Array.isArray(chartHistoryData) ? chartHistoryData.length : null,
+        timeRange,
+      });
+      return createEmptyChartState();
     }
   }, [chartHistoryData, timeRange]);
 
@@ -727,6 +763,16 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
     const safeThreshold = Math.min(threshold, 800);
     return transformWeatherForChart(weatherHistoryResponse.raw, timeRange, selectedWeatherMetric, safeThreshold);
   }, [weatherHistoryResponse, timeRange, selectedWeatherMetric]);
+
+  useEffect(() => {
+    if (!chartLoading && (chartHistoryData || chartError)) {
+      setIsTransitioningTimeRange(false);
+    }
+  }, [chartHistoryData, chartError, chartLoading]);
+
+  const hasChartData = Array.isArray(chartData?.data) && chartData.data.length > 0;
+  const shouldShowChartLoadingState = chartLoading || isTransitioningTimeRange || (!hasChartData && !chartError);
+  const chartLoadingLabel = chartLoading || isTransitioningTimeRange ? 'Updating chart data...' : 'Preparing chart data...';
 
   const handleChartPointClick = useCallback((entry: HistoryEntry) => {
     setSelectedEntry(entry);
@@ -856,29 +902,28 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
           {/* Chart View */}
           {viewMode === 'chart' && (
             <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
-              <TimeRangeSelector selectedRange={timeRange} onRangeChange={setTimeRange} />
+              <TimeRangeSelector selectedRange={timeRange} onRangeChange={handleTimeRangeChange} />
               
               {/* Air Quality Chart */}
               <div className="w-full max-w-full overflow-hidden">
-                {chartData && chartData.data && Array.isArray(chartData.data) ? (
-                  <HistoricalAQIChart
-                    data={chartData.data}
-                    isLoading={chartLoading}
-                    error={chartError}
-                    onDataPointClick={handleChartPointClick}
-                    meta={chartData.meta}
-                  />
+                {shouldShowChartLoadingState ? (
+                  <LoadingChart label={chartLoadingLabel} />
                 ) : (
-                  <GlassCard>
-                    <GlassCardContent className="flex items-center justify-center h-[400px]">
-                      <div className="text-center space-y-2">
-                        <p className="font-semibold">No chart data available</p>
-                        <p className="text-sm text-muted-foreground">
-                          Chart data is being prepared. Please wait...
-                        </p>
-                      </div>
-                    </GlassCardContent>
-                  </GlassCard>
+                  <ChartErrorBoundary
+                    fallbackTitle="Air quality chart error"
+                    fallbackMessage="We couldn't render the air quality trend."
+                    onRetry={() => {
+                      setIsTransitioningTimeRange(true);
+                      void refetchChartHistory();
+                    }}
+                  >
+                    <HistoricalAQIChart
+                      data={chartData.data}
+                      error={chartError}
+                      onDataPointClick={handleChartPointClick}
+                      meta={chartData.meta}
+                    />
+                  </ChartErrorBoundary>
                 )}
               </div>
 
@@ -927,14 +972,22 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
 
               {/* Historical Weather Chart */}
               <div className="w-full max-w-full overflow-hidden">
-                <HistoricalWeatherChart
-                  data={weatherChartData.data}
-                  metric={selectedWeatherMetric}
-                  isLoading={weatherHistoryLoading}
-                  error={weatherHistoryError}
-                  meta={weatherChartData.meta}
-                  timeRange={timeRange.type}
-                />
+                <ChartErrorBoundary
+                  fallbackTitle="Weather chart error"
+                  fallbackMessage="We couldn't render the historical weather trend."
+                  onRetry={() => {
+                    void refetchWeatherHistory();
+                  }}
+                >
+                  <HistoricalWeatherChart
+                    data={weatherChartData.data}
+                    metric={selectedWeatherMetric}
+                    isLoading={weatherHistoryLoading}
+                    error={weatherHistoryError}
+                    meta={weatherChartData.meta}
+                    timeRange={timeRange.type}
+                  />
+                </ChartErrorBoundary>
               </div>
             </div>
           )}
