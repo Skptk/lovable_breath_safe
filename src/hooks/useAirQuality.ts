@@ -268,6 +268,7 @@ export const useAirQuality = () => {
   const { locationData } = useGeolocation();
   const { toast } = useToast();
   const weatherData = useWeatherStore((state) => state.weatherData);
+  // Note: We also use useWeatherStore.getState() directly in enqueueHistoryInsert to fetch weather data if missing
 
   const {
     data: scheduledData,
@@ -359,7 +360,7 @@ export const useAirQuality = () => {
   }, []);
 
   const enqueueHistoryInsert = useCallback(
-    (reading: AirQualityData, source: 'scheduled' | 'live') => {
+    async (reading: AirQualityData, source: 'scheduled' | 'live') => {
       if (!user || reading.error) {
         return;
       }
@@ -390,13 +391,31 @@ export const useAirQuality = () => {
       const latitude = latestReading.userCoordinates?.lat ?? latestReading.coordinates?.lat ?? null;
       const longitude = latestReading.userCoordinates?.lon ?? latestReading.coordinates?.lon ?? null;
       
+      // CRITICAL: Fetch weather data if missing and coordinates are available
+      let currentWeatherData = weatherData;
+      if (!currentWeatherData && latitude !== null && longitude !== null) {
+        try {
+          const { fetchWeatherData } = useWeatherStore.getState();
+          console.log(`🌤️ [useAirQuality] Weather data missing, fetching for ${source} insert...`);
+          currentWeatherData = await fetchWeatherData({ latitude, longitude });
+          if (currentWeatherData) {
+            console.log(`✅ [useAirQuality] Weather data fetched successfully for ${source} insert`);
+          } else {
+            console.warn(`⚠️ [useAirQuality] Weather data fetch returned null for ${source} insert`);
+          }
+        } catch (error) {
+          console.error(`❌ [useAirQuality] Failed to fetch weather data for ${source} insert:`, error);
+          // Continue with null weather data - don't block AQI save
+        }
+      }
+      
       // Log weather data availability for debugging
       if (import.meta.env.DEV) {
         console.log(`🌤️ [useAirQuality] Weather data check for ${source} insert:`, {
-          hasWeatherData: !!weatherData,
-          temperature: weatherData?.temperature ?? 'null',
-          humidity: weatherData?.humidity ?? 'null',
-          windSpeed: weatherData?.windSpeed ?? 'null',
+          hasWeatherData: !!currentWeatherData,
+          temperature: currentWeatherData?.temperature ?? 'null',
+          humidity: currentWeatherData?.humidity ?? 'null',
+          windSpeed: currentWeatherData?.windSpeed ?? 'null',
           coordinates: { latitude, longitude },
         });
       }
@@ -415,20 +434,20 @@ export const useAirQuality = () => {
         so2: toNullablePollutant(latestReading.so2),
         co: toNullablePollutant(latestReading.co),
         o3: toNullablePollutant(latestReading.o3),
-        // Include weather data from store if available
-        temperature: weatherData?.temperature ?? null,
-        humidity: weatherData?.humidity ?? null,
-        wind_speed: weatherData?.windSpeed ?? null,
-        wind_direction: weatherData?.windDirection ?? null,
-        wind_gust: weatherData?.windGust ?? null,
-        air_pressure: weatherData?.airPressure ?? null,
-        rain_probability: weatherData?.rainProbability ?? null,
-        uv_index: weatherData?.uvIndex ?? null,
-        visibility: weatherData?.visibility ?? null,
-        weather_condition: weatherData?.weatherCondition ?? null,
-        feels_like_temperature: weatherData?.feelsLikeTemperature ?? null,
-        sunrise_time: weatherData?.sunriseTime ?? null,
-        sunset_time: weatherData?.sunsetTime ?? null,
+        // Include weather data (fetched if missing)
+        temperature: currentWeatherData?.temperature ?? null,
+        humidity: currentWeatherData?.humidity ?? null,
+        wind_speed: currentWeatherData?.windSpeed ?? null,
+        wind_direction: currentWeatherData?.windDirection ?? null,
+        wind_gust: currentWeatherData?.windGust ?? null,
+        air_pressure: currentWeatherData?.airPressure ?? null,
+        rain_probability: currentWeatherData?.rainProbability ?? null,
+        uv_index: currentWeatherData?.uvIndex ?? null,
+        visibility: currentWeatherData?.visibility ?? null,
+        weather_condition: currentWeatherData?.weatherCondition ?? null,
+        feels_like_temperature: currentWeatherData?.feelsLikeTemperature ?? null,
+        sunrise_time: currentWeatherData?.sunriseTime ?? null,
+        sunset_time: currentWeatherData?.sunsetTime ?? null,
         points_awarded: source === 'live' ? 10 : 0,
         created_at: new Date().toISOString(),
       };
@@ -437,7 +456,7 @@ export const useAirQuality = () => {
         location: latestReading.location,
         timestamp: latestReading.timestamp,
         source,
-        hasWeatherData: !!weatherData,
+        hasWeatherData: !!currentWeatherData,
         pollutants: {
           pm25: latestReading.pm25,
           pm10: latestReading.pm10,
@@ -668,7 +687,7 @@ export const useAirQuality = () => {
     const scheduleHistoryInsert = () => {
       const invoke = () => {
         if (!cancelled) {
-          enqueueHistoryInsert(scheduledReading, 'scheduled');
+          void enqueueHistoryInsert(scheduledReading, 'scheduled');
         }
       };
 
@@ -757,7 +776,7 @@ export const useAirQuality = () => {
     const scheduleHistoryInsert = () => {
       const invoke = () => {
         if (!cancelled) {
-          enqueueHistoryInsert(latestReading, 'live');
+          void enqueueHistoryInsert(latestReading, 'live');
         }
       };
 
