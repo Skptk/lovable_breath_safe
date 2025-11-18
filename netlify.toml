@@ -76,8 +76,10 @@
 [[headers]]
   for = "/*"
   [headers.values]
-  # CSP: Added AQICN API and improved stylesheet handling
-  Content-Security-Policy = "default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://api.openweathermap.org https://api.open-meteo.com https://api.openaq.org https://api.waqi.info https://ipapi.co; img-src 'self' data: https://*; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; media-src 'self'; object-src 'none'; frame-ancestors 'none';"
+  # CSP: Added AQICN API, Leaflet tile sources, and eval support for map initialization
+  # Includes 'unsafe-eval' for Leaflet which uses eval() internally
+  # Includes blob: for images and workers used by Leaflet
+  Content-Security-Policy = "default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://api.openweathermap.org https://api.open-meteo.com https://api.openaq.org https://api.waqi.info https://ipapi.co https://cartodb-basemaps-*.global.ssl.fastly.net https://server.arcgisonline.com; img-src 'self' data: https://* blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; media-src 'self'; object-src 'none'; frame-ancestors 'none'; worker-src 'self' blob:;"
   Referrer-Policy = "strict-origin-when-cross-origin"
   X-Content-Type-Options = "nosniff"
   X-Frame-Options = "DENY"

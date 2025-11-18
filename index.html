@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Content Security Policy - Allows Leaflet to use eval() for map initialization -->
+    <!-- This CSP matches netlify.toml for consistency between dev and production -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://api.openweathermap.org https://api.open-meteo.com https://api.openaq.org https://api.waqi.info https://ipapi.co https://cartodb-basemaps-*.global.ssl.fastly.net https://server.arcgisonline.com; img-src 'self' data: https://* blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; media-src 'self'; object-src 'none'; frame-ancestors 'none'; worker-src 'self' blob:;">
     <title>Air Quality Tracker - Monitor Air Pollution in Real-Time</title>
     <meta name="description" content="Track real-time air quality data including PM2.5, PM10, and AQI with GPS location tracking and historical data analysis." />
     <meta name="author" content="Air Quality Tracker App" />
