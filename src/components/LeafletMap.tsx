@@ -50,8 +50,22 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
   // Track component mount status
   useEffect(() => {
     isMountedRef.current = true;
+    
+    // CRITICAL: Add global error handler to catch Leaflet container access errors
+    const handleLeafletError = (event: ErrorEvent) => {
+      if (event.error && event.error.message && event.error.message.includes('offsetWidth')) {
+        console.warn('Caught Leaflet offsetWidth error, map may be in cleanup state');
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      }
+    };
+    
+    window.addEventListener('error', handleLeafletError);
+    
     return () => {
       isMountedRef.current = false;
+      window.removeEventListener('error', handleLeafletError);
     };
   }, []);
 
@@ -540,20 +554,29 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
           
           // Remove the map instance - THIS MUST HAPPEN BEFORE CLEARING CONTAINER
           if (instance.remove) {
-            instance.remove();
+            try {
+              instance.remove();
+            } catch (e) {
+              console.warn('Error removing map instance:', e);
+            }
           }
           
-          // Small delay to ensure Leaflet has finished cleanup
+          // CRITICAL: Don't clear container immediately - Leaflet may still need it
+          // Only clear after a longer delay to ensure all event handlers are cleaned up
           setTimeout(() => {
-            // Now safe to clear container
-            if (container && container.parentNode) {
-              container.innerHTML = '';
-              // Remove Leaflet ID to prevent re-initialization issues
-              if ((container as any)._leaflet_id) {
-                delete (container as any)._leaflet_id;
+            // Double-check map is destroyed before clearing
+            if (instance._destroyed && container && container.parentNode) {
+              // Check if container still has Leaflet reference
+              const hasLeafletId = (container as any)._leaflet_id;
+              if (!hasLeafletId || instance._destroyed) {
+                container.innerHTML = '';
+                // Remove Leaflet ID to prevent re-initialization issues
+                if ((container as any)._leaflet_id) {
+                  delete (container as any)._leaflet_id;
+                }
               }
             }
-          }, 50);
+          }, 200); // Increased delay to ensure Leaflet cleanup completes
         } catch (e) {
           console.warn('Error during map cleanup:', e);
         } finally {
@@ -605,13 +628,17 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
   const mapContent = (
     <div className="relative w-full h-full min-h-[400px]">
       {/* Map container - CRITICAL: Must have explicit dimensions for Leaflet */}
+      {/* Key prop prevents React from recreating the container, which would break Leaflet's reference */}
       <div 
+        key="leaflet-map-container"
         ref={mapRef} 
         className="w-full h-full min-h-[400px]"
         style={{ 
-          pointerEvents: mapLoaded && mapInstance && !mapInstance._destroyed ? 'auto' : 'none',
+          pointerEvents: mapLoaded && mapInstance && !mapInstance._destroyed && mapRef.current ? 'auto' : 'none',
           position: 'relative',
-          zIndex: 1
+          zIndex: 1,
+          minWidth: '100%',
+          minHeight: '400px'
         }}
       />
       
