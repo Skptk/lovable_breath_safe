@@ -143,7 +143,7 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
         showMobileMenu={showMobileMenu}
         onMobileMenuToggle={onMobileMenuToggle}
       />
-      <div className="page-content space-y-4 md:space-y-6">
+      <div className="page-content space-y-4 md:space-y-6 px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">

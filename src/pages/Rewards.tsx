@@ -341,7 +341,7 @@ export default function Rewards({ showMobileMenu, onMobileMenuToggle }: RewardsP
         showMobileMenu={showMobileMenu || false} 
         onMobileMenuToggle={onMobileMenuToggle || (() => {})} 
       />
-      <div className="page-content space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-8 w-full max-w-full overflow-x-hidden">
+      <div className="page-content space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-8 w-full max-w-full overflow-x-hidden px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12">
         {/* Header */}
         <div className="text-center space-y-3 sm:space-y-4 lg:space-y-6">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold bg-gradient-primary bg-clip-text text-transparent">

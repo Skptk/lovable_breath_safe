@@ -126,7 +126,7 @@ export default function NewsPage({ showMobileMenu, onMobileMenuToggle }: NewsPag
   ];
 
   return (
-    <div className="space-y-6 lg:space-y-8">
+    <div className="space-y-6 lg:space-y-8 px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12">
       <Header
         title="Health & Environment News"
         subtitle="Stay informed with the latest research, tips, and environmental insights"
