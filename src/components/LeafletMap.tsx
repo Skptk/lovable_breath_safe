@@ -277,6 +277,15 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
           return;
         }
 
+        // CRITICAL: Store container reference in a way Leaflet can always access it
+        // Ensure container has valid dimensions one more time
+        if (!container.offsetWidth || !container.offsetHeight) {
+          console.warn('Container still lacks dimensions, retrying...');
+          retryCount++;
+          requestAnimationFrame(initMap);
+          return;
+        }
+
         // Create map instance with performance optimizations
         const map = L.map(container, {
         center: [userLocation.latitude, userLocation.longitude],
@@ -295,6 +304,23 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         zoomAnimation: false, // Reduce jank on low-end devices
       });
 
+      // CRITICAL: Store container reference in map instance for safety
+      // Also ensure Leaflet's internal container reference is valid
+      if (map) {
+        (map as any)._containerRef = container;
+        
+        // Override getContainer to ensure it always returns a valid container
+        const originalGetContainer = map.getContainer;
+        map.getContainer = function() {
+          const container = originalGetContainer.call(this);
+          if (!container || !container.offsetWidth) {
+            console.warn('Leaflet getContainer returned invalid container');
+            return mapRef.current || container;
+          }
+          return container;
+        };
+      }
+
       // Verify map was created and component is still mounted
       if (!map || !isMountedRef.current || !mapRef.current) {
         if (map && map.remove) {
@@ -303,16 +329,37 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         return;
       }
 
+      // CRITICAL: Verify container is still valid after map creation
+      if (!mapRef.current || !mapRef.current.offsetWidth || !mapRef.current.offsetHeight) {
+        console.error('Container invalid after map creation, removing map');
+        if (map && map.remove) {
+          map.remove();
+        }
+        return;
+      }
+
       // CRITICAL: Invalidate size after creation to ensure Leaflet knows container dimensions
-      setTimeout(() => {
-        if (isMountedRef.current && map && !map._destroyed && mapRef.current) {
+      // Use multiple attempts to ensure it works
+      const invalidateSize = () => {
+        if (isMountedRef.current && map && !map._destroyed && mapRef.current && mapRef.current.offsetWidth > 0) {
           try {
             map.invalidateSize();
+            // Verify the map actually rendered
+            if (map.getContainer && map.getContainer().offsetWidth === 0) {
+              console.warn('Map container has zero width after invalidation');
+            }
           } catch (e) {
             console.warn('Error invalidating map size:', e);
           }
         }
-      }, 100);
+      };
+
+      // Invalidate immediately
+      invalidateSize();
+      
+      // Invalidate again after a short delay to handle any async rendering
+      setTimeout(invalidateSize, 100);
+      setTimeout(invalidateSize, 300);
 
       // Add initial tile layer with proper error handling
       const initialTileLayer = createTileLayer(false);
@@ -322,7 +369,22 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
 
       setCurrentTileLayer(initialTileLayer);
       setMapInstance(map);
-      setMapLoaded(true);
+      
+      // CRITICAL: Verify map container is valid before marking as loaded
+      if (map.getContainer && map.getContainer().offsetWidth > 0 && map.getContainer().offsetHeight > 0) {
+        setMapLoaded(true);
+        console.log('Map initialized successfully with dimensions:', {
+          width: map.getContainer().offsetWidth,
+          height: map.getContainer().offsetHeight
+        });
+      } else {
+        console.error('Map container invalid after initialization');
+        setMapError('Map container invalid');
+        if (map && map.remove) {
+          map.remove();
+        }
+        return;
+      }
 
       // Add user location marker
       const userMarker = L.marker([userLocation.latitude, userLocation.longitude], {
@@ -541,16 +603,24 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
 
   // Render map content (shared between embedded and standalone modes)
   const mapContent = (
-    <div className="relative w-full h-full">
-      {/* Map container */}
+    <div className="relative w-full h-full min-h-[400px]">
+      {/* Map container - CRITICAL: Must have explicit dimensions for Leaflet */}
       <div 
         ref={mapRef} 
-        className="w-full h-full"
+        className="w-full h-full min-h-[400px]"
+        style={{ 
+          pointerEvents: mapLoaded && mapInstance && !mapInstance._destroyed ? 'auto' : 'none',
+          position: 'relative',
+          zIndex: 1
+        }}
       />
       
       {/* Loading overlay */}
       {!mapLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+        <div 
+          className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800"
+          style={{ pointerEvents: 'auto', zIndex: 10 }}
+        >
           <div className="text-center space-y-3">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
             <p className="text-sm text-muted-foreground">Loading map tiles...</p>
@@ -560,7 +630,10 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       
       {/* Error overlay with retry button */}
       {tileErrorCount >= 3 && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+        <div 
+          className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800"
+          style={{ pointerEvents: 'auto', zIndex: 10 }}
+        >
           <div className="text-center space-y-3 p-4">
             <AlertTriangle className="h-8 w-8 mx-auto text-destructive" />
             <div>

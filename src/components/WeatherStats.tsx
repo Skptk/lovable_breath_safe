@@ -741,9 +741,9 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             </div>
 
             {/* Leaflet Map Integration */}
-            <div className="absolute inset-0 top-16 lg:top-20 w-full">
+            <div className="absolute inset-0 top-16 lg:top-20 w-full h-[calc(100%-4rem)] lg:h-[calc(100%-5rem)]">
               <Suspense fallback={
-                <div className="flex items-center justify-center h-full">
+                <div className="flex items-center justify-center h-full min-h-[400px]">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               }>
