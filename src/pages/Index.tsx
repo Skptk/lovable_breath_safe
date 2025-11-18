@@ -355,7 +355,7 @@ export default function Index(): JSX.Element | null {
                 onClose={() => setShowMobileMenu(false)}
               />
 
-              <main className="px-2 py-6 sm:px-4 md:px-6 lg:px-8">
+              <main className="w-full">
                 {/* Removed AnimatePresence - instant page transitions for better performance */}
                 <div>
                   {renderView()}
