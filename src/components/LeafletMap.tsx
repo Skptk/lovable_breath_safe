@@ -400,76 +400,105 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         return;
       }
 
-      // Add user location marker
-      const userMarker = L.marker([userLocation.latitude, userLocation.longitude], {
-        icon: L.divIcon({
-          className: 'custom-user-marker',
-          html: `
-            <div style="
-              width: ${LEAFLET_MAPS_CONFIG.USER_MARKER.size}px; 
-              height: ${LEAFLET_MAPS_CONFIG.USER_MARKER.size}px; 
-              background: ${LEAFLET_MAPS_CONFIG.USER_MARKER.color}; 
-              border: ${LEAFLET_MAPS_CONFIG.USER_MARKER.borderWidth}px solid ${LEAFLET_MAPS_CONFIG.USER_MARKER.borderColor}; 
-              border-radius: 50%; 
-              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            "></div>
-          `,
-          iconSize: [LEAFLET_MAPS_CONFIG.USER_MARKER.size, LEAFLET_MAPS_CONFIG.USER_MARKER.size],
-          iconAnchor: [LEAFLET_MAPS_CONFIG.USER_MARKER.size / 2, LEAFLET_MAPS_CONFIG.USER_MARKER.size / 2],
-        }),
-        title: 'Your Location',
-      }).addTo(map);
+      // OPTIMIZED: Defer heavy marker operations to avoid blocking requestAnimationFrame
+      // This prevents the 203ms violation by splitting work across multiple frames
+      setTimeout(() => {
+        if (!isMountedRef.current || !map || map._destroyed) return;
 
-      // Add nearby monitoring stations
-      const newMarkers: any[] = [];
-      if (nearbyLocations && nearbyLocations.length > 0) {
-        nearbyLocations.forEach((location) => {
-        if (location.coordinates[0] !== 0 && location.coordinates[1] !== 0) {
-          const marker = L.marker([location.coordinates[0], location.coordinates[1]], {
-            icon: L.divIcon({
-              className: 'custom-station-marker',
-              html: `
-                <div style="
-                  width: ${LEAFLET_MAPS_CONFIG.STATION_MARKER.size}px; 
-                  height: ${LEAFLET_MAPS_CONFIG.STATION_MARKER.size}px; 
-                  background: ${getAQIColor(location.aqi)}; 
-                  border: ${LEAFLET_MAPS_CONFIG.STATION_MARKER.borderWidth}px solid ${LEAFLET_MAPS_CONFIG.STATION_MARKER.borderColor}; 
-                  border-radius: 50%; 
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                  cursor: pointer;
-                "></div>
-              `,
-              iconSize: [LEAFLET_MAPS_CONFIG.STATION_MARKER.size, LEAFLET_MAPS_CONFIG.STATION_MARKER.size],
-              iconAnchor: [LEAFLET_MAPS_CONFIG.STATION_MARKER.size / 2, LEAFLET_MAPS_CONFIG.STATION_MARKER.size / 2],
-            }),
-            title: location.name,
-          });
+        // Add user location marker
+        const userMarker = L.marker([userLocation.latitude, userLocation.longitude], {
+          icon: L.divIcon({
+            className: 'custom-user-marker',
+            html: `
+              <div style="
+                width: ${LEAFLET_MAPS_CONFIG.USER_MARKER.size}px; 
+                height: ${LEAFLET_MAPS_CONFIG.USER_MARKER.size}px; 
+                background: ${LEAFLET_MAPS_CONFIG.USER_MARKER.color}; 
+                border: ${LEAFLET_MAPS_CONFIG.USER_MARKER.borderWidth}px solid ${LEAFLET_MAPS_CONFIG.USER_MARKER.borderColor}; 
+                border-radius: 50%; 
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+              "></div>
+            `,
+            iconSize: [LEAFLET_MAPS_CONFIG.USER_MARKER.size, LEAFLET_MAPS_CONFIG.USER_MARKER.size],
+            iconAnchor: [LEAFLET_MAPS_CONFIG.USER_MARKER.size / 2, LEAFLET_MAPS_CONFIG.USER_MARKER.size / 2],
+          }),
+          title: 'Your Location',
+        }).addTo(map);
 
-          // Add popup for each station
-          marker.bindPopup(`
-            <div class="p-2 min-w-[200px]">
-              <h3 class="font-semibold text-base mb-2">${location.name}</h3>
-              <div class="space-y-1 text-sm">
-                <p><strong>Distance:</strong> ${location.distance}</p>
-                <p><strong>AQI:</strong> <span class="font-medium">${location.aqi}</span></p>
-                <p class="text-xs text-slate-500">${getAQILabel(location.aqi)}</p>
-              </div>
-            </div>
-          `);
+        // Add nearby monitoring stations in batches to avoid blocking
+        const newMarkers: any[] = [];
+        if (nearbyLocations && nearbyLocations.length > 0) {
+          // Process markers in smaller batches to avoid blocking
+          const BATCH_SIZE = 10;
+          let processed = 0;
 
-          marker.addTo(map);
-          newMarkers.push(marker);
+          const processBatch = () => {
+            if (!isMountedRef.current || !map || map._destroyed) return;
+
+            const batch = nearbyLocations.slice(processed, processed + BATCH_SIZE);
+            batch.forEach((location) => {
+              if (location.coordinates[0] !== 0 && location.coordinates[1] !== 0) {
+                const marker = L.marker([location.coordinates[0], location.coordinates[1]], {
+                  icon: L.divIcon({
+                    className: 'custom-station-marker',
+                    html: `
+                      <div style="
+                        width: ${LEAFLET_MAPS_CONFIG.STATION_MARKER.size}px; 
+                        height: ${LEAFLET_MAPS_CONFIG.STATION_MARKER.size}px; 
+                        background: ${getAQIColor(location.aqi)}; 
+                        border: ${LEAFLET_MAPS_CONFIG.STATION_MARKER.borderWidth}px solid ${LEAFLET_MAPS_CONFIG.STATION_MARKER.borderColor}; 
+                        border-radius: 50%; 
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                        cursor: pointer;
+                      "></div>
+                    `,
+                    iconSize: [LEAFLET_MAPS_CONFIG.STATION_MARKER.size, LEAFLET_MAPS_CONFIG.STATION_MARKER.size],
+                    iconAnchor: [LEAFLET_MAPS_CONFIG.STATION_MARKER.size / 2, LEAFLET_MAPS_CONFIG.STATION_MARKER.size / 2],
+                  }),
+                  title: location.name,
+                });
+
+                // Add popup for each station
+                marker.bindPopup(`
+                  <div class="p-2 min-w-[200px]">
+                    <h3 class="font-semibold text-base mb-2">${location.name}</h3>
+                    <div class="space-y-1 text-sm">
+                      <p><strong>Distance:</strong> ${location.distance}</p>
+                      <p><strong>AQI:</strong> <span class="font-medium">${location.aqi}</span></p>
+                      <p class="text-xs text-slate-500">${getAQILabel(location.aqi)}</p>
+                    </div>
+                  </div>
+                `);
+
+                marker.addTo(map);
+                newMarkers.push(marker);
+              }
+            });
+
+            processed += batch.length;
+            setMarkers([...newMarkers]);
+
+            // Process next batch if there are more markers
+            if (processed < nearbyLocations.length) {
+              requestAnimationFrame(processBatch);
+            } else {
+              // All markers processed, fit bounds
+              if (newMarkers.length > 0) {
+                setTimeout(() => {
+                  if (!isMountedRef.current || !map || map._destroyed) return;
+                  const group = new L.FeatureGroup([userMarker, ...newMarkers]);
+                  map.fitBounds(group.getBounds().pad(0.1));
+                }, 100);
+              }
+            }
+          };
+
+          // Start processing batches
+          requestAnimationFrame(processBatch);
+        } else {
+          setMarkers([]);
         }
-      });
-      }
-
-      setMarkers(newMarkers);
-
-        // Fit map to show all markers
-        if (newMarkers.length > 0) {
-          const group = new L.FeatureGroup([userMarker, ...newMarkers]);
-          map.fitBounds(group.getBounds().pad(0.1));
-        }
+      }, 50); // Small delay to let map render first
 
       } catch (error) {
         console.error('Error initializing map:', error);

@@ -407,39 +407,37 @@ export class RealtimeConnectionManager {
 
     const callbacks = Array.from(entry.callbacks);
 
-      const invokeCallbacks = () => {
-        const start = performance.now();
-        let slowestCallbackDuration = 0;
-        let slowestCallbackName: string | null = null;
-        const slowCallbacks: { name: string; duration: number }[] = [];
+    // OPTIMIZED: Batch all callbacks in a single requestAnimationFrame to avoid multiple frames
+    // This prevents performance violations from scheduling each callback separately
+    const invokeCallbacks = () => {
+      const start = performance.now();
+      let slowestCallbackDuration = 0;
+      let slowestCallbackName: string | null = null;
+      const slowCallbacks: { name: string; duration: number }[] = [];
 
-        // Schedule callbacks using requestAnimationFrame to avoid blocking message handler
-        // React components using this will need to wrap their state updates in startTransition
-        for (const callback of callbacks) {
-          const callbackStart = performance.now();
-          try {
-            // Defer callback execution to next animation frame to avoid blocking
-            if (typeof window !== 'undefined' && window.requestAnimationFrame) {
-              window.requestAnimationFrame(() => {
-                callback(payload);
-              });
-            } else {
-              // Fallback for non-browser environments
-              setTimeout(() => {
-                callback(payload);
-              }, 0);
-            }
-          } catch (error) {
-            console.error('[RealtimeConnectionManager] Subscription callback error', { channelName, error });
-          }
-          // Note: Duration measurement won't be accurate with deferred execution
-          // but we keep it for compatibility
-          const callbackDuration = performance.now() - callbackStart;
-          if (callbackDuration > slowestCallbackDuration) {
-            slowestCallbackDuration = callbackDuration;
-            slowestCallbackName = callback.name || 'anonymous';
-          }
+      // Execute all callbacks in the same frame, but use startTransition for React updates
+      for (const callback of callbacks) {
+        const callbackStart = performance.now();
+        try {
+          // Execute callback directly but expect React components to use startTransition
+          callback(payload);
+        } catch (error) {
+          console.error('[RealtimeConnectionManager] Subscription callback error', { channelName, error });
         }
+        
+        const callbackDuration = performance.now() - callbackStart;
+        if (callbackDuration > slowestCallbackDuration) {
+          slowestCallbackDuration = callbackDuration;
+          slowestCallbackName = callback.name || 'anonymous';
+        }
+        
+        if (callbackDuration > 16) { // Log callbacks taking longer than a frame
+          slowCallbacks.push({
+            name: callback.name || 'anonymous',
+            duration: callbackDuration,
+          });
+        }
+      }
 
       const duration = performance.now() - start;
       if (duration >= PERFORMANCE_LOG_THRESHOLD_MS) {
@@ -465,6 +463,7 @@ export class RealtimeConnectionManager {
     };
 
     // Schedule dispatch to avoid blocking message handler
+    // Use a single requestAnimationFrame to batch all callbacks
     if (typeof window !== 'undefined' && window.requestAnimationFrame) {
       window.requestAnimationFrame(() => {
         try {
