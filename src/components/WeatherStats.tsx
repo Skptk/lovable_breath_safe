@@ -122,6 +122,13 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
     }
   }, [locationData?.latitude, locationData?.longitude, currentWeather, weatherLoading, setCoordinates, fetchWeatherData, fetchForecastData]);
 
+  // Fetch air quality data when location is available
+  useEffect(() => {
+    if (locationData?.latitude && locationData?.longitude) {
+      fetchAirQualityData(locationData.latitude, locationData.longitude);
+    }
+  }, [locationData?.latitude, locationData?.longitude]);
+
   // Location permissions are now handled by useGeolocation hook
 
   // Session storage cleanup is now handled by useGeolocation hook
@@ -155,11 +162,16 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
 
       const locationLabel = response.location ?? response.city ?? response.stationName ?? 'Unknown Location';
 
-      setAirQualityData({
-        aqi: response.aqi ?? 0,
-        location: locationLabel,
-        timestamp: response.timestamp ?? new Date().toISOString()
-      });
+      // Only set air quality data if we have a valid AQI value
+      if (typeof response.aqi === 'number' && response.aqi >= 0) {
+        setAirQualityData({
+          aqi: response.aqi,
+          location: locationLabel,
+          timestamp: response.timestamp ?? new Date().toISOString()
+        });
+      } else {
+        console.warn('WeatherStats: Invalid or missing AQI value in response', response);
+      }
     } catch (err) {
       console.error('Error fetching air quality data:', err);
     }
@@ -473,13 +485,13 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
         <GlassCard className="floating-card lg:col-span-1 lg:row-span-2">
           <GlassCardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <GlassCardTitle className="text-sm font-medium">Air Quality Index</GlassCardTitle>
-            <Badge variant={airQualityData?.aqi && airQualityData.aqi <= 50 ? "default" : "destructive"}>
-              {airQualityData?.aqi || 'N/A'}
+            <Badge variant={airQualityData && typeof airQualityData.aqi === 'number' && airQualityData.aqi <= 50 ? "default" : "destructive"}>
+              {airQualityData && typeof airQualityData.aqi === 'number' ? airQualityData.aqi : 'N/A'}
             </Badge>
           </GlassCardHeader>
           <GlassCardContent>
             <div className="text-2xl font-bold">
-              {airQualityData?.aqi ? (
+              {airQualityData && typeof airQualityData.aqi === 'number' ? (
                 airQualityData.aqi <= 50 ? 'Good' :
                 airQualityData.aqi <= 100 ? 'Moderate' :
                 airQualityData.aqi <= 150 ? 'Unhealthy for Sensitive Groups' :
@@ -488,7 +500,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
               ) : 'Unknown'}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {airQualityData?.location} • {airQualityData?.timestamp ? new Date(airQualityData.timestamp).toLocaleString() : 'N/A'}
+              {airQualityData?.location || 'Loading...'} • {airQualityData?.timestamp ? new Date(airQualityData.timestamp).toLocaleString() : 'N/A'}
             </p>
           </GlassCardContent>
         </GlassCard>
