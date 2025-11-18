@@ -502,8 +502,10 @@ function AirQualityDashboardContent({
                   onMobileMenuToggle={onMobileMenuToggle}
                 />
 
-                <section className="grid gap-4 sm:gap-6 md:gap-8 lg:gap-10 xl:gap-12 grid-cols-1 lg:grid-cols-3 w-full max-w-full overflow-hidden">
-                  <div className="lg:col-span-2 space-y-4 sm:space-y-6 md:space-y-8 lg:space-y-10 w-full max-w-full overflow-hidden">
+                {/* Bento Box Grid Layout */}
+                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8 lg:gap-6 w-full max-w-full overflow-hidden auto-rows-min">
+                  {/* Current Air Quality Card - Large hero card, 2x2 on desktop */}
+                  <div className="md:col-span-2 lg:col-span-2 lg:row-span-2">
                     <CurrentAirQualityCard
                       lastUpdated={lastUpdated}
                       aqiValue={aqiValue}
@@ -515,9 +517,38 @@ function AirQualityDashboardContent({
                       onRefresh={handleRefresh}
                       onNavigate={onNavigate}
                     />
+                  </div>
 
+                  {/* Total Points Card - 1x1 on desktop */}
+                  <div className="md:col-span-1 lg:col-span-1">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10 text-center w-full max-w-full overflow-hidden h-full">
+                      <div className="text-2xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold text-white mb-1 sm:mb-2 lg:mb-3">{pointsSummaryCards[0].value}</div>
+                      <div className="text-slate-300 text-xs sm:text-sm lg:text-base xl:text-lg">{pointsSummaryCards[0].label}</div>
+                      <div className="text-slate-500 text-[10px] sm:text-xs lg:text-sm mt-1 sm:mt-2 lg:mt-3">{pointsSummaryCards[0].description}</div>
+                    </div>
+                  </div>
 
-                    {data && (
+                  {/* Today's Readings Card - 1x1 on desktop */}
+                  <div className="md:col-span-1 lg:col-span-1">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10 text-center w-full max-w-full overflow-hidden h-full">
+                      <div className="text-2xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold text-white mb-1 sm:mb-2 lg:mb-3">{pointsSummaryCards[1].value}</div>
+                      <div className="text-slate-300 text-xs sm:text-sm lg:text-base xl:text-lg">{pointsSummaryCards[1].label}</div>
+                      <div className="text-slate-500 text-[10px] sm:text-xs lg:text-sm mt-1 sm:mt-2 lg:mt-3">{pointsSummaryCards[1].description}</div>
+                    </div>
+                  </div>
+
+                  {/* Weekly Activity Card - 1x1 on desktop */}
+                  <div className="md:col-span-1 lg:col-span-1">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10 text-center w-full max-w-full overflow-hidden h-full">
+                      <div className="text-2xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold text-white mb-1 sm:mb-2 lg:mb-3">{pointsSummaryCards[2].value}</div>
+                      <div className="text-slate-300 text-xs sm:text-sm lg:text-base xl:text-lg">{pointsSummaryCards[2].label}</div>
+                      <div className="text-slate-500 text-[10px] sm:text-xs lg:text-sm mt-1 sm:mt-2 lg:mt-3">{pointsSummaryCards[2].description}</div>
+                    </div>
+                  </div>
+
+                  {/* Data Source Validation Card - 2x1 on desktop, properly placed */}
+                  {data && (
+                    <div className="md:col-span-2 lg:col-span-2">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10 w-full max-w-full overflow-hidden">
                         <DataSourceValidator
                           dataSource={data.dataSource}
@@ -527,12 +558,8 @@ function AirQualityDashboardContent({
                           userLocation={data.location}
                         />
                       </div>
-                    )}
-                  </div>
-
-                  <div className="lg:col-span-1 w-full max-w-full overflow-hidden">
-                    <PointsSummary cards={pointsSummaryCards} />
-                  </div>
+                    </div>
+                  )}
                 </section>
 
                 <section className="mt-6 sm:mt-8 md:mt-12 pt-6 sm:pt-8 md:pt-12 border-t border-white/10 w-full max-w-full overflow-hidden">
