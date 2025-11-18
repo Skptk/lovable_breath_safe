@@ -185,6 +185,32 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
 
   }, [isDark, mapInstance, L]);
 
+  // Handle container resize and invalidate map size
+  useEffect(() => {
+    if (!mapInstance || !mapRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapInstance && !mapInstance._destroyed && mapRef.current) {
+        try {
+          // Use setTimeout to debounce resize events
+          setTimeout(() => {
+            if (mapInstance && !mapInstance._destroyed && mapRef.current) {
+              mapInstance.invalidateSize();
+            }
+          }, 100);
+        } catch (e) {
+          console.warn('Error invalidating map size on resize:', e);
+        }
+      }
+    });
+
+    resizeObserver.observe(mapRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [mapInstance]);
+
   // Initialize map when user location is available
   useEffect(() => {
     if (!userLocation || !mapRef.current || mapInstance || !leafletLoaded || !L) return;
@@ -216,8 +242,16 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
           return;
         }
 
+        // Double-check that container has valid dimensions
+        const container = mapRef.current;
+        if (!container.offsetWidth || !container.offsetHeight) {
+          // Container doesn't have dimensions yet, retry
+          requestAnimationFrame(initMap);
+          return;
+        }
+
         // Create map instance with performance optimizations
-        const map = L.map(mapRef.current, {
+        const map = L.map(container, {
         center: [userLocation.latitude, userLocation.longitude],
         zoom: LEAFLET_MAPS_CONFIG.DEFAULT_ZOOM,
         zoomControl: true,
@@ -233,6 +267,17 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         updateWhenIdle: true, // Reduce CPU usage
         zoomAnimation: false, // Reduce jank on low-end devices
       });
+
+      // CRITICAL: Invalidate size after creation to ensure Leaflet knows container dimensions
+      setTimeout(() => {
+        if (map && !map._destroyed) {
+          try {
+            map.invalidateSize();
+          } catch (e) {
+            console.warn('Error invalidating map size:', e);
+          }
+        }
+      }, 100);
 
       // Add initial tile layer with proper error handling
       const initialTileLayer = createTileLayer(false);
@@ -333,14 +378,21 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
     return () => {
       if (mapInstance) {
         try {
+          // Mark map as destroyed to prevent further operations
+          if (mapInstance && !mapInstance._destroyed) {
+            mapInstance._destroyed = true;
+          }
+
           // Remove all layers first
-          mapInstance.eachLayer((layer: any) => {
-            try {
-              mapInstance.removeLayer(layer);
-            } catch (e) {
-              // Ignore errors during cleanup
-            }
-          });
+          if (mapInstance.eachLayer) {
+            mapInstance.eachLayer((layer: any) => {
+              try {
+                mapInstance.removeLayer(layer);
+              } catch (e) {
+                // Ignore errors during cleanup
+              }
+            });
+          }
           
           // Clear all markers
           markers.forEach((marker) => {
@@ -354,7 +406,9 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
           });
           
           // Remove all event listeners
-          mapInstance.off();
+          if (mapInstance.off) {
+            mapInstance.off();
+          }
           
           // Clear tile cache if possible
           if (L && L.Util && L.Util.clearTileCache) {
@@ -362,7 +416,9 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
           }
           
           // Remove the map instance
-          mapInstance.remove();
+          if (mapInstance.remove) {
+            mapInstance.remove();
+          }
         } catch (e) {
           console.warn('Error during map cleanup:', e);
         } finally {
@@ -375,6 +431,10 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       // Clear map ref
       if (mapRef.current) {
         mapRef.current.innerHTML = '';
+        // Remove Leaflet ID to prevent re-initialization issues
+        if ((mapRef.current as any)._leaflet_id) {
+          delete (mapRef.current as any)._leaflet_id;
+        }
       }
     };
   }, [mapInstance, markers]); // Include markers in dependencies
