@@ -346,7 +346,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
   }
 
   return (
-    <div className="space-y-6 px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12">
+    <div className="space-y-4 px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 pb-8">
       {/* Header */}
       <Header
         title="Weather & Air Quality Stats"
@@ -355,28 +355,27 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
         onMobileMenuToggle={onMobileMenuToggle}
       />
 
-      {/* Weather Overview */}
-      <div>
+      {/* Mobile-First Bento Box Grid Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 auto-rows-min">
         {/* Location Permission Banner */}
-          {!isDemoMode && (
-            <LocationPermissionBanner
-              onLocationRequest={async () => {
-                try {
-                  await requestLocation();
-                } catch (error) {
-                  console.error('Location request failed:', error);
-                }
-              }}
-              onSkip={() => {
-                // Call useIPBasedLocation at component level, not in callback
-                handleIPBasedLocation();
-              }}
-              permissionStatus={permissionStatus}
-              locationSource={locationData?.source}
-              city={locationData?.city}
-              country={locationData?.country}
-            />
-          )}
+        {!isDemoMode && (
+          <LocationPermissionBanner
+            onLocationRequest={async () => {
+              try {
+                await requestLocation();
+              } catch (error) {
+                console.error('Location request failed:', error);
+              }
+            }}
+            onSkip={() => {
+              handleIPBasedLocation();
+            }}
+            permissionStatus={permissionStatus}
+            locationSource={locationData?.source}
+            city={locationData?.city}
+            country={locationData?.country}
+          />
+        )}
 
         {/* Demo Mode Banner */}
         {isDemoMode && (
@@ -407,10 +406,71 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
           </motion.div>
         )}
 
-        {/* Weather Stats Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Air Quality Card */}
-        <GlassCard className="floating-card">
+        {/* Hero Card: Current Weather Conditions - Full width on mobile, 2x2 on desktop */}
+        <GlassCard className="floating-card lg:col-span-2 lg:row-span-2">
+          <GlassCardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <GlassCardTitle className="text-base font-semibold">Current Weather</GlassCardTitle>
+            {currentWeather?.weatherCondition === 'Rain' ? (
+              <CloudRain className="h-5 w-5 text-muted-foreground" />
+            ) : currentWeather?.weatherCondition === 'Clouds' ? (
+              <Cloud className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <Sun className="h-5 w-5 text-muted-foreground" />
+            )}
+          </GlassCardHeader>
+          <GlassCardContent>
+            {weatherLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : currentWeather ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="text-5xl font-bold text-orange-600 dark:text-orange-400">
+                      {currentWeather.temperature}°
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <div className="font-medium">C</div>
+                      <div>Feels like {currentWeather.feelsLikeTemperature || currentWeather.temperature}°</div>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="text-sm capitalize">
+                    {currentWeather.weatherCondition || 'Clear'}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                  <div className="flex items-center gap-2">
+                    <Droplets className="h-4 w-4 text-blue-500" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Humidity</div>
+                      <div className="text-sm font-semibold">{currentWeather.humidity}%</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Wind className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Wind</div>
+                      <div className="text-sm font-semibold">{currentWeather.windSpeed} km/h</div>
+                    </div>
+                  </div>
+                </div>
+                {currentWeather?.timestamp && (
+                  <p className="text-xs text-muted-foreground">
+                    Updated: {new Date(currentWeather.timestamp).toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                {weatherError ? 'Weather data unavailable' : 'No Data'}
+              </div>
+            )}
+          </GlassCardContent>
+        </GlassCard>
+
+        {/* Air Quality Card - Compact on mobile, 1x2 on desktop */}
+        <GlassCard className="floating-card lg:col-span-1 lg:row-span-2">
           <GlassCardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <GlassCardTitle className="text-sm font-medium">Air Quality Index</GlassCardTitle>
             <Badge variant={airQualityData?.aqi && airQualityData.aqi <= 50 ? "default" : "destructive"}>
@@ -427,21 +487,21 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                 airQualityData.aqi <= 300 ? 'Very Unhealthy' : 'Hazardous'
               ) : 'Unknown'}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-1">
               {airQualityData?.location} • {airQualityData?.timestamp ? new Date(airQualityData.timestamp).toLocaleString() : 'N/A'}
             </p>
           </GlassCardContent>
         </GlassCard>
 
-        {/* Location Card */}
-        <GlassCard className="floating-card">
+        {/* Location Card - Compact on mobile, 1x1 on desktop */}
+        <GlassCard className="floating-card lg:col-span-1">
           <GlassCardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <GlassCardTitle className="text-sm font-medium">Current Location</GlassCardTitle>
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </GlassCardHeader>
           <GlassCardContent>
-            <div className="text-2xl font-bold">{locationData?.city || 'Unknown'}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-xl font-bold">{locationData?.city || 'Unknown'}</div>
+            <p className="text-xs text-muted-foreground mt-1">
               {locationData?.country}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -450,336 +510,320 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
           </GlassCardContent>
         </GlassCard>
 
-        {/* Weather Conditions Card */}
-        <GlassCard className="floating-card">
-          <GlassCardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <GlassCardTitle className="text-sm font-medium">Weather Conditions</GlassCardTitle>
-            {currentWeather?.weatherCondition === 'Rain' ? (
-              <CloudRain className="h-4 w-4 text-muted-foreground" />
-            ) : currentWeather?.weatherCondition === 'Clouds' ? (
-              <Cloud className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Sun className="h-4 w-4 text-muted-foreground" />
-            )}
-          </GlassCardHeader>
-          <GlassCardContent>
-            {weatherLoading ? (
-              <div className="text-2xl font-bold">Loading...</div>
-            ) : currentWeather ? (
-              <>
-                <div className="text-2xl font-bold flex items-center gap-2">
-                  <Thermometer className="h-6 w-6 text-orange-500" />
+        {/* Metrics Grid - 4-column mini grid on mobile, individual cards on desktop */}
+        {locationData && currentWeather && (
+          <>
+            {/* Temperature - Individual card on desktop */}
+            <GlassCard className="floating-card lg:col-span-1 hidden lg:block">
+              <GlassCardHeader className="pb-2">
+                <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Thermometer className="h-4 w-4" />
+                  Temperature
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="pt-0">
+                <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
                   {currentWeather.temperature}°C
                 </div>
-                <div className="text-sm text-muted-foreground space-y-1 mt-2">
+                <p className="text-xs text-muted-foreground mt-1">
+                  Feels like {currentWeather.feelsLikeTemperature || currentWeather.temperature}°C
+                </p>
+              </GlassCardContent>
+            </GlassCard>
+
+            {/* Humidity - Individual card on desktop */}
+            <GlassCard className="floating-card lg:col-span-1 hidden lg:block">
+              <GlassCardHeader className="pb-2">
+                <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Droplets className="h-4 w-4" />
+                  Humidity
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="pt-0">
+                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  {currentWeather.humidity}%
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Dew point {currentWeather.airPressure || 'N/A'} hPa
+                </p>
+              </GlassCardContent>
+            </GlassCard>
+
+            {/* Wind - Individual card on desktop */}
+            <GlassCard className="floating-card lg:col-span-1 hidden lg:block">
+              <GlassCardHeader className="pb-2">
+                <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Wind className="h-4 w-4" />
+                  Wind
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="pt-0">
+                <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">
+                  {currentWeather.windSpeed} km/h
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {currentWeather.windDirection}° {getWindDirection(currentWeather.windDirection)}
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+
+            {/* Visibility - Individual card on desktop */}
+            <GlassCard className="floating-card lg:col-span-1 hidden lg:block">
+              <GlassCardHeader className="pb-2">
+                <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  Visibility
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="pt-0">
+                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                  {currentWeather.visibility || 'N/A'} km
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  UV index {currentWeather.uvIndex || 'N/A'}
+                </p>
+              </GlassCardContent>
+            </GlassCard>
+
+            {/* Mobile: 4-column mini grid */}
+            <div className="grid grid-cols-4 gap-2 lg:hidden col-span-full">
+              {/* Temperature */}
+              <GlassCard className="floating-card">
+                <GlassCardContent className="p-3">
+                  <div className="flex flex-col items-center text-center">
+                    <Thermometer className="h-4 w-4 text-orange-500 mb-1" />
+                    <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                      {currentWeather.temperature}°
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">Temp</div>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+
+              {/* Humidity */}
+              <GlassCard className="floating-card">
+                <GlassCardContent className="p-3">
+                  <div className="flex flex-col items-center text-center">
+                    <Droplets className="h-4 w-4 text-blue-500 mb-1" />
+                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                      {currentWeather.humidity}%
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">Humid</div>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+
+              {/* Wind */}
+              <GlassCard className="floating-card">
+                <GlassCardContent className="p-3">
+                  <div className="flex flex-col items-center text-center">
+                    <Wind className="h-4 w-4 text-slate-600 dark:text-slate-400 mb-1" />
+                    <div className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                      {currentWeather.windSpeed}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">Wind</div>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+
+              {/* Visibility */}
+              <GlassCard className="floating-card">
+                <GlassCardContent className="p-3">
+                  <div className="flex flex-col items-center text-center">
+                    <Eye className="h-4 w-4 text-purple-500 mb-1" />
+                    <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                      {currentWeather.visibility || 'N/A'}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">Vis</div>
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            </div>
+          </>
+        )}
+
+        {/* Wind Dashboard - Full width on mobile, 2x1 on desktop */}
+        {locationData && (
+          <div className="lg:col-span-2">
+            <WindDashboard 
+              latitude={locationData.latitude} 
+              longitude={locationData.longitude} 
+            />
+          </div>
+        )}
+
+        {/* Weather Forecast - Full width on mobile, 2x2 on desktop */}
+        {locationData && (
+          <div className="lg:col-span-2 lg:row-span-2">
+            <WeatherForecast 
+              latitude={locationData.latitude} 
+              longitude={locationData.longitude} 
+            />
+          </div>
+        )}
+
+        {/* Map Container - Reduced height on mobile, full height on desktop, spans 4 cols */}
+        <GlassCard className="floating-card relative h-[400px] lg:h-[calc(100vh-200px)] lg:min-h-[600px] shadow-card overflow-hidden lg:col-span-4 lg:row-span-3">
+          <GlassCardContent className="p-0 h-full relative">
+            {/* Map Header - Simplified for mobile, full for desktop */}
+            <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-r from-card/95 via-card/90 to-card/95 backdrop-blur-md border-b border-border/50">
+              <div className="p-3 lg:p-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <h1 className="text-lg lg:text-xl font-bold text-foreground">
+                        Weather & Air Quality Map
+                      </h1>
+                      <p className="text-xs lg:text-sm text-muted-foreground">
+                        {locationData ? `${locationData.city}, ${locationData.country}` : 'Loading location...'}
+                      </p>
+                    </div>
+                    {airQualityData && (
+                      <div className="flex items-center gap-3">
+                        <Badge 
+                          variant="secondary"
+                          className={`${getAQIColor(airQualityData.aqi)} text-white border-0 px-2 lg:px-3 py-1 text-xs lg:text-sm font-semibold`}
+                        >
+                          AQI {airQualityData.aqi}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground hidden lg:inline">
+                          Last updated: {airQualityData.timestamp}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 hidden lg:flex">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Layers className="h-4 w-4" />
+                      Map Layers
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <MapPin className="h-4 w-4" />
+                      My Location
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Leaflet Map Integration */}
+            <div className="w-full h-full pt-16 lg:pt-20">
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              }>
+                <LeafletMap
+                  userLocation={locationData}
+                  airQualityData={airQualityData}
+                />
+              </Suspense>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
+
+        {/* Information Cards - Stacked on mobile, grid on desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:col-span-4">
+          {/* Location Information Card */}
+          {locationData && (
+            <GlassCard>
+              <GlassCardHeader className="flex flex-row items-center space-y-0 pb-2">
+                <MapPin className="h-4 w-4 text-primary mr-2" />
+                <GlassCardTitle className="text-sm font-medium">Location Details</GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">City:</span>
+                    <span className="text-sm font-medium">{locationData.city}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Country:</span>
+                    <span className="text-sm font-medium">{locationData.country}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Coordinates:</span>
+                    <span className="text-sm font-medium">
+                      {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Source:</span>
+                    <span className="text-sm font-medium capitalize">{locationData.source}</span>
+                  </div>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+          )}
+
+          {/* Weather Summary Card */}
+          {currentWeather && (
+            <GlassCard>
+              <GlassCardHeader className="flex flex-row items-center space-y-0 pb-2">
+                <Cloud className="h-4 w-4 text-blue-500 mr-2" />
+                <GlassCardTitle className="text-sm font-medium">Weather Summary</GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Thermometer className="h-3 w-3 text-red-500" />
+                    <span className="text-muted-foreground">Temp:</span>
+                    <span className="font-medium">{formatTemperature(currentWeather.temperature)}</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Droplets className="h-3 w-3 text-blue-500" />
-                    Humidity: {currentWeather.humidity}%
+                    <span className="text-muted-foreground">Humidity:</span>
+                    <span className="font-medium">{formatHumidity(currentWeather.humidity)}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Wind className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                    <span>Wind Speed</span>
+                    <Wind className="h-3 w-3 text-green-500" />
+                    <span className="text-muted-foreground">Wind:</span>
+                    <span className="font-medium">{formatWindSpeed(currentWeather.windSpeed)}</span>
                   </div>
-                  <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
-                    {currentWeather.windSpeed} km/h
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-3 w-3 text-purple-500" />
+                    <span className="text-muted-foreground">Visibility:</span>
+                    <span className="font-medium">{formatVisibility(currentWeather.visibility)}</span>
                   </div>
-                  {currentWeather.feelsLikeTemperature && (
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-3 w-3 text-purple-500" />
-                      Feels like: {currentWeather.feelsLikeTemperature}°C
-                    </div>
-                  )}
                 </div>
-              </>
-            ) : (
-              <div className="text-2xl font-bold text-muted-foreground">
-                {weatherError ? 'Weather data unavailable' : 'No Data'}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-2">
-              {currentWeather?.timestamp ? 
-                `Updated: ${new Date(currentWeather.timestamp).toLocaleTimeString()}` : 
-                weatherLoading ? 'Loading weather data...' : 'Weather data unavailable'
-              }
-            </p>
-            {/* Show refresh status instead of error messages */}
-            {weatherError && !currentWeather && (
-              <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>Refreshing weather data...</span>
-                </div>
-              </div>
-            )}
-            {/* Debug info in development */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
-                <strong>Debug:</strong> Loading: {weatherLoading.toString()}, 
-                Has Data: {(!!currentWeather).toString()}, 
-                Error: {weatherError || 'None'}
-              </div>
-            )}
-          </GlassCardContent>
-        </GlassCard>
-      </div>
-
-      {/* Comprehensive Weather Data */}
-      {locationData && currentWeather && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Temperature & Feels Like */}
-          <GlassCard className="floating-card">
-            <GlassCardHeader className="pb-2">
-              <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
-                <Thermometer className="h-4 w-4" />
-                Temperature
-              </GlassCardTitle>
-            </GlassCardHeader>
-            <GlassCardContent className="pt-0">
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {currentWeather.temperature}°C
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Feels like {currentWeather.feelsLikeTemperature || currentWeather.temperature}°C
-              </p>
-            </GlassCardContent>
-          </GlassCard>
-
-          {/* Humidity & Pressure */}
-          <GlassCard className="floating-card">
-            <GlassCardHeader className="pb-2">
-              <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
-                <Droplets className="h-4 w-4" />
-                Humidity
-              </GlassCardTitle>
-            </GlassCardHeader>
-            <GlassCardContent className="pt-0">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {currentWeather.humidity}%
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Dew point {currentWeather.airPressure || 'N/A'} hPa
-              </p>
-            </GlassCardContent>
-          </GlassCard>
-
-          {/* Wind Information */}
-          <GlassCard className="floating-card">
-            <GlassCardHeader className="pb-2">
-              <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
-                <Wind className="h-4 w-4" />
-                Wind
-              </GlassCardTitle>
-            </GlassCardHeader>
-            <GlassCardContent className="pt-0">
-              <div className="text-2xl font-bold text-slate-700 dark:text-slate-300">
-                {currentWeather.windSpeed} km/h
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {currentWeather.windDirection}° {getWindDirection(currentWeather.windDirection)}
-              </div>
-            </GlassCardContent>
-          </GlassCard>
-
-          {/* Visibility & UV */}
-          <GlassCard className="floating-card">
-            <GlassCardHeader className="pb-2">
-              <GlassCardTitle className="text-sm font-medium flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                Visibility
-              </GlassCardTitle>
-            </GlassCardHeader>
-            <GlassCardContent className="pt-0">
-              <div className="text-2xl font-bold text-purple-600 dark:text-orange-400">
-                {currentWeather.visibility || 'N/A'} km
-              </div>
-              <p className="text-xs text-muted-foreground">
-                UV index {currentWeather.uvIndex || 'N/A'}
-              </p>
-            </GlassCardContent>
-          </GlassCard>
-        </div>
-      )}
-
-      {/* Wind Dashboard */}
-      {locationData && (
-        <WindDashboard 
-          latitude={locationData.latitude} 
-          longitude={locationData.longitude} 
-        />
-      )}
-
-      {/* Weather Forecast */}
-      {locationData && (
-        <WeatherForecast 
-          latitude={locationData.latitude} 
-          longitude={locationData.longitude} 
-        />
-      )}
-
-
-
-      {/* Map Container - Google Maps Style */}
-      <GlassCard className="floating-card relative h-[calc(100vh-200px)] min-h-[600px] shadow-card overflow-hidden">
-        <GlassCardContent className="p-0 h-full relative">
-          {/* Map Header - Fixed at top */}
-          <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-r from-card/95 via-card/90 to-card/95 backdrop-blur-md border-b border-border/50">
-            <div className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <h1 className="text-xl font-bold text-foreground">
-                      Weather & Air Quality Map
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                      {locationData ? `${locationData.city}, ${locationData.country}` : 'Loading location...'}
-                    </p>
+                {currentWeather.feelsLikeTemperature && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Thermometer className="h-3 w-3 text-orange-500" />
+                    <span className="text-muted-foreground">Feels like:</span>
+                    <span className="font-medium">{currentWeather.feelsLikeTemperature}°C</span>
                   </div>
-                  {airQualityData && (
-                    <div className="flex items-center gap-3">
-                      <Badge 
-                        variant="secondary"
-                        className={`${getAQIColor(airQualityData.aqi)} text-white border-0 px-3 py-1 text-sm font-semibold`}
-                      >
-                        AQI {airQualityData.aqi}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        Last updated: {airQualityData.timestamp}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Layers className="h-4 w-4" />
-                    Map Layers
-                  </Button>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <MapPin className="h-4 w-4" />
-                    My Location
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+                )}
+              </GlassCardContent>
+            </GlassCard>
+          )}
 
-          {/* Leaflet Map Integration - Full width/height within card */}
-          <div className="w-full h-full pt-20">
-            <Suspense fallback={
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            }>
-              <LeafletMap
-                userLocation={locationData}
-                airQualityData={airQualityData}
-              />
-            </Suspense>
-          </div>
-        </GlassCardContent>
-      </GlassCard>
-
-      {/* Information Grid Beneath Map */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Location Information Card */}
-        {locationData && (
+          {/* Map Legend Card */}
           <GlassCard>
             <GlassCardHeader className="flex flex-row items-center space-y-0 pb-2">
-              <MapPin className="h-4 w-4 text-primary mr-2" />
-              <GlassCardTitle className="text-sm font-medium">Location Details</GlassCardTitle>
+              <Layers className="h-4 w-4 text-muted-foreground mr-2" />
+              <GlassCardTitle className="text-sm font-medium">Map Legend</GlassCardTitle>
             </GlassCardHeader>
-            <GlassCardContent className="space-y-3">
+            <GlassCardContent className="space-y-2">
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">City:</span>
-                  <span className="text-sm font-medium">{locationData.city}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <span className="text-xs text-muted-foreground">Your Location</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Country:</span>
-                  <span className="text-sm font-medium">{locationData.country}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span className="text-xs text-muted-foreground">Good Air Quality</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Coordinates:</span>
-                  <span className="text-sm font-medium">
-                    {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                  <span className="text-xs text-muted-foreground">Moderate Air Quality</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Source:</span>
-                  <span className="text-sm font-medium capitalize">{locationData.source}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <span className="text-xs text-muted-foreground">Poor Air Quality</span>
                 </div>
               </div>
             </GlassCardContent>
           </GlassCard>
-        )}
-
-        {/* Weather Summary Card */}
-        {currentWeather && (
-          <GlassCard>
-            <GlassCardHeader className="flex flex-row items-center space-y-0 pb-2">
-              <Cloud className="h-4 w-4 text-blue-500 mr-2" />
-              <GlassCardTitle className="text-sm font-medium">Weather Summary</GlassCardTitle>
-            </GlassCardHeader>
-            <GlassCardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <Thermometer className="h-3 w-3 text-red-500" />
-                  <span className="text-muted-foreground">Temp:</span>
-                  <span className="font-medium">{formatTemperature(currentWeather.temperature)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Droplets className="h-3 w-3 text-blue-500" />
-                  <span className="text-muted-foreground">Humidity:</span>
-                  <span className="font-medium">{formatHumidity(currentWeather.humidity)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Wind className="h-3 w-3 text-green-500" />
-                  <span className="text-muted-foreground">Wind:</span>
-                  <span className="font-medium">{formatWindSpeed(currentWeather.windSpeed)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Eye className="h-3 w-3 text-purple-500" />
-                  <span className="text-muted-foreground">Visibility:</span>
-                  <span className="font-medium">{formatVisibility(currentWeather.visibility)}</span>
-                </div>
-              </div>
-              {currentWeather.feelsLikeTemperature && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Thermometer className="h-3 w-3 text-orange-500" />
-                  <span className="text-muted-foreground">Feels like:</span>
-                  <span className="font-medium">{currentWeather.feelsLikeTemperature}°C</span>
-                </div>
-              )}
-            </GlassCardContent>
-          </GlassCard>
-        )}
-
-        {/* Map Legend Card */}
-        <GlassCard>
-          <GlassCardHeader className="flex flex-row items-center space-y-0 pb-2">
-            <Layers className="h-4 w-4 text-muted-foreground mr-2" />
-            <GlassCardTitle className="text-sm font-medium">Map Legend</GlassCardTitle>
-          </GlassCardHeader>
-          <GlassCardContent className="space-y-2">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span className="text-xs text-muted-foreground">Your Location</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span className="text-xs text-muted-foreground">Good Air Quality</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <span className="text-xs text-muted-foreground">Moderate Air Quality</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span className="text-xs text-muted-foreground">Poor Air Quality</span>
-              </div>
-            </div>
-          </GlassCardContent>
-        </GlassCard>
         </div>
       </div>
     </div>
