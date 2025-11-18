@@ -725,19 +725,6 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                         {locationData ? `${locationData.city}, ${locationData.country}` : 'Loading location...'}
                       </p>
                     </div>
-                    {airQualityData && (
-                      <div className="flex items-center gap-3">
-                        <Badge 
-                          variant="secondary"
-                          className={`${getAQIColor(airQualityData.aqi)} text-white border-0 px-2 lg:px-3 py-1 text-xs lg:text-sm font-semibold`}
-                        >
-                          AQI {airQualityData.aqi}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground hidden lg:inline">
-                          Last updated: {airQualityData.timestamp}
-                        </span>
-                      </div>
-                    )}
                   </div>
                   <div className="flex items-center gap-2 hidden lg:flex">
                     <Button variant="outline" size="sm" className="gap-2">
@@ -754,7 +741,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
             </div>
 
             {/* Leaflet Map Integration */}
-            <div className="w-full h-full pt-16 lg:pt-20">
+            <div className="absolute inset-0 top-16 lg:top-20 w-full">
               <Suspense fallback={
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -763,6 +750,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                 <LeafletMap
                   userLocation={locationData}
                   airQualityData={airQualityData}
+                  embedded={true}
                 />
               </Suspense>
             </div>

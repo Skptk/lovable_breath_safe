@@ -30,9 +30,10 @@ interface LeafletMapProps {
     aqi: number;
     coordinates: [number, number];
   }>;
+  embedded?: boolean; // When true, skip GlassCard wrapper and header
 }
 
-export default function LeafletMap({ userLocation, airQualityData, nearbyLocations = [] }: LeafletMapProps) {
+export default function LeafletMap({ userLocation, airQualityData, nearbyLocations = [], embedded = false }: LeafletMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -408,9 +409,68 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
     );
   }
 
-      return (
-      <GlassCard className="floating-card">
-        <GlassCardContent className="p-0">
+  // Render map content (shared between embedded and standalone modes)
+  const mapContent = (
+    <div className="relative w-full h-full">
+      {/* Map container */}
+      <div 
+        ref={mapRef} 
+        className="w-full h-full"
+      />
+      
+      {/* Loading overlay */}
+      {!mapLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+          <div className="text-center space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-sm text-muted-foreground">Loading map tiles...</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Error overlay with retry button */}
+      {tileErrorCount >= 3 && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+          <div className="text-center space-y-3 p-4">
+            <AlertTriangle className="h-8 w-8 mx-auto text-destructive" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Map temporarily unavailable</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {usingFallback ? 'Using backup map service' : 'Switching to backup map service...'}
+              </p>
+            </div>
+            <button 
+              onClick={() => {
+                setTileErrorCount(0);
+                setUsingFallback(false);
+                if (mapInstance && currentTileLayer) {
+                  mapInstance.removeLayer(currentTileLayer);
+                  const newTileLayer = createTileLayer(false);
+                  if (newTileLayer) {
+                    newTileLayer.addTo(mapInstance);
+                    setCurrentTileLayer(newTileLayer);
+                  }
+                }
+              }}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Embedded mode: just return the map without wrapper
+  if (embedded) {
+    return mapContent;
+  }
+
+  // Standalone mode: return with GlassCard wrapper
+  return (
+    <GlassCard className="floating-card">
+      <GlassCardContent className="p-0">
         <div className="p-4 border-b border-border/50">
           <div className="flex items-center justify-between">
             <div>
@@ -421,65 +481,11 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
                 Your location and nearby monitoring stations
               </p>
             </div>
-            {airQualityData && (
-              <Badge 
-                variant="secondary"
-                className={`${getAQIColor(airQualityData.aqi)} text-white border-0`}
-              >
-                AQI {airQualityData.aqi}
-              </Badge>
-            )}
           </div>
         </div>
         
         <div className="relative w-full h-[600px] min-h-[500px] rounded-b-lg">
-          {/* Map container */}
-          <div 
-            ref={mapRef} 
-            className="w-full h-full rounded-b-lg"
-          />
-          
-          {/* Loading overlay */}
-          {!mapLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-b-lg">
-              <div className="text-center space-y-3">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                <p className="text-sm text-muted-foreground">Loading map tiles...</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Error overlay with retry button */}
-          {tileErrorCount >= 3 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-b-lg">
-              <div className="text-center space-y-3 p-4">
-                <AlertTriangle className="h-8 w-8 mx-auto text-destructive" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">Map temporarily unavailable</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {usingFallback ? 'Using backup map service' : 'Switching to backup map service...'}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => {
-                    setTileErrorCount(0);
-                    setUsingFallback(false);
-                    if (mapInstance && currentTileLayer) {
-                      mapInstance.removeLayer(currentTileLayer);
-                      const newTileLayer = createTileLayer(false);
-                      if (newTileLayer) {
-                        newTileLayer.addTo(mapInstance);
-                        setCurrentTileLayer(newTileLayer);
-                      }
-                    }
-                  }}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm"
-                >
-                  Retry
-                </button>
-              </div>
-            </div>
-          )}
+          {mapContent}
         </div>
         
         <div className="p-4 bg-gradient-to-br from-muted/20 to-muted/10 border-t border-border/30">
