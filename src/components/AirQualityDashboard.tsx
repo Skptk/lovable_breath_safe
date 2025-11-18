@@ -426,9 +426,9 @@ function AirQualityDashboardContent({
   }, [hasUserConsent, refreshData, isDemoMode, toast]);
 
   const renderUnifiedShell = (content: React.ReactNode) => (
-    <div className="relative z-10 px-2 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8 lg:py-8 w-full max-w-full overflow-x-hidden">
-      <div className="mx-auto max-w-7xl w-full max-w-full overflow-hidden">
-        <div className="bg-black/40 ring-1 ring-white/10 rounded-2xl sm:rounded-3xl shadow-xl p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 2xl:p-12 w-full max-w-full overflow-hidden">
+    <div className="relative z-10 w-full max-w-full overflow-x-hidden">
+      <div className="w-full max-w-full overflow-hidden">
+        <div className="bg-black/40 ring-1 ring-white/10 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 2xl:p-12 w-full max-w-full overflow-hidden">
           {content}
         </div>
       </div>
@@ -546,8 +546,8 @@ function AirQualityDashboardContent({
     <>
       {/* Demo Mode Banner */}
       {isDemoMode && (
-        <div className="relative z-10 px-2 pt-4 sm:px-4 md:px-6 lg:px-8 w-full max-w-full overflow-x-hidden">
-          <div className="mx-auto max-w-7xl w-full max-w-full overflow-hidden">
+        <div className="relative z-10 w-full max-w-full overflow-x-hidden">
+          <div className="w-full max-w-full overflow-hidden">
             <motion.div
               className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-3 sm:p-4 lg:p-5 xl:p-6 rounded-lg shadow-lg mb-3 sm:mb-4 lg:mb-6"
               initial={{ opacity: 0, y: -20 }}

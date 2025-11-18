@@ -803,20 +803,23 @@
 
   .page-container .page-content {
     flex: 1;
-    padding: 0.5rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
     position: relative;
     z-index: 1;
   }
 
   @media (min-width: 640px) {
     .page-container .page-content {
-      padding: 1rem;
+      padding-top: 1rem;
+      padding-bottom: 1rem;
     }
   }
 
   @media (min-width: 768px) {
     .page-container .page-content {
-      padding: 1.5rem;
+      padding-top: 1.5rem;
+      padding-bottom: 1.5rem;
     }
   }
 

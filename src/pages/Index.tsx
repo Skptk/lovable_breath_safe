@@ -1,6 +1,5 @@
 import { useState, useEffect, Suspense, lazy, startTransition, useRef } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import MobileNavigation from "@/components/MobileNavigation";
@@ -362,7 +361,7 @@ export default function Index(): JSX.Element | null {
                 </div>
               </main>
 
-              <footer className="pb-6">
+              <footer className="w-full">
                 <Footer />
               </footer>
             </div>
