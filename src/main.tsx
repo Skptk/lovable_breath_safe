@@ -17,6 +17,7 @@ import Profiler from './devtools/Profiler'
 import { AuthProvider } from './contexts/AuthContext'
 import { RealtimeProvider } from './contexts/RealtimeContext'
 import { LocationProvider } from './contexts/LocationContext'
+import { AccessibilityProvider } from './contexts/AccessibilityContext'
 import { SupabaseErrorBoundary } from './components/SupabaseErrorBoundary'
 import { initHeapFailSafe } from './utils/heapFailSafe'
 import { memoryBudgetManager } from './utils/memoryBudgetManager'
@@ -169,13 +170,15 @@ createRoot(document.getElementById("root")!).render(
   <SupabaseErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RealtimeProvider>
-          <LocationProvider>
-            {import.meta.env.DEV && <Profiler />}
-            {import.meta.env.DEV && <MemoryMonitorOverlay />}
-            <App />
-          </LocationProvider>
-        </RealtimeProvider>
+        <AccessibilityProvider>
+          <RealtimeProvider>
+            <LocationProvider>
+              {import.meta.env.DEV && <Profiler />}
+              {import.meta.env.DEV && <MemoryMonitorOverlay />}
+              <App />
+            </LocationProvider>
+          </RealtimeProvider>
+        </AccessibilityProvider>
       </AuthProvider>
     </QueryClientProvider>
   </SupabaseErrorBoundary>

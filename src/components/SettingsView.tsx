@@ -23,6 +23,11 @@ import {
   Lock
 } from "lucide-react";
 import NotificationSettings from "./NotificationSettings";
+import AccountSettings from "./AccountSettings";
+import DataSettings from "./DataSettings";
+import AboutSettings from "./AboutSettings";
+import HelpSettings from "./HelpSettings";
+import AdvancedSettings from "./AdvancedSettings";
 
 interface SettingsViewProps {
   showMobileMenu?: boolean;
@@ -155,14 +160,23 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
         </div>
 
         {/* Settings Tabs */}
-        <Tabs defaultValue="notifications" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs defaultValue="account" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-9 gap-1 overflow-x-auto">
+            <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="appearance">Appearance</TabsTrigger>
             <TabsTrigger value="privacy">Privacy</TabsTrigger>
             <TabsTrigger value="location">Location</TabsTrigger>
             <TabsTrigger value="data">Data</TabsTrigger>
+            <TabsTrigger value="about">About</TabsTrigger>
+            <TabsTrigger value="help">Help</TabsTrigger>
+            <TabsTrigger value="advanced">Advanced</TabsTrigger>
           </TabsList>
+
+          {/* Account Tab */}
+          <TabsContent value="account" className="space-y-4">
+            <AccountSettings />
+          </TabsContent>
 
           {/* Notifications Tab */}
           <TabsContent value="notifications" className="space-y-4">
@@ -387,12 +401,12 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
               <GlassCardHeader>
                 <GlassCardTitle className="flex items-center gap-2">
                   <Database className="h-5 w-5" />
-                  Data Management
+                  Data Retention
                 </GlassCardTitle>
               </GlassCardHeader>
               <GlassCardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="data-retention">Data Retention</Label>
+                  <Label htmlFor="data-retention">Data Retention Period</Label>
                   <Select
                     value={localSettings.dataRetention}
                     onValueChange={(value: '30days' | '90days' | '1year' | 'forever') => 
@@ -410,21 +424,31 @@ export default function SettingsView({ showMobileMenu, onMobileMenuToggle }: Set
                     </SelectContent>
                   </Select>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label>Data Export</Label>
-                  <p className="text-sm text-muted-foreground">Export your settings and preferences</p>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start gap-2"
-                    onClick={exportUserData}
-                  >
-                    <Download className="h-4 w-4" />
-                    Export Settings
-                  </Button>
-                </div>
               </GlassCardContent>
             </GlassCard>
+            
+            <DataSettings 
+              currentSettings={localSettings}
+              onSettingsUpdate={(newSettings) => {
+                setLocalSettings(newSettings);
+                saveLocalSettings(newSettings);
+              }}
+            />
+          </TabsContent>
+
+          {/* About Tab */}
+          <TabsContent value="about" className="space-y-4">
+            <AboutSettings />
+          </TabsContent>
+
+          {/* Help Tab */}
+          <TabsContent value="help" className="space-y-4">
+            <HelpSettings />
+          </TabsContent>
+
+          {/* Advanced Tab */}
+          <TabsContent value="advanced" className="space-y-4">
+            <AdvancedSettings />
           </TabsContent>
         </Tabs>
       </div>

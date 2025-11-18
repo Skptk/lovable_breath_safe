@@ -981,3 +981,62 @@ div:contains("Timeout") {
   font-size: 0.75rem !important;
   opacity: 0.8 !important;
 }
+
+/* Accessibility Features */
+
+/* Font Size Base Variable */
+:root {
+  --font-size-base: 1rem;
+}
+
+/* High Contrast Mode */
+.high-contrast {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --card: 0 0% 10%;
+  --card-foreground: 0 0% 100%;
+  --popover: 0 0% 10%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 0 0% 100%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 20%;
+  --secondary-foreground: 0 0% 100%;
+  --accent: 0 0% 100%;
+  --accent-foreground: 0 0% 0%;
+  --muted: 0 0% 30%;
+  --muted-foreground: 0 0% 100%;
+  --border: 0 0% 50%;
+  --input: 0 0% 20%;
+  --ring: 0 0% 100%;
+}
+
+.high-contrast * {
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Reduced Motion */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Respect system preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Apply font size base */
+body {
+  font-size: var(--font-size-base);
+}
