@@ -187,33 +187,40 @@ export default function WindDashboard({ latitude, longitude }: WindDashboardProp
           <div className="space-y-6">
             {/* Wind Rose Visualization */}
             <div className="flex justify-center">
-              <div className="relative w-32 h-32">
-                {/* Wind Rose Circle */}
-                <div className="absolute inset-0 border-2 border-primary/60 rounded-full"></div>
+              <div className="relative w-48 h-48 md:w-56 md:h-56">
+                {/* Background circle with better contrast */}
+                <div className="absolute inset-0 bg-muted/40 dark:bg-muted/20 rounded-full"></div>
                 
-                {/* Wind Direction Arrow */}
+                {/* Wind Rose Circle - Thicker border for visibility */}
+                <div className="absolute inset-0 border-[3px] border-primary/80 dark:border-primary rounded-full"></div>
+                
+                {/* Center dot */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full z-10"></div>
+                
+                {/* Wind Direction Arrow - More visible */}
                 <div 
-                  className="absolute inset-4 bg-primary/20 rounded-full flex items-center justify-center"
+                  className="absolute inset-6 md:inset-8 rounded-full flex items-center justify-center"
                   style={{
                     transform: `rotate(${windData.windDirection}deg)`
                   }}
                 >
-                  <div className="w-2 h-14 bg-primary rounded-full relative shadow-lg">
-                    <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-5 border-r-5 border-b-5 border-transparent border-b-primary"></div>
+                  <div className="w-3 h-20 md:h-24 bg-primary dark:bg-primary rounded-full relative shadow-xl z-20">
+                    {/* Arrow head - larger and more visible */}
+                    <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-b-[12px] border-transparent border-b-primary dark:border-b-primary"></div>
                   </div>
                 </div>
                 
-                {/* Direction Labels - Enhanced visibility with better contrast */}
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-sm font-bold text-primary bg-card border border-primary/30 px-2 py-1 rounded-md shadow-lg">N</div>
-                <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 text-sm font-bold text-primary bg-card border border-primary/30 px-2 py-1 rounded-md shadow-lg">S</div>
-                <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-primary bg-card border border-primary/30 px-2 py-1 rounded-md shadow-lg">W</div>
-                <div className="absolute right-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold text-primary bg-card border border-primary/30 px-2 py-1 rounded-md shadow-lg">E</div>
+                {/* Primary Direction Labels - Larger, bolder, better contrast */}
+                <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 text-base md:text-lg font-extrabold text-foreground bg-background/95 dark:bg-background border-2 border-primary/50 dark:border-primary px-3 py-1.5 rounded-lg shadow-xl z-30">N</div>
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 text-base md:text-lg font-extrabold text-foreground bg-background/95 dark:bg-background border-2 border-primary/50 dark:border-primary px-3 py-1.5 rounded-lg shadow-xl z-30">S</div>
+                <div className="absolute left-0 top-1/2 transform -translate-x-full -translate-y-1/2 -ml-2 text-base md:text-lg font-extrabold text-foreground bg-background/95 dark:bg-background border-2 border-primary/50 dark:border-primary px-3 py-1.5 rounded-lg shadow-xl z-30">W</div>
+                <div className="absolute right-0 top-1/2 transform translate-x-full -translate-y-1/2 -mr-2 text-base md:text-lg font-extrabold text-foreground bg-background/95 dark:bg-background border-2 border-primary/50 dark:border-primary px-3 py-1.5 rounded-lg shadow-xl z-30">E</div>
                 
-                {/* Secondary Direction Labels for better orientation */}
-                <div className="absolute top-3 right-3 text-xs font-semibold text-muted-foreground bg-card/90 border border-muted-foreground/30 px-1.5 py-0.5 rounded shadow-md">NE</div>
-                <div className="absolute top-3 left-3 text-xs font-semibold text-muted-foreground bg-card/90 border border-muted-foreground/30 px-1.5 py-0.5 rounded shadow-md">NW</div>
-                <div className="absolute bottom-3 right-3 text-xs font-semibold text-muted-foreground bg-card/90 border border-muted-foreground/30 px-1.5 py-0.5 rounded shadow-md">SE</div>
-                <div className="absolute bottom-3 left-3 text-xs font-semibold text-muted-foreground bg-card/90 border border-muted-foreground/30 px-1.5 py-0.5 rounded shadow-md">SW</div>
+                {/* Secondary Direction Labels - Larger and more visible */}
+                <div className="absolute top-4 right-4 text-xs md:text-sm font-bold text-foreground bg-background/90 dark:bg-background border border-primary/40 dark:border-primary/60 px-2 py-1 rounded-md shadow-lg z-20">NE</div>
+                <div className="absolute top-4 left-4 text-xs md:text-sm font-bold text-foreground bg-background/90 dark:bg-background border border-primary/40 dark:border-primary/60 px-2 py-1 rounded-md shadow-lg z-20">NW</div>
+                <div className="absolute bottom-4 right-4 text-xs md:text-sm font-bold text-foreground bg-background/90 dark:bg-background border border-primary/40 dark:border-primary/60 px-2 py-1 rounded-md shadow-lg z-20">SE</div>
+                <div className="absolute bottom-4 left-4 text-xs md:text-sm font-bold text-foreground bg-background/90 dark:bg-background border border-primary/40 dark:border-primary/60 px-2 py-1 rounded-md shadow-lg z-20">SW</div>
               </div>
             </div>
 
