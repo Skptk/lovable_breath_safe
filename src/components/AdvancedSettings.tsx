@@ -57,7 +57,7 @@ export default function AdvancedSettings() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('breath-safe-debug-logging', String(debugLogging));
       // Could set a global flag for debug logging here
-      if (window as any).__DEBUG_LOGGING__ !== undefined) {
+      if ((window as any).__DEBUG_LOGGING__ !== undefined) {
         (window as any).__DEBUG_LOGGING__ = debugLogging;
       }
     }
