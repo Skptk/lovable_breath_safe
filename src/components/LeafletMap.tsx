@@ -35,6 +35,7 @@ interface LeafletMapProps {
 
 export default function LeafletMap({ userLocation, airQualityData, nearbyLocations = [], embedded = false }: LeafletMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(true);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapInstance, setMapInstance] = useState<any | null>(null);
@@ -45,6 +46,14 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
   const [usingFallback, setUsingFallback] = useState(false);
   
   const { isDark } = useTheme();
+
+  // Track component mount status
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Load Leaflet dynamically
   useEffect(() => {
@@ -190,11 +199,11 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
     if (!mapInstance || !mapRef.current) return;
 
     const resizeObserver = new ResizeObserver(() => {
-      if (mapInstance && !mapInstance._destroyed && mapRef.current) {
+      if (isMountedRef.current && mapInstance && !mapInstance._destroyed && mapRef.current) {
         try {
           // Use setTimeout to debounce resize events
           setTimeout(() => {
-            if (mapInstance && !mapInstance._destroyed && mapRef.current) {
+            if (isMountedRef.current && mapInstance && !mapInstance._destroyed && mapRef.current) {
               mapInstance.invalidateSize();
             }
           }, 100);
@@ -229,9 +238,19 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
     };
 
     // Wait for container to have dimensions using requestAnimationFrame
+    let retryCount = 0;
+    const MAX_RETRIES = 50; // Maximum 50 retries (~3 seconds at 60fps)
+    
     const initMap = () => {
+      if (retryCount >= MAX_RETRIES) {
+        console.error('Map initialization failed: container never got dimensions after', MAX_RETRIES, 'retries');
+        setMapError('Failed to initialize map: container not ready');
+        return;
+      }
+
       if (!checkContainerReady()) {
         // Container not ready yet, try again on next frame
+        retryCount++;
         requestAnimationFrame(initMap);
         return;
       }
@@ -239,6 +258,8 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
       try {
         // Verify container still exists and has dimensions
         if (!mapRef.current || !checkContainerReady()) {
+          retryCount++;
+          requestAnimationFrame(initMap);
           return;
         }
 
@@ -246,7 +267,13 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         const container = mapRef.current;
         if (!container.offsetWidth || !container.offsetHeight) {
           // Container doesn't have dimensions yet, retry
+          retryCount++;
           requestAnimationFrame(initMap);
+          return;
+        }
+
+        // Verify component is still mounted before creating map
+        if (!isMountedRef.current || !mapRef.current) {
           return;
         }
 
@@ -268,9 +295,17 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
         zoomAnimation: false, // Reduce jank on low-end devices
       });
 
+      // Verify map was created and component is still mounted
+      if (!map || !isMountedRef.current || !mapRef.current) {
+        if (map && map.remove) {
+          map.remove();
+        }
+        return;
+      }
+
       // CRITICAL: Invalidate size after creation to ensure Leaflet knows container dimensions
       setTimeout(() => {
-        if (map && !map._destroyed) {
+        if (isMountedRef.current && map && !map._destroyed && mapRef.current) {
           try {
             map.invalidateSize();
           } catch (e) {
@@ -376,18 +411,44 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
   // CRITICAL: Aggressive cleanup on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
-      if (mapInstance) {
+      isMountedRef.current = false;
+      
+      // Store references before cleanup
+      const instance = mapInstance;
+      const container = mapRef.current;
+      const markerList = markers;
+      
+      if (instance && container) {
         try {
-          // Mark map as destroyed to prevent further operations
-          if (mapInstance && !mapInstance._destroyed) {
-            mapInstance._destroyed = true;
+          // CRITICAL: Remove map BEFORE clearing container to prevent event handler errors
+          // First, disable all interactions
+          if (instance.dragging && instance.dragging.disable) {
+            instance.dragging.disable();
+          }
+          if (instance.touchZoom && instance.touchZoom.disable) {
+            instance.touchZoom.disable();
+          }
+          if (instance.doubleClickZoom && instance.doubleClickZoom.disable) {
+            instance.doubleClickZoom.disable();
+          }
+          if (instance.scrollWheelZoom && instance.scrollWheelZoom.disable) {
+            instance.scrollWheelZoom.disable();
+          }
+          if (instance.boxZoom && instance.boxZoom.disable) {
+            instance.boxZoom.disable();
+          }
+          if (instance.keyboard && instance.keyboard.disable) {
+            instance.keyboard.disable();
           }
 
+          // Mark map as destroyed to prevent further operations
+          instance._destroyed = true;
+
           // Remove all layers first
-          if (mapInstance.eachLayer) {
-            mapInstance.eachLayer((layer: any) => {
+          if (instance.eachLayer) {
+            instance.eachLayer((layer: any) => {
               try {
-                mapInstance.removeLayer(layer);
+                instance.removeLayer(layer);
               } catch (e) {
                 // Ignore errors during cleanup
               }
@@ -395,7 +456,7 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
           }
           
           // Clear all markers
-          markers.forEach((marker) => {
+          markerList.forEach((marker) => {
             try {
               if (marker && marker.remove) {
                 marker.remove();
@@ -406,8 +467,8 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
           });
           
           // Remove all event listeners
-          if (mapInstance.off) {
-            mapInstance.off();
+          if (instance.off) {
+            instance.off();
           }
           
           // Clear tile cache if possible
@@ -415,10 +476,22 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
             L.Util.clearTileCache();
           }
           
-          // Remove the map instance
-          if (mapInstance.remove) {
-            mapInstance.remove();
+          // Remove the map instance - THIS MUST HAPPEN BEFORE CLEARING CONTAINER
+          if (instance.remove) {
+            instance.remove();
           }
+          
+          // Small delay to ensure Leaflet has finished cleanup
+          setTimeout(() => {
+            // Now safe to clear container
+            if (container && container.parentNode) {
+              container.innerHTML = '';
+              // Remove Leaflet ID to prevent re-initialization issues
+              if ((container as any)._leaflet_id) {
+                delete (container as any)._leaflet_id;
+              }
+            }
+          }, 50);
         } catch (e) {
           console.warn('Error during map cleanup:', e);
         } finally {
@@ -426,14 +499,11 @@ export default function LeafletMap({ userLocation, airQualityData, nearbyLocatio
           setMarkers([]);
           setCurrentTileLayer(null);
         }
-      }
-      
-      // Clear map ref
-      if (mapRef.current) {
-        mapRef.current.innerHTML = '';
-        // Remove Leaflet ID to prevent re-initialization issues
-        if ((mapRef.current as any)._leaflet_id) {
-          delete (mapRef.current as any)._leaflet_id;
+      } else if (container) {
+        // If no map instance but container exists, just clear it
+        container.innerHTML = '';
+        if ((container as any)._leaflet_id) {
+          delete (container as any)._leaflet_id;
         }
       }
     };
