@@ -230,6 +230,15 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
     return "bg-red-800";
   };
 
+  const getAQITextColor = (aqi: number): string => {
+    if (aqi <= 50) return "text-green-500";
+    if (aqi <= 100) return "text-yellow-500";
+    if (aqi <= 150) return "text-orange-500";
+    if (aqi <= 200) return "text-red-500";
+    if (aqi <= 300) return "text-purple-500";
+    return "text-red-800";
+  };
+
   const getAQILabel = (aqi: number): string => {
     if (aqi <= 50) return "Good";
     if (aqi <= 100) return "Moderate";
@@ -467,8 +476,24 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                     </div>
                   </div>
                 </div>
+                {/* Tomorrow's Weather Forecast */}
+                {forecast && forecast.length > 1 && (
+                  <div className="pt-3 border-t mt-2">
+                    <div className="text-xs text-muted-foreground mb-1">Tomorrow's weather:</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-base font-semibold">
+                        {forecast[1].temperature.max.toFixed(0)}° / {forecast[1].temperature.min.toFixed(0)}°
+                      </div>
+                      {forecast[1].rainProbability > 0 && (
+                        <div className="text-xs text-muted-foreground">
+                          {forecast[1].rainProbability}% rain
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {currentWeather?.timestamp && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-2">
                     Updated: {new Date(currentWeather.timestamp).toLocaleTimeString()}
                   </p>
                 )}
@@ -489,8 +514,8 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
               {airQualityData && typeof airQualityData.aqi === 'number' ? airQualityData.aqi : 'N/A'}
             </Badge>
           </GlassCardHeader>
-          <GlassCardContent>
-            <div className="text-2xl font-bold">
+          <GlassCardContent className="flex flex-col h-full">
+            <div className="text-lg font-semibold mb-2">
               {airQualityData && typeof airQualityData.aqi === 'number' ? (
                 airQualityData.aqi <= 50 ? 'Good' :
                 airQualityData.aqi <= 100 ? 'Moderate' :
@@ -499,7 +524,17 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                 airQualityData.aqi <= 300 ? 'Very Unhealthy' : 'Hazardous'
               ) : 'Unknown'}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            {/* Large AQI Number Display */}
+            <div className="flex-1 flex items-center justify-center">
+              {airQualityData && typeof airQualityData.aqi === 'number' ? (
+                <div className={`text-7xl md:text-8xl font-extrabold ${getAQITextColor(airQualityData.aqi)}`}>
+                  {airQualityData.aqi}
+                </div>
+              ) : (
+                <div className="text-4xl font-bold text-muted-foreground">N/A</div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-auto">
               {airQualityData?.location || 'Loading...'} • {airQualityData?.timestamp ? new Date(airQualityData.timestamp).toLocaleString() : 'N/A'}
             </p>
           </GlassCardContent>
