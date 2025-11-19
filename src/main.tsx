@@ -26,14 +26,14 @@ import { MemoryMonitorOverlay } from './components/MemoryMonitorOverlay'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // CRITICAL: Ultra-aggressive memory management
-      gcTime: 30 * 1000, // 30 seconds - very short retention
-      staleTime: 30 * 1000, // 30 seconds
+      // Optimized: Balanced memory management with UX
+      gcTime: 5 * 60 * 1000, // 5 minutes - Allow data to persist briefly for navigation
+      staleTime: 60 * 1000, // 1 minute - Prevent constant refetching
       refetchOnWindowFocus: false,
-      refetchOnReconnect: false, // Disable auto-refetch on reconnect to prevent memory spikes
+      refetchOnReconnect: "always", // Refetch on reconnect to ensure fresh data after offline
       retry: 1,
       meta: {
-        budget: 'critical', // Signal critical memory budget
+        budget: 'balanced',
       },
     },
     mutations: {
