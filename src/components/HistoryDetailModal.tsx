@@ -20,6 +20,7 @@ import {
   Zap
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { formatWindSpeed } from "@/lib/formatters";
 
 interface HistoryEntry {
   id: string;
@@ -335,7 +336,7 @@ export default function HistoryDetailModal({ entry, isOpen, onClose }: HistoryDe
                         <span className="text-sm font-medium truncate">Wind Speed</span>
                       </div>
                       <div className="text-lg font-semibold text-green-600 truncate">
-                        {entry.wind_speed} km/h
+                        {formatWindSpeed(entry.wind_speed)}
                       </div>
                       {entry.wind_direction && (
                         <div className="text-xs text-muted-foreground truncate">

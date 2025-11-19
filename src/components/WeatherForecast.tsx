@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Cloud, Sun, CloudRain, Thermometer, Droplets, Eye, RefreshCw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { formatWindSpeed } from "@/lib/formatters";
 
 interface ForecastData {
   date: string;
@@ -221,7 +222,7 @@ export default function WeatherForecast({ latitude, longitude }: WeatherForecast
                   {/* Wind */}
                   <div className="text-xs text-muted-foreground">
                     <Thermometer className="h-3 w-3 inline mr-1" />
-                    {day.windSpeed.toFixed(1)} km/h
+                    {formatWindSpeed(day.windSpeed)}
                   </div>
                 </div>
               ))}
@@ -264,7 +265,7 @@ export default function WeatherForecast({ latitude, longitude }: WeatherForecast
                   <span className="text-sm font-medium">Max Wind Speed</span>
                 </div>
                 <div className="text-2xl font-bold text-orange-600">
-                  {Math.max(...forecastData.slice(0, 7).map(d => d.windSpeed)).toFixed(1)} km/h
+                  {formatWindSpeed(Math.max(...forecastData.slice(0, 7).map(d => d.windSpeed)))}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Next 7 days

@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWeatherStore } from "@/store/weatherStore";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { logGeolocation, logData } from "@/lib/logger";
-import { formatTemperature, formatWindSpeed, formatHumidity, formatVisibility } from "@/lib/formatters";
+import { formatTemperature, formatWindSpeed, formatHumidity, formatVisibility, formatNumber } from "@/lib/formatters";
 
 // UserLocation interface is now handled by LocationData from useGeolocation hook
 
@@ -472,7 +472,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                     <Wind className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                     <div>
                       <div className="text-xs text-muted-foreground">Wind</div>
-                      <div className="text-sm font-semibold">{currentWeather.windSpeed} km/h</div>
+                      <div className="text-sm font-semibold">{formatWindSpeed(currentWeather.windSpeed)}</div>
                     </div>
                   </div>
                 </div>
@@ -606,7 +606,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
               </GlassCardHeader>
               <GlassCardContent className="pt-0">
                 <div className="text-3xl font-bold text-slate-700 dark:text-slate-300">
-                  {currentWeather.windSpeed} km/h
+                  {formatWindSpeed(currentWeather.windSpeed)}
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
                   {currentWeather.windDirection}° {getWindDirection(currentWeather.windDirection)}
@@ -666,7 +666,7 @@ export default function WeatherStats({ showMobileMenu, onMobileMenuToggle, isDem
                   <div className="flex flex-col items-center text-center">
                     <Wind className="h-4 w-4 text-slate-600 dark:text-slate-400 mb-1" />
                     <div className="text-lg font-bold text-slate-700 dark:text-slate-300">
-                      {currentWeather.windSpeed}
+                      {formatNumber(currentWeather.windSpeed, 1)}
                     </div>
                     <div className="text-[10px] text-muted-foreground">Wind</div>
                   </div>
