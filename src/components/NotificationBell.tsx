@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Bell, X, Check, Trash2, Settings } from "lucide-react";
 import {
@@ -18,6 +19,7 @@ interface NotificationBellProps {
 }
 
 export default function NotificationBell({ onOpenSettings }: NotificationBellProps) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const { 
     notifications, 
@@ -25,7 +27,7 @@ export default function NotificationBell({ onOpenSettings }: NotificationBellPro
     markAsRead, 
     markAllAsRead, 
     deleteNotification,
-    isLoading 
+    loading 
   } = useNotifications();
 
   const handleNotificationClick = async (notification: any) => {
@@ -35,8 +37,16 @@ export default function NotificationBell({ onOpenSettings }: NotificationBellPro
     
     // Handle action URL if present
     if (notification.action_url) {
-      // In a real app, you'd navigate to the URL
-      console.log('Navigate to:', notification.action_url);
+      // Handle relative URLs (internal navigation)
+      if (notification.action_url.startsWith('/')) {
+        navigate(notification.action_url);
+      } else if (notification.action_url.startsWith('?')) {
+        // Handle query string routes (e.g., ?view=rewards)
+        navigate(`/dashboard${notification.action_url}`);
+      } else {
+        // Handle external URLs
+        window.location.href = notification.action_url;
+      }
     }
     
     setIsOpen(false);
@@ -134,7 +144,7 @@ export default function NotificationBell({ onOpenSettings }: NotificationBellPro
 
         {/* Notifications List */}
         <ScrollArea className="max-h-96">
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center p-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
             </div>
@@ -152,7 +162,7 @@ export default function NotificationBell({ onOpenSettings }: NotificationBellPro
                 <div
                   key={notification.id}
                   className={cn(
-                    "flex items-start gap-3 p-4 hover:bg-accent/50 cursor-pointer transition-colors",
+                    "group flex items-start gap-3 p-4 hover:bg-accent/50 cursor-pointer transition-colors",
                     !notification.read && "bg-accent/30"
                   )}
                   onClick={() => handleNotificationClick(notification)}
@@ -175,7 +185,8 @@ export default function NotificationBell({ onOpenSettings }: NotificationBellPro
                         variant="ghost"
                         size="icon"
                         onClick={(e) => handleDeleteNotification(notification.id, e)}
-                        className="h-6 w-6 flex-shrink-0 opacity-0 group-hover:opacity-100 hover:text-destructive"
+                        className="h-6 w-6 flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:text-destructive"
+                        aria-label="Delete notification"
                       >
                         <X className="h-3 w-3" />
                       </Button>
