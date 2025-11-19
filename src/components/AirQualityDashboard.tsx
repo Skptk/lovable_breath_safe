@@ -161,8 +161,6 @@ interface CurrentAirQualityCardProps {
   pollutantCards: PollutantCard[];
   onSelect: (pollutant: PollutantCard) => void;
   isRefreshing: boolean;
-  onRefresh: () => void;
-  onNavigate?: (route: string) => void;
 }
 
 const CurrentAirQualityCard = React.memo(function CurrentAirQualityCard({
@@ -173,8 +171,6 @@ const CurrentAirQualityCard = React.memo(function CurrentAirQualityCard({
   pollutantCards,
   onSelect,
   isRefreshing,
-  onRefresh,
-  onNavigate,
 }: CurrentAirQualityCardProps) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10 text-center w-full max-w-full overflow-hidden">
@@ -191,27 +187,6 @@ const CurrentAirQualityCard = React.memo(function CurrentAirQualityCard({
         </div>
       </div>
       <PollutantCardGrid cards={pollutantCards} onSelect={onSelect} disabled={isRefreshing} />
-
-      <div className="mt-4 sm:mt-6 md:mt-10 lg:mt-12 flex flex-col sm:flex-row justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-5 w-full">
-        <Button
-          variant="outline"
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          className="bg-slate-900/60 hover:bg-slate-900/40 text-white border-white/20 text-xs sm:text-sm lg:text-base h-8 sm:h-9 lg:h-10 xl:h-11 w-full sm:w-auto"
-        >
-          <RefreshCw className={`mr-1.5 sm:mr-2 lg:mr-2.5 h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 lg:h-6 lg:w-6 ${isRefreshing ? "animate-spin" : ""}`} />
-          {isRefreshing ? "Refreshing..." : "Refresh Now"}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => onNavigate?.("history")}
-          className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-xs sm:text-sm lg:text-base h-8 sm:h-9 lg:h-10 xl:h-11 w-full sm:w-auto"
-        >
-          <History className="mr-1.5 sm:mr-2 lg:mr-2.5 h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" />
-          <span className="hidden sm:inline">View History</span>
-          <span className="sm:hidden">History</span>
-        </Button>
-      </div>
     </div>
   );
 });
@@ -514,8 +489,6 @@ function AirQualityDashboardContent({
                       pollutantCards={pollutantCards}
                       onSelect={handlePollutantSelect}
                       isRefreshing={isRefreshing}
-                      onRefresh={handleRefresh}
-                      onNavigate={onNavigate}
                     />
                   </div>
 
