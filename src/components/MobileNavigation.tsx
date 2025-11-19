@@ -103,7 +103,16 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={toggleMobileMenu}
-            style={{ willChange: 'opacity' }}
+            transition={{ 
+              type: "tween",
+              ease: "easeOut",
+              duration: 0.2
+            }}
+            style={{ 
+              willChange: 'opacity',
+              transform: 'translateZ(0)',
+              backfaceVisibility: 'hidden'
+            }}
           />
         )}
       </AnimatePresence>
@@ -116,14 +125,24 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
             initial={{ x: -320 }}
             animate={{ x: 0 }}
             exit={{ x: -320 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            style={{ contain: 'layout paint' }}
+            transition={{ 
+              type: "tween",
+              ease: [0.4, 0.0, 0.2, 1],
+              duration: 0.3
+            }}
+            style={{ 
+              willChange: 'transform',
+              transform: 'translateZ(0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
+            }}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-border">
               <motion.div 
                 className="flex items-center gap-3"
                 whileHover={{ scale: 1.02 }}
+                transition={{ type: "tween", duration: 0.15 }}
               >
                 <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg">
                   <span className="text-primary-foreground font-bold text-lg">B</span>
@@ -137,6 +156,7 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                transition={{ type: "tween", duration: 0.15 }}
               >
                 <Button
                   variant="ghost"
@@ -162,14 +182,19 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ 
-                      delay: 0.1 + index * 0.05, 
-                      duration: 0.3,
-                      ease: "easeOut"
+                      delay: 0.05 + index * 0.03, 
+                      type: "tween",
+                      ease: "easeOut",
+                      duration: 0.2
+                    }}
+                    style={{ 
+                      willChange: index < 3 ? 'transform, opacity' : 'auto'
                     }}
                   >
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
+                      transition={{ type: "tween", duration: 0.15 }}
                     >
                       <Button
                         variant={isActive ? "default" : "ghost"}
@@ -197,6 +222,7 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                transition={{ type: "tween", duration: 0.15 }}
               >
                 <Button
                   variant="outline"
@@ -214,6 +240,7 @@ export default function MobileNavigation({ currentView, onViewChange, isOpen, on
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  transition={{ type: "tween", duration: 0.15 }}
                 >
                   <Button
                     variant="destructive"
