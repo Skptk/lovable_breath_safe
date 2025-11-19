@@ -292,10 +292,13 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
       setError(null);
 
       const firstPage = await fetchHistory(0);
-      setHistory(firstPage);
+      // CRITICAL: Limit initial history to prevent memory growth
+      const MAX_HISTORY_ENTRIES = 200;
+      const limitedFirstPage = firstPage.slice(0, MAX_HISTORY_ENTRIES);
+      setHistory(limitedFirstPage);
       setPage(0);
-      setHasMore(firstPage.length === PAGE_SIZE);
-      setShowFetchButton(firstPage.length === 0);
+      setHasMore(firstPage.length === PAGE_SIZE && limitedFirstPage.length < MAX_HISTORY_ENTRIES);
+      setShowFetchButton(limitedFirstPage.length === 0);
 
       if (firstPage.length === 0) {
         await resetUserPoints();
@@ -330,7 +333,13 @@ export default function HistoryView({ showMobileMenu, onMobileMenuToggle }: Hist
         return;
       }
 
-      setHistory((prev) => [...prev, ...nextEntries]);
+      // CRITICAL: Limit history to last 200 entries to prevent memory growth
+      const MAX_HISTORY_ENTRIES = 200;
+      setHistory((prev) => {
+        const combined = [...prev, ...nextEntries];
+        // Keep only the most recent entries
+        return combined.slice(-MAX_HISTORY_ENTRIES);
+      });
       setPage(nextPage);
       setHasMore(nextEntries.length === PAGE_SIZE);
     } catch (error) {

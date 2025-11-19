@@ -472,13 +472,13 @@ export function useWeatherData(options: UseWeatherDataOptions = {}) {
     }
   }, [memoizedCoordinates?.latitude, memoizedCoordinates?.longitude, weatherQuery.refetch]);
 
-  // Memoized values
+  // Memoized values with size limits
   const weatherSummary = useMemo(() => {
     if (!currentWeather) return null;
 
     return {
       current: currentWeather,
-      forecast: forecast.slice(0, 7), // Next 7 days
+      forecast: forecast.slice(0, 5), // CRITICAL: Limit to 5 days for memory efficiency (reduced from 7)
       lastUpdated: currentWeather.timestamp
     };
   }, [currentWeather, forecast]);

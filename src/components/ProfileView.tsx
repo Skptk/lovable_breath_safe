@@ -491,13 +491,20 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   }, []);
 
   // Debounced profile updates to prevent excessive re-renders
-  const debouncedFetchProfile = useMemo(
-    () =>
-      debounce(async () => {
-        await loadProfileData(false);
-      }, 300),
-    [loadProfileData]
-  );
+  const debouncedFetchProfileRef = useRef<ReturnType<typeof debounce> | null>(null);
+  
+  useEffect(() => {
+    debouncedFetchProfileRef.current = debounce(async () => {
+      await loadProfileData(false);
+    }, 300);
+    
+    return () => {
+      if (debouncedFetchProfileRef.current) {
+        debouncedFetchProfileRef.current.cancel();
+        debouncedFetchProfileRef.current = null;
+      }
+    };
+  }, [loadProfileData]);
 
   useEffect(() => {
     handleProfilePointsUpdateRef.current = (payload: any) => {
@@ -509,20 +516,34 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
       if (payload.eventType === 'UPDATE' && payload.new?.total_points !== undefined) {
         updateTotalPoints(payload.new.total_points);
       }
-      debouncedFetchProfile();
+      if (debouncedFetchProfileRef.current) {
+        debouncedFetchProfileRef.current();
+      }
     };
-  }, [updateTotalPoints, debouncedFetchProfile]);
+  }, [updateTotalPoints]);
 
-  // Debounce function implementation
+  // Debounce function implementation with cleanup support
   function debounce<T extends (...args: any[]) => any>(
     func: T,
     wait: number
-  ): (...args: Parameters<T>) => void {
-    let timeout: NodeJS.Timeout;
-    return (...args: Parameters<T>) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
+  ): { (...args: Parameters<T>): void; cancel: () => void } {
+    let timeout: NodeJS.Timeout | null = null;
+    const debounced = (...args: Parameters<T>) => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+      timeout = setTimeout(() => {
+        timeout = null;
+        func(...args);
+      }, wait);
     };
+    debounced.cancel = () => {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+    };
+    return debounced;
   }
 
   const refreshTimeoutRef = useRef<number | null>(null);
@@ -575,13 +596,27 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
   }, [userId, loadProfileData]);
 
   useEffect(() => {
-    if (!userId || isInitialized || subscriptionRef.current) {
+    if (!userId) {
+      // Clean up subscription if user logs out
+      if (subscriptionRef.current) {
+        const unsubscribe = subscriptionRef.current;
+        subscriptionRef.current = null;
+        unsubscribe();
+      }
+      setSubscriptionStatus('idle');
+      setIsInitialized(false);
+      return;
+    }
+
+    // Prevent duplicate subscriptions
+    if (isInitialized || subscriptionRef.current) {
       return;
     }
 
     let isActive = true;
     let timeoutId: number | null = null;
     let abortController: AbortController | null = null;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
     const initializeSubscription = async () => {
       setSubscriptionStatus('connecting');
@@ -592,7 +627,6 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
 
       try {
         while (!abortController.signal.aborted && !supabase.realtime.isConnected()) {
-           
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
 
@@ -601,7 +635,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
         }
 
         const channelName = `user-profile-points-${userId}`;
-        const channel = supabase.channel(channelName, {
+        channel = supabase.channel(channelName, {
           config: { presence: { key: userId } }
         });
 
@@ -614,7 +648,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
             filter: `user_id=eq.${userId}`
           },
           (payload) => {
-            if (isMountedRef.current) {
+            if (isMountedRef.current && isActive) {
               handleProfilePointsUpdateRef.current(payload);
             }
           }
@@ -634,14 +668,26 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
         });
 
         if (!isMountedRef.current || !isActive) {
-          await channel.unsubscribe();
+          if (channel) {
+            await channel.unsubscribe();
+            channel = null;
+          }
           return;
         }
 
         subscriptionRef.current = () => {
-          void channel.unsubscribe().catch((error) => {
-            console.warn('Failed to unsubscribe profile channel', error);
-          });
+          if (channel) {
+            void channel.unsubscribe().catch((error) => {
+              console.warn('Failed to unsubscribe profile channel', error);
+            });
+            // CRITICAL: Remove channel from Supabase to prevent memory leak
+            try {
+              supabase.removeChannel(channel);
+            } catch (error) {
+              console.warn('Failed to remove profile channel', error);
+            }
+            channel = null;
+          }
         };
 
         setIsInitialized(true);
@@ -653,20 +699,22 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
       } finally {
         if (timeoutId) {
           clearTimeout(timeoutId);
+          timeoutId = null;
         }
       }
     };
 
-    
     void initializeSubscription();
 
     return () => {
       isActive = false;
       if (timeoutId) {
         clearTimeout(timeoutId);
+        timeoutId = null;
       }
       if (abortController) {
         abortController.abort();
+        abortController = null;
       }
       if (subscriptionRef.current) {
         const unsubscribe = subscriptionRef.current;
@@ -678,7 +726,7 @@ export default function ProfileView({ showMobileMenu, onMobileMenuToggle }: Prof
         setIsInitialized(false);
       }
     };
-  }, [userId, isInitialized]);
+  }, [userId]); // Remove isInitialized from deps to prevent re-subscription loops
 
   // Mobile performance optimization - pause expensive operations when app is backgrounded
   // Optimized: Use passive listener to avoid blocking

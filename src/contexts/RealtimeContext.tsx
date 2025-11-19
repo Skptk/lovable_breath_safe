@@ -183,6 +183,7 @@ function useRealtimeContextValue() {
     // Clean up any existing listeners
     if (statusListenerCleanupRef.current) {
       statusListenerCleanupRef.current();
+      statusListenerCleanupRef.current = null;
     }
     
     // Set up new status listener
@@ -194,9 +195,14 @@ function useRealtimeContextValue() {
     
     return () => {
       mountedRef.current = false;
+      if (statusListenerCleanupRef.current) {
+        statusListenerCleanupRef.current();
+        statusListenerCleanupRef.current = null;
+      }
       cleanup();
     };
-  }, [cleanup, throttledSetConnectionStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
 
   useEffect(() => {
     if (!realtimePermitted) {

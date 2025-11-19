@@ -9,6 +9,10 @@ const shouldTrackWeatherState = typeof __TRACK_VARIABLES__ === 'undefined' || __
 const MIN_WEATHER_FETCH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 const MIN_FORECAST_FETCH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
+// LRU Cache configuration for memory optimization
+const MAX_CACHE_ENTRIES = 100; // Maximum number of cached weather entries per coordinate pair
+const MAX_FORECAST_CACHE_ENTRIES = 50; // Maximum number of cached forecast entries
+
 const trackWeatherState = (action: string, payload: unknown) => {
   if (ENABLE_WEATHER_LOGS) {
     console.log(`🏪 [STORE] Weather state changing via ${action}:`, payload);
@@ -54,6 +58,63 @@ export interface ForecastData {
   rainProbability: number;
   weatherCondition: string;
   uvIndex?: number;
+}
+
+// LRU Cache entry type
+type CacheEntry<T> = {
+  data: T;
+  timestamp: number;
+  key: string;
+};
+
+// Simple LRU Cache implementation
+class LRUCache<T> {
+  private cache = new Map<string, CacheEntry<T>>();
+  private maxSize: number;
+
+  constructor(maxSize: number) {
+    this.maxSize = maxSize;
+  }
+
+  get(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    
+    // Move to end (most recently used)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.data;
+  }
+
+  set(key: string, data: T): void {
+    // Remove if exists
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+    
+    // Add new entry
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      key,
+    });
+    
+    // Evict oldest if over limit
+    if (this.cache.size > this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
+    }
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  size(): number {
+    return this.cache.size;
+  }
 }
 
 export interface WeatherStoreState {
@@ -104,13 +165,17 @@ export interface WeatherStoreActions {
 
 export type WeatherStore = WeatherStoreState & WeatherStoreActions;
 
+// Create LRU caches for weather data
+const weatherCache = new LRUCache<WeatherData>(MAX_CACHE_ENTRIES);
+const forecastCache = new LRUCache<ForecastData[]>(MAX_FORECAST_CACHE_ENTRIES);
+
 // Create the weather store
 export const useWeatherStore = create<WeatherStore>()(
   devtools(
     (set, get) => ({
       // Initial state
       weatherData: null,
-      forecastData: [], // CRITICAL: Limited to 7 days max, will be trimmed to 5 for memory
+      forecastData: [], // CRITICAL: Limited to 5 days max for memory efficiency
       isLoading: false,
       error: null,
       lastFetchTime: null,
@@ -120,9 +185,16 @@ export const useWeatherStore = create<WeatherStore>()(
       weatherCacheKey: null,
       forecastCacheKey: null,
 
-      // Set weather data
+      // Set weather data with caching
       setWeatherData: (data) => {
         trackWeatherState('setWeatherData', data);
+        const state = get();
+        
+        // Cache the weather data
+        if (state.weatherCacheKey) {
+          weatherCache.set(state.weatherCacheKey, data);
+        }
+        
         set({ 
           weatherData: data,
           lastFetchTime: Date.now(),
@@ -131,11 +203,20 @@ export const useWeatherStore = create<WeatherStore>()(
         });
       },
 
-      // Set forecast data
+      // Set forecast data with size limit
       setForecastData: (data) => {
         trackWeatherState('setForecastData', data);
+        // CRITICAL: Limit to 5 days max to prevent memory growth
+        const limitedData = data.slice(0, 5);
+        const state = get();
+        
+        // Cache the forecast data
+        if (state.forecastCacheKey) {
+          forecastCache.set(state.forecastCacheKey, limitedData);
+        }
+        
         set({ 
-          forecastData: data,
+          forecastData: limitedData,
           lastFetchTime: Date.now(),
           error: null,
           isLoading: false
@@ -195,9 +276,11 @@ export const useWeatherStore = create<WeatherStore>()(
         }
       },
 
-      // Clear cache
+      // Clear cache (both state and LRU caches)
       clearCache: () => {
         trackWeatherState('clearCache', null);
+        weatherCache.clear();
+        forecastCache.clear();
         set({ 
           weatherData: null,
           forecastData: [],
@@ -206,9 +289,19 @@ export const useWeatherStore = create<WeatherStore>()(
         });
       },
 
-      // Get cached weather data
+      // Get cached weather data (checks both state and LRU cache)
       getCachedWeather: () => {
         const state = get();
+        
+        // First check LRU cache
+        if (state.weatherCacheKey) {
+          const cached = weatherCache.get(state.weatherCacheKey);
+          if (cached) {
+            return cached;
+          }
+        }
+        
+        // Fallback to state cache
         if (!state.weatherData || !state.lastFetchTime) return null;
         
         // Check if data is still fresh (within 5 minutes)
@@ -216,9 +309,19 @@ export const useWeatherStore = create<WeatherStore>()(
         return isFresh ? state.weatherData : null;
       },
 
-      // Get cached forecast data
+      // Get cached forecast data (checks both state and LRU cache)
       getCachedForecast: () => {
         const state = get();
+        
+        // First check LRU cache
+        if (state.forecastCacheKey) {
+          const cached = forecastCache.get(state.forecastCacheKey);
+          if (cached) {
+            return cached;
+          }
+        }
+        
+        // Fallback to state cache
         if (!state.forecastData || !state.lastFetchTime) return null;
         
         // Check if data is still fresh (within 5 minutes)
