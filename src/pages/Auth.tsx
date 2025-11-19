@@ -171,7 +171,7 @@ export default function Auth(): JSX.Element {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
@@ -182,10 +182,30 @@ export default function Auth(): JSX.Element {
 
         if (error) throw error;
 
-        toast({
-          title: 'Account Created!',
-          description: 'Please check your email to verify your account.',
-        });
+        // Check if email confirmation is required and if email was sent
+        const requiresEmailConfirmation = !data.session;
+        const emailSent = !!data.user?.confirmation_sent_at;
+
+        if (requiresEmailConfirmation && !emailSent) {
+          console.warn('⚠️ User signup successful but no confirmation email was sent. Check Supabase email/SMTP configuration.');
+          toast({
+            title: 'Account Created!',
+            description: 'Warning: Email verification may not have been sent. Please check your Supabase email/SMTP configuration or contact support.',
+            variant: 'destructive',
+          });
+        } else if (requiresEmailConfirmation) {
+          toast({
+            title: 'Account Created!',
+            description: 'Please check your email to verify your account.',
+          });
+        } else {
+          // Email confirmation disabled - user can sign in immediately
+          toast({
+            title: 'Account Created!',
+            description: 'You can now sign in to your account.',
+          });
+          navigate('/dashboard?view=dashboard');
+        }
 
         setFormData({ email: '', password: '', fullName: '' });
       } else {

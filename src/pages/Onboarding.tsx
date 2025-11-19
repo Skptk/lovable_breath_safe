@@ -127,14 +127,49 @@ export default function Onboarding(): JSX.Element {
 
     setState(prev => ({ ...prev, isSubmitting: true }));
     try {
-      await signUp(formData.email, formData.password);
-      setState(prev => ({ ...prev, emailSent: true, isSubmitting: false }));
-      toast({
-        title: "Account Created!",
-        description: "Please check your email to verify your account.",
+      // Call supabase directly to check email verification response
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`
+        }
       });
-      // Move to email verification step
-      setCurrentStep(4);
+
+      if (error) throw error;
+
+      // Check if email confirmation is required and if email was sent
+      const requiresEmailConfirmation = !data.session;
+      const emailSent = !!data.user?.confirmation_sent_at;
+
+      if (requiresEmailConfirmation && !emailSent) {
+        console.warn('⚠️ User signup successful but no confirmation email was sent. Check Supabase email/SMTP configuration.');
+        toast({
+          title: "Account Created!",
+          description: "Warning: Email verification may not have been sent. Please check your Supabase email/SMTP configuration. You may need to contact support.",
+          variant: "destructive",
+        });
+        setState(prev => ({ ...prev, emailSent: false, isSubmitting: false }));
+        // Still move to email verification step so user can try resending
+        setCurrentStep(4);
+      } else if (requiresEmailConfirmation && emailSent) {
+        setState(prev => ({ ...prev, emailSent: true, isSubmitting: false }));
+        toast({
+          title: "Account Created!",
+          description: "Please check your email to verify your account.",
+        });
+        // Move to email verification step
+        setCurrentStep(4);
+      } else {
+        // Email confirmation disabled - user can proceed immediately
+        setState(prev => ({ ...prev, emailSent: false, isSubmitting: false }));
+        toast({
+          title: "Account Created!",
+          description: "Your account has been created successfully.",
+        });
+        // Skip email verification step and proceed
+        setCurrentStep(5);
+      }
     } catch (error) {
       setState(prev => ({ ...prev, isSubmitting: false }));
       toast({

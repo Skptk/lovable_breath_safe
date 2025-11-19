@@ -216,7 +216,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
     try {
       console.log('🔐 Signing up user:', email);
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -230,9 +230,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (error) {
         console.error('Error signing up:', error);
         throw error;
-      } else {
-        console.log('✅ Signed up successfully');
       }
+
+      // Check if email confirmation is required
+      const requiresEmailConfirmation = !data.session;
+      const emailSent = !!data.user?.confirmation_sent_at;
+
+      if (requiresEmailConfirmation && !emailSent) {
+        console.warn('⚠️ User signup successful but no confirmation email was sent. Check Supabase email/SMTP configuration.');
+        // Don't throw an error, but log a warning
+        // The issue is likely in Supabase configuration (SMTP not set up or email confirmation disabled)
+      }
+
+      console.log('✅ Signed up successfully', {
+        requiresEmailConfirmation,
+        emailSent,
+        userId: data.user?.id
+      });
     } catch (error) {
       console.error('Error in signUp:', error);
       throw error;
