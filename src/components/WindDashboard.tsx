@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/GlassCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Wind, Gauge, Compass, TrendingUp, AlertTriangle, RefreshCw } from "lucide-react";
+import { Wind, Gauge, Compass, TrendingUp, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useWeatherStore } from "@/store/weatherStore";
+import { formatNumber } from "@/lib/formatters";
 
 interface WindData {
   windSpeed: number;
@@ -18,81 +20,33 @@ interface WindDashboardProps {
 }
 
 export default function WindDashboard({ latitude, longitude }: WindDashboardProps): JSX.Element {
-  const [windData, setWindData] = useState<WindData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { weatherData, fetchWeatherData, isLoading } = useWeatherStore();
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchWindData = async (): Promise<void> => {
-    setLoading(true);
-    setError(null);
+  // Use weather store data for consistency with other components
+  const windData: WindData | null = weatherData ? {
+    windSpeed: weatherData.windSpeed,
+    windDirection: weatherData.windDirection || 0,
+    gustSpeed: weatherData.windGust || 0,
+    timestamp: weatherData.timestamp || new Date().toISOString()
+  } : null;
 
+  const refreshWindData = async (): Promise<void> => {
     try {
-      // Try Open-Meteo API first
-      const openMeteoResponse = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=auto`
-      );
-
-      if (openMeteoResponse.ok) {
-        const data = await openMeteoResponse.json();
-        const current = data.current;
-        
-        setWindData({
-          windSpeed: current.wind_speed_10m,
-          windDirection: current.wind_direction_10m,
-          gustSpeed: current.wind_gusts_10m || 0,
-          timestamp: current.time
-        });
-        
-        setLastUpdated(new Date().toISOString());
-        toast({
-          title: "Wind Data Updated",
-          description: "Successfully fetched wind data from Open-Meteo",
-        });
-        return;
-      }
+      await fetchWeatherData({ latitude, longitude });
+      setLastUpdated(new Date().toISOString());
+      toast({
+        title: "Wind Data Updated",
+        description: "Successfully refreshed wind data",
+      });
     } catch (error) {
-      console.warn('Open-Meteo API failed:', error);
+      toast({
+        title: "Wind Data Error",
+        description: "Unable to refresh wind data. Please try again later.",
+        variant: "destructive",
+      });
     }
-
-    // Fallback to Windy API if Open-Meteo fails
-    try {
-      const windyResponse = await fetch(
-        `https://api.windy.com/api/point-forecast/v2?lat=${latitude}&lon=${longitude}&key=${import.meta.env.VITE_WINDY_API_KEY || 'demo'}&model=gfs&parameters=wind`
-      );
-
-      if (windyResponse.ok) {
-        const data = await windyResponse.json();
-        // Extract wind data from Windy API response
-        // Note: This is a simplified example - actual Windy API response structure may differ
-        const windInfo = data.wind || {};
-        
-        setWindData({
-          windSpeed: windInfo.speed || 0,
-          windDirection: windInfo.direction || 0,
-          gustSpeed: windInfo.gust || 0,
-          timestamp: new Date().toISOString()
-        });
-        
-        setLastUpdated(new Date().toISOString());
-        toast({
-          title: "Wind Data Updated",
-          description: "Successfully fetched wind data from Windy API (fallback)",
-        });
-        return;
-      }
-    } catch (error) {
-      console.warn('Windy API also failed:', error);
-    }
-
-    // If both APIs fail, show error
-    setError('Failed to fetch wind data from both Open-Meteo and Windy APIs');
-    toast({
-      title: "Wind Data Error",
-      description: "Unable to fetch wind data. Please try again later.",
-      variant: "destructive",
-    });
   };
 
   const getWindDirection = (degrees: number): string => {
@@ -117,14 +71,14 @@ export default function WindDashboard({ latitude, longitude }: WindDashboardProp
   };
 
   useEffect(() => {
-    fetchWindData();
-    
-    // Refresh every 15 minutes
-    const interval = setInterval(fetchWindData, 15 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [latitude, longitude]);
+    // Fetch weather data if not already available
+    if (!weatherData) {
+      fetchWeatherData({ latitude, longitude });
+    }
+    setLastUpdated(weatherData?.timestamp || new Date().toISOString());
+  }, [latitude, longitude, weatherData, fetchWeatherData]);
 
-  if (loading && !windData) {
+  if (isLoading && !windData) {
     return (
       <GlassCard>
         <GlassCardHeader>
@@ -145,28 +99,6 @@ export default function WindDashboard({ latitude, longitude }: WindDashboardProp
     );
   }
 
-  if (error && !windData) {
-    return (
-      <GlassCard>
-        <GlassCardHeader>
-          <GlassCardTitle className="flex items-center gap-2">
-            <Wind className="h-5 w-5" />
-            Wind Dashboard
-          </GlassCardTitle>
-        </GlassCardHeader>
-        <GlassCardContent>
-          <div className="text-center py-8 space-y-4">
-            <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
-            <p className="text-muted-foreground">{error}</p>
-            <Button onClick={fetchWindData} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </div>
-        </GlassCardContent>
-      </GlassCard>
-    );
-  }
 
   return (
     <GlassCard>
@@ -176,8 +108,8 @@ export default function WindDashboard({ latitude, longitude }: WindDashboardProp
             <Wind className="h-5 w-5" />
             Wind Dashboard
           </GlassCardTitle>
-          <Button onClick={fetchWindData} size="sm" variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button onClick={refreshWindData} size="sm" variant="outline" disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -233,7 +165,7 @@ export default function WindDashboard({ latitude, longitude }: WindDashboardProp
                   <span className="text-sm font-medium">Wind Speed</span>
                 </div>
                 <div className={`text-3xl font-bold ${getWindSpeedColor(windData.windSpeed)}`}>
-                  {windData.windSpeed.toFixed(1)}
+                  {formatNumber(windData.windSpeed, 1)}
                 </div>
                 <div className="text-sm text-muted-foreground">km/h</div>
                 <Badge variant="secondary" className="mt-2">
@@ -262,7 +194,7 @@ export default function WindDashboard({ latitude, longitude }: WindDashboardProp
                   <span className="text-sm font-medium">Gust Speed</span>
                 </div>
                 <div className="text-3xl font-bold text-orange-600">
-                  {windData.gustSpeed.toFixed(1)}
+                  {formatNumber(windData.gustSpeed, 1)}
                 </div>
                 <div className="text-sm text-muted-foreground">km/h</div>
                 {windData.gustSpeed > windData.windSpeed * 1.5 && (
