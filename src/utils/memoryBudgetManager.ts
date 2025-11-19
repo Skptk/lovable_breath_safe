@@ -54,6 +54,7 @@ class MemoryBudgetManager {
   private lastCleanupTime = 0;
   private cleanupThrottleMs = 5000; // Don't cleanup more than once per 5 seconds
   private isTabVisible = true;
+  private isCleanupScheduled = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -62,15 +63,19 @@ class MemoryBudgetManager {
       let visibilityTimeout: number | null = null;
       
       document.addEventListener('visibilitychange', () => {
+        const wasVisible = this.isTabVisible;
         this.isTabVisible = !document.hidden;
         
         if (document.hidden) {
+          // STOP the periodic cleanup interval when hidden to prevent callback stacking
+          this.stopPeriodicCleanup();
+
           // Clear any pending timeout
           if (visibilityTimeout !== null) {
             clearTimeout(visibilityTimeout);
           }
           
-          // Defer heavy cleanup operations
+          // Run ONE emergency cleanup when hiding
           if ('requestIdleCallback' in window) {
             (window as any).requestIdleCallback(() => {
               this.emergencyCleanup('Tab hidden');
@@ -81,10 +86,14 @@ class MemoryBudgetManager {
               visibilityTimeout = null;
             }, 100);
           }
+        } else if (!wasVisible) {
+          // RESTART periodic cleanup when becoming visible
+          this.startPeriodicCleanup();
+          console.log('👁️ [MemoryBudget] Tab visible, resumed periodic monitoring');
         }
       }, { passive: true });
 
-      // Periodic aggressive cleanup
+      // Start initial cleanup
       this.startPeriodicCleanup();
     }
   }
@@ -94,16 +103,26 @@ class MemoryBudgetManager {
   }
 
   private startPeriodicCleanup() {
+    // Avoid multiple intervals
+    this.stopPeriodicCleanup();
+
     // CRITICAL: Cleanup every 15 seconds for aggressive memory management
     if (typeof window !== 'undefined') {
       this.cleanupInterval = window.setInterval(() => {
         if (this.isTabVisible) {
           this.performCleanup('Periodic');
-        } else {
-          // More aggressive cleanup when tab is hidden
-          this.emergencyCleanup('Tab hidden - periodic cleanup');
         }
+        // NOTE: We do NOT run emergencyCleanup here anymore when hidden
+        // The visibilitychange handler handles the "on hide" cleanup
+        // and we pause the interval while hidden to prevent rAF stacking.
       }, 15000) as unknown as ReturnType<typeof setInterval>;
+    }
+  }
+
+  private stopPeriodicCleanup() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
     }
   }
 
@@ -168,8 +187,15 @@ class MemoryBudgetManager {
   /**
    * Emergency cleanup - most aggressive
    * Optimized: Batch operations to prevent forced reflows
+   * Fixed: Prevent rAF stacking when tab is hidden
    */
   emergencyCleanup(reason: string) {
+    // Prevent stacking of cleanup requests
+    if (this.isCleanupScheduled) {
+      return;
+    }
+    this.isCleanupScheduled = true;
+
     console.error(`🚨 [MemoryBudget] EMERGENCY CLEANUP: ${reason}`);
 
     // Batch DOM reads first to prevent forced reflows
@@ -177,6 +203,9 @@ class MemoryBudgetManager {
 
     // Batch all write operations
     requestAnimationFrame(() => {
+      // Reset scheduling flag immediately so new cleanups can happen next frame if needed
+      this.isCleanupScheduled = false;
+
       // Clear ALL React Query cache
       if (this.queryClient) {
         this.queryClient.clear();
@@ -198,7 +227,7 @@ class MemoryBudgetManager {
       setTimeout(() => {
         this.forceGC();
 
-        // If still over emergency threshold, reload
+        // If still over emergency threshold, reload (check delayed)
         setTimeout(() => {
           const usage = this.getCurrentMemoryUsage();
           if (usage && usage >= DEFAULT_BUDGET.emergencyThresholdMB) {
