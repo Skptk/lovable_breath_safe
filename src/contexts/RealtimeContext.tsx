@@ -37,9 +37,9 @@ const BATCH_DISPATCH_FALLBACK_MS = 16;
 
 interface RealtimeContextType {
   connectionStatus: 'connected' | 'connecting' | 'reconnecting' | 'disconnected';
-  subscribeToNotifications: (callback: (payload: any) => void) => () => void;
-  subscribeToUserPoints: (callback: (payload: any) => void) => () => void;
-  subscribeToUserProfilePoints: (callback: (payload: any) => void) => () => void;
+  subscribeToNotifications: (cb: (p: any) => void) => () => void;
+  subscribeToUserPoints: (cb: (p: any) => void) => () => void;
+  subscribeToUserProfilePoints: (cb: (p: any) => void) => () => void;
   isConnected: boolean;
 }
 
@@ -53,8 +53,8 @@ interface RealtimeProviderProps {
 const STATUS_UPDATE_THROTTLE_MS = 1000;
 
 type SubscriptionEntry = {
-  callbacks: Set<(payload: any) => void>;
-  aggregator: (payload: any) => void;
+  callbacks: Set<(p: any) => void>;
+  aggregator: (p: any) => void;
   cancelScheduledFlush: () => void;
   options: { isPersistent?: boolean };
   isSubscribed: boolean;
@@ -78,7 +78,7 @@ function useRealtimeContextValue() {
   }, STATUS_UPDATE_THROTTLE_MS);
 
   const createAggregatedDispatcher = useCallback(
-    (channelName: string): { handler: (payload: any) => void; cancel: () => void } => {
+    (channelName: string): { handler: (p: any) => void; cancel: () => void } => {
       let rafId: number | null = null;
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
       const pendingPayloads: any[] = [];
@@ -232,7 +232,7 @@ function useRealtimeContextValue() {
   // Define the cleanup function outside the useCallback to avoid hooks after early returns
   const subscribe = useCallback((
     channelName: string,
-    callback: (payload: any) => void,
+    callback: (p: any) => void,
     options: { isPersistent?: boolean } = {}
   ) => {
     if (!mountedRef.current || !user?.id || !realtimePermitted) {
@@ -288,11 +288,11 @@ function useRealtimeContextValue() {
   const contextValue = useMemo(() => ({
     connectionStatus,
     isConnected: realtimePermitted && connectionStatus === 'connected',
-    subscribeToNotifications: (callback: (payload: any) => void) =>
+    subscribeToNotifications: (callback: (p: any) => void) =>
       subscribe(`user-notifications-${user?.id}`, callback, { isPersistent: true }),
-    subscribeToUserPoints: (callback: (payload: any) => void) =>
+    subscribeToUserPoints: (callback: (p: any) => void) =>
       subscribe(`user-points-${user?.id}`, callback, { isPersistent: true }),
-    subscribeToUserProfilePoints: (callback: (payload: any) => void) =>
+    subscribeToUserProfilePoints: (callback: (p: any) => void) =>
       subscribe(`user-profile-points-${user?.id}`, callback, { isPersistent: false }),
   }), [connectionStatus, subscribe, user?.id]);
   
